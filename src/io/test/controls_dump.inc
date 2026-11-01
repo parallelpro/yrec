@@ -28,6 +28,11 @@
       do i1 = 1, 50
       write(u,'(a," = ",es25.17e3)') 'control%nu_max_lower_limit('//itoa(i1)//')', star%control%nu_max_lower_limit(i1)
       end do
+      write(u,'(a," = ",a)') 'control%inlist_used_file', '"'//trim(star%control%inlist_used_file)//'"'
+      write(u,'(a," = ",a)') 'control%first_model_file', '"'//trim(star%control%first_model_file)//'"'
+      write(u,'(a," = ",a)') 'control%last_model_file', '"'//trim(star%control%last_model_file)//'"'
+      write(u,'(a," = ",a)') 'control%dynamics_file', '"'//trim(star%control%dynamics_file)//'"'
+      write(u,'(a," = ",a)') 'control%isochrone_file', '"'//trim(star%control%isochrone_file)//'"'
       write(u,'(a," = ",i0)') 'control%set_initial_model_number', star%control%set_initial_model_number
       do i1 = 1, 50
       write(u,'(a," = ",es25.17e3)') 'control%target_end_age('//itoa(i1)//')', star%control%target_end_age(i1)
@@ -50,6 +55,8 @@
       do i1 = 1, 50
       write(u,'(a," = ",l1)') 'control%timestep_override_active('//itoa(i1)//')', star%control%timestep_override_active(i1)
       end do
+      write(u,'(a," = ",a)') 'control%monte_carlo_file1_path', '"'//trim(star%control%monte_carlo_file1_path)//'"'
+      write(u,'(a," = ",a)') 'control%monte_carlo_file2_path', '"'//trim(star%control%monte_carlo_file2_path)//'"'
       write(u,'(a," = ",i0)') 'control%pulse_gyre_interval', star%control%pulse_gyre_interval
       do i2 = 1, 50
       do i1 = 1, 4
@@ -170,6 +177,7 @@
       write(u,'(a," = ",es25.17e3)') 'physics%delta_nu_sun', star%physics%delta_nu_sun
       write(u,'(a," = ",es25.17e3)') 'physics%Teff_sun', star%physics%Teff_sun
       write(u,'(a," = ",a)') 'physics%profile_data_prefix', '"'//trim(star%physics%profile_data_prefix)//'"'
+      write(u,'(a," = ",a)') 'physics%log_output_file', '"'//trim(star%physics%log_output_file)//'"'
       write(u,'(a," = ",a)') 'physics%pulse_format', '"'//trim(star%physics%pulse_format)//'"'
       write(u,'(a," = ",l1)') 'physics%write_profile_flag', star%physics%write_profile_flag
       write(u,'(a," = ",l1)') 'physics%write_pulse_flag', star%physics%write_pulse_flag
@@ -373,12 +381,6 @@
       write(u,'(a," = ",l1)') 'physics%use_wind_torque', star%physics%use_wind_torque
       write(u,'(a," = ",es25.17e3)') 'physics%constant_background_diffusion_coeff', star%physics%constant_background_diffusion_coeff
       write(u,'(a," = ",l1)') 'physics%use_constant_background_diffusion', star%physics%use_constant_background_diffusion
-      write(u,'(a," = ",a)') 'buffer%inlist_used_file', '"'//trim(inlist_used_file)//'"'
-      write(u,'(a," = ",a)') 'buffer%first_model_file', '"'//trim(first_model_file)//'"'
-      write(u,'(a," = ",a)') 'buffer%last_model_file', '"'//trim(last_model_file)//'"'
-      write(u,'(a," = ",a)') 'buffer%log_output_file', '"'//trim(log_output_file)//'"'
-      write(u,'(a," = ",a)') 'buffer%dynamics_file', '"'//trim(dynamics_file)//'"'
-      write(u,'(a," = ",a)') 'buffer%isochrone_file', '"'//trim(isochrone_file)//'"'
       write(u,'(a," = ",a)') 'buffer%surface_composition_file', '"'//trim(surface_composition_file)//'"'
       write(u,'(a," = ",a)') 'buffer%stored_change_file', '"'//trim(stored_change_file)//'"'
       do i1 = 1, 2
@@ -400,8 +402,6 @@
       write(u,'(a," = ",es25.17e3)') 'buffer%cross_section_ratios('//itoa(i1)//')', cross_section_ratios(i1)
       end do
       write(u,'(a," = ",i0)') 'buffer%envelope_print_points', envelope_print_points
-      write(u,'(a," = ",a)') 'buffer%monte_carlo_file1_path', '"'//trim(monte_carlo_file1_path)//'"'
-      write(u,'(a," = ",a)') 'buffer%monte_carlo_file2_path', '"'//trim(monte_carlo_file2_path)//'"'
       do i1 = 1, 50
       write(u,'(a," = ",i0)') 'buffer%run_kind('//itoa(i1)//')', run_kind(i1)
       end do

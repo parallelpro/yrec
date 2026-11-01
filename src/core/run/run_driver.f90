@@ -86,7 +86,7 @@ subroutine run_yrec(ierr)
       use run_log, only: log_run_summary
       use controls_check, only: warn_inconsistent_controls
       use controls_reader, only: read_controls
-      use run_files, only: open_run_files, open_run_log_after_error
+      use run_files, only: open_run_files
       implicit none
       integer :: step_status
 
@@ -135,16 +135,13 @@ subroutine run_yrec(ierr)
 ! Read the controls into star%control and star%physics, and arm the run's working copies of
 ! the controls it changes (the run plan, the latches).
       call read_controls(s, ierr)
-      if (ierr /= 0) then
-! a controls error: the run log still gets the read's lines and the
-! error, once the deck has named it
-         call open_run_log_after_error
-         return
-      end if
+! (a controls error stops here: the read has opened the run log for it,
+! once the deck named it)
+      if (ierr /= 0) return
 ! the files the deck names: the run log first (which then receives the
 ! read's lines), the copy of the deck, the starting and final models,
 ! the Monte Carlo and isochrone files
-      call open_run_files(ierr)
+      call open_run_files(s, ierr)
       if (ierr /= 0) return
       call output_open(s, output, ierr)
       if (ierr /= 0) return

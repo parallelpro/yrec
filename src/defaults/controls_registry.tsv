@@ -8,12 +8,12 @@ control	flaol	string	laol_opacity_table_file	live		LAOL 1989 opacity table	laol_
 control	fpurez	string	pure_z_opacity_table_file	live		Pure-Z opacity table (metal diffusion support)	pure_z_table_path	control		run	
 control	flaol2	string	laol_opacity_table2_file	live		LAOL 1989 opacity table, second Z	laol_table2_path	control		run	
 control	fopal2	string	opal92_opacity_table2_file	live		OPAL 1992 opacity table, second Z	opal92_table2_path	control		run	
-control	flast	string	last_model_file	live		Path for the final model (.mod) written every model; reloadable	last_model_file	buffer		read	
-control	ffirst	string	first_model_file	live		Starting model read when read_first_model is set for a run	first_model_file	buffer		read	
+control	flast	string	last_model_file	live		Path for the final model (.mod) written every model; reloadable	last_model_file	control		run	
+control	ffirst	string	first_model_file	live		Starting model read when read_first_model is set for a run	first_model_file	control		run	
 control	ffermi	string	fermi_table_file	live		Fermi-Dirac integral table (Yale/Prather degenerate-electron EOS)	fermi_table_path	control		run	
-physics	fshort	string	log_output_file	live		Run log path; its directory part defines the output directory (legacy FSHORT)	log_output_file	buffer		read	
+physics	fshort	string	log_output_file	live		Run log path; its directory part defines the output directory (legacy FSHORT)	log_output_file	physics		run	
 control	fstch	string	stored_change_file	unused		Unused: read by the legacy reader and ignored	stored_change_file	buffer		none	
-control	fdyn	string	dynamics_file	live		Opened on the dynamics unit (formatted, STATUS=OLD)	dynamics_file	buffer		read	
+control	fdyn	string	dynamics_file	live		Opened on the dynamics unit (formatted, STATUS=OLD)	dynamics_file	control		run	
 control	flldat	string	opal92_opacity_table_file	live		OPAL 1992 opacity table (use_opal92_tables)	opal92_table_path	control		run	ll_data_file
 control	fscomp	string	surface_composition_file	live		Accepted and ignored: no surface-composition file is written any more (the light elements are history columns); kept so that decks setting it still read	surface_composition_file	buffer		none	
 control	fkur	string	kurucz_opacity_table_file	live		Kurucz 1990 low-temperature opacity table (use_kurucz90_tables)	kurucz_table_path	control		run	kurucz_atm_table_file
@@ -25,7 +25,7 @@ control	fmhd5	string	mhd_table_file_5	live		MHD EOS table 5 of 8: the second cen
 control	fmhd6	string	mhd_table_file_6	live		MHD EOS table 6 of 8: the third centre-type composition	centre3_table_path	control		run	
 control	fmhd7	string	mhd_table_file_7	live		MHD EOS table 7 of 8: the fourth centre-type composition	centre4_table_path	control		run	
 control	fmhd8	string	mhd_table_file_8	live		MHD EOS table 8 of 8: the fifth centre-type composition	centre5_table_path	control		run	
-control	fiso	string	isochrone_file	live		Isochrone output file	isochrone_file	buffer		read	
+control	fiso	string	isochrone_file	live		Isochrone output file	isochrone_file	control		run	
 control	fatm	string	atm_table_file	live		Kurucz (atm_choice 3 and 4) or Castelli/Kurucz (5) surface-pressure table	atm_table_path	control		run	
 control	fkur2	string	kurucz_opacity_table2_file	live		Kurucz 1990 low-temperature opacity table, second Z	kurucz_table2_path	control		run	kurucz_castelli_atm_table_file
 control	fallard	string	allard_atm_table_file	live		Allard NextGen model-atmosphere table	allard_table_path	control		run	
@@ -34,8 +34,8 @@ control	fscvhe	string	scv_he_table_file	live		SCV EOS: helium table	scv_he_table
 control	fscvz	string	scv_z_table_file	live		SCV EOS: metals table	scv_z_table_path	control		run	
 control	fopale	string	opal95_eos_table_file	live		OPAL 1995 EOS table (use_opal95_eos)	opal95_eos_table_path	buffer		read	opal_eos_table_file
 control	fliv95	string	opal95_opacity_table_file	live		OPAL 1995-format opacity table (use_opal95_tables)	opal95_table_path	control		run	
-control	fmonte1	string	monte_carlo_file1_path	live		Monte Carlo runs: the file for each run's summary	monte_carlo_file1_path	buffer		read	
-control	fmonte2	string	monte_carlo_file2_path	live		Monte Carlo runs: the file for each run's final model	monte_carlo_file2_path	buffer		read	
+control	fmonte1	string	monte_carlo_file1_path	live		Monte Carlo runs: the file for each run's summary	monte_carlo_file1_path	control		run	
+control	fmonte2	string	monte_carlo_file2_path	live		Monte Carlo runs: the file for each run's final model	monte_carlo_file2_path	control		run	
 control	kindrn	integer(50)	run_kind	live		Per-run kind card: 1 = evolve, 2 = rescale (zero timestep, MS/CHeB), 3 = rescale and evolve (pre-MS)	run_kind	buffer		read	
 control	lfirst	logical(50)	first_call_flag	live		DEFAULT IS .TRUE. for every card (read_controls DATA lfirst/50*.true./): an omitted first_call_flag(n) restarts card n from first_model_file, so continuation cards must set it .false. explicitly.	first_call_flag	control	card_from_starting_model	run	
 control	set_initial_model_number	integer	set_initial_model_number	live		Model number given to the first converged model after a fresh start-model load (first_call_flag card). <= 0 keeps the counter stored in the model file (restart continuation, the pre-2026 behavior).	set_initial_model_number	control		run	
@@ -366,7 +366,7 @@ physics	lcalcenv	logical	calc_envelope_flag	live		Integrate the full envelope (f
 control	-	string	history_columns_file	live	mesa: same	File listing the history columns (one name per line, ! comments); blank: the default selection of defaults/history_columns.list	history_columns_file	control		run	
 control	-	string	profile_columns_file	live	mesa: same	File listing the profile columns; blank: the default selection of defaults/profile_columns.list	profile_columns_file	control		run	
 physics	profile_data_prefix	string	profile_data_prefix	live	mesa: same	Profile/pulse file name prefix: <prefix><N>.data[.GYRE/.FGONG/.GSM] in the output directory	profile_data_prefix	physics		run	
-control	inlist_used_file	string	inlist_used_file	live		Verbatim copy of the input namelist file(s), written at startup as run provenance; blank (the default): inlist_used in the output directory, the run log's	inlist_used_file	buffer		read	
+control	inlist_used_file	string	inlist_used_file	live		Verbatim copy of the input namelist file(s), written at startup as run provenance; blank (the default): inlist_used in the output directory, the run log's	inlist_used_file	control		run	
 physics	-	string	star_history_name	live	mesa: same	MESA mode: history file name (written to the output directory)	star_history_name	physics		run	
 physics	terminal_interval	integer	terminal_interval	live	mesa: same	Print the compact per-model progress line (terminal + run log) every N models; 0 = off; the final model always prints	terminal_interval	physics		run	
 control	log_L_upper_limit	real(50)	log_L_upper_limit	live	mesa: same	Per kind card: stop the card when log(L/Lsun) exceeds this (1d99 = off)	log_l_upper_limit	control		run	
@@ -403,5 +403,5 @@ physics	-	real	n15_pa_scale	derived		The N15(p,alpha)C12 branch's scale (s0_n15_
 physics	-	real	envelope_store_log_temperature	derived		The log T at which an envelope integration stores its state for the surface boundary: the mean of rezone_env_logT0 and rezone_env_logT1	envelope_store_log_temperature	physics		run	
 control	-	logical	change_cno_mixture_active	derived		The starting model's CNO mixture is changed (cno_mixture_mode = 1 and a valid mixture)	change_cno_mixture_active	control		run	
 control	-	logical	change_isotope_ratios_active	derived		The starting model's isotope ratios are changed (isotope_mixture_mode = 1 and a valid mixture)	change_isotope_ratios_active	control		run	
-control	-	string	control_nml_file	derived		The deck's file: the single-file inlist, or the legacy pair's CONTROL namelist (.nml1); read_input finds it (the first command-line argument, default yrec8.nml1, or an embedding host's override)	control_nml_file	buffer		read	
-control	-	string	physics_nml_file	derived		The legacy pair's PHYSICS namelist (.nml2; the second command-line argument, default yrec8.nml2), or the inlist again	physics_nml_file	buffer		read	
+control	-	string	control_nml_file	derived		The deck's file: the single-file inlist, or the legacy pair's CONTROL namelist (.nml1); read_input finds it (the first command-line argument, default yrec8.nml1, or an embedding host's override)	control_nml_file	control		run	
+control	-	string	physics_nml_file	derived		The legacy pair's PHYSICS namelist (.nml2; the second command-line argument, default yrec8.nml2), or the inlist again	physics_nml_file	control		run	

@@ -428,7 +428,7 @@ io/output_files.o: io_units.mod
 io/profile_output.o: output_columns.mod output_files.mod star_info_lib.mod stitched_model.mod
 io/pulsation_output.o: io_units.mod math_lib.mod output_files.mod physical_constants.mod star_info_lib.mod stitched_model.mod
 io/run_cards.o: controls_buffer.mod io_units.mod
-io/run_files.o: controls_buffer.mod io_units.mod output_files.mod
+io/run_files.o: io_units.mod output_files.mod star_info_lib.mod
 io/run_log.o: io_units.mod star_info_lib.mod
 io/test/test_controls.o: controls_buffer.mod controls_reader.mod io_units.mod run_files.mod star_info_lib.mod
 io/test/test_io.o: controls_reader.mod history_output.mod io_units.mod model_files.mod output_columns.mod profile_output.mod pulsation_output.mod run_cards.mod run_files.mod star_info_lib.mod stitched_model.mod yrec_output.mod

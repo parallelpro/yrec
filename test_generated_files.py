@@ -32,7 +32,7 @@ NOT_PATHS = {"cno_mixture_name", "isotope_mixture_name", "change_species_name",
 
 
 def test_every_path_control_is_expanded():
-    """run_files' expand_paths expands the {YREC_...} placeholders in
+    """The read's expand_paths expands the {YREC_...} placeholders in
     every string control of the registry that names a file, under its code
     name. A derived path (opal_eos_table_path) is made from expanded ones."""
     registry = [row.split("\t") for row in
@@ -42,7 +42,7 @@ def test_every_path_control_is_expanded():
     paths = {r["canonical"].lower() for r in rows
              if r["type"].startswith("string") and r["canonical"].lower() not in NOT_PATHS
              and r["status"] not in ("derived", "unused")}
-    code = (SRC / "io" / "run_files.f90").read_text()
+    code = (SRC / "io" / "controls_reader.f90").read_text()
     body = re.search(r"subroutine expand_paths(.*?)end subroutine", code, re.S).group(1)
     expanded = {n.lower() for n in re.findall(r"expand_value\((\w+)", body)}
     assert paths <= expanded, sorted(paths - expanded)

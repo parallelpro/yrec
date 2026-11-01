@@ -1,5 +1,7 @@
 # controls
 ierr = 0
+control%first_model_file = "{YREC_START}/dbl/m1000gs98z018804_Dbl.first"
+control%last_model_file = "{YREC_OUTPUT}/Test_solar_noGS_norot.mod"
 control%target_end_age(2) =  4.56800000000000000E+009
 control%end_age_stop_active(2) = T
 control%rescale_params(1,1) =  1.00000000000000000E+000
@@ -39,6 +41,7 @@ control%atm_table_path = "{YREC_INPUT}/atmos/kurucz/atmk1990p00.tab"
 control%allard_table_path = "{YREC_INPUT}/atmos/allard/Nextgen2.all"
 physics%solar_luminosity_cgs =  3.82800000000000026E+033
 physics%solar_radius_cgs =  6.95700000000000000E+010
+physics%log_output_file = "{YREC_OUTPUT}/Test_solar_noGS_norot.short"
 physics%timestep_factors(1) =  2.00000000000000004E-003
 physics%timestep_factors(2) =  2.00000000000000004E-003
 physics%timestep_factors(3) =  5.00000000000000028E-002
@@ -152,9 +155,6 @@ physics%wind_law_constant =  7.46999999999999975E+000
 physics%solar_omega_sat =  1.00000000000000000E+001
 physics%constant_background_diffusion_coeff =  9.00000000000000000E+004
 physics%use_constant_background_diffusion = T
-buffer%first_model_file = "{YREC_START}/dbl/m1000gs98z018804_Dbl.first"
-buffer%last_model_file = "{YREC_OUTPUT}/Test_solar_noGS_norot.mod"
-buffer%log_output_file = "{YREC_OUTPUT}/Test_solar_noGS_norot.short"
 buffer%surface_composition_file = "{YREC_OUTPUT}/Test_solar_noGS_norot.excomp"
 buffer%run_description(1) = "model5.1 test suite. Solar model, no diffusion, no rotation"
 buffer%run_description(2) = "Gray Atm OPAL06+SCV EOS GS98"

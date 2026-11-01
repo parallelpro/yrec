@@ -133,7 +133,7 @@ subroutine load_deck_model(path)
       physics_nml_override = path
       call read_controls(star, ierr)
       if (ierr /= 0) call die('read_controls')
-      call open_run_files(ierr)
+      call open_run_files(star, ierr)
       if (ierr /= 0) call die('open_run_files')
       call set_up_constants_and_tables(star, ierr)
       if (ierr /= 0) call die('set_up_constants_and_tables')

@@ -77,7 +77,7 @@ subroutine output_open(s, output, ierr)
       integer, intent(out) :: ierr
 
       ierr = 0
-      output%out_dir = output_directory()
+      output%out_dir = output_directory(s)
       output%profile_counter = 0
       output%progress = progress_lines()
       call history_output_init(s, output%history, output%out_dir, ierr)

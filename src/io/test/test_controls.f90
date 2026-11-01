@@ -44,7 +44,7 @@ program test_controls
 ! unit 6 after a marker so the two can be told apart
          call read_controls(star, ierr)
 ! the run's files, as run_yrec opens them after the read
-         if (ierr == 0) call open_run_files(ierr)
+         if (ierr == 0) call open_run_files(star, ierr)
 ! YREC_TEST_READ_TWICE=1: scribble on the run's working copies of the
 ! controls as a run would (a card's mixing length, the atmosphere in
 ! use, a Monte-Carlo cross-section scale), close the run's files, then
@@ -61,7 +61,7 @@ program test_controls
                close(i1)
             end do
             call read_controls(star, ierr)
-            if (ierr == 0) call open_run_files(ierr)
+            if (ierr == 0) call open_run_files(star, ierr)
             kept_first = any(star%card_mixing_length_alpha /= star%control%mixing_length_array) &
                  .or. star%atm_choice_in_use /= star%physics%atm_choice .or. &
                  any(star%cross_section_scale_in_use /= star%physics%cross_section_scale)

@@ -76,8 +76,8 @@ How to read the tables:
 
 | member | meaning | unit | written by | read by | notes |
 |---|---|---|---|---|---|
-| `control` (type `control_group_controls`) | the &control group's controls, by their canonical names | - | `controls_sync` (seed_controls_buffer, store_controls_to_star) | 15 modules (core/ 7, io/ 5, setup/ 3) | Reset to the declared defaults before each read; members: `src/defaults/controls_registry.md`, generated into `control_group_def.inc` |
-| `physics` (type `physics_group_controls`) | the &physics group's controls, by their canonical names | - | `controls_sync` (seed_controls_buffer, store_controls_to_star) | 36 modules (core/ 22, io/ 7, setup/ 7) | Reset to the declared defaults before each read; members: `src/defaults/controls_registry.md`, generated into `physics_group_def.inc` |
+| `control` (type `control_group_controls`) | the &control group's controls, by their canonical names | - | `controls_sync` (seed_controls_buffer, store_controls_to_star) | 16 modules (core/ 7, io/ 6, setup/ 3) | Reset to the declared defaults before each read; members: `src/defaults/controls_registry.md`, generated into `control_group_def.inc` |
+| `physics` (type `physics_group_controls`) | the &physics group's controls, by their canonical names | - | `controls_sync` (seed_controls_buffer, store_controls_to_star) | 37 modules (core/ 22, io/ 8, setup/ 7) | Reset to the declared defaults before each read; members: `src/defaults/controls_registry.md`, generated into `physics_group_def.inc` |
 
 ### 3.2 Constants set at setup
 

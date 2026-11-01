@@ -13,6 +13,13 @@
             double precision :: log_g_lower_limit(max_runs) = -1.0d99
             double precision :: nu_max_upper_limit(max_runs) = 1.0d99
             double precision :: nu_max_lower_limit(max_runs) = -1.0d99
+            character(len=256) :: inlist_used_file = ' '
+            character(len=256) :: first_model_file = repeat(achar(0), 256)
+            character(len=256) :: last_model_file = '{YREC_OUTPUT}/final.mod'
+            character(len=256) :: dynamics_file = repeat(achar(0), 256)
+            character(len=256) :: isochrone_file = repeat(achar(0), 256)
+            character(len=256) :: control_nml_file = repeat(achar(0), 256)
+            character(len=256) :: physics_nml_file = repeat(achar(0), 256)
             integer :: set_initial_model_number = 1
             double precision :: target_end_age(max_runs) = 0.0d0
             double precision :: timestep_override(max_runs) = 0.0d0
@@ -21,6 +28,8 @@
             double precision :: central_helium_stop(max_runs) = 0.0d0
             logical :: end_age_stop_active(max_runs) = .false.
             logical :: timestep_override_active(max_runs) = .false.
+            character(len=256) :: monte_carlo_file1_path = repeat(achar(0), 256)
+            character(len=256) :: monte_carlo_file2_path = repeat(achar(0), 256)
             integer :: pulse_gyre_interval = 0
             double precision :: rescale_params(4,max_runs) = 0.0d0
             integer :: rescale_kind(max_runs) = 0

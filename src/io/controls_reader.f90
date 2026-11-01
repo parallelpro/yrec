@@ -13,11 +13,11 @@
 ! working copies of the controls it changes (the run plan, the latches;
 ! the registry's run_copy column) from them. The read never reads the
 ! star's run state. The read opens no file of the run (run_yrec's
-! open_run_files does, after it); its messages reach the run log when
-! that opens (io_units). The read's other steps live in user_inputs
-! (map_user_inputs), run_files (expand_paths), controls_check (the
-! errors and warnings), derived_controls and run_cards. Errors return
-! via ierr.
+! open_run_files does, after it), but for the run log after a controls
+! error (open_run_log_after_error, so that the log holds the error); its
+! messages reach the run log when that opens (io_units). The read's other steps live in user_inputs
+! (map_user_inputs), controls_check (the errors and warnings),
+! derived_controls and run_cards. Errors return via ierr.
 module controls_reader
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use run_log, only: set_solver_diagnostics
@@ -27,9 +27,10 @@ module controls_reader
            arm_run_copies
       use yrec_version, only: yrec_version_string, git_hash_string
       use io_units, only: check_io, discard_pending_log, report_warning
-      use controls_buffer, only: control_nml_file, physics_nml_file, report_solver_diagnostics
+      use controls_buffer, only: control_nml_file, physics_nml_file, report_solver_diagnostics, &
+           log_output_file
       use legacy_controls, only: read_legacy_deck
-      use run_files, only: assign_unit_numbers, expand_paths
+      use run_files, only: assign_unit_numbers, expand_value, open_run_log_after_error
       use derived_controls, only: derive_controls
       use controls_check, only: check_controls, warn_inert_controls
       use run_cards, only: interpret_kind_cards
@@ -65,7 +66,12 @@ subroutine read_controls(s, ierr)
 ! the errors, the inert legacy controls, the derived controls, the run
 ! plan
       call check_controls(ierr)
-      if (ierr /= 0) return
+      if (ierr /= 0) then
+! a controls error: the run log still gets the read's lines and the
+! error, at the deck's path (expanded above)
+         call open_run_log_after_error(log_output_file)
+         return
+      end if
       call warn_inert_controls
       call derive_controls
       call interpret_kind_cards
@@ -159,6 +165,71 @@ subroutine read_inlist(inlist_file, ierr)
 
       include 'inlist_read.inc'
 end subroutine read_inlist
+
+! ---------------------------------------------------------------
+! The {YREC_INPUT}, {YREC_START} and {YREC_OUTPUT} placeholders in
+! every path control, expanded (run_files' expand_value): every string
+! control that names a file (test_generated_files.py checks the list
+! against the registry). A derived path (opal_eos_table_path) is made
+! from expanded ones.
+subroutine expand_paths
+      use controls_buffer, only: alex06_table_path, alex95_table_paths, &
+           allard_table_path, atm_table_path, centre1_table_path, &
+           centre2_table_path, centre3_table_path, centre4_table_path, &
+           centre5_table_path, conductive_table_path, dynamics_file, &
+           fermi_table_path, first_model_file, isochrone_file, last_model_file, &
+           log_output_file, history_columns_file, &
+           inlist_used_file, kurucz_table2_path, &
+           kurucz_table_path, laol_table2_path, laol_table_path, &
+           monte_carlo_file1_path, monte_carlo_file2_path, &
+           opal2001_eos_table_path, opal2006_eos_table_path, opal92_table2_path, &
+           opal92_table_path, opal95_eos_table_path, opal95_table_path, &
+           profile_columns_file, pure_z_table_path, &
+           scv_h_table_path, scv_he_table_path, scv_z_table_path, &
+           zams_a_table_path, zams_b_table_path, zams_c_table_path
+      integer :: i
+
+      call expand_value(alex06_table_path)
+      call expand_value(allard_table_path)
+      call expand_value(atm_table_path)
+      call expand_value(conductive_table_path)
+      call expand_value(dynamics_file)
+      call expand_value(fermi_table_path)
+      call expand_value(first_model_file)
+      call expand_value(isochrone_file)
+      call expand_value(kurucz_table_path)
+      call expand_value(kurucz_table2_path)
+      call expand_value(laol_table_path)
+      call expand_value(laol_table2_path)
+      call expand_value(last_model_file)
+      call expand_value(opal95_table_path)
+      call expand_value(opal92_table_path)
+      call expand_value(zams_a_table_path)
+      call expand_value(zams_b_table_path)
+      call expand_value(zams_c_table_path)
+      call expand_value(centre1_table_path)
+      call expand_value(centre2_table_path)
+      call expand_value(centre3_table_path)
+      call expand_value(centre4_table_path)
+      call expand_value(centre5_table_path)
+      call expand_value(monte_carlo_file1_path)
+      call expand_value(monte_carlo_file2_path)
+      call expand_value(opal92_table2_path)
+      call expand_value(opal95_eos_table_path)
+      call expand_value(opal2001_eos_table_path)
+      call expand_value(opal2006_eos_table_path)
+      call expand_value(pure_z_table_path)
+      call expand_value(scv_h_table_path)
+      call expand_value(scv_he_table_path)
+      call expand_value(scv_z_table_path)
+      call expand_value(log_output_file)
+      call expand_value(history_columns_file)
+      call expand_value(inlist_used_file)
+      call expand_value(profile_columns_file)
+      do i = 1, size(alex95_table_paths)
+         call expand_value(alex95_table_paths(i))
+      end do
+end subroutine expand_paths
 
 ! ---------------------------------------------------------------
 ! A value other than x, of its type, element by element: read_inlist

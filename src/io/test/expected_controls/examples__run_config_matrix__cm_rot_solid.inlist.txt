@@ -1,5 +1,7 @@
 # controls
 ierr = 0
+control%first_model_file = "{YREC_START}/seed/p100gs98z01757.ahbl"
+control%last_model_file = "{YREC_OUTPUT}/cm_rot_solid.mod"
 control%target_end_age(2) =  1.00000000000000000E+008
 control%target_end_age(3) =  4.56800000000000000E+009
 control%end_age_stop_active(2) = T
@@ -46,6 +48,7 @@ control%atm_table_path = "{YREC_INPUT}/atmos/kurucz/atmk1990p00.tab"
 control%allard_table_path = "{YREC_INPUT}/atmos/allard/Nextgen2.all"
 physics%solar_luminosity_cgs =  3.82800000000000026E+033
 physics%solar_radius_cgs =  6.95700000000000000E+010
+physics%log_output_file = "{YREC_OUTPUT}/cm_rot_solid.short"
 physics%timestep_factors(1) =  2.00000000000000004E-003
 physics%timestep_factors(2) =  2.00000000000000004E-003
 physics%timestep_factors(3) =  5.00000000000000028E-002
@@ -168,9 +171,6 @@ physics%wind_law_constant =  7.28570000000000029E+000
 physics%solar_omega_sat =  1.00000000000000000E+001
 physics%constant_background_diffusion_coeff =  9.00000000000000000E+004
 physics%use_constant_background_diffusion = T
-buffer%first_model_file = "{YREC_START}/seed/p100gs98z01757.ahbl"
-buffer%last_model_file = "{YREC_OUTPUT}/cm_rot_solid.mod"
-buffer%log_output_file = "{YREC_OUTPUT}/cm_rot_solid.short"
 buffer%surface_composition_file = "{YREC_OUTPUT}/cm_rot_solid.excomp"
 buffer%run_description(1) = "model5.1 test suite. Solar model, diffusion, rotation"
 buffer%run_description(2) = "Gray Atm OPAL06+SCV EOS GS98"

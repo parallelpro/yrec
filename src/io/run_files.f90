@@ -2,39 +2,22 @@
 ! run_files
 !----------------------------------------------------------------------
 ! The run's files: their fixed unit numbers, the {YREC_...}
-! placeholders in the path controls expanded (expand_value), the output
-! directory created, the run log opened first, a verbatim copy of the
-! inlists (inlist_used), and the other files opened.
+! placeholders a path control may start with (expand_value, which the
+! controls read applies to every path control), the output directory
+! created, the run log opened first, a verbatim copy of the deck
+! (inlist_used), and the other files opened. The files' paths are
+! controls the star holds (star%control's first_model_file, ...,
+! star%physics%log_output_file), so nothing here keeps state from the
+! read.
 module run_files
       use io_units, only: terminal_unit, last_model_unit, run_log_unit, check_io, &
            starting_model_unit, dynamics_unit, mc_summary_unit, mc_model_unit, &
            isochrone_unit, flush_pending_log
-      use controls_buffer, only: alex06_table_path, alex95_table_paths, &
-           allard_table_path, atm_table_path, centre1_table_path, &
-           centre2_table_path, centre3_table_path, centre4_table_path, &
-           centre5_table_path, conductive_table_path, control_nml_file, dynamics_file, &
-           fermi_table_path, first_model_file, isochrone_file, last_model_file, &
-           log_output_file, history_columns_file, &
-           inlist_used_file, isochrone_output_active, kurucz_table2_path, &
-           kurucz_table_path, laol_table2_path, laol_table_path, &
-           monte_carlo_active, monte_carlo_file1_path, monte_carlo_file2_path, &
-           opal2001_eos_table_path, opal2006_eos_table_path, opal92_table2_path, &
-           opal92_table_path, opal95_eos_table_path, opal95_table_path, &
-           physics_nml_file, profile_columns_file, pure_z_table_path, &
-           scv_h_table_path, scv_he_table_path, scv_z_table_path, &
-           zams_a_table_path, zams_b_table_path, zams_c_table_path
+      use star_info_lib, only: star_info
       implicit none
       private
-      public :: assign_unit_numbers, expand_paths, open_run_files, expand_value, &
+      public :: assign_unit_numbers, open_run_files, expand_value, &
            output_directory, directory_of, copy_inlists_used, open_run_log_after_error
-
-! The run's output directory, the run log's (open_run_files sets it at
-! every read; output_directory returns it).
-      character(len=256) :: output_dir = ' '
-! Whether this read has expanded the deck's paths (expand_paths), so
-! that the run log's path is the deck's (open_run_log_after_error);
-! each read starts without (assign_unit_numbers).
-      logical :: paths_expanded = .false.
 
 contains
 
@@ -46,59 +29,7 @@ subroutine assign_unit_numbers
       terminal_unit = 6
       last_model_unit = 11
       run_log_unit = 20
-      paths_expanded = .false.
 end subroutine assign_unit_numbers
-
-! ---------------------------------------------------------------
-! The {YREC_INPUT}, {YREC_START} and {YREC_OUTPUT} placeholders in
-! every path control, expanded (expand_value): every string control
-! that names a file, by its code name (test_generated_files.py checks
-! the list against the registry).
-subroutine expand_paths
-      integer :: i
-
-      call expand_value(alex06_table_path)
-      call expand_value(allard_table_path)
-      call expand_value(atm_table_path)
-      call expand_value(conductive_table_path)
-      call expand_value(dynamics_file)
-      call expand_value(fermi_table_path)
-      call expand_value(first_model_file)
-      call expand_value(isochrone_file)
-      call expand_value(kurucz_table_path)
-      call expand_value(kurucz_table2_path)
-      call expand_value(laol_table_path)
-      call expand_value(laol_table2_path)
-      call expand_value(last_model_file)
-      call expand_value(opal95_table_path)
-      call expand_value(opal92_table_path)
-      call expand_value(zams_a_table_path)
-      call expand_value(zams_b_table_path)
-      call expand_value(zams_c_table_path)
-      call expand_value(centre1_table_path)
-      call expand_value(centre2_table_path)
-      call expand_value(centre3_table_path)
-      call expand_value(centre4_table_path)
-      call expand_value(centre5_table_path)
-      call expand_value(monte_carlo_file1_path)
-      call expand_value(monte_carlo_file2_path)
-      call expand_value(opal92_table2_path)
-      call expand_value(opal95_eos_table_path)
-      call expand_value(opal2001_eos_table_path)
-      call expand_value(opal2006_eos_table_path)
-      call expand_value(pure_z_table_path)
-      call expand_value(scv_h_table_path)
-      call expand_value(scv_he_table_path)
-      call expand_value(scv_z_table_path)
-      call expand_value(log_output_file)
-      call expand_value(history_columns_file)
-      call expand_value(inlist_used_file)
-      call expand_value(profile_columns_file)
-      do i = 1, size(alex95_table_paths)
-         call expand_value(alex95_table_paths(i))
-      end do
-      paths_expanded = .true.
-end subroutine expand_paths
 
 ! ---------------------------------------------------------------
 ! The files the controls read named, which run_yrec opens after the
@@ -110,72 +41,84 @@ end subroutine expand_paths
 ! solver's recovery source when a step diverges); and the Monte Carlo
 ! and isochrone files when those are on. (The history and profile files
 ! are the output's: yrec_output's output_open.)
-subroutine open_run_files(ierr)
+!   star reads: control%control_nml_file, control%dynamics_file,
+!     control%first_model_file, control%inlist_used_file,
+!     control%isochrone_file, control%isochrone_output_active,
+!     control%last_model_file, control%monte_carlo_file1_path,
+!     control%monte_carlo_file2_path, control%physics_nml_file,
+!     physics%log_output_file, physics%monte_carlo_active
+!   star writes: none
+subroutine open_run_files(s, ierr)
+      type(star_info), intent(in) :: s
       integer, intent(inout) :: ierr
-      character(len=256) :: msg, inlist_copy
+      character(len=256) :: msg, inlist_copy, output_dir
       integer :: ios
 
-      call start_run_log(ierr)
+      call start_run_log(s%physics%log_output_file, ierr)
       if (ierr /= 0) return
+      output_dir = output_directory(s)
       write(terminal_unit,*) "OUTPUT placed in :  ",trim(output_dir)
       write(terminal_unit,*) ''
-      inlist_copy = inlist_used_file
+      inlist_copy = s%control%inlist_used_file
       if (len_trim(inlist_copy) == 0) inlist_copy = trim(output_dir) // 'inlist_used'
-      call copy_inlists_used([control_nml_file, physics_nml_file], trim(inlist_copy), ierr)
+      call copy_inlists_used([s%control%control_nml_file, s%control%physics_nml_file], &
+           trim(inlist_copy), ierr)
       if (ierr /= 0) return
 
       call close_run_files
-      open(newunit=starting_model_unit, file=first_model_file, form='FORMATTED', status='OLD', &
+      open(newunit=starting_model_unit, file=s%control%first_model_file, form='FORMATTED', status='OLD', &
            iostat=ios, iomsg=msg)
-      call check_io(ios, msg, 'open the starting model', first_model_file, ierr)
+      call check_io(ios, msg, 'open the starting model', s%control%first_model_file, ierr)
       if (ierr /= 0) return
-      open(unit=last_model_unit,file=last_model_file,form='FORMATTED',status='UNKNOWN', iostat=ios, iomsg=msg)
-      call check_io(ios, msg, 'open the final model file', last_model_file, ierr)
+      open(unit=last_model_unit,file=s%control%last_model_file,form='FORMATTED',status='UNKNOWN', iostat=ios, iomsg=msg)
+      call check_io(ios, msg, 'open the final model file', s%control%last_model_file, ierr)
       if (ierr /= 0) return
-      if (monte_carlo_active) then
-         open(newunit=dynamics_unit, file=dynamics_file, form='FORMATTED', status='OLD', &
+      if (s%physics%monte_carlo_active) then
+         open(newunit=dynamics_unit, file=s%control%dynamics_file, form='FORMATTED', status='OLD', &
               iostat=ios, iomsg=msg)
-         call check_io(ios, msg, 'open the Monte Carlo dynamics file', dynamics_file, ierr)
+         call check_io(ios, msg, 'open the Monte Carlo dynamics file', s%control%dynamics_file, ierr)
          if (ierr /= 0) return
-         open(newunit=mc_summary_unit, file=monte_carlo_file1_path, status='UNKNOWN', form='FORMATTED', &
+         open(newunit=mc_summary_unit, file=s%control%monte_carlo_file1_path, status='UNKNOWN', form='FORMATTED', &
               iostat=ios, iomsg=msg)
-         call check_io(ios, msg, 'open the Monte Carlo summary file', monte_carlo_file1_path, ierr)
+         call check_io(ios, msg, 'open the Monte Carlo summary file', s%control%monte_carlo_file1_path, ierr)
          if (ierr /= 0) return
-         open(newunit=mc_model_unit, file=monte_carlo_file2_path, status='UNKNOWN', form='FORMATTED', &
+         open(newunit=mc_model_unit, file=s%control%monte_carlo_file2_path, status='UNKNOWN', form='FORMATTED', &
               iostat=ios, iomsg=msg)
-         call check_io(ios, msg, 'open the Monte Carlo model file', monte_carlo_file2_path, ierr)
+         call check_io(ios, msg, 'open the Monte Carlo model file', s%control%monte_carlo_file2_path, ierr)
          if (ierr /= 0) return
       endif
-      if (isochrone_output_active) then
-         open(newunit=isochrone_unit, file=isochrone_file, status='UNKNOWN', form='FORMATTED', &
+      if (s%control%isochrone_output_active) then
+         open(newunit=isochrone_unit, file=s%control%isochrone_file, status='UNKNOWN', form='FORMATTED', &
               iostat=ios, iomsg=msg)
-         call check_io(ios, msg, 'open the isochrone file', isochrone_file, ierr)
+         call check_io(ios, msg, 'open the isochrone file', s%control%isochrone_file, ierr)
          if (ierr /= 0) return
       endif
 end subroutine open_run_files
 
 ! ---------------------------------------------------------------
-! After a controls error (read_controls' ierr): the run log alone, so
-! that it holds the read's lines and the error, once the read has
-! expanded the deck's paths. A read that stopped before (the deck
-! missing or unreadable) has no run log of the deck's: its messages
-! stay on the terminal.
-subroutine open_run_log_after_error
+! After a controls error: the run log alone, at the deck's
+! log_output_file (expanded), so that it holds the read's lines and the
+! error. The controls read calls it when check_controls stops it, the
+! one error after the deck's paths are expanded (the records are not
+! stored after an error, so the read passes its own value). A read that
+! stopped before (the deck missing or unreadable) opens no run log: its
+! messages stay on the terminal.
+subroutine open_run_log_after_error(log_output_file)
+      character(len=*), intent(in) :: log_output_file
       integer :: ierr
 
-      if (.not. paths_expanded) return
       ierr = 0
-      call start_run_log(ierr)
+      call start_run_log(log_output_file, ierr)
 end subroutine open_run_log_after_error
 
 ! ---------------------------------------------------------------
 ! The output directory, the run log's, created (with its parents), and
 ! the run log opened.
-subroutine start_run_log(ierr)
+subroutine start_run_log(log_output_file, ierr)
+      character(len=*), intent(in) :: log_output_file
       integer, intent(inout) :: ierr
 
-      output_dir = directory_of(log_output_file)
-      call make_directory(output_dir)
+      call make_directory(directory_of(log_output_file))
       call open_run_log(log_output_file, ierr)
 end subroutine start_run_log
 
@@ -203,9 +146,12 @@ end subroutine close_run_files
 ! ---------------------------------------------------------------
 ! The run's output directory: the run log's (blank for the working
 ! directory).
-function output_directory() result(dir)
+!   star reads: physics%log_output_file
+!   star writes: none
+function output_directory(s) result(dir)
+      type(star_info), intent(in) :: s
       character(len=256) :: dir
-      dir = output_dir
+      dir = directory_of(s%physics%log_output_file)
 end function output_directory
 
 ! ---------------------------------------------------------------
