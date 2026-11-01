@@ -166,7 +166,7 @@ def homes(members):
             continue
         declared = controls_registry.type_of(typespec, dims)
         for r in mine:
-            if r["type"].replace(" ", "") != declared:
+            if controls_registry.declared_type(r["type"]) != declared:
                 problems.append(f"{name}: registry type {r['type']} ({r['legacy']}), declared {declared}")
         if len({r["home"] for r in mine}) > 1 or len({r["run_copy"] for r in mine}) > 1:
             problems.append(f"{name}: two homes or run copies in the registry")

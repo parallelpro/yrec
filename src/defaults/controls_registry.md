@@ -34,37 +34,37 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `target_solar_zx` | `calsolzx` | `target_solar_zx` | control | - | run | real | `0.02292d0` | live | Solar calibration: the target surface Z/X (with calibrate_solar_zx) |
 | `run_description` | `descrip` | `run_description` | buffer | - | read | string(2) | `''` | live | Per-run description strings echoed in output headers |
 | `max_age` | `endage` | `target_end_age` | control | `card_max_age_yr` | run | real(50) | `0.0d0` | live | Stop the run card at this age (yr); 0 = no age limit |
-| `laol_opacity_table_file` | `flaol` | `laol_table_path` | control | - | run | string | `''` | live | LAOL 1989 opacity table |
-| `pure_z_opacity_table_file` | `fpurez` | `pure_z_table_path` | control | - | run | string | `''` | live | Pure-Z opacity table (metal diffusion support) |
-| `laol_opacity_table2_file` | `flaol2` | `laol_table2_path` | control | - | run | string | `''` | live | LAOL 1989 opacity table, second Z |
-| `opal92_opacity_table2_file` | `fopal2` | `opal92_table2_path` | control | - | run | string | `''` | live | OPAL 1992 opacity table, second Z |
-| `last_model_file` | `flast` | `last_model_file` | control | - | run | string | `'{YREC_OUTPUT}/final.mod'` | live | Path for the final model (.mod) written every model; reloadable |
-| `first_model_file` | `ffirst` | `first_model_file` | control | - | run | string | `''` | live | Starting model read when read_first_model is set for a run |
-| `fermi_table_file` | `ffermi` | `fermi_table_path` | control | - | run | string | `''` | live | Fermi-Dirac integral table (Yale/Prather degenerate-electron EOS) |
+| `laol_opacity_table_file` | `flaol` | `laol_table_path` | control | - | run | path | `''` | live | LAOL 1989 opacity table |
+| `pure_z_opacity_table_file` | `fpurez` | `pure_z_table_path` | control | - | run | path | `''` | live | Pure-Z opacity table (metal diffusion support) |
+| `laol_opacity_table2_file` | `flaol2` | `laol_table2_path` | control | - | run | path | `''` | live | LAOL 1989 opacity table, second Z |
+| `opal92_opacity_table2_file` | `fopal2` | `opal92_table2_path` | control | - | run | path | `''` | live | OPAL 1992 opacity table, second Z |
+| `last_model_file` | `flast` | `last_model_file` | control | - | run | path | `'{YREC_OUTPUT}/final.mod'` | live | Path for the final model (.mod) written every model; reloadable |
+| `first_model_file` | `ffirst` | `first_model_file` | control | - | run | path | `''` | live | Starting model read when read_first_model is set for a run |
+| `fermi_table_file` | `ffermi` | `fermi_table_path` | control | - | run | path | `''` | live | Fermi-Dirac integral table (Yale/Prather degenerate-electron EOS) |
 | `(legacy only)` | `fstch` | `stored_change_file` | buffer | - | none | string | `''` | unused | Unused: read by the legacy reader and ignored |
-| `dynamics_file` | `fdyn` | `dynamics_file` | control | - | run | string | `''` | live | Opened on the dynamics unit (formatted, STATUS=OLD) |
-| `opal92_opacity_table_file` (`ll_data_file`) | `flldat` | `opal92_table_path` | control | - | run | string | `''` | live | OPAL 1992 opacity table (use_opal92_tables) |
+| `dynamics_file` | `fdyn` | `dynamics_file` | control | - | run | path | `''` | live | Opened on the dynamics unit (formatted, STATUS=OLD) |
+| `opal92_opacity_table_file` (`ll_data_file`) | `flldat` | `opal92_table_path` | control | - | run | path | `''` | live | OPAL 1992 opacity table (use_opal92_tables) |
 | `surface_composition_file` | `fscomp` | `surface_composition_file` | buffer | - | none | string | `''` | live | Accepted and ignored: no surface-composition file is written any more (the light elements are history columns); kept so that decks setting it still read |
-| `kurucz_opacity_table_file` (`kurucz_atm_table_file`) | `fkur` | `kurucz_table_path` | control | - | run | string | `''` | live | Kurucz 1990 low-temperature opacity table (use_kurucz90_tables) |
-| `mhd_table_file_1` | `fmhd1` | `zams_a_table_path` | control | - | run | string | `''` | live | MHD EOS table 1 of 8: the first ZAMS-type composition |
-| `mhd_table_file_2` | `fmhd2` | `zams_b_table_path` | control | - | run | string | `''` | live | MHD EOS table 2 of 8: the second ZAMS-type composition |
-| `mhd_table_file_3` | `fmhd3` | `zams_c_table_path` | control | - | run | string | `''` | live | MHD EOS table 3 of 8: the third ZAMS-type composition |
-| `mhd_table_file_4` | `fmhd4` | `centre1_table_path` | control | - | run | string | `''` | live | MHD EOS table 4 of 8: the first centre-type composition |
-| `mhd_table_file_5` | `fmhd5` | `centre2_table_path` | control | - | run | string | `''` | live | MHD EOS table 5 of 8: the second centre-type composition |
-| `mhd_table_file_6` | `fmhd6` | `centre3_table_path` | control | - | run | string | `''` | live | MHD EOS table 6 of 8: the third centre-type composition |
-| `mhd_table_file_7` | `fmhd7` | `centre4_table_path` | control | - | run | string | `''` | live | MHD EOS table 7 of 8: the fourth centre-type composition |
-| `mhd_table_file_8` | `fmhd8` | `centre5_table_path` | control | - | run | string | `''` | live | MHD EOS table 8 of 8: the fifth centre-type composition |
-| `isochrone_file` | `fiso` | `isochrone_file` | control | - | run | string | `''` | live | Isochrone output file |
-| `atm_table_file` | `fatm` | `atm_table_path` | control | - | run | string | `''` | live | Kurucz (atm_choice 3 and 4) or Castelli/Kurucz (5) surface-pressure table |
-| `kurucz_opacity_table2_file` (`kurucz_castelli_atm_table_file`) | `fkur2` | `kurucz_table2_path` | control | - | run | string | `''` | live | Kurucz 1990 low-temperature opacity table, second Z |
-| `allard_atm_table_file` | `fallard` | `allard_table_path` | control | - | run | string | `''` | live | Allard NextGen model-atmosphere table |
-| `scv_h_table_file` | `fscvh` | `scv_h_table_path` | control | - | run | string | `''` | live | Saumon-Chabrier-Van Horn EOS: hydrogen table |
-| `scv_he_table_file` | `fscvhe` | `scv_he_table_path` | control | - | run | string | `''` | live | SCV EOS: helium table |
-| `scv_z_table_file` | `fscvz` | `scv_z_table_path` | control | - | run | string | `''` | live | SCV EOS: metals table |
-| `opal95_eos_table_file` (`opal_eos_table_file`) | `fopale` | `opal95_eos_table_path` | buffer | - | read | string | `''` | live | OPAL 1995 EOS table (use_opal95_eos) |
-| `opal95_opacity_table_file` | `fliv95` | `opal95_table_path` | control | - | run | string | `''` | live | OPAL 1995-format opacity table (use_opal95_tables) |
-| `monte_carlo_file1_path` | `fmonte1` | `monte_carlo_file1_path` | control | - | run | string | `''` | live | Monte Carlo runs: the file for each run's summary |
-| `monte_carlo_file2_path` | `fmonte2` | `monte_carlo_file2_path` | control | - | run | string | `''` | live | Monte Carlo runs: the file for each run's final model |
+| `kurucz_opacity_table_file` (`kurucz_atm_table_file`) | `fkur` | `kurucz_table_path` | control | - | run | path | `''` | live | Kurucz 1990 low-temperature opacity table (use_kurucz90_tables) |
+| `mhd_table_file_1` | `fmhd1` | `zams_a_table_path` | control | - | run | path | `''` | live | MHD EOS table 1 of 8: the first ZAMS-type composition |
+| `mhd_table_file_2` | `fmhd2` | `zams_b_table_path` | control | - | run | path | `''` | live | MHD EOS table 2 of 8: the second ZAMS-type composition |
+| `mhd_table_file_3` | `fmhd3` | `zams_c_table_path` | control | - | run | path | `''` | live | MHD EOS table 3 of 8: the third ZAMS-type composition |
+| `mhd_table_file_4` | `fmhd4` | `centre1_table_path` | control | - | run | path | `''` | live | MHD EOS table 4 of 8: the first centre-type composition |
+| `mhd_table_file_5` | `fmhd5` | `centre2_table_path` | control | - | run | path | `''` | live | MHD EOS table 5 of 8: the second centre-type composition |
+| `mhd_table_file_6` | `fmhd6` | `centre3_table_path` | control | - | run | path | `''` | live | MHD EOS table 6 of 8: the third centre-type composition |
+| `mhd_table_file_7` | `fmhd7` | `centre4_table_path` | control | - | run | path | `''` | live | MHD EOS table 7 of 8: the fourth centre-type composition |
+| `mhd_table_file_8` | `fmhd8` | `centre5_table_path` | control | - | run | path | `''` | live | MHD EOS table 8 of 8: the fifth centre-type composition |
+| `isochrone_file` | `fiso` | `isochrone_file` | control | - | run | path | `''` | live | Isochrone output file |
+| `atm_table_file` | `fatm` | `atm_table_path` | control | - | run | path | `''` | live | Kurucz (atm_choice 3 and 4) or Castelli/Kurucz (5) surface-pressure table |
+| `kurucz_opacity_table2_file` (`kurucz_castelli_atm_table_file`) | `fkur2` | `kurucz_table2_path` | control | - | run | path | `''` | live | Kurucz 1990 low-temperature opacity table, second Z |
+| `allard_atm_table_file` | `fallard` | `allard_table_path` | control | - | run | path | `''` | live | Allard NextGen model-atmosphere table |
+| `scv_h_table_file` | `fscvh` | `scv_h_table_path` | control | - | run | path | `''` | live | Saumon-Chabrier-Van Horn EOS: hydrogen table |
+| `scv_he_table_file` | `fscvhe` | `scv_he_table_path` | control | - | run | path | `''` | live | SCV EOS: helium table |
+| `scv_z_table_file` | `fscvz` | `scv_z_table_path` | control | - | run | path | `''` | live | SCV EOS: metals table |
+| `opal95_eos_table_file` (`opal_eos_table_file`) | `fopale` | `opal95_eos_table_path` | buffer | - | read | path | `''` | live | OPAL 1995 EOS table (use_opal95_eos) |
+| `opal95_opacity_table_file` | `fliv95` | `opal95_table_path` | control | - | run | path | `''` | live | OPAL 1995-format opacity table (use_opal95_tables) |
+| `monte_carlo_file1_path` | `fmonte1` | `monte_carlo_file1_path` | control | - | run | path | `''` | live | Monte Carlo runs: the file for each run's summary |
+| `monte_carlo_file2_path` | `fmonte2` | `monte_carlo_file2_path` | control | - | run | path | `''` | live | Monte Carlo runs: the file for each run's final model |
 | `run_kind` | `kindrn` | `run_kind` | buffer | - | read | integer(50) | `1` | live | Per-run kind card: 1 = evolve, 2 = rescale (zero timestep, MS/CHeB), 3 = rescale and evolve (pre-MS) |
 | `first_call_flag` | `lfirst` | `first_call_flag` | control | `card_from_starting_model` | run | logical(50) | `.true.` | live | DEFAULT IS .TRUE. for every card (read_controls DATA lfirst/50*.true./): an omitted first_call_flag(n) restarts card n from first_model_file, so continuation cards must set it .false. explicitly. |
 | `set_initial_model_number` | `set_initial_model_number` | `set_initial_model_number` | control | - | run | integer | `1` | live | Model number given to the first converged model after a fresh start-model load (first_call_flag card). <= 0 keeps the counter stored in the model file (restart continuation, the pre-2026 behavior). |
@@ -85,7 +85,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `envelope_print_points` | `npenv` | `envelope_print_points` | buffer | - | read | integer | `0` | live | Envelope profile print count (values <= 0 become 9999 = off) |
 | `num_runs` | `numrun` | `num_runs` | control | `num_cards` | run | integer | `1` | live | The number of runs (kind cards): each rescales a model, evolves it, or both |
 | `max_model_number` | `nmodls` | `num_models` | control | `card_num_models` | run | integer(50) | `0` | live | Per run: the number of models to compute (the run stops earlier if a stop condition is met) |
-| `alex95_opacity_table_files` (`alex95_table_z_list`) | `opecalex` | `alex95_table_paths` | control | - | run | string(7) | `''` | live | The seven Alexander & Ferguson 1994 low-temperature opacity table files |
+| `alex95_opacity_table_files` (`alex95_table_z_list`) | `opecalex` | `alex95_table_paths` | control | - | run | path(7) | `''` | live | The seven Alexander & Ferguson 1994 low-temperature opacity table files |
 | `rescale_mass` | `rsclm` | `rescale_mass` | buffer | - | read | real(50) | `0.0d0` | live | Per-run target mass (Msun) for rescale runs |
 | `rescale_x` | `rsclx` | `rescale_x` | buffer | - | read | real(50) | `0.0d0` | live | Per-run target hydrogen fraction for rescale runs |
 | `rescale_z` | `rsclz` | `rescale_z` | buffer | - | read | real(50) | `0.0d0` | live | Per-run target metallicity for rescale runs |
@@ -114,10 +114,10 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `alex_z2` | `zalex2` | `alex_z2` | buffer | - | none | real | `0` | live | Inert: read and used nowhere (the Alexander tables take one Z, alex_table_z1); the controls read warns when it is set |
 | `kurucz_table_z1` | `zkur1` | `kurucz_table_z1` | control | - | run | real | `0` | live | Z of the first Kurucz 1990 opacity table |
 | `kurucz_table_z2` | `zkur2` | `kurucz_table_z2` | control | - | run | real | `0` | live | Z of the second Kurucz 1990 opacity table |
-| `opal01_eos_table_file` | `fopale01` | `opal2001_eos_table_path` | buffer | - | read | string | `''` | live | OPAL 2001 EOS table (use_opal2001_eos) |
-| `conductive_opacity_table_file` | `fcondopacp` | `conductive_table_path` | control | - | run | string | `''` | live | Potekhin conductive opacity table |
-| `opal06_eos_table_file` | `fopale06` | `opal2006_eos_table_path` | buffer | - | read | string | `''` | live | OPAL 2006 EOS table (use_opal2006_eos) |
-| `alex06_opacity_table_file` | `falex06` | `alex06_table_path` | control | - | run | string | `''` | live | Ferguson/Alexander 2006 low-T opacity tables |
+| `opal01_eos_table_file` | `fopale01` | `opal2001_eos_table_path` | buffer | - | read | path | `''` | live | OPAL 2001 EOS table (use_opal2001_eos) |
+| `conductive_opacity_table_file` | `fcondopacp` | `conductive_table_path` | control | - | run | path | `''` | live | Potekhin conductive opacity table |
+| `opal06_eos_table_file` | `fopale06` | `opal2006_eos_table_path` | buffer | - | read | path | `''` | live | OPAL 2006 EOS table (use_opal2006_eos) |
+| `alex06_opacity_table_file` | `falex06` | `alex06_table_path` | control | - | run | path | `''` | live | Ferguson/Alexander 2006 low-T opacity tables |
 | `use_alex06_tables` | `lalex06` | `use_alex06_tables` | control | - | run | logical | `.false.` | live | Use the Ferguson et al. 2005 molecular opacity tables (alex06_opacity_table_file) |
 | `central_deuterium_stop` | `end_dcen` | `central_deuterium_stop` | control | `card_central_deuterium_stop` | run | real(50) | `0.0d0` | live | Per run: stop when the central deuterium mass fraction falls below this (0: off) |
 | `central_hydrogen_stop` | `end_xcen` | `central_hydrogen_stop` | control | `card_central_hydrogen_stop` | run | real(50) | `0.0d0` | live | Per run: stop when the central hydrogen mass fraction falls below this (0: off) |
@@ -142,9 +142,9 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `initial_b10_fraction` | `xb10_ini` | `initial_b10_fraction` | buffer | - | read | real | `1.002d-9` | live | Initial B10 mass fraction for isotope_mixture_name 'CUS' |
 | `initial_b11_fraction` | `xb11_ini` | `initial_b11_fraction` | buffer | - | read | real | `4.405d-9` | live | Initial B11 mass fraction for isotope_mixture_name 'CUS' |
 | `pulse_gyre_interval` | `pulse_gyre_interval` | `pulse_gyre_interval` | control | - | run | integer | `0` | live | Write the interior-only GYRE file every this many models (0 = off) |
-| `history_columns_file` | `-` | `history_columns_file` | control | - | run | string | `' '` | live | File listing the history columns (one name per line, ! comments); blank: the default selection of defaults/history_columns.list |
-| `profile_columns_file` | `-` | `profile_columns_file` | control | - | run | string | `' '` | live | File listing the profile columns; blank: the default selection of defaults/profile_columns.list |
-| `inlist_used_file` | `inlist_used_file` | `inlist_used_file` | control | - | run | string | `' '` | live | Verbatim copy of the input namelist file(s), written at startup as run provenance; blank (the default): inlist_used in the output directory, the run log's |
+| `history_columns_file` | `-` | `history_columns_file` | control | - | run | path | `' '` | live | File listing the history columns (one name per line, ! comments); blank: the default selection of defaults/history_columns.list |
+| `profile_columns_file` | `-` | `profile_columns_file` | control | - | run | path | `' '` | live | File listing the profile columns; blank: the default selection of defaults/profile_columns.list |
+| `inlist_used_file` | `inlist_used_file` | `inlist_used_file` | control | - | run | path | `' '` | live | Verbatim copy of the input namelist file(s), written at startup as run provenance; blank (the default): inlist_used in the output directory, the run log's |
 | `log_L_upper_limit` | `log_L_upper_limit` | `log_l_upper_limit` | control | - | run | real(50) | `1.0d99` | live | Per kind card: stop the card when log(L/Lsun) exceeds this (1d99 = off) |
 | `log_L_lower_limit` | `log_L_lower_limit` | `log_l_lower_limit` | control | - | run | real(50) | `-1.0d99` | live | Per kind card: stop the card when log(L/Lsun) drops below this (-1d99 = off) |
 | `Teff_upper_limit` | `Teff_upper_limit` | `teff_upper_limit` | control | - | run | real(50) | `1.0d99` | live | Per kind card: stop the card when Teff [K] exceeds this (1d99 = off) |
@@ -158,7 +158,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 
 | inlist name | legacy name | code name | home | run copy | used | type | default | status | description |
 |---|---|---|---|---|---|---|---|---|---|
-| `log_output_file` | `fshort` | `log_output_file` | physics | - | run | string | `'{YREC_OUTPUT}/run.log'` | live | Run log path; its directory part defines the output directory (legacy FSHORT) |
+| `log_output_file` | `fshort` | `log_output_file` | physics | - | run | path | `'{YREC_OUTPUT}/run.log'` | live | Run log path; its directory part defines the output directory (legacy FSHORT) |
 | `atm_step_min` | `atmmin` | `atm_step_min` | physics | - | run | real | `1.0d-1` | live | The atmosphere integration's smallest step (in log tau) |
 | `atm_step_begin` | `atmbeg` | `atm_step_begin` | physics | - | run | real | `1.0d-1` | live | Atmosphere integration: the first step |
 | `atm_error_tol` | `atmerr` | `atm_error_tol` | physics | - | run | real | `3.0d-4` | live | Atmosphere integration: error tolerance |
@@ -427,7 +427,7 @@ file names, from the command line). Each is in the group of its topic.
 
 | code name | group | home | run copy | used | type | default | description |
 |---|---|---|---|---|---|---|---|
-| `opal_eos_table_path` | physics | physics | - | run | string | `''` | The OPAL EOS table the run reads: the newest vintage selected (use_opal2006_eos, use_opal2001_eos, use_opal95_eos), blank for none (set by derive_controls) |
+| `opal_eos_table_path` | physics | physics | - | run | path | `''` | The OPAL EOS table the run reads: the newest vintage selected (use_opal2006_eos, use_opal2001_eos, use_opal95_eos), blank for none (set by derive_controls) |
 | `opal_eos_vintage` | physics | physics | - | run | integer | `0` | The OPAL EOS vintage the run uses: 0 none, 1 1995, 2 2001, 3 2006 (eos_lib's opal_vintage_*), the newest selected (set by derive_controls) |
 | `end_age_stop_active` | control | control | `card_stops_active` | run | logical(50) | `0` | Per run: a stop condition is armed (max_age or a central-abundance stop; set by the run plan, rewritten by the calibration) |
 | `timestep_override_active` | control | control | `card_fixed_timestep_active` | run | logical(50) | `0` | Per run: the run takes the fixed timestep timestep_override (set by the run plan) |
@@ -446,5 +446,5 @@ file names, from the command line). Each is in the group of its topic.
 | `envelope_store_log_temperature` | physics | physics | - | run | real | `0` | The log T at which an envelope integration stores its state for the surface boundary: the mean of rezone_env_logT0 and rezone_env_logT1 |
 | `change_cno_mixture_active` | control | control | - | run | logical | `0` | The starting model's CNO mixture is changed (cno_mixture_mode = 1 and a valid mixture) |
 | `change_isotope_ratios_active` | control | control | - | run | logical | `0` | The starting model's isotope ratios are changed (isotope_mixture_mode = 1 and a valid mixture) |
-| `control_nml_file` | control | control | - | run | string | `''` | The deck's file: the single-file inlist, or the legacy pair's CONTROL namelist (.nml1); read_input finds it (the first command-line argument, default yrec8.nml1, or an embedding host's override) |
-| `physics_nml_file` | control | control | - | run | string | `''` | The legacy pair's PHYSICS namelist (.nml2; the second command-line argument, default yrec8.nml2), or the inlist again |
+| `control_nml_file` | control | control | - | run | path | `''` | The deck's file: the single-file inlist, or the legacy pair's CONTROL namelist (.nml1); read_input finds it (the first command-line argument, default yrec8.nml1, or an embedding host's override) |
+| `physics_nml_file` | control | control | - | run | path | `''` | The legacy pair's PHYSICS namelist (.nml2; the second command-line argument, default yrec8.nml2), or the inlist again |

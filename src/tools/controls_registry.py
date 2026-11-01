@@ -16,7 +16,10 @@ Columns:
                  (io/legacy_controls.f90, frozen); '-': the legacy decks do
                  not read it (every control added since the freeze, and the
                  derived members)
-  type           real, integer, logical or string, with (dims) for an array
+  type           real, integer, logical, string or path, with (dims) for an
+                 array; path is a string that names a file the run reads or
+                 writes, whose {YREC_INPUT}, {YREC_START} or {YREC_OUTPUT}
+                 placeholder the read expands (io/expand_paths.inc, generated)
   proposed_name  the name in a single-file inlist (for a derived member,
                  its code name)
   status         live: read by the inlist format under proposed_name (and
@@ -81,7 +84,8 @@ CELLS_GUIDE = """How to fill a registry row (tools/controls_registry.py describe
       proposed_name the inlist name, canonical the code name; the rest as above.
   a control the run changes: as above, and run_copy the star member the run
       changes (state/README.md, "Add a value the run changes").
-  a table path: as above, with group and home control and used run.
+  a table path (or any file the run reads or writes): as above, type path (the read
+      expands its {YREC_...} placeholder), group and home control, used run.
   a control the legacy decks read: legacy its name in io/legacy_controls.f90's
       frozen namelists; no new name goes there."""
 
@@ -249,6 +253,11 @@ def buffer_members():
     return members
 
 
+def declared_type(cell):
+    """a registry type cell as the declaration's type: a path is a string"""
+    return re.sub(r"^path", "string", cell.replace(" ", ""))
+
+
 def check_rows_against_buffer(rs, members):
     """the problems between the registry and controls_buffer: a row whose
     code name (canonical) is not a buffer member, or has another type; a
@@ -260,7 +269,7 @@ def check_rows_against_buffer(rs, members):
         if m is None:
             problems.append(f"{r['proposed_name']}: its code name (canonical) "
                             f"{r['canonical'] or '(blank)'} is not declared in controls_buffer.f90")
-        elif m["type"] != r["type"].replace(" ", "").replace("path", "string"):
+        elif m["type"] != declared_type(r["type"]):
             problems.append(f"{r['proposed_name']}: registry type {r['type']}, "
                             f"declared {m['type']} ({m['name']})")
     named = {r["canonical"].lower() for r in rs}

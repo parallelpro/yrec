@@ -169,67 +169,10 @@ end subroutine read_inlist
 
 ! ---------------------------------------------------------------
 ! The {YREC_INPUT}, {YREC_START} and {YREC_OUTPUT} placeholders in
-! every path control, expanded (run_files' expand_value): every string
-! control that names a file (test_generated_files.py checks the list
-! against the registry). A derived path (opal_eos_table_path) is made
-! from expanded ones.
+! every path control, expanded: the generated expand_paths.inc calls
+! run_files' expand_value on each control whose registry type is path.
 subroutine expand_paths
-      use controls_buffer, only: alex06_table_path, alex95_table_paths, &
-           allard_table_path, atm_table_path, centre1_table_path, &
-           centre2_table_path, centre3_table_path, centre4_table_path, &
-           centre5_table_path, conductive_table_path, dynamics_file, &
-           fermi_table_path, first_model_file, isochrone_file, last_model_file, &
-           log_output_file, history_columns_file, &
-           inlist_used_file, kurucz_table2_path, &
-           kurucz_table_path, laol_table2_path, laol_table_path, &
-           monte_carlo_file1_path, monte_carlo_file2_path, &
-           opal2001_eos_table_path, opal2006_eos_table_path, opal92_table2_path, &
-           opal92_table_path, opal95_eos_table_path, opal95_table_path, &
-           profile_columns_file, pure_z_table_path, &
-           scv_h_table_path, scv_he_table_path, scv_z_table_path, &
-           zams_a_table_path, zams_b_table_path, zams_c_table_path
-      integer :: i
-
-      call expand_value(alex06_table_path)
-      call expand_value(allard_table_path)
-      call expand_value(atm_table_path)
-      call expand_value(conductive_table_path)
-      call expand_value(dynamics_file)
-      call expand_value(fermi_table_path)
-      call expand_value(first_model_file)
-      call expand_value(isochrone_file)
-      call expand_value(kurucz_table_path)
-      call expand_value(kurucz_table2_path)
-      call expand_value(laol_table_path)
-      call expand_value(laol_table2_path)
-      call expand_value(last_model_file)
-      call expand_value(opal95_table_path)
-      call expand_value(opal92_table_path)
-      call expand_value(zams_a_table_path)
-      call expand_value(zams_b_table_path)
-      call expand_value(zams_c_table_path)
-      call expand_value(centre1_table_path)
-      call expand_value(centre2_table_path)
-      call expand_value(centre3_table_path)
-      call expand_value(centre4_table_path)
-      call expand_value(centre5_table_path)
-      call expand_value(monte_carlo_file1_path)
-      call expand_value(monte_carlo_file2_path)
-      call expand_value(opal92_table2_path)
-      call expand_value(opal95_eos_table_path)
-      call expand_value(opal2001_eos_table_path)
-      call expand_value(opal2006_eos_table_path)
-      call expand_value(pure_z_table_path)
-      call expand_value(scv_h_table_path)
-      call expand_value(scv_he_table_path)
-      call expand_value(scv_z_table_path)
-      call expand_value(log_output_file)
-      call expand_value(history_columns_file)
-      call expand_value(inlist_used_file)
-      call expand_value(profile_columns_file)
-      do i = 1, size(alex95_table_paths)
-         call expand_value(alex95_table_paths(i))
-      end do
+      include 'expand_paths.inc'
 end subroutine expand_paths
 
 ! ---------------------------------------------------------------

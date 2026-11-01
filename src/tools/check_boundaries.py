@@ -662,7 +662,7 @@ def check_control_copies(src_root):
         if e is None:
             problems.append(f"{r['canonical']}: its run copy {c} is not a star member")
             continue
-        if types.get(c) != r["type"].replace(" ", ""):
+        if types.get(c) != controls_registry.declared_type(r["type"]):
             problems.append(f"{c}: declared {types.get(c)}, but its control {ref} is {r['type']}")
         if not names_control(e, ref):
             problems.append(f"{c}: its comment does not name its control {ref}")

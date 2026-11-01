@@ -500,7 +500,7 @@ state/physical_constants.o: math_lib.mod
 state/star_info_lib.o: composition_layout.mod control_slots.mod envelope_points.mod neutrino_flux_layout.mod reaction_layout.mod stitched_model_state.mod transport_mechanism_layout.mod
 
 # real prerequisites: include files
-io/controls_reader.o: io/inlist_decl.inc io/inlist_read.inc
+io/controls_reader.o: io/expand_paths.inc io/inlist_decl.inc io/inlist_read.inc
 io/legacy_controls.o: io/legacy_decl.inc io/legacy_defaults.inc io/legacy_to_code.inc io/legacy_use.inc
 io/output_columns.o: io/default_columns.inc
 io/test/test_controls.o: io/test/controls_dump.inc

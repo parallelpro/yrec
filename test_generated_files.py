@@ -24,25 +24,28 @@ def test_generated_files_current(generator):
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-# String controls that are not file paths (names, codes, the output
-# file's own name and prefix), and a path accepted and ignored (fscomp).
-NOT_PATHS = {"cno_mixture_name", "isotope_mixture_name", "change_species_name",
-             "new_species_value_mode", "wind_law_name", "run_description", "pulse_format",
-             "profile_data_prefix", "star_history_name", "surface_composition_file"}
-
-
-def test_every_path_control_is_expanded():
-    """The read's expand_paths expands the {YREC_...} placeholders in
-    every string control of the registry that names a file, under its code
-    name. A derived path (opal_eos_table_path) is made from expanded ones."""
+def test_every_path_a_deck_sets_is_a_path_control():
+    """A shipped deck that sets a string control to a {YREC_...} path sets a
+    control of type path, which the read expands (io/expand_paths.inc is
+    generated from the type path rows, so a path control needs no hand
+    edit): the deck's name for it (inlist name, alias or legacy name) is a
+    path row's, or a control nothing uses (surface_composition_file)."""
     registry = [row.split("\t") for row in
                 (SRC / "defaults" / "controls_registry.tsv").read_text().splitlines()]
     cols = registry[0]
     rows = [dict(zip(cols, r)) for r in registry[1:]]
-    paths = {r["canonical"].lower() for r in rows
-             if r["type"].startswith("string") and r["canonical"].lower() not in NOT_PATHS
-             and r["status"] not in ("derived", "unused")}
-    code = (SRC / "io" / "controls_reader.f90").read_text()
-    body = re.search(r"subroutine expand_paths(.*?)end subroutine", code, re.S).group(1)
-    expanded = {n.lower() for n in re.findall(r"expand_value\((\w+)", body)}
-    assert paths <= expanded, sorted(paths - expanded)
+    kind = {}
+    for r in rows:
+        for name in [r["proposed_name"], r["legacy"]] + r["aliases"].split(","):
+            if name and name != "-":
+                kind[name.lower()] = "path" if r["used"] == "none" else r["type"]
+    repo = SRC.parent
+    decks = [p for top in ("examples", "testsuite") for pat in ("*.inlist", "*.nml1", "*.nml2")
+             for p in sorted((repo / top).rglob(pat))]
+    entry = re.compile(r"(?im)^\s*&?\s*(\w+)\s*(?:\([^)]*\))?\s*=\s*['\"]\{YREC_")
+    wrong = set()
+    for d in decks:
+        for name in entry.findall(d.read_text(errors="replace")):
+            if not kind.get(name.lower(), "path").startswith("path"):
+                wrong.add((name, d.name))
+    assert decks and not wrong, sorted(wrong)[:10]

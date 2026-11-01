@@ -40,15 +40,20 @@ Emits:
                            name's default (the buffer's pristine value)
   io/legacy_to_code.inc    read_legacy_deck: each code name the value read
                            under its legacy name
+  io/expand_paths.inc      the read's expand_paths: every path control (type
+                           path) a deck may set, its {YREC_...} placeholder
+                           expanded (run_files' expand_value)
   defaults/control.defaults, defaults/physics.defaults -- every inlist
                            control with its default and description
   defaults/controls_registry.md -- the registry as a table
 
-It stops, naming the row, when a row's code name is not a controls_buffer
-member of the row's type, when a name is used twice, when an inlist local
-would hide a code name, and when the legacy namelists and the registry
-disagree (a legacy name in neither group, or a group member without a
-row).
+It stops, naming the row and printing which cells to fill for each kind of
+row, when a row's code name is not a controls_buffer member of the row's
+type, when a name is used twice, when an inlist local would hide a code
+name, when a string control's default is a path (its type is path), and
+when the legacy namelists and the registry disagree (a legacy name in
+neither group, or a group member without a row). `gen_inlist.py --cells`
+prints that guide.
 """
 import pathlib
 import re
@@ -118,6 +123,9 @@ def declaration(member, name):
 
 
 def main():
+    if "--cells" in sys.argv:
+        print(controls_registry.CELLS_GUIDE)
+        return
     rows = controls_registry.rows()
     members = controls_registry.buffer_members()
     problems = controls_registry.check_rows_against_buffer(rows, members)
@@ -150,6 +158,10 @@ def main():
     named = {r["legacy"].lower() for r in with_legacy}
     problems += [f"{n}: in the legacy namelist /{g}/ but in no registry row"
                  for n, g in in_groups.items() if n not in named]
+    for r in rows:
+        m = by_name.get(r["code"])
+        if m and r["type"].startswith("string") and "{YREC_" in (m["init"] or ""):
+            problems.append(f"{r['inlist']}: its default names a file ({m['init']}): give it type path")
     for r in live:
         if r["alias_list"] and not re.match(r"(real|string)\b", by_name.get(r["code"], {}).get("type", "real")):
             problems.append(f"{r['inlist']}: an alias of a {by_name[r['code']]['type']} control; add "
@@ -266,6 +278,23 @@ def main():
         HEAD + ["! read_legacy_deck: each code name the value read under its legacy",
                 "! name."]
         + [f"      {r['code']} = {r['legacy']}" for r in renamed]) + "\n")
+
+    # ---- the paths the read expands ----
+    paths = [r for r in deck_rows if r["type"].startswith("path")]
+    ex = HEAD + ["! expand_paths' body (io/controls_reader.f90): every path control a deck",
+                 "! may set (the registry's type path), its {YREC_INPUT}, {YREC_START} or",
+                 "! {YREC_OUTPUT} placeholder expanded (run_files' expand_value). A derived",
+                 "! path (opal_eos_table_path) is made from expanded ones."]
+    ex += wrapped("      use controls_buffer, only: ", [r["code"] for r in paths], cont="           ")
+    if any(by_name[r["code"]]["dims"] for r in paths):
+        ex.append("      integer :: i")
+    for r in paths:
+        if by_name[r["code"]]["dims"]:
+            ex += [f"      do i = 1, size({r['code']})", f"         call expand_value({r['code']}(i))",
+                   "      end do"]
+        else:
+            ex.append(f"      call expand_value({r['code']})")
+    emit(SRC / "io" / "expand_paths.inc", "\n".join(ex) + "\n")
 
     # ---- the documents ----
     def default_of(r):
