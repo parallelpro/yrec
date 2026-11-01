@@ -1,24 +1,33 @@
-# CI for the YREC modernization (added 2026, phase four).
+# CI for YREC.
 #
-# Scope: full build + the per-module test suite (phase-three stage 2):
-#   - boundary checker (no data needed)
-#   - standalone eos/kap/atm table tests (need ~17 MB of input tables,
-#     pulled via sparse checkout so CI never downloads the full 3.1 GB
-#     input/ tree)
+# Two jobs, each from a sparse checkout (the repository's input/ tree is
+# 3.1 GB; CI fetches only the tables the tests read, about 50 MB, and the
+# starting models the decks name):
+#   build-and-test    the six generators' --check, the build, `make tests`,
+#                     the other-energy example and the library link checks,
+#                     then pytest on every unit-test file and on the deck
+#                     tests that need only the solar deck's tables.
+#   solar-regression  the standard solar case run twice in one job and the
+#                     two runs byte-compared (determinism on Linux).
 #
-# Deliberately NOT here (yet): the Stage-0 full-model byte-identical
-# regression -- its reference outputs (examples/*/standard/) are
-# largely untracked (gitignored), so it remains a local/manual gate.
-# If the standalone numeric baselines (pinned on macOS/arm64) prove
-# platform-sensitive on the Linux runners' last printed digit, the
-# right fix is per-platform baselines or a ULP-tolerant comparator --
-# not loosening the local byte-exact discipline.
+# Not here, and why: test_mesa_baselines.py and the examples' standard/
+# pins are byte pins made on macOS/arm64 (untracked), and test_all.py
+# runs every example deck, which needs the full input/ tree; both stay
+# local gates. The standalone tests' printed baselines are also pinned on
+# macOS/arm64: YREC_TEST_TOLERANT=1 lets their numbers differ by 1e-9
+# relative (conftest.py), and a difference beyond that needs per-platform
+# baselines, not a looser local check.
+#
+# The test list and the sparse checkout below were derived by tracing
+# which files each test opens (2026-10-31); a test that
+# starts reading another table needs its line here.
 name: CI
 
 on:
   push:
-    branches: [modernize-readable-refactor, main]
+    branches: [main, yrec-next, modernize-readable-refactor]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   build-and-test:
@@ -30,19 +39,46 @@ jobs:
           sparse-checkout-cone-mode: false
           sparse-checkout: |
             /src/
+            /pyyrec/
             /conftest.py
-            /test_eos.py
-            /test_net.py
-            /test_kap.py
-            /test_atm.py
-            /test_boundaries.py
-            /test_math.py
+            /pytest.ini
+            /test_*.py
+            /examples/**/*.inlist
+            /examples/**/*.nml1
+            /examples/**/*.nml2
+            /examples/run_config_matrix/mc_input.dat
+            /examples/other_energy/
+            /testsuite/
+            /startmodels/dbl/
+            /startmodels/seed/
+            /startmodels/start/
+            /startmodels/tams/
+            /startmodels/zahb/
+            /startmodels/dbl_grid/m3000gs98z016492_Dbl.first
             /input/eos/yale/FERMI.TAB
-            /input/eos/scv/
+            /input/eos/scv/h_tab_i.dat
+            /input/eos/scv/he_tab_i.dat
+            /input/eos/scv/z_tab_i.dat
             /input/eos/opal2006/EOSOPAL06Z0.016492
+            /input/eos/opal2006/EOSOPAL06Z0.018776
+            /input/eos/legacy/opal/OPALeos.0188
+            /input/eos/legacy/opal2001/O01EOS0188z
+            /input/opacity/atomic/lanl/PURECO.DBGLAOL
+            /input/opacity/atomic/legacy/opal92/Z0188AG89.DBGLAOL
+            /input/opacity/atomic/legacy/opal92/Z0190AG91.DBGLAOL
+            /input/opacity/atomic/legacy/opal92/Z0188.OPALN
+            /input/opacity/atomic/legacy/opal92/Z0200.OPALN
             /input/opacity/atomic/legacy/opal95/GS98.OP17
+            /input/opacity/atomic/op05/GS98.OP17
+            /input/opacity/conductive/potekhin/condall06.d
+            /input/opacity/molecular/alex06/alexmol06gs98.tab
+            /input/opacity/molecular/alexmol06gs98.tab
+            /input/opacity/molecular/legacy/alex/
+            /input/opacity/molecular/legacy/kurmol/kapm05.ross
+            /input/opacity/molecular/legacy/kurmol/kapp00.ross
             /input/atmos/kurucz/atmk1990p00.tab
             /input/atmos/CastelliKurucz/atmk2004p00.tab
+            /input/atmos/allard/Nextgen.p00
             /input/atmos/allard/Nextgen2.all
 
       - name: Install toolchain
@@ -51,32 +87,52 @@ jobs:
           sudo apt-get install -y gfortran
           python3 -m pip install --upgrade pip pytest
 
+      - name: Generated files are current (the six generators' --check)
+        working-directory: src
+        run: |
+          for g in gen_makefile_deps gen_default_columns gen_controls_state \
+                   gen_inlist gen_controls_dump gen_star_docs; do
+            python3 tools/$g.py --check
+          done
+
       - name: Build yrec
         run: make -C src -j4
 
-      - name: Build standalone test programs
-        run: make -C src -j4 test_eos test_kap test_atm test_net test_rotation test_rotation_kernels test_math
+      - name: Build the test programs
+        run: make -C src -j4 tests
+
       - name: Build the extra-energy-source example (examples/other_energy)
         run: make -C src -j4 other_energy
+
       - name: Build libyrec (shared)
         run: make -C src lib
+
       - name: Library-based link check (archives complete, layout self-consistent)
         run: make -C src -j4 libs && make -C src yrec_libs
 
-      - name: Run per-module tests and boundary checker
+      # the decks write into their own output/ directories (untracked);
+      # cm_monte_carlo's Monte Carlo files are named relative to its deck
+      - name: Make the decks' output directories
+        run: mkdir -p examples/run_config_matrix/output
+
+      - name: Run the unit tests and the solar-deck tests
         env:
           YREC_TEST_TOLERANT: "1"
-        run: python3 -m pytest test_eos.py test_kap.py test_atm.py test_net.py test_boundaries.py test_other_energy.py test_rotation.py test_rotation_kernels.py test_math.py -v
+        run: >
+          python3 -m pytest -v -rs
+          test_numerics.py test_math.py test_io.py test_controls.py
+          test_generated_files.py test_boundaries.py test_structure.py
+          test_rotation.py test_rotation_kernels.py test_element_diffusion.py
+          test_convection.py test_triangle_fit.py test_mass_change.py
+          test_regrid.py test_eos.py test_kap.py test_atm.py test_net.py
+          test_other_energy.py test_error_exit.py test_reentry.py
+          test_physics.py test_stop_conditions.py test_inlist_convert.py
+          test_mesa_output.py test_pyyrec.py
 
-  # Stage-0 solar regression (2026, test-depth item): runs the standard
-  # solar case TWICE in-job -- the first run seeds the reference, the
-  # second must reproduce it byte-for-byte (minus the git-hash banner).
-  # This tests determinism + full-model wiring on Linux without
-  # committing the platform-sensitive local baselines, exactly as the
-  # scope note at the top of this file prescribes. Plus the
-  # loose-tolerance physics assertions (test_physics.py), the error-path
-  # contract (test_error_exit.py), and the generated-deps freshness
-  # check.
+  # The standard solar case run TWICE in one job: the first run is the
+  # reference, the second must reproduce it byte for byte (minus the
+  # version line). This checks determinism and the whole model's wiring
+  # on Linux without the macOS-pinned baselines (the scope note above).
   solar-regression:
     runs-on: ubuntu-latest
     steps:
@@ -86,33 +142,22 @@ jobs:
           sparse-checkout-cone-mode: false
           sparse-checkout: |
             /src/
-            /conftest.py
-            /pytest.ini
-            /test_physics.py
-            /test_error_exit.py
             /examples/run_standard_solar_model/
             /startmodels/dbl/m1000gs98z018804_Dbl.first
             /input/eos/yale/FERMI.TAB
-            /input/eos/scv/
+            /input/eos/scv/h_tab_i.dat
+            /input/eos/scv/he_tab_i.dat
+            /input/eos/scv/z_tab_i.dat
             /input/eos/opal2006/EOSOPAL06Z0.016492
             /input/opacity/atomic/legacy/opal95/GS98.OP17
             /input/opacity/atomic/lanl/PURECO.DBGLAOL
             /input/opacity/molecular/alex06/alexmol06gs98.tab
             /input/opacity/conductive/potekhin/condall06.d
-            /input/atmos/kurucz/atmk1990p00.tab
-            /input/atmos/allard/Nextgen2.all
 
       - name: Install toolchain
         run: |
           sudo apt-get update
           sudo apt-get install -y gfortran
-          python3 -m pip install --upgrade pip pytest
-
-      - name: Generated dependencies are fresh
-        run: python3 src/tools/gen_makefile_deps.py --check
-
-      - name: Generated default column selections are fresh
-        run: python3 src/tools/gen_default_columns.py --check
 
       - name: Build yrec
         run: make -C src -j4
@@ -137,6 +182,3 @@ jobs:
               cmp "run1/$b" "run2/$b"
             fi
           done
-
-      - name: Physics + error-path assertions
-        run: python3 -m pytest test_physics.py test_error_exit.py -v
