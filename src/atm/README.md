@@ -37,7 +37,7 @@ The star layer switches a run between its tabulated choice and gray as Teff leav
 
 ## 4. Configuration
 
-`atm_settings_t` (in `atm_tables`) is everything atm reads: which tables to load (`atm_choice` at startup), whether the Allard lookups return the tau = 100 point, and the [Fe/H] and [α/Fe] of the Allard table to read. The star layer fills it from the controls (`atm_settings_from_star` in `setup/microphysics_settings.f90`) and passes it to `atm_init`, together with the table paths (`atm_table_paths_t`, from the controls: `atm_table_paths_from_star`). atm opens every table itself with `newunit`.
+`atm_settings_t` (in `atm_tables`) is everything atm reads: which tables to load (`atm_choice` at startup), whether the Allard lookups return the tau = 100 point, and the [Fe/H] and [α/Fe] of the Allard table to read. The star layer fills it from the controls (`atm_settings_from_star` in `setup/atm_settings_builder.f90`) and passes it to `atm_init`, together with the table paths (`atm_table_paths_t`, from the controls: `atm_table_paths_from_star`). atm opens every table itself with `newunit`.
 
 ## 5. Tests and extending
 

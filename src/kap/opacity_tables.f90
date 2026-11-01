@@ -269,7 +269,7 @@ module opacity_tables
 ! ---- the opacity settings (2026-10) ----
 ! Everything kap needs from the run's configuration, in one record,
 ! installed by kap_init (from the star layer's kap_settings_from_star,
-! setup/microphysics_settings.f90) or set_kap_settings; nothing else
+! setup/kap_settings_builder.f90) or set_kap_settings; nothing else
 ! writes it.
       type, public :: kap_settings_t
 ! the interior tables (OPAL95-format, OPAL92, LAOL89) and the pure-Z
@@ -306,7 +306,7 @@ module opacity_tables
 ! (Alexander 2006; the seven Alexander & Ferguson 1994 tables; Kurucz
 ! 1990 and its second Z) and the Potekhin conductive table. The star
 ! layer fills it from the controls (kap_table_paths_from_star,
-! setup/microphysics_settings.f90).
+! setup/kap_settings_builder.f90).
       type, public :: kap_table_paths_t
          character(len=256) :: opal95 = '', opal92 = '', opal92_z2 = '', &
               laol = '', laol_z2 = '', pure_z = ''

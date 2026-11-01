@@ -57,7 +57,7 @@ def test_mechanism_controls():
     registry = (REPO / "src" / "defaults" / "controls_registry.tsv").read_text()
     canonical = {line.split("\t")[3] for line in registry.splitlines()
                  if line.count("\t") >= 3 and not line.startswith("#")}
-    setup = (REPO / "src" / "setup" / "rotation_settings_setup.f90").read_text()
+    setup = (REPO / "src" / "setup" / "rotation_settings_builder.f90").read_text()
     for k, slot in sorted(slots.items()):
         for field, control in (("velocity_scale", velocity[k - 1]),
                                ("mixing_scale", mixing[k - 1])):

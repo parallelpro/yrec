@@ -3,7 +3,7 @@
 !----------------------------------------------------------------------
 ! The rotation domain's settings: every control it reads, installed by
 ! the star layer through set_rotation_settings at the start of every
-! run card (setup/rotation_settings_setup builds the record from the
+! run card (setup/rotation_settings_builder builds the record from the
 ! star's controls). Rotation reads no control directly
 ! (tools/check_boundaries.py); its state lives on star% and in
 ! rotation_scratch_lib.

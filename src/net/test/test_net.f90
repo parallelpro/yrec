@@ -71,7 +71,7 @@ program test_net
       use network_checks, only: write_network_table, network_table_errors, &
            inert_scale_count
       use thermal_neutrinos, only: sneut, azbar
-      use net_settings_setup, only: net_settings_from_star
+      use net_settings_builder, only: net_settings_from_star
       implicit none
 ! the test's star (star_info_lib declares no instance); static, as it
 ! is too large for the stack

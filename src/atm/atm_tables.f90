@@ -25,7 +25,7 @@ module atm_tables
 ! The tables atm_init reads, by path: the Kurucz or Castelli/Kurucz
 ! surface-pressure table (atm_choice 3 and 4, or 5) and the Allard
 ! tables (4). The star layer fills it from the controls
-! (atm_table_paths_from_star, setup/microphysics_settings.f90).
+! (atm_table_paths_from_star, setup/atm_settings_builder.f90).
       type :: atm_table_paths_t
          character(len=256) :: surface_pressure = '', allard = ''
       end type atm_table_paths_t

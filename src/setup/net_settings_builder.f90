@@ -1,11 +1,14 @@
 !----------------------------------------------------------------------
-! net_settings_setup
+! net_settings_builder
 !----------------------------------------------------------------------
 ! The network's settings record, built from the run's controls and rate
-! scales by the star layer; run_yrec installs it (net_lib's
-! set_net_settings, which checks it and the reaction table) at the start
-! of every Monte-Carlo run, after the run's rate factors are applied.
-module net_settings_setup
+! scales by the star layer (setup/README.md); settings_install's
+! install_monte_carlo_settings installs it (net_lib's set_net_settings,
+! which checks it and the reaction table) at the start of every
+! Monte-Carlo run, after begin_monte_carlo_run has applied the run's
+! rate factors:
+!     net_settings_from_star          net_settings_t
+module net_settings_builder
       use net_lib, only: net_settings_t
       implicit none
       private
@@ -50,4 +53,4 @@ pure function net_settings_from_star(s) result(settings)
       settings%use_itoh_neutrino_loss = s%physics%use_itoh_neutrino_loss
 end function net_settings_from_star
 
-end module net_settings_setup
+end module net_settings_builder

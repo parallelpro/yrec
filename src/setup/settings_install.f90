@@ -8,8 +8,8 @@
 ! set_convection_envelope_metals, eos_set_mixture,
 ! kap_update_surface_tables) is here, and tools/check_boundaries.py
 ! (INSTALL_FILES) keeps it so. Each procedure builds the records with
-! setup/'s builders (<domain>_settings_from_star) or takes the star's
-! surface mixture, and installs them, in a fixed order, one procedure
+! setup/'s builders (<x>_settings_from_star, in <x>_settings_builder) or
+! takes the star's surface mixture, and installs them, in a fixed order, one procedure
 ! (or, per surface mixture, three) per lifetime:
 !   install_run_settings              per run, after the controls read
 !                                     (run_setup's set_up_constants_and_tables):
@@ -60,9 +60,9 @@ subroutine install_run_settings(s, ierr)
       use kap_lib, only: kap_init
       use eos_lib, only: eos_init
       use atm_lib, only: atm_init
-      use microphysics_settings, only: kap_settings_from_star, kap_table_paths_from_star, &
-           eos_settings_from_star, eos_table_paths_from_star, atm_settings_from_star, &
-           atm_table_paths_from_star
+      use kap_settings_builder, only: kap_settings_from_star, kap_table_paths_from_star
+      use eos_settings_builder, only: eos_settings_from_star, eos_table_paths_from_star
+      use atm_settings_builder, only: atm_settings_from_star, atm_table_paths_from_star
       type(star_info), intent(in) :: s
       integer, intent(out) :: ierr
 
@@ -83,7 +83,7 @@ end subroutine install_run_settings
 !   star writes: none
 subroutine install_monte_carlo_settings(s, ierr)
       use net_lib, only: set_net_settings
-      use net_settings_setup, only: net_settings_from_star
+      use net_settings_builder, only: net_settings_from_star
       type(star_info), intent(in) :: s
       integer, intent(out) :: ierr
 
@@ -99,9 +99,9 @@ subroutine install_card_settings(s)
       use convection_lib, only: set_convection_settings
       use rotation_configuration, only: set_rotation_settings
       use element_diffusion_lib, only: set_diffusion_settings
-      use microphysics_settings, only: convection_settings_from_star, &
-           diffusion_settings_from_star
-      use rotation_settings_setup, only: rotation_settings_from_star
+      use convection_settings_builder, only: convection_settings_from_star
+      use diffusion_settings_builder, only: diffusion_settings_from_star
+      use rotation_settings_builder, only: rotation_settings_from_star
       type(star_info), intent(in) :: s
 
       call set_convection_settings(convection_settings_from_star(s))

@@ -230,7 +230,7 @@ docs/TARGET_ARCHITECTURE.md section 4.2.
    the star layer at the start of a run, of a Monte-Carlo run or of a
    run card, from builders in `setup/` (`net/`: `net_lib`'s
    `net_settings`, built by `net_settings_from_star` in
-   `setup/net_settings_setup.f90` and installed by `set_net_settings`,
+   `setup/net_settings_builder.f90` and installed by `set_net_settings`,
    which checks the reaction table first and returns `ierr`). They take the slot constants from the
    constants-only modules `composition_layout` (`i_h1`, ...),
    `neutrino_flux_layout` and `reaction_layout` (`r_*`), and do not use

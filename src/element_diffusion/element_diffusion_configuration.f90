@@ -3,7 +3,7 @@
 !----------------------------------------------------------------------
 ! Element diffusion's settings: every control it reads, installed by the
 ! star layer through set_diffusion_settings at the start of every run
-! card (setup/microphysics_settings builds the record from the star's
+! card (setup/diffusion_settings_builder builds the record from the star's
 ! controls and settling_z_factor_in_use). Element diffusion reads no
 ! control directly and never the
 ! star (tools/check_boundaries.py, STAR_FREE_DIRS).

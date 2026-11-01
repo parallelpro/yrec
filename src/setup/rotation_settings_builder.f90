@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! rotation_settings_setup
+! rotation_settings_builder
 !----------------------------------------------------------------------
 ! The rotation domain's settings record, built from the run's controls
 ! by the star layer; settings_install's install_card_settings installs
@@ -10,7 +10,7 @@
 ! force_solid_body_rotation imply solid_body_mode_flag = 1; a run without
 ! rotation keeps the controls as read and no wind law. log10 G is
 ! derived from G_cgs (log10_newton_g), as convection's.
-module rotation_settings_setup
+module rotation_settings_builder
       use rotation_configuration, only: rotation_settings_t
       use magnetic_braking, only: wind_law_inputs, wind_law_coefficients, derive_wind_law
       implicit none
@@ -58,7 +58,7 @@ contains
 !     physics%wind_law_name, physics%wind_saturation_omega,
 !     solar_luminosity_cgs, solar_mass_cgs, solar_radius_cgs
 !   star writes: none
-function rotation_settings_from_star(s) result(settings)
+pure function rotation_settings_from_star(s) result(settings)
       use star_info_lib, only: star_info
       use physical_constants, only: log10_newton_g
       use control_slots, only: ichi_dm_max, ichi_dl_max, ichi_dp_core_max
@@ -153,4 +153,4 @@ function rotation_settings_from_star(s) result(settings)
       settings%log10_gravitational_constant = log10_newton_g(s%physics%G_cgs)
 end function rotation_settings_from_star
 
-end module rotation_settings_setup
+end module rotation_settings_builder

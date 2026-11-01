@@ -3,7 +3,7 @@
 !----------------------------------------------------------------------
 ! The settings record of eos/: everything the equation of state needs
 ! from the run's configuration, installed by eos_init (from the star
-! layer's eos_settings_from_star, setup/microphysics_settings.f90)
+! layer's eos_settings_from_star, setup/eos_settings_builder.f90)
 ! or set_eos_settings; nothing else writes it. Its defaults are the
 ! controls' (defaults/controls_registry.tsv), so a star-free caller that
 ! sets only what it changes gets what a deck that leaves the controls
@@ -44,7 +44,7 @@ module eos_configuration
 ! SCV tables (use_scv_eos), the MHD tables (use_mhd_eos: the three
 ! ZAMS-type compositions and the five centre-type ones) and the OPAL
 ! table of the selected vintage. The star layer fills it from the
-! controls (eos_table_paths_from_star, setup/microphysics_settings.f90).
+! controls (eos_table_paths_from_star, setup/eos_settings_builder.f90).
       type, public :: eos_table_paths_t
          character(len=256) :: fermi = ''
          character(len=256) :: scv_h = '', scv_he = '', scv_z = ''

@@ -64,11 +64,11 @@ program test_structure
       use run_files, only: open_run_files
       use run_setup, only: set_up_constants_and_tables
       use net_lib, only: set_net_settings
-      use net_settings_setup, only: net_settings_from_star
+      use net_settings_builder, only: net_settings_from_star
       use convection_lib, only: set_convection_settings
-      use microphysics_settings, only: convection_settings_from_star
+      use convection_settings_builder, only: convection_settings_from_star
       use rotation_configuration, only: set_rotation_settings
-      use rotation_settings_setup, only: rotation_settings_from_star
+      use rotation_settings_builder, only: rotation_settings_from_star
       use starting_model, only: read_starting_model
       use star_info_lib, only: star_info, control_nml_override, physics_nml_override
       use shell_equations, only: henyey_shell_terms, shell_state, &

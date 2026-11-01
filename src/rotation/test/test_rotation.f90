@@ -36,7 +36,7 @@
 ! branch.
 program test_rotation
       use rotation_configuration, only: rotation_settings
-      use rotation_settings_setup, only: rotation_settings_from_star
+      use rotation_settings_builder, only: rotation_settings_from_star
       use omega_profile, only: omega_from_j
       use viscosity, only: viscos
       use moments_of_inertia, only: zone_moments_of_inertia

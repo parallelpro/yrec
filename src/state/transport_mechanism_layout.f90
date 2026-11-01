@@ -5,7 +5,7 @@
 ! its name; the slot whose velocity it corrects, if any (0 for none),
 ! which must be an earlier slot (the shear corrects the GSF velocity
 ! where both act); and its two controls, a velocity scale and a mixing
-! efficiency, which rotation_settings_setup copies into
+! efficiency, which rotation_settings_builder copies into
 ! rotation_settings%velocity_scale(i_mech_*) and %mixing_scale(i_mech_*)
 ! (test_rotation_kernels.py checks that both are registry controls and
 ! are copied so). Each mechanism has a velocity at every interface,

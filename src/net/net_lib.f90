@@ -28,7 +28,7 @@
 ! the internal modules.
 ! net/ reads no model state and no control record: its configuration is the
 ! net_settings record, built at the start of every run by the star
-! layer (net_settings_from_star, setup/net_settings_setup.f90) and
+! layer (net_settings_from_star, setup/net_settings_builder.f90) and
 ! installed with set_net_settings. How the pieces are
 ! called during a timestep: net/README.md.
 !----------------------------------------------------------------------

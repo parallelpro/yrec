@@ -32,7 +32,7 @@ contains
 ! set_net_settings: check the reaction table and install the run's
 ! settings (net_configuration's net_settings_t). The star layer calls it
 ! at the start of every Monte-Carlo run, with the record it builds from
-! the controls (setup/net_settings_setup). A wrong table
+! the controls (setup/net_settings_builder). A wrong table
 ! (network_table_errors) is reported row by row and slot by slot and
 ! returns ierr = 1, without installing. A
 ! reaction scale set to anything but 1 on a reaction whose rate law

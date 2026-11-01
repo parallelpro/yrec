@@ -2,7 +2,7 @@
 # Regenerate after adding/removing a module, a use statement, or
 # an include. CI runs the generator with --check.
 
-MODULE_SRCS := atm/atm_lib.f90 atm/atm_tables.f90 atm/t_tau_relations.f90 atm/tables/allard_atmosphere.f90 atm/tables/kurucz_atmosphere.f90 convection/convection_configuration.f90 convection/convection_lib.f90 convection/convection_zones.f90 convection/semiconvection.f90 convection/temperature_gradients.f90 core/diagnostics/neutrino_flux_output.f90 core/diagnostics/observables.f90 core/diagnostics/stitched_model.f90 core/diagnostics/turnover_timescale.f90 core/envelope/envelope_integrands.f90 core/envelope/envelope_integration.f90 core/envelope/envelope_integration_kernel.f90 core/envelope/envelope_rebuild.f90 core/envelope/envelope_refit.f90 core/model/model_rescaling.f90 core/model/regridding.f90 core/model/rezoning.f90 core/model/shell_boundaries.f90 core/model/starting_model.f90 core/run/calibration.f90 core/run/monte_carlo.f90 core/run/run_driver.f90 core/run/run_setup.f90 core/run/stop_conditions.f90 core/run/yrec_capi.f90 core/run/yrec_reset.f90 core/run/yrec_version.f90 core/step/burn_step.f90 core/step/composition_step.f90 core/step/convection_geometry.f90 core/step/mass_change.f90 core/step/mass_change_kernel.f90 core/step/shell_physics.f90 core/step/step_driver.f90 core/step/timestep_control.f90 core/structure/energy_sources.f90 core/structure/henyey_elimination.f90 core/structure/henyey_iteration.f90 core/structure/shell_equations.f90 core/structure/structure_equations.f90 core/structure/surface_boundary.f90 core/structure/triangle_fit.f90 core/test/test_structure.f90 element_diffusion/bahcall_loeb_units.f90 element_diffusion/diffusion_scheme.f90 element_diffusion/element_diffusion_configuration.f90 element_diffusion/element_diffusion_lib.f90 element_diffusion/element_diffusion_scratch.f90 element_diffusion/microdiff_coefficients.f90 element_diffusion/microdiff_driver.f90 element_diffusion/microdiff_mapping.f90 element_diffusion/microdiff_run.f90 element_diffusion/original_settling.f90 element_diffusion/settling_grid.f90 element_diffusion/species_table.f90 element_diffusion/thoul_solver.f90 eos/blended_eos.f90 eos/eos_configuration.f90 eos/eos_lib.f90 eos/eos_messages.f90 eos/eos_mixture.f90 eos/eos_results.f90 eos/mhd/mhd_eos.f90 eos/mhd_eos_tables.f90 eos/opal/opal95_eos.f90 eos/opal/opal_eos.f90 eos/opal_eos_tables.f90 eos/scv/scv_eos.f90 eos/scv_eos_tables.f90 eos/yale/yale_eos.f90 eos/yale_eos_tables.f90 io/controls_buffer.f90 io/controls_check.f90 io/controls_reader.f90 io/controls_sync.f90 io/derived_controls.f90 io/history_output.f90 io/io_units.f90 io/legacy_controls.f90 io/model_files.f90 io/output_columns.f90 io/output_files.f90 io/profile_output.f90 io/pulsation_output.f90 io/run_cards.f90 io/run_files.f90 io/run_log.f90 io/user_inputs.f90 io/yrec_output.f90 kap/alex06/alex06_opacity.f90 kap/alex94/alex94_opacity.f90 kap/conductive/conductive_opacity.f90 kap/kap_lib.f90 kap/kurucz90/kurucz_opacity.f90 kap/laol89/laol_opacity.f90 kap/opacity_tables.f90 kap/opal92/opal92_opacity.f90 kap/opal95/opal95_opacity.f90 math/math_lib.f90 net/light_elements.f90 net/net_configuration.f90 net/net_lib.f90 net/net_messages.f90 net/network.f90 net/network_checks.f90 net/nuclear_energy.f90 net/reaction_rates.f90 net/screening.f90 net/thermal_neutrinos.f90 numerics/bulirsch_stoer.f90 numerics/cubic_spline.f90 numerics/linear_solvers.f90 numerics/numerics_lib.f90 numerics/numerics_status.f90 numerics/quadratic_spline.f90 numerics/table_interpolation.f90 numerics/test/test_numerics.f90 rotation/am_regions.f90 rotation/evolve_rotation.f90 rotation/magnetic_braking.f90 rotation/mid_timestep_model.f90 rotation/omega_profile.f90 rotation/rotation_configuration.f90 rotation/rotation_messages.f90 rotation/rotation_scratch_lib.f90 rotation/seculr/am_grid.f90 rotation/seculr/am_transport_coefficients.f90 rotation/seculr/circulation.f90 rotation/seculr/equal_grid.f90 rotation/seculr/instability_velocities.f90 rotation/seculr/region_transport.f90 rotation/seculr/rotational_mixing.f90 rotation/seculr/secular_transport.f90 rotation/seculr/stability_coefficients.f90 rotation/seculr/transport_checks.f90 rotation/seculr/transport_mechanisms.f90 rotation/seculr/transport_regions.f90 rotation/shape/moments_of_inertia.f90 rotation/shape/rotating_shape.f90 rotation/shape/shell_quadrature.f90 rotation/viscosity.f90 setup/microphysics_settings.f90 setup/net_settings_setup.f90 setup/rotation_settings_setup.f90 setup/settings_install.f90 state/composition_layout.f90 state/control_slots.f90 state/envelope_points.f90 state/neutrino_flux_layout.f90 state/physical_constants.f90 state/reaction_layout.f90 state/star_info_lib.f90 state/stitched_model_state.f90 state/transport_mechanism_layout.f90
+MODULE_SRCS := atm/atm_lib.f90 atm/atm_tables.f90 atm/t_tau_relations.f90 atm/tables/allard_atmosphere.f90 atm/tables/kurucz_atmosphere.f90 convection/convection_configuration.f90 convection/convection_lib.f90 convection/convection_zones.f90 convection/semiconvection.f90 convection/temperature_gradients.f90 core/diagnostics/neutrino_flux_output.f90 core/diagnostics/observables.f90 core/diagnostics/stitched_model.f90 core/diagnostics/turnover_timescale.f90 core/envelope/envelope_integrands.f90 core/envelope/envelope_integration.f90 core/envelope/envelope_integration_kernel.f90 core/envelope/envelope_rebuild.f90 core/envelope/envelope_refit.f90 core/model/model_rescaling.f90 core/model/regridding.f90 core/model/rezoning.f90 core/model/shell_boundaries.f90 core/model/starting_model.f90 core/run/calibration.f90 core/run/monte_carlo.f90 core/run/run_driver.f90 core/run/run_setup.f90 core/run/stop_conditions.f90 core/run/yrec_capi.f90 core/run/yrec_reset.f90 core/run/yrec_version.f90 core/step/burn_step.f90 core/step/composition_step.f90 core/step/convection_geometry.f90 core/step/mass_change.f90 core/step/mass_change_kernel.f90 core/step/shell_physics.f90 core/step/step_driver.f90 core/step/timestep_control.f90 core/structure/energy_sources.f90 core/structure/henyey_elimination.f90 core/structure/henyey_iteration.f90 core/structure/shell_equations.f90 core/structure/structure_equations.f90 core/structure/surface_boundary.f90 core/structure/triangle_fit.f90 core/test/test_structure.f90 element_diffusion/bahcall_loeb_units.f90 element_diffusion/diffusion_scheme.f90 element_diffusion/element_diffusion_configuration.f90 element_diffusion/element_diffusion_lib.f90 element_diffusion/element_diffusion_scratch.f90 element_diffusion/microdiff_coefficients.f90 element_diffusion/microdiff_driver.f90 element_diffusion/microdiff_mapping.f90 element_diffusion/microdiff_run.f90 element_diffusion/original_settling.f90 element_diffusion/settling_grid.f90 element_diffusion/species_table.f90 element_diffusion/thoul_solver.f90 eos/blended_eos.f90 eos/eos_configuration.f90 eos/eos_lib.f90 eos/eos_messages.f90 eos/eos_mixture.f90 eos/eos_results.f90 eos/mhd/mhd_eos.f90 eos/mhd_eos_tables.f90 eos/opal/opal95_eos.f90 eos/opal/opal_eos.f90 eos/opal_eos_tables.f90 eos/scv/scv_eos.f90 eos/scv_eos_tables.f90 eos/yale/yale_eos.f90 eos/yale_eos_tables.f90 io/controls_buffer.f90 io/controls_check.f90 io/controls_reader.f90 io/controls_sync.f90 io/derived_controls.f90 io/history_output.f90 io/io_units.f90 io/legacy_controls.f90 io/model_files.f90 io/output_columns.f90 io/output_files.f90 io/profile_output.f90 io/pulsation_output.f90 io/run_cards.f90 io/run_files.f90 io/run_log.f90 io/user_inputs.f90 io/yrec_output.f90 kap/alex06/alex06_opacity.f90 kap/alex94/alex94_opacity.f90 kap/conductive/conductive_opacity.f90 kap/kap_lib.f90 kap/kurucz90/kurucz_opacity.f90 kap/laol89/laol_opacity.f90 kap/opacity_tables.f90 kap/opal92/opal92_opacity.f90 kap/opal95/opal95_opacity.f90 math/math_lib.f90 net/light_elements.f90 net/net_configuration.f90 net/net_lib.f90 net/net_messages.f90 net/network.f90 net/network_checks.f90 net/nuclear_energy.f90 net/reaction_rates.f90 net/screening.f90 net/thermal_neutrinos.f90 numerics/bulirsch_stoer.f90 numerics/cubic_spline.f90 numerics/linear_solvers.f90 numerics/numerics_lib.f90 numerics/numerics_status.f90 numerics/quadratic_spline.f90 numerics/table_interpolation.f90 numerics/test/test_numerics.f90 rotation/am_regions.f90 rotation/evolve_rotation.f90 rotation/magnetic_braking.f90 rotation/mid_timestep_model.f90 rotation/omega_profile.f90 rotation/rotation_configuration.f90 rotation/rotation_messages.f90 rotation/rotation_scratch_lib.f90 rotation/seculr/am_grid.f90 rotation/seculr/am_transport_coefficients.f90 rotation/seculr/circulation.f90 rotation/seculr/equal_grid.f90 rotation/seculr/instability_velocities.f90 rotation/seculr/region_transport.f90 rotation/seculr/rotational_mixing.f90 rotation/seculr/secular_transport.f90 rotation/seculr/stability_coefficients.f90 rotation/seculr/transport_checks.f90 rotation/seculr/transport_mechanisms.f90 rotation/seculr/transport_regions.f90 rotation/shape/moments_of_inertia.f90 rotation/shape/rotating_shape.f90 rotation/shape/shell_quadrature.f90 rotation/viscosity.f90 setup/atm_settings_builder.f90 setup/convection_settings_builder.f90 setup/diffusion_settings_builder.f90 setup/eos_settings_builder.f90 setup/kap_settings_builder.f90 setup/net_settings_builder.f90 setup/rotation_settings_builder.f90 setup/settings_install.f90 state/composition_layout.f90 state/control_slots.f90 state/envelope_points.f90 state/neutrino_flux_layout.f90 state/physical_constants.f90 state/reaction_layout.f90 state/star_info_lib.f90 state/stitched_model_state.f90 state/transport_mechanism_layout.f90
 
 # each .mod file is produced by compiling its definer; the empty
 # recipe lets make order and compare against the .mod timestamp
@@ -21,6 +21,8 @@ am_regions.mod: rotation/am_regions.o
 am_transport_coefficients.mod: rotation/seculr/am_transport_coefficients.o
 	@true
 atm_lib.mod: atm/atm_lib.o
+	@true
+atm_settings_builder.mod: setup/atm_settings_builder.o
 	@true
 atm_tables.mod: atm/atm_tables.o
 	@true
@@ -58,6 +60,8 @@ convection_geometry.mod: core/step/convection_geometry.o
 	@true
 convection_lib.mod: convection/convection_lib.o
 	@true
+convection_settings_builder.mod: setup/convection_settings_builder.o
+	@true
 convection_zones.mod: convection/convection_zones.o
 	@true
 cubic_spline.mod: numerics/cubic_spline.o
@@ -65,6 +69,8 @@ cubic_spline.mod: numerics/cubic_spline.o
 derived_controls.mod: io/derived_controls.o
 	@true
 diffusion_scheme.mod: element_diffusion/diffusion_scheme.o
+	@true
+diffusion_settings_builder.mod: setup/diffusion_settings_builder.o
 	@true
 element_diffusion_configuration.mod: element_diffusion/element_diffusion_configuration.o
 	@true
@@ -96,6 +102,8 @@ eos_mixture.mod: eos/eos_mixture.o
 	@true
 eos_results.mod: eos/eos_results.o
 	@true
+eos_settings_builder.mod: setup/eos_settings_builder.o
+	@true
 equal_grid.mod: rotation/seculr/equal_grid.o
 	@true
 evolve_rotation.mod: rotation/evolve_rotation.o
@@ -111,6 +119,8 @@ instability_velocities.mod: rotation/seculr/instability_velocities.o
 io_units.mod: io/io_units.o
 	@true
 kap_lib.mod: kap/kap_lib.o
+	@true
+kap_settings_builder.mod: setup/kap_settings_builder.o
 	@true
 kurucz_atmosphere.mod: atm/tables/kurucz_atmosphere.o
 	@true
@@ -144,8 +154,6 @@ microdiff_mapping.mod: element_diffusion/microdiff_mapping.o
 	@true
 microdiff_run.mod: element_diffusion/microdiff_run.o
 	@true
-microphysics_settings.mod: setup/microphysics_settings.o
-	@true
 mid_timestep_model.mod: rotation/mid_timestep_model.o
 	@true
 model_files.mod: io/model_files.o
@@ -162,7 +170,7 @@ net_lib.mod: net/net_lib.o
 	@true
 net_messages.mod: net/net_messages.o
 	@true
-net_settings_setup.mod: setup/net_settings_setup.o
+net_settings_builder.mod: setup/net_settings_builder.o
 	@true
 network.mod: net/network.o
 	@true
@@ -226,7 +234,7 @@ rotation_messages.mod: rotation/rotation_messages.o
 	@true
 rotation_scratch_lib.mod: rotation/rotation_scratch_lib.o
 	@true
-rotation_settings_setup.mod: setup/rotation_settings_setup.o
+rotation_settings_builder.mod: setup/rotation_settings_builder.o
 	@true
 rotational_mixing.mod: rotation/seculr/rotational_mixing.o
 	@true
@@ -379,7 +387,7 @@ core/structure/surface_boundary.o: atm_lib.mod envelope_integration.mod io_units
 core/test/test_mass_change.o: composition_layout.mod mass_change_kernel.mod
 core/test/test_reentry.o: run_driver.mod star_info_lib.mod
 core/test/test_regrid.o: math_lib.mod numerics_lib.mod physical_constants.mod regridding.mod
-core/test/test_structure.o: controls_reader.mod convection_lib.mod energy_sources.mod eos_lib.mod microphysics_settings.mod net_lib.mod net_settings_setup.mod rotation_configuration.mod rotation_settings_setup.mod run_files.mod run_setup.mod shell_equations.mod star_info_lib.mod starting_model.mod
+core/test/test_structure.o: controls_reader.mod convection_lib.mod convection_settings_builder.mod energy_sources.mod eos_lib.mod net_lib.mod net_settings_builder.mod rotation_configuration.mod rotation_settings_builder.mod run_files.mod run_setup.mod shell_equations.mod star_info_lib.mod starting_model.mod
 core/test/test_triangle_fit.o: triangle_fit.mod
 element_diffusion/bahcall_loeb_units.o: element_diffusion_scratch.mod physical_constants.mod
 element_diffusion/diffusion_scheme.o: composition_layout.mod element_diffusion_configuration.mod element_diffusion_scratch.mod physical_constants.mod
@@ -392,7 +400,7 @@ element_diffusion/microdiff_run.o: composition_layout.mod diffusion_scheme.mod e
 element_diffusion/original_settling.o: bahcall_loeb_units.mod composition_layout.mod diffusion_scheme.mod element_diffusion_configuration.mod element_diffusion_scratch.mod io_units.mod math_lib.mod numerics_lib.mod physical_constants.mod run_log.mod settling_grid.mod species_table.mod thoul_solver.mod
 element_diffusion/settling_grid.o: composition_layout.mod element_diffusion_configuration.mod element_diffusion_scratch.mod numerics_lib.mod
 element_diffusion/species_table.o: composition_layout.mod physical_constants.mod
-element_diffusion/test/test_element_diffusion.o: element_diffusion_lib.mod io_units.mod microphysics_settings.mod star_info_lib.mod
+element_diffusion/test/test_element_diffusion.o: diffusion_settings_builder.mod element_diffusion_lib.mod io_units.mod star_info_lib.mod
 element_diffusion/thoul_solver.o: numerics_lib.mod
 eos/blended_eos.o: eos_configuration.mod eos_messages.mod eos_mixture.mod eos_results.mod math_lib.mod opal_eos.mod opal_eos_tables.mod physical_constants.mod scv_eos.mod yale_eos.mod yale_eos_tables.mod
 eos/eos_configuration.o: mhd_eos_tables.mod
@@ -445,7 +453,7 @@ net/network_checks.o: net_configuration.mod net_messages.mod network.mod reactio
 net/nuclear_energy.o: composition_layout.mod light_elements.mod math_lib.mod net_configuration.mod network.mod neutrino_flux_layout.mod physical_constants.mod reaction_layout.mod reaction_rates.mod thermal_neutrinos.mod
 net/reaction_rates.o: math_lib.mod net_configuration.mod physical_constants.mod reaction_layout.mod screening.mod
 net/screening.o: math_lib.mod net_configuration.mod physical_constants.mod
-net/test/test_net.o: controls_buffer.mod io_units.mod net_configuration.mod net_lib.mod net_settings_setup.mod network.mod network_checks.mod reaction_layout.mod reaction_rates.mod run_setup.mod screening.mod star_info_lib.mod thermal_neutrinos.mod user_inputs.mod
+net/test/test_net.o: controls_buffer.mod io_units.mod net_configuration.mod net_lib.mod net_settings_builder.mod network.mod network_checks.mod reaction_layout.mod reaction_rates.mod run_setup.mod screening.mod star_info_lib.mod thermal_neutrinos.mod user_inputs.mod
 net/thermal_neutrinos.o: math_lib.mod
 numerics/bulirsch_stoer.o: numerics_status.mod
 numerics/cubic_spline.o: numerics_status.mod
@@ -476,13 +484,17 @@ rotation/seculr/transport_mechanisms.o: composition_layout.mod instability_veloc
 rotation/shape/moments_of_inertia.o: composition_layout.mod math_lib.mod physical_constants.mod rotation_configuration.mod
 rotation/shape/rotating_shape.o: composition_layout.mod math_lib.mod numerics_lib.mod physical_constants.mod rotation_configuration.mod rotation_messages.mod rotation_scratch_lib.mod shell_quadrature.mod
 rotation/shape/shell_quadrature.o: composition_layout.mod math_lib.mod physical_constants.mod rotation_configuration.mod
-rotation/test/test_rotation.o: am_grid.mod am_transport_coefficients.mod circulation.mod magnetic_braking.mod moments_of_inertia.mod omega_profile.mod rotating_shape.mod rotation_configuration.mod rotation_scratch_lib.mod rotation_settings_setup.mod rotational_mixing.mod shell_quadrature.mod stability_coefficients.mod star_info_lib.mod viscosity.mod
+rotation/test/test_rotation.o: am_grid.mod am_transport_coefficients.mod circulation.mod magnetic_braking.mod moments_of_inertia.mod omega_profile.mod rotating_shape.mod rotation_configuration.mod rotation_scratch_lib.mod rotation_settings_builder.mod rotational_mixing.mod shell_quadrature.mod stability_coefficients.mod star_info_lib.mod viscosity.mod
 rotation/test/test_rotation_kernels.o: am_grid.mod am_transport_coefficients.mod circulation.mod composition_layout.mod equal_grid.mod instability_velocities.mod magnetic_braking.mod moments_of_inertia.mod numerics_lib.mod omega_profile.mod physical_constants.mod region_transport.mod rotating_shape.mod rotation_configuration.mod rotation_scratch_lib.mod rotational_mixing.mod stability_coefficients.mod star_info_lib.mod transport_checks.mod transport_mechanism_layout.mod transport_mechanisms.mod transport_regions.mod
 rotation/viscosity.o: composition_layout.mod math_lib.mod physical_constants.mod
-setup/microphysics_settings.o: atm_lib.mod convection_lib.mod element_diffusion_lib.mod eos_lib.mod kap_lib.mod physical_constants.mod star_info_lib.mod
-setup/net_settings_setup.o: net_lib.mod star_info_lib.mod
-setup/rotation_settings_setup.o: control_slots.mod magnetic_braking.mod physical_constants.mod rotation_configuration.mod star_info_lib.mod transport_mechanism_layout.mod
-setup/settings_install.o: atm_lib.mod convection_lib.mod element_diffusion_lib.mod eos_lib.mod kap_lib.mod microphysics_settings.mod net_lib.mod net_settings_setup.mod rotation_configuration.mod rotation_settings_setup.mod star_info_lib.mod
+setup/atm_settings_builder.o: atm_lib.mod star_info_lib.mod
+setup/convection_settings_builder.o: convection_lib.mod physical_constants.mod star_info_lib.mod
+setup/diffusion_settings_builder.o: element_diffusion_lib.mod star_info_lib.mod
+setup/eos_settings_builder.o: eos_lib.mod star_info_lib.mod
+setup/kap_settings_builder.o: kap_lib.mod star_info_lib.mod
+setup/net_settings_builder.o: net_lib.mod star_info_lib.mod
+setup/rotation_settings_builder.o: control_slots.mod magnetic_braking.mod physical_constants.mod rotation_configuration.mod star_info_lib.mod transport_mechanism_layout.mod
+setup/settings_install.o: atm_lib.mod atm_settings_builder.mod convection_lib.mod convection_settings_builder.mod diffusion_settings_builder.mod element_diffusion_lib.mod eos_lib.mod eos_settings_builder.mod kap_lib.mod kap_settings_builder.mod net_lib.mod net_settings_builder.mod rotation_configuration.mod rotation_settings_builder.mod star_info_lib.mod
 state/envelope_points.o: composition_layout.mod
 state/physical_constants.o: math_lib.mod
 state/star_info_lib.o: composition_layout.mod control_slots.mod envelope_points.mod neutrino_flux_layout.mod reaction_layout.mod stitched_model_state.mod transport_mechanism_layout.mod

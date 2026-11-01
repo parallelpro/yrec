@@ -5,7 +5,7 @@
 ! calls the net/ physics and stores the results in star. The physics
 ! itself lives in net/ (net_lib): the composition rate vector, the
 ! energy generation, the implicit burn and the light elements. net/'s
-! settings are built in setup/net_settings_setup.
+! settings are built in setup/net_settings_builder.
 ! Here:
 !   surface_accretion_now the step's surface accretion, for the
 !                         deuterium burn
