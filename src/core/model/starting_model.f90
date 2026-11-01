@@ -39,8 +39,10 @@ contains
 ! Called with model_failed_flag set (a step failed to converge), it
 ! only stops the run with ierr = 1.
 !
-! Arguments: timestep_yr, delta_time (s), delta_time_abs = |delta_time|
-! and triangle_orientation come from the model file; envelope_recomputed_flag
+! Arguments: timestep_yr, delta_time (s) and delta_time_abs = |delta_time|
+! come from the model file; triangle_orientation is set to 1 after every
+! read (reset_state_after_read), as the F77 STARIN set FTRI = 1, whatever
+! orientation the file's envelope records give; envelope_recomputed_flag
 ! is set when the envelope must be recomputed; total_angular_momentum
 ! and total_rotational_ke return the rotating model's totals.
 !
