@@ -64,7 +64,6 @@ program test_kap
       star%control%use_alex06_tables = .false.
       star%control%use_alex95_tables = .false.
       star%control%use_kurucz90_tables = .false.
-      star%use_two_z_tables = .false.
       star%control%use_pure_z_table = .false.
       star%physics%use_conductive_opacity = .false.
       star%control%opal95_single_table_z = 0.016232d0

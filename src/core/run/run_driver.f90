@@ -45,13 +45,12 @@ contains
 !     card_initial_z, card_log_fit_point_mass_fraction,
 !     card_mixing_length_alpha, card_moves_fit_point, card_num_models,
 !     control%calibrate_solar_model, control%calibrate_star_flag,
-!     control%set_initial_model_number, control%use_z_ramp,
-!     convective_flag, first_mc_run, last_mc_run,
-!     log10_solar_luminosity, log10_solar_radius, log_L_lsun, log_Teff,
-!     logP, logR, logRho, logT, luminosity_breakdown_lsun,
-!     luminosity_lsun, m, num_cards, nz, omega,
-!     physics%compute_neutrino_fluxes, physics%diffuse_helium_active,
-!     physics%helium_flash_active, physics%use_diffusion_z,
+!     control%set_initial_model_number, convective_flag, first_mc_run,
+!     last_mc_run, log10_solar_luminosity, log10_solar_radius,
+!     log_L_lsun, log_Teff, logP, logR, logRho, logT,
+!     luminosity_breakdown_lsun, luminosity_lsun, m, num_cards, nz,
+!     omega, physics%compute_neutrino_fluxes,
+!     physics%diffuse_helium_active, physics%helium_flash_active,
 !     solar_calibration_converged, star_found_flag, star_mass, xa
 !   star writes: atm_choice_in_use, convective_turnover_timescale,
 !     core_cz_top_index, current_card, current_card_envelope_x,
@@ -66,7 +65,7 @@ contains
 !     requested_log_fit_point_mass_fraction, reset_triangle,
 !     settling_active, stored_vertex_index, structure_dt_limits_active,
 !     termination_reason, timestep_yr, total_angular_momentum,
-!     total_rotational_ke, triangle_orientation, use_two_z_tables
+!     total_rotational_ke, triangle_orientation
 subroutine run_yrec(ierr)
       use timestep_control, only: compute_timestep
       use yrec_version, only: set_version_strings
@@ -149,10 +148,6 @@ subroutine run_yrec(ierr)
       if (ierr /= 0) return
       call output_open(s, output, ierr)
       if (ierr /= 0) return
-! A second opacity-table set at a different Z is needed under the Z
-! ramp or with Z diffusion; the kap table loaders read this flag from
-! kap_init (called in prepare_run) on.
-      s%use_two_z_tables = s%control%use_z_ramp .or. s%physics%use_diffusion_z
       call prepare_run(s, ierr)
       if (ierr /= 0) return
 ! Warn (on the terminal and in the run log) about control combinations

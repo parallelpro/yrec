@@ -134,7 +134,6 @@ program test_net
       star%control%use_alex06_tables = .false.
       star%control%use_alex95_tables = .false.
       star%control%use_kurucz90_tables = .false.
-      star%use_two_z_tables = .false.
       star%control%use_pure_z_table = .false.
       star%physics%use_conductive_opacity = .false.
       star%atm_choice_in_use = 0

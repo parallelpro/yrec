@@ -186,7 +186,7 @@ module star_info_lib
 ! ==== Constants set at setup ===========================================
 ! Values fixed for the whole run by the controls read, the controls'
 ! derivation or the setup before the first card: the solar units, the
-! nuclear rate scales, a few envelope, atmosphere and opacity settings.
+! nuclear rate scales, an envelope and an atmosphere setting.
 ! Valid: after read_controls and prepare_run; each Monte-Carlo run
 ! rescales the solar luminosity and the first rate scales
 ! (begin_monte_carlo_run).
@@ -236,9 +236,6 @@ module star_info_lib
 ! controls_reader. The run may change atm_choice_in_use (see
 ! use_ttau_relation); this keeps the original.
             integer :: atm_choice_initial
-! load a second opacity-table set at another Z (the Z ramp or Z
-! diffusion) [logical]; run_driver
-            logical :: use_two_z_tables = .false.
 
 ! ==== Monte-Carlo runs =================================================
 ! The Monte-Carlo runs of one run_yrec call: their range (first_mc_run

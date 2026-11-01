@@ -30,7 +30,10 @@ module microphysics_settings
 contains
 
 !----------------------------------------------------------------------
-! kap_settings_from_star: kap's settings from the controls.
+! kap_settings_from_star: kap's settings from the controls. One field is
+! derived: use_two_z_tables, a second table set at another Z, which the
+! Z ramp (control%use_z_ramp) or Z diffusion (physics%use_diffusion_z)
+! needs.
 !   star reads: control%alex_table_z1, control%kurucz_table_z1,
 !     control%kurucz_table_z2, control%laol_table_z1,
 !     control%laol_table_z2, control%opal95_single_table_z,
@@ -38,11 +41,12 @@ contains
 !     control%use_alex06_tables, control%use_alex95_tables,
 !     control%use_kurucz90_tables, control%use_laol89_tables,
 !     control%use_opal92_tables, control%use_opal95_tables,
-!     control%use_pure_z_table, physics%laol_extrapolation_tolerance,
+!     control%use_pure_z_table, control%use_z_ramp,
+!     physics%laol_extrapolation_tolerance,
 !     physics%metal_fraction_match_tolerance,
 !     physics%molecular_opacity_logt_max,
 !     physics%molecular_opacity_logt_min,
-!     physics%use_conductive_opacity, use_two_z_tables
+!     physics%use_conductive_opacity, physics%use_diffusion_z
 !   star writes: none
 function kap_settings_from_star(s) result(settings)
       use star_info_lib, only: star_info
@@ -57,7 +61,7 @@ function kap_settings_from_star(s) result(settings)
       settings%use_alex95_tables = s%control%use_alex95_tables
       settings%use_kurucz90_tables = s%control%use_kurucz90_tables
       settings%use_conductive_opacity = s%physics%use_conductive_opacity
-      settings%use_two_z_tables = s%use_two_z_tables
+      settings%use_two_z_tables = s%control%use_z_ramp .or. s%physics%use_diffusion_z
       settings%opal95_single_table_z = s%control%opal95_single_table_z
       settings%opal_table_z1 = s%control%opal_table_z1
       settings%opal_table_z2 = s%control%opal_table_z2
@@ -154,16 +158,19 @@ function eos_table_paths_from_star(s) result(paths)
 end function eos_table_paths_from_star
 
 !----------------------------------------------------------------------
-! atm_settings_from_star: atm's settings from the controls.
-!   star reads: atm_choice_in_use, physics%allard_target_alpha,
-!     physics%allard_target_feh, physics%allard_use_tau100
+! atm_settings_from_star: atm's settings from the controls; atm_choice
+! is the deck's (physics%atm_choice), which selects the tables atm_init
+! loads, not the run's working choice atm_choice_in_use, which the
+! surface boundary switches.
+!   star reads: physics%allard_target_alpha, physics%allard_target_feh,
+!     physics%allard_use_tau100, physics%atm_choice
 !   star writes: none
 function atm_settings_from_star(s) result(settings)
       use star_info_lib, only: star_info
       type(star_info), intent(in) :: s
       type(atm_settings_t) :: settings
 
-      settings%atm_choice = s%atm_choice_in_use
+      settings%atm_choice = s%physics%atm_choice
       settings%allard_use_tau100 = s%physics%allard_use_tau100
       settings%allard_target_feh = s%physics%allard_target_feh
       settings%allard_target_alpha = s%physics%allard_target_alpha
