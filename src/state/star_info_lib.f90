@@ -14,7 +14,8 @@
 ! configuration from the settings records setup/ builds.
 !
 ! The members of star_info are grouped by lifetime, longest-lived first:
-! per run (the controls, the constants set at setup, the run plan), per run card
+! per run (the controls, the constants set at setup), per Monte-Carlo run
+! (the Monte-Carlo runs, the run plan), per run card
 ! (bookkeeping), per model (the model, its rotation state and regions),
 ! per step (control, the start-of-step snapshot, working state), per
 ! Newton iteration (the solve, the diagnostics written during it), then
@@ -120,28 +121,38 @@ module star_info_lib
       end type physics_group_controls
 
 ! The Monte-Carlo samples (star%mc_samples), one entry per Monte-Carlo
-! run, read from the sample file by monte_carlo's setup_monte_carlo_runs
-! and read by apply_monte_carlo_parameters and the Monte-Carlo summary:
-! run data, not controls.
+! run: the columns of the sample file (control%dynamics_file, two lines
+! per run), which monte_carlo's setup_monte_carlo_runs reads and
+! begin_monte_carlo_run applies. Run data, not controls. Each field has
+! a comment in the members' form (below), and tools/gen_star_docs.py
+! lists the fields under mc_samples in state/README.md.
       type, public :: monte_carlo_samples
-! the S-factor scale of p + p [-]
-            double precision :: s11_rate(max_mc_runs) = 0.0d0
-! the S-factor scale of 3He + 3He [-]
-            double precision :: s33_rate(max_mc_runs) = 0.0d0
-! the S-factor scale of 3He + 4He [-]
-            double precision :: s34_rate(max_mc_runs) = 0.0d0
-! the S-factor scale of 7Be + p [-]
-            double precision :: s17_rate(max_mc_runs) = 0.0d0
-! Z/X [-]
+! the factor on the p + p S-factor (legacy S11) [-]; monte_carlo. The
+! run's cross_section_scale(r_pp) is it times the ratio of the Bahcall &
+! Pinsonneault (1996) S0 to the code's reference S0.
+            double precision :: s11_factor(max_mc_runs) = 0.0d0
+! the factor on the 3He + 3He S-factor (legacy S33) [-]; monte_carlo. As
+! s11_factor, for cross_section_scale(r_he3he3).
+            double precision :: s33_factor(max_mc_runs) = 0.0d0
+! the factor on the 3He + 4He S-factor (legacy S34) [-]; monte_carlo. As
+! s11_factor, for cross_section_scale(r_he3he4).
+            double precision :: s34_factor(max_mc_runs) = 0.0d0
+! the factor on the 7Be + p S-factor (legacy S17) [-]; monte_carlo. As
+! s11_factor, for extra_cross_section_scale(xs_be7p).
+            double precision :: s17_factor(max_mc_runs) = 0.0d0
+! the sampled surface Z/X (legacy ZX) [-]; monte_carlo. Only written to
+! the Monte-Carlo summary.
             double precision :: metal_to_h_ratio(max_mc_runs) = 0.0d0
-! the helium (diffusion) parameter [-]
-            double precision :: helium_fraction_param(max_mc_runs) = 0.0d0
-! a copy of helium_fraction_param, the run's settling_z_factor_in_use [-]
-            double precision :: diffusion_factor(max_mc_runs) = 0.0d0
-! the solar-luminosity factor [-]
-            double precision :: luminosity_target(max_mc_runs) = 0.0d0
-! the age factor [-]
-            double precision :: age_target(max_mc_runs) = 0.0d0
+! the metal settling factor (legacy FHE and its copy FZDIF) [-];
+! monte_carlo. The run's settling_z_factor_in_use, element diffusion's
+! fgrz; helium's factor keeps physics%settling_y_factor.
+            double precision :: settling_z_factor(max_mc_runs) = 0.0d0
+! the factor on the reference solar luminosity, 3.844e33 erg/s [-];
+! monte_carlo. The run's solar_luminosity_cgs.
+            double precision :: luminosity_factor(max_mc_runs) = 0.0d0
+! the factor on the solar age [-]; monte_carlo. The run's age scale: the
+! solar calibration's stop ages and fixed timesteps.
+            double precision :: age_factor(max_mc_runs) = 0.0d0
       end type monte_carlo_samples
 
       type, public :: star_info
@@ -170,8 +181,9 @@ module star_info_lib
 ! Values fixed for the whole run by the controls read, the controls'
 ! derivation or the setup before the first card: the solar units, the
 ! nuclear rate scales, a few atmosphere and opacity settings.
-! Valid: after read_controls and prepare_run; a Monte-Carlo run rescales
-! the solar luminosity and the first rate scales.
+! Valid: after read_controls and prepare_run; each Monte-Carlo run
+! rescales the solar luminosity and the first rate scales
+! (begin_monte_carlo_run).
 
 ! Lsun, a copy of physics%solar_luminosity_cgs (legacy clsun) [erg/s];
 ! run_setup, monte_carlo. A Monte-Carlo run scales it.
@@ -220,18 +232,37 @@ module star_info_lib
 ! load a second opacity-table set at another Z (the Z ramp or Z
 ! diffusion) [logical]; run_driver
             logical :: use_two_z_tables = .false.
+
+! ==== Monte-Carlo runs =================================================
+! The Monte-Carlo runs of one run_yrec call: their range (first_mc_run
+! to last_mc_run; the single run 1 without Monte Carlo), the samples read
+! from the sample file, one entry per run (mc_samples), and the values a
+! run takes from its sample (settling_z_factor_in_use). Each run starts
+! with monte_carlo's begin_monte_carlo_run, the per-run hook (the first
+! call in run_yrec's Monte-Carlo loop): a value the run changes per
+! Monte-Carlo run is set there, from the run's sample. The solar
+! luminosity and the first rate scales, which each run also sets from its
+! sample, are constants of the class above.
+! Valid: the range and the samples from prepare_run on; a run's values
+! from its begin_monte_carlo_run to its end.
+
 ! the first Monte-Carlo run of the process [-]; controls_sync,
-! monte_carlo. From physics%mc_run_start; setup_monte_carlo_runs makes it 1
+! monte_carlo. From physics%mc_run_start; set_monte_carlo_range makes it 1
 ! without Monte Carlo.
             integer :: first_mc_run
-! the last Monte-Carlo run of the process [-]; controls_sync, monte_carlo.
-! From physics%mc_run_end; setup_monte_carlo_runs clamps it to max_mc_runs,
-! or makes it 1 without Monte Carlo.
+! the last Monte-Carlo run of the process [-]; controls_sync,
+! monte_carlo. From physics%mc_run_end; set_monte_carlo_range clamps it to
+! max_mc_runs, or makes it 1 without Monte Carlo.
             integer :: last_mc_run
-! the metal settling multiplier the run uses [-]; controls_sync,
-! monte_carlo. From physics%settling_z_factor; each Monte-Carlo run sets it
-! to its sample's diffusion_factor (apply_monte_carlo_parameters).
+! the metal settling factor this Monte-Carlo run uses [-]; controls_sync,
+! monte_carlo. From physics%settling_z_factor; with Monte Carlo,
+! begin_monte_carlo_run sets it to the run's mc_samples%settling_z_factor.
             double precision :: settling_z_factor_in_use
+! the Monte-Carlo samples, one entry per run, from the sample file [-];
+! monte_carlo. Read by begin_monte_carlo_run and the Monte-Carlo summary;
+! its fields are listed below it. One module alone uses it, and it stays
+! here, with the runs it samples (gen_star_docs.py's ONE_MODULE_EXEMPT).
+            type(monte_carlo_samples) :: mc_samples
 
 ! ==== Run plan =========================================================
 ! The run cards, one entry per card (max_runs): each card's kind, its
@@ -1192,10 +1223,6 @@ module star_info_lib
 ! outer boundary-condition rows from the envelope fit, in henyey_solve's
 ! form [-]; henyey_iteration
             double precision :: surface_bc(6)
-! the Monte-Carlo samples, one entry per Monte-Carlo run, from the sample
-! file [-]; monte_carlo. Read by apply_monte_carlo_parameters and the
-! Monte-Carlo summary.
-            type(monte_carlo_samples) :: mc_samples
       end type star_info
 
 ! Module-level (deliberately outside the star, which run_yrec builds
@@ -1238,7 +1265,8 @@ end module star_info_lib
 !   /entrop/    dlog_temperature_dt, dlog_pressure_dt, dln_luminosity_dt,
 !               dlog_radius_dt
 !   /liov/      envelope_overshoot_depth_start, envelope_overshoot_depth_end
-!   /monte2/    mc_samples%s11_rate ... mc_samples%age_target
+!   /monte2/    mc_samples%s11_factor ... mc_samples%age_factor (S11 ...
+!               FHE, FZDIF the copy of FHE, gone; ALUM and AGE)
 !   /newrat/, /oldrat/  rate_li6, rate_li7, rate_be9 and their _start
 !               copies
 !   /oldrot/    omega_start, j_rot_start, mean_gravity_start (HG),

@@ -34,16 +34,26 @@ dropped, string literals blanked, any type-spec before `function`, the
 star argument s, the declared intents). Tests (*/test/) and retired code
 are not scanned.
 
-Fails, writing nothing, when a member has no comment in that form, names
-a writer that does not write it, or is never written or never read
-outside the tests; when the first column of README section 4's table
-(the members removed) names a live member; or when a member breaks a
-class rule:
+A record member whose type star_info_lib declares with its fields
+(not an include: the two controls records are documented in the
+registry), as mc_samples (monte_carlo_samples), has its fields
+documented the same way, a comment of that form above each field, and
+the README lists them under the record's row, written <member>%<field>,
+with their writers and readers from the code (s%mc_samples%<field>; a
+field passed whole to an intent(out) or intent(inout) dummy counts as
+written, anything else as read).
+
+Fails, writing nothing, when a member or a documented record's field
+has no comment in that form, names a writer that does not write it, or
+is never written or never read outside the tests; when the first column
+of README section 4's table (the members removed) names a live member;
+or when a member breaks a class rule:
 - an earlier value, named <member>_start, <member>_prev or
   <member>_iteration_start, is in the Step snapshot class, and that
   class holds nothing else;
 - any other member that one module alone writes and reads is in the
-  class "Private to one module", and that class holds nothing else.
+  class "Private to one module" (unless ONE_MODULE_EXEMPT lists it, with
+  the reason), and that class holds nothing else.
 
 usage: gen_star_docs.py              rewrite state/README.md's generated parts
        gen_star_docs.py --check      exit 1 if they are stale
@@ -133,6 +143,55 @@ def parse_star_info(path):
     return classes, members, errors
 
 
+def parse_record_fields(path):
+    """({record type: [field, ...]}, errors) for the types star_info_lib
+    declares with their fields (not star_info, not an include), each
+    field parsed as a member is"""
+    lines = path.read_text().splitlines()
+    records, errors = {}, []
+    k = 0
+    while k < len(lines):
+        m = re.match(r"\s*type, public :: (\w+)\s*$", lines[k])
+        if not m or m.group(1) == "star_info":
+            k += 1
+            continue
+        name, fields, comment = m.group(1), [], []
+        k += 1
+        while not re.match(r"\s*end type\b", lines[k]):
+            s = lines[k].strip()
+            k += 1
+            if s.lower().startswith("include"):
+                fields = None
+            if fields is None:
+                continue
+            if not s:
+                comment = []
+            elif s.startswith("!"):
+                comment.append(s[1:].strip())
+            else:
+                d = MEMBER_DECL_RE.match(s)
+                if not d:
+                    errors.append(f"star_info_lib.f90:{k}: not a one-line field declaration: {s}")
+                    continue
+                decl = d.group(3)
+                doc = " ".join(comment)
+                md = DOC_RE.match(doc)
+                f = dict(name=re.match(r"\w+", decl).group(0), shape=re.sub(r"\s*=.*$", "", decl).strip(),
+                         record=None, meaning=doc, unit="", writers=[], notes="")
+                if md:
+                    f.update(meaning=md.group("meaning").strip(), unit=md.group("unit").strip(),
+                             writers=[w.strip() for w in md.group("writers").split(",")],
+                             notes=(md.group("notes") or "").strip())
+                else:
+                    errors.append(f"{name}%{f['name']}: its comment must read "
+                                  f"'<meaning> [<unit>]; <writers>. <notes>' (found {doc!r})")
+                fields.append(f)
+                comment = []
+        if fields is not None:
+            records[name] = fields
+    return records, errors
+
+
 # the class rules
 SNAPSHOT_CLASS = "Step snapshot"
 PRIVATE_CLASS = "Private to one module"
@@ -140,6 +199,13 @@ SNAPSHOT_NAME_RE = re.compile(r"_(start|prev|iteration_start)$", re.I)
 # members named like earlier values that are not (none since the
 # 2026-10-29 renames; a name listed here is exempt from the rule)
 NAME_RULE_PENDING = set()
+# members one module alone uses that stay in their lifetime class, with
+# the reason (the private class is for state a module carries between
+# its calls)
+ONE_MODULE_EXEMPT = {
+    "mc_samples": "the Monte-Carlo runs' input, read once from the sample file and applied per run "
+                  "by monte_carlo; it belongs with the runs it samples (class Monte-Carlo runs)",
+}
 
 
 def class_rule_errors(members, writers, readers):
@@ -154,7 +220,8 @@ def class_rule_errors(members, writers, readers):
         elif e["cls"] == SNAPSHOT_CLASS and not snapshot:
             out.append(f"{e['name']}: the class '{SNAPSHOT_CLASS}' holds earlier values only "
                        f"(<member>_start, _prev, _iteration_start)")
-        elif not snapshot and len(mods) == 1 and e["cls"] != PRIVATE_CLASS:
+        elif not snapshot and len(mods) == 1 and e["cls"] != PRIVATE_CLASS \
+                and key not in ONE_MODULE_EXEMPT:
             out.append(f"{e['name']}: only {mods[0]} uses it, so it belongs in the class "
                        f"'{PRIVATE_CLASS}' (or is a local of {mods[0]}), not '{e['cls']}'")
         elif e["cls"] == PRIVATE_CLASS and len(mods) > 1:
@@ -348,9 +415,42 @@ def analyse(procs, order):
                         changed = True
 
 
-def star_access():
+def field_access(procs, order, member, writers, readers):
+    """add the writers and readers of the fields of the record member
+    (s%<member>%<field>) to writers and readers, keyed <member>%<field>:
+    a field passed whole to an intent(out) or intent(inout) dummy is
+    written, anything else read"""
+    pat = r"star%" + member + r"%(\w+)"
+
+    def note(p, written, read):
+        for n in written:
+            writers[f"{member}%{n}"][p["module"]].add(p["name"])
+        for n in read:
+            readers[f"{member}%{n}"].add(p["module"])
+
+    for p in order:
+        for stmt in p["stmts"]:
+            mc = csc.CALL_RE.search(stmt)
+            if not mc:
+                note(p, *classify(stmt, pat))
+                continue
+            note(p, set(), classify(stmt[:mc.start()], pat)[1])
+            q = resolve(procs, p, mc.group(1).lower())
+            for i, a in enumerate(csc.split_args(mc.group(2))):
+                kw = re.match(r"^(\w+)\s*=\s*(.*)$", a)
+                dummy = kw.group(1).lower() if kw else (q["dummies"][i] if q and i < len(q["dummies"]) else None)
+                a = kw.group(2) if kw else a
+                m0 = re.match(r"^" + pat + WHOLE_REF, a, re.I)
+                if m0 and q is not None and q["intents"].get(dummy) in ("out", "inout"):
+                    note(p, {m0.group(1).lower()}, set())
+                else:
+                    note(p, set(), classify(a, pat)[1])
+
+
+def star_access(records=()):
     """writers[member] = {module: {procedures}}, readers[member] =
-    {modules}, and each module's file"""
+    {modules}, and each module's file; with the fields of the record
+    members named in records too, as <member>%<field>"""
     files = sorted(f for f in SRC.rglob("*.f90")
                    if "/test/" not in f.as_posix() and "/retired/" not in f.as_posix())
     procs, order = scan(files)
@@ -364,6 +464,8 @@ def star_access():
             writers[n][p["module"]].add(p["name"])
         for n in p["s_r"]:
             readers[n].add(p["module"])
+    for member in records:
+        field_access(procs, order, member.lower(), writers, readers)
     return writers, readers, where
 
 
@@ -433,9 +535,12 @@ def render(classes, members, writers, readers, where):
                         f"| {len(c['members'])} | {markdown(c['what'], names)} | "
                         f"{markdown(sentence(c['valid']), names)} |")
     n_rec = sum(1 for e in members if e["record"])
+    with_fields = [e for e in members if e.get("fields")]
     cls_rows.append("")
     cls_rows.append(f"{len(members)} members in all, {n_rec} of them records "
-                    f"(the controls among them).")
+                    f"(the controls among them)"
+                    + "".join(f"; the {len(e['fields'])} fields of `{e['name']}` are listed under it"
+                              for e in with_fields) + ".")
     tables = []
     for i, c in enumerate(classes, 1):
         tables += [f"### {anchor(i, c['name'])}", "",
@@ -447,6 +552,11 @@ def render(classes, members, writers, readers, where):
             tables.append(f"| {shape} | {markdown(e['meaning'], names)} | {escape(e['unit'])} | "
                           f"{written_by(writers[key], where)} | {read_by(readers[key], where)} | "
                           f"{markdown(e['notes'], names)} |")
+            for f in e.get("fields") or []:
+                fkey = f"{key}%{f['name'].lower()}"
+                tables.append(f"| `{e['name']}%{f['shape']}` | {markdown(f['meaning'], names)} | "
+                              f"{escape(f['unit'])} | {written_by(writers[fkey], where)} | "
+                              f"{read_by(readers[fkey], where)} | {markdown(f['notes'], names)} |")
         tables.append("")
     return "\n".join(cls_rows) + "\n", "\n".join(tables)
 
@@ -524,18 +634,25 @@ def main():
     if "--self-test" in sys.argv[1:]:
         sys.exit(1 if self_test() else 0)
     classes, members, errors = parse_star_info(LIB)
-    writers, readers, where = star_access()
+    records, record_errors = parse_record_fields(LIB)
+    errors += record_errors
     for e in members:
-        key = e["name"].lower()
+        if e["record"] in records:
+            e["fields"] = records[e["record"]]
+    writers, readers, where = star_access([e["name"] for e in members if e.get("fields")])
+    documented = [(e["name"], e) for e in members]
+    documented += [(f"{e['name']}%{f['name']}", f) for e in members for f in e.get("fields") or []]
+    for label, e in documented:
+        key = label.lower()
         procs = {p for ps in writers[key].values() for p in ps}
         for w in e["writers"]:
             if w.lower() not in writers[key] and w.lower() not in procs:
-                errors.append(f"{e['name']}: its comment names {w} as a writer; the code's writers are "
+                errors.append(f"{label}: its comment names {w} as a writer; the code's writers are "
                               f"{', '.join(sorted(writers[key])) or 'none'}")
         if not writers[key]:
-            errors.append(f"{e['name']}: nothing outside the tests writes it")
+            errors.append(f"{label}: nothing outside the tests writes it")
         if not readers[key]:
-            errors.append(f"{e['name']}: nothing outside the tests reads it")
+            errors.append(f"{label}: nothing outside the tests reads it")
     errors += class_rule_errors(members, writers, readers)
     text = README.read_text()
     live = {e["name"].lower() for e in members}

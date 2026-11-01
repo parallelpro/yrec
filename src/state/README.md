@@ -33,21 +33,22 @@ The rest of this README describes the members of `star_info`: what each one is, 
 | Class | Members | What it is | When its value is valid |
 |---|---|---|---|
 | [Controls](#31-controls) | 2 | The deck's controls, in the records of the inlist's two namelist groups (control, physics), read by `read_controls` at the start of every `run_yrec` call. Their members are documented in `src/defaults/controls_registry.md` and the `*.defaults` files, not here. A control the run changes has a working copy, a star member of its lifetime class below (the registry's `run_copy` column), which the read arms from it; the control keeps the deck's value. | From the controls read on; never changed after it. |
-| [Constants set at setup](#32-constants-set-at-setup) | 20 | Values fixed for the whole run by the controls read, the controls' derivation or the setup before the first card: the solar units, the nuclear rate scales, a few atmosphere and opacity settings. | After `read_controls` and `prepare_run`; a Monte-Carlo run rescales the solar luminosity and the first rate scales. |
-| [Run plan](#33-run-plan) | 20 | The run cards, one entry per card (`max_runs`): each card's kind, its number of models, its composition, mixing length and fitting-point mass, its rescale targets and Z ramp, its stops and its fixed timestep. They are the run's working copies of their controls: the controls read arms them (`controls_sync`'s `arm_run_copies`, after `interpret_kind_cards` has derived the kinds, the rescale targets and the stop flags); the calibrations rewrite them at every Monte-Carlo run (`setup_solar_calibration` and `setup_star_calibration` lay out their cycles) and after every cycle (the next cycle's guesses); and `init_stop_conditions` disarms the stops a card's starting model has already passed. The controls keep the deck's values. | From the controls read on; a card's entries once the calibration has written them, before the card starts. |
-| [Run and card bookkeeping](#34-run-and-card-bookkeeping) | 32 | Per-run and per-card state: the current card, its composition, mixing length, mass and fitting-point request, the atmosphere and the latches the run switches, the core extension, the surface mixture of the first card, the solar and star calibration loops, the reason the run ended. The members armed from a control (each names it) are the run's working copies of controls it changes; the controls keep the deck's values. | From the card (or run) that sets them. |
-| [Model](#35-model) | 29 | The converged model: the mesh, the structure, the composition, the global scalars, and the envelope fit that is its outer boundary condition. Persists from step to step; the core of it is written to the .mod file (`io/model_files.f90`; "in .mod" below). Point 1 is the innermost point, point `nz` the fitting point. | Between steps, and inside a step for the model being solved; the Newton corrections overwrite the structure in place, so during a step it holds the current iterate. |
-| [Rotation state](#36-rotation-state) | 12 | The rotation curve and the shape of the rotating star. The specific angular momentum `j_rot` is conserved; `omega`, the moments of inertia and the shape factors follow from it and the structure. | Between steps. Meaningful only with `physics%rotation_active`; without rotation the shape factors are 1. |
-| [Regions of the current model](#37-regions-of-the-current-model) | 9 | Point indices and bounds of the convective core, the surface convection zone, the hydrogen-burning shell and the mixed regions. | For the model they were located on; located again at each stage that needs them (the composition step, the rezone, after convergence). |
-| [Step control](#38-step-control) | 9 | The timestep and the flags that steer one step's solve. | During and between steps. |
-| [Step snapshot](#39-step-snapshot) | 37 | Copies of model quantities at the start of the step (&lt;member&gt;_start), of the previous model (&lt;member&gt;_prev) or of the structure-rotation iteration (&lt;member&gt;_iteration_start), on the step's mesh. The rezone interpolates the old model onto the new mesh into the `*_start` arrays and then copies them into the live arrays, so after the rezone they hold the start-of-step model on the new mesh; without a rezone (`physics%helium_flash_active`) `rezone_or_snapshot` copies the structure into the `*_start` arrays itself. | From the start-of-step copy to the end of the step. |
-| [Step working state](#310-step-working-state) | 26 | Values one stage computes for a later stage of the same or the next step: rates of change, burning rates, the depth of the surface mixed region, the turnover time, the shell physics that rotation uses, the outer layers of the latest envelope integration, the last rotation sub-step's `omega`. A few are printed too (the history prints the turnover time and the photospheric pressure). | From the stage that writes them; each member says which. |
-| [Newton](#311-newton) | 7 | Arrays of the Henyey solve, rewritten on every iteration. | During the solve; `log_pressure_delta` and `log_temperature_delta`, the changes over the step, until the next step's solve starts. |
-| [Diagnostics written during the solve](#312-diagnostics-written-during-the-solve) | 22 | Per-zone physics stored for output by `compute_henyey_coefficients` at every shell on every Newton iteration (energy channels, EOS and opacity values, gradients, pulsation derivatives). Rule 5 of the six (diagnostics written once, after convergence) is the planned replacement. | After convergence they hold the last iteration's values, the structure that iteration linearized, before its correction when one was applied. Some are also rewritten by `compute_shell_physics`; the last writer wins. |
-| [Diagnostics written after convergence](#313-diagnostics-written-after-convergence) | 34 | Observables computed once per model by `compute_observables` (after the stitched model is built), and the rotational transport's coefficients and velocities kept for the profiles. | From `compute_observables` (or the rotation step) until the next model; zero at a run start. |
-| [Private to one module](#314-private-to-one-module) | 15 | Values kept on the star for one module alone, which writes and reads them: the state it carries between its calls (the calibrations' previous checks, models and corrections, the central EOS call's Saha iteration counter, the Newton solve's boundary rows and convergence log, the surface-mixing search's starting zone). `tools/gen_star_docs.py` places every member that one module alone uses here, and nothing else. | Only inside that module; each member says when. |
+| [Constants set at setup](#32-constants-set-at-setup) | 17 | Values fixed for the whole run by the controls read, the controls' derivation or the setup before the first card: the solar units, the nuclear rate scales, a few atmosphere and opacity settings. | After `read_controls` and `prepare_run`; each Monte-Carlo run rescales the solar luminosity and the first rate scales (`begin_monte_carlo_run`). |
+| [Monte-Carlo runs](#33-monte-carlo-runs) | 4 | The Monte-Carlo runs of one `run_yrec` call: their range (`first_mc_run` to `last_mc_run`; the single run 1 without Monte Carlo), the samples read from the sample file, one entry per run (`mc_samples`), and the values a run takes from its sample (`settling_z_factor_in_use`). Each run starts with `monte_carlo`'s `begin_monte_carlo_run`, the per-run hook (the first call in `run_yrec`'s Monte-Carlo loop): a value the run changes per Monte-Carlo run is set there, from the run's sample. The solar luminosity and the first rate scales, which each run also sets from its sample, are constants of the class above. | The range and the samples from `prepare_run` on; a run's values from its `begin_monte_carlo_run` to its end. |
+| [Run plan](#34-run-plan) | 20 | The run cards, one entry per card (`max_runs`): each card's kind, its number of models, its composition, mixing length and fitting-point mass, its rescale targets and Z ramp, its stops and its fixed timestep. They are the run's working copies of their controls: the controls read arms them (`controls_sync`'s `arm_run_copies`, after `interpret_kind_cards` has derived the kinds, the rescale targets and the stop flags); the calibrations rewrite them at every Monte-Carlo run (`setup_solar_calibration` and `setup_star_calibration` lay out their cycles) and after every cycle (the next cycle's guesses); and `init_stop_conditions` disarms the stops a card's starting model has already passed. The controls keep the deck's values. | From the controls read on; a card's entries once the calibration has written them, before the card starts. |
+| [Run and card bookkeeping](#35-run-and-card-bookkeeping) | 32 | Per-run and per-card state: the current card, its composition, mixing length, mass and fitting-point request, the atmosphere and the latches the run switches, the core extension, the surface mixture of the first card, the solar and star calibration loops, the reason the run ended. The members armed from a control (each names it) are the run's working copies of controls it changes; the controls keep the deck's values. | From the card (or run) that sets them. |
+| [Model](#36-model) | 29 | The converged model: the mesh, the structure, the composition, the global scalars, and the envelope fit that is its outer boundary condition. Persists from step to step; the core of it is written to the .mod file (`io/model_files.f90`; "in .mod" below). Point 1 is the innermost point, point `nz` the fitting point. | Between steps, and inside a step for the model being solved; the Newton corrections overwrite the structure in place, so during a step it holds the current iterate. |
+| [Rotation state](#37-rotation-state) | 12 | The rotation curve and the shape of the rotating star. The specific angular momentum `j_rot` is conserved; `omega`, the moments of inertia and the shape factors follow from it and the structure. | Between steps. Meaningful only with `physics%rotation_active`; without rotation the shape factors are 1. |
+| [Regions of the current model](#38-regions-of-the-current-model) | 9 | Point indices and bounds of the convective core, the surface convection zone, the hydrogen-burning shell and the mixed regions. | For the model they were located on; located again at each stage that needs them (the composition step, the rezone, after convergence). |
+| [Step control](#39-step-control) | 9 | The timestep and the flags that steer one step's solve. | During and between steps. |
+| [Step snapshot](#310-step-snapshot) | 37 | Copies of model quantities at the start of the step (&lt;member&gt;_start), of the previous model (&lt;member&gt;_prev) or of the structure-rotation iteration (&lt;member&gt;_iteration_start), on the step's mesh. The rezone interpolates the old model onto the new mesh into the `*_start` arrays and then copies them into the live arrays, so after the rezone they hold the start-of-step model on the new mesh; without a rezone (`physics%helium_flash_active`) `rezone_or_snapshot` copies the structure into the `*_start` arrays itself. | From the start-of-step copy to the end of the step. |
+| [Step working state](#311-step-working-state) | 26 | Values one stage computes for a later stage of the same or the next step: rates of change, burning rates, the depth of the surface mixed region, the turnover time, the shell physics that rotation uses, the outer layers of the latest envelope integration, the last rotation sub-step's `omega`. A few are printed too (the history prints the turnover time and the photospheric pressure). | From the stage that writes them; each member says which. |
+| [Newton](#312-newton) | 7 | Arrays of the Henyey solve, rewritten on every iteration. | During the solve; `log_pressure_delta` and `log_temperature_delta`, the changes over the step, until the next step's solve starts. |
+| [Diagnostics written during the solve](#313-diagnostics-written-during-the-solve) | 22 | Per-zone physics stored for output by `compute_henyey_coefficients` at every shell on every Newton iteration (energy channels, EOS and opacity values, gradients, pulsation derivatives). Rule 5 of the six (diagnostics written once, after convergence) is the planned replacement. | After convergence they hold the last iteration's values, the structure that iteration linearized, before its correction when one was applied. Some are also rewritten by `compute_shell_physics`; the last writer wins. |
+| [Diagnostics written after convergence](#314-diagnostics-written-after-convergence) | 34 | Observables computed once per model by `compute_observables` (after the stitched model is built), and the rotational transport's coefficients and velocities kept for the profiles. | From `compute_observables` (or the rotation step) until the next model; zero at a run start. |
+| [Private to one module](#315-private-to-one-module) | 14 | Values kept on the star for one module alone, which writes and reads them: the state it carries between its calls (the calibrations' previous checks, models and corrections, the central EOS call's Saha iteration counter, the Newton solve's boundary rows and convergence log, the surface-mixing search's starting zone). `tools/gen_star_docs.py` places every member that one module alone uses here, and nothing else. | Only inside that module; each member says when. |
 
-274 members in all, 7 of them records (the controls among them).
+274 members in all, 7 of them records (the controls among them); the 8 fields of `mc_samples` are listed under it.
 <!-- END GENERATED classes -->
 
 ## 3. The members
@@ -59,6 +60,7 @@ How to read the tables:
 - **read by** names the modules where the value of `s%member` is used: in an expression, a subscript or a loop bound, or passed to a dummy argument that the callee reads. Passing it to an `intent(out)` dummy, or to an `intent(inout)` one that the callee never reads, is not a read. With more than seven modules the count is given by directory.
 - Module names are the names in the files' `module` statements, which are the file names (`core/step/step_driver.f90` holds `step_driver`). Tests (`*/test/`) and `retired/` code are not counted.
 - **meaning**, **unit** and **notes** are the members' comments in `star_info_lib.f90`. "In .mod" marks what the `.mod` model file (`io/model_files.f90`) holds.
+- A record whose fields `star_info_lib.f90` declares with comments of the same form (`monte_carlo_samples`; the two controls records are documented in the registry instead) has its fields listed under its row, as `mc_samples%<field>`, with their writers and readers from the code: a field passed whole to an `intent(out)` or `intent(inout)` dummy is written, any other use read.
 - The tables are generated by `python3 tools/gen_star_docs.py` (in `src/`); `test_generated_files.py` runs it with `--check`, which fails when the tables are stale, when a member has no comment in the form above, names a writer that does not write it, or is never written or never read outside the tests. To check one row by hand, `grep -rn '%member\b' src --include='*.f90'`.
 
 <!-- BEGIN GENERATED members: tools/gen_star_docs.py from state/star_info_lib.f90 -->
@@ -90,11 +92,25 @@ How to read the tables:
 | `envelope_store_log_temperature` | log T at which an envelope integration stores its state for the surface boundary (`stored_envelope_state`): the mean of `physics%rezone_env_logt0` and `physics%rezone_env_logt1` | log10 K | `derived_controls` (derive_controls) | `envelope_integration` |  |
 | `atm_choice_initial` | `atm_choice` as read from the deck | - | `controls_reader` (adopt_canonical_names) | `surface_boundary` | The run may change `atm_choice_in_use` (see `use_ttau_relation`); this keeps the original |
 | `use_two_z_tables` | load a second opacity-table set at another Z (the Z ramp or Z diffusion) | logical | `run_driver` (run_yrec) | `microphysics_settings` |  |
-| `first_mc_run` | the first Monte-Carlo run of the process | - | `monte_carlo` (setup_monte_carlo_runs); `controls_sync` (arm_run_copies) | `run_driver` | From `physics%mc_run_start`; `setup_monte_carlo_runs` makes it 1 without Monte Carlo |
-| `last_mc_run` | the last Monte-Carlo run of the process | - | `monte_carlo` (setup_monte_carlo_runs); `controls_sync` (arm_run_copies) | `monte_carlo`, `run_driver` | From `physics%mc_run_end`; `setup_monte_carlo_runs` clamps it to `max_mc_runs`, or makes it 1 without Monte Carlo |
-| `settling_z_factor_in_use` | the metal settling multiplier the run uses | - | `monte_carlo` (apply_monte_carlo_parameters); `controls_sync` (arm_run_copies) | `microphysics_settings` | From `physics%settling_z_factor`; each Monte-Carlo run sets it to its sample's `diffusion_factor` (`apply_monte_carlo_parameters`) |
 
-### 3.3 Run plan
+### 3.3 Monte-Carlo runs
+
+| member | meaning | unit | written by | read by | notes |
+|---|---|---|---|---|---|
+| `first_mc_run` | the first Monte-Carlo run of the process | - | `monte_carlo` (set_monte_carlo_range); `controls_sync` (arm_run_copies) | `run_driver` | From `physics%mc_run_start`; `set_monte_carlo_range` makes it 1 without Monte Carlo |
+| `last_mc_run` | the last Monte-Carlo run of the process | - | `monte_carlo` (set_monte_carlo_range); `controls_sync` (arm_run_copies) | `monte_carlo`, `run_driver` | From `physics%mc_run_end`; `set_monte_carlo_range` clamps it to `max_mc_runs`, or makes it 1 without Monte Carlo |
+| `settling_z_factor_in_use` | the metal settling factor this Monte-Carlo run uses | - | `monte_carlo` (apply_monte_carlo_parameters); `controls_sync` (arm_run_copies) | `microphysics_settings` | From `physics%settling_z_factor`; with Monte Carlo, `begin_monte_carlo_run` sets it to the run's `mc_samples%settling_z_factor` |
+| `mc_samples` (type `monte_carlo_samples`) | the Monte-Carlo samples, one entry per run, from the sample file | - | `monte_carlo` (setup_monte_carlo_runs) | `monte_carlo` | Read by `begin_monte_carlo_run` and the Monte-Carlo summary; its fields are listed below it. One module alone uses it, and it stays here, with the runs it samples (`gen_star_docs.py`'s `ONE_MODULE_EXEMPT`) |
+| `mc_samples%s11_factor(max_mc_runs)` | the factor on the p + p S-factor (legacy S11) | - | `monte_carlo` (setup_monte_carlo_runs) | `monte_carlo` | The run's `cross_section_scale(r_pp)` is it times the ratio of the Bahcall & Pinsonneault (1996) S0 to the code's reference S0 |
+| `mc_samples%s33_factor(max_mc_runs)` | the factor on the 3He + 3He S-factor (legacy S33) | - | `monte_carlo` (setup_monte_carlo_runs) | `monte_carlo` | As `s11_factor`, for `cross_section_scale(r_he3he3)` |
+| `mc_samples%s34_factor(max_mc_runs)` | the factor on the 3He + 4He S-factor (legacy S34) | - | `monte_carlo` (setup_monte_carlo_runs) | `monte_carlo` | As `s11_factor`, for `cross_section_scale(r_he3he4)` |
+| `mc_samples%s17_factor(max_mc_runs)` | the factor on the 7Be + p S-factor (legacy S17) | - | `monte_carlo` (setup_monte_carlo_runs) | `monte_carlo` | As `s11_factor`, for `extra_cross_section_scale(xs_be7p)` |
+| `mc_samples%metal_to_h_ratio(max_mc_runs)` | the sampled surface Z/X (legacy ZX) | - | `monte_carlo` (setup_monte_carlo_runs) | `monte_carlo` | Only written to the Monte-Carlo summary |
+| `mc_samples%settling_z_factor(max_mc_runs)` | the metal settling factor (legacy FHE and its copy FZDIF) | - | `monte_carlo` (setup_monte_carlo_runs) | `monte_carlo` | The run's `settling_z_factor_in_use`, element diffusion's fgrz; helium's factor keeps `physics%settling_y_factor` |
+| `mc_samples%luminosity_factor(max_mc_runs)` | the factor on the reference solar luminosity, 3.844e33 erg/s | - | `monte_carlo` (setup_monte_carlo_runs) | `monte_carlo` | The run's `solar_luminosity_cgs` |
+| `mc_samples%age_factor(max_mc_runs)` | the factor on the solar age | - | `monte_carlo` (setup_monte_carlo_runs) | `monte_carlo` | The run's age scale: the solar calibration's stop ages and fixed timesteps |
+
+### 3.4 Run plan
 
 | member | meaning | unit | written by | read by | notes |
 |---|---|---|---|---|---|
@@ -119,7 +135,7 @@ How to read the tables:
 | `card_fixed_timestep_yr(max_runs)` | each card's fixed timestep | yr | `calibration` (setup_solar_calibration, setup_star_calibration); `controls_sync` (arm_run_copies) | `calibration`, `timestep_control` | From `control%timestep_override`; the solar calibration scales its cycles' by the Monte-Carlo age factor |
 | `card_fixed_timestep_active(max_runs)` | the card takes the fixed timestep `card_fixed_timestep_yr` | logical | `calibration` (setup_solar_calibration, setup_star_calibration); `controls_sync` (arm_run_copies) | `calibration`, `timestep_control` | From `control%timestep_override_active` (`interpret_kind_cards`) |
 
-### 3.4 Run and card bookkeeping
+### 3.5 Run and card bookkeeping
 
 | member | meaning | unit | written by | read by | notes |
 |---|---|---|---|---|---|
@@ -156,7 +172,7 @@ How to read the tables:
 | `star_found_flag` | the star calibration found a track through the target L and R, so the final age-stopped run is armed | logical | `calibration` (check_star_calibration, setup_star_calibration) | `run_driver`, `stop_conditions` |  |
 | `just_passed_target_radius_flag` | this model has just crossed the star calibration's target radius | logical | `calibration` (check_star_calibration, setup_star_calibration) | `stop_conditions` |  |
 
-### 3.5 Model
+### 3.6 Model
 
 | member | meaning | unit | written by | read by | notes |
 |---|---|---|---|---|---|
@@ -190,7 +206,7 @@ How to read the tables:
 | `stored_vertex_index` | which triangle vertex stored `stored_envelope_state` (0: none) | - | `run_driver` (begin_kind_card); `step_driver` (reload_model_if_diverged, solve_level) | `step_driver` |  |
 | `triangle_orientation` | orientation (+1 or -1) of the envelope-fit triangle | - | `run_driver` (begin_kind_card); `step_driver` (reload_model_if_diverged, solve_level) | `step_driver` |  |
 
-### 3.6 Rotation state
+### 3.7 Rotation state
 
 | member | meaning | unit | written by | read by | notes |
 |---|---|---|---|---|---|
@@ -207,7 +223,7 @@ How to read the tables:
 | `total_angular_momentum` | total angular momentum J of the star | g cm^2/s | `run_driver` (begin_kind_card); `step_driver` (evolve_step, reload_model_if_diverged, rezone_or_snapshot); `evolve_rotation` (total_rotation_state) | `run_driver`, `step_driver`, `history_output`, `evolve_rotation` | Zeroed at each card start, then totalled by the model read and every rezone |
 | `total_rotational_ke` | total rotational kinetic energy | erg | `run_driver` (begin_kind_card); `step_driver` (evolve_step, reload_model_if_diverged, rezone_or_snapshot); `evolve_rotation` (total_rotation_state) | `run_driver`, `step_driver`, `history_output`, `evolve_rotation` |  |
 
-### 3.7 Regions of the current model
+### 3.8 Regions of the current model
 
 | member | meaning | unit | written by | read by | notes |
 |---|---|---|---|---|---|
@@ -221,7 +237,7 @@ How to read the tables:
 | `h_shell_mid_index` | first point where X exceeds half its surface value | - | `run_driver` (begin_kind_card); `step_driver` (evolve_step) | `observables`, `run_driver`, `step_driver` | Valid when `has_h_shell` |
 | `h_shell_top_index` | last point of the H-burning shell | - | `run_driver` (begin_kind_card); `step_driver` (evolve_step) | `observables` | Valid when `has_h_shell` |
 
-### 3.8 Step control
+### 3.9 Step control
 
 | member | meaning | unit | written by | read by | notes |
 |---|---|---|---|---|---|
@@ -235,7 +251,7 @@ How to read the tables:
 | `recompute_envelope_triangle` | build a new envelope-fit triangle at the next solve | logical | `run_driver` (begin_kind_card); `mass_change` (update_masses); `step_driver` (evolve_step, reload_model_if_diverged, solve_level, solve_structure) | `step_driver` | Set by a model read, the mass change, the envelope rebuild or `physics%new_triangle_init_flag`; cleared by `compute_surface_boundary` |
 | `reset_triangle` | the rezone moved the outer point: redo the triangle at level 2 | logical | `run_driver` (begin_kind_card); `step_driver` (rezone_or_snapshot, solve_level) | `step_driver` |  |
 
-### 3.9 Step snapshot
+### 3.10 Step snapshot
 
 | member | meaning | unit | written by | read by | notes |
 |---|---|---|---|---|---|
@@ -277,7 +293,7 @@ How to read the tables:
 | `xa_iteration_start(n_species_extended,json)` | `xa_start` at the start of the structure-rotation iteration | - | `step_driver` (converge_with_rotation) | `step_driver` |  |
 | `envelope_cz_bottom_index_start` | base point of the surface convection zone as the deuterium-burning cap uses it (`nz`: none) | - | `run_driver` (begin_kind_card); `mass_change` (measure_convective_envelope); `step_driver` (rezone_or_snapshot) | `burn_step`, `structure_equations` | A copy of `envelope_cz_bottom_index` taken at the card start and each rezone |
 
-### 3.10 Step working state
+### 3.11 Step working state
 
 | member | meaning | unit | written by | read by | notes |
 |---|---|---|---|---|---|
@@ -308,7 +324,7 @@ How to read the tables:
 | `atm_points` (type `atmosphere_structure_state`) | the atmosphere of the latest envelope integration, point by point | cgs, logs base 10 | `envelope_integration` (run_kernel) | `stitched_model` |  |
 | `atm_point` (type `atmosphere_point_state`) | the atmosphere integration's current point: log tau, log P, log T, log rho, the opacity, the ionization fractions | logs base 10 | `envelope_integration` (run_kernel); `mass_change` (find_accreted_surface_state) | `envelope_integration`, `mass_change` | The mass change falls back on its last values when the Allard lookup fails |
 
-### 3.11 Newton
+### 3.12 Newton
 
 | member | meaning | unit | written by | read by | notes |
 |---|---|---|---|---|---|
@@ -320,7 +336,7 @@ How to read the tables:
 | `newton_iterations` | Newton iterations of the step's solve, counted over its levels up to the last convergence, for the run-log model line | - | `henyey_iteration` (accept_small_residuals, set_henyey_correction_factor) | `run_log` |  |
 | `newton_correction_factor` | the Newton iteration's correction factor (the corrections are applied times it) | - | `step_driver` (solve_structure); `henyey_iteration` (set_henyey_correction_factor); `controls_sync` (arm_run_copies) | `henyey_iteration` | From `physics%solver_underrelax_factor` (no input; 0 until the first step); `solve_structure` starts it at \|`physics%solver_underrelax_start`\| - `physics%solver_underrelax_increment` each step, and `henyey_iterate` raises it by the increment per iteration, up to 1, when the start is positive |
 
-### 3.12 Diagnostics written during the solve
+### 3.13 Diagnostics written during the solve
 
 | member | meaning | unit | written by | read by | notes |
 |---|---|---|---|---|---|
@@ -347,7 +363,7 @@ How to read the tables:
 | `pulse_dlnrho_dlnt(json)` | d ln rho/d ln T at constant P | - | `structure_equations` (store_pulse_derivatives) | `stitched_model` |  |
 | `pulse_electron_mean_weight_inverse(json)` | 1/`mu_e` | - | `structure_equations` (store_pulse_derivatives) | `stitched_model` |  |
 
-### 3.13 Diagnostics written after convergence
+### 3.14 Diagnostics written after convergence
 
 | member | meaning | unit | written by | read by | notes |
 |---|---|---|---|---|---|
@@ -386,7 +402,7 @@ How to read the tables:
 | `cl37_snu_rate` | chlorine (37Cl) detector capture rate | SNU | `observables` (compute_snu_rates) | `observables`, `monte_carlo`, `history_output` | 0 without `physics%calc_neutrinos` |
 | `ga71_snu_rate` | gallium (71Ga) detector capture rate | SNU | `observables` (compute_snu_rates) | `observables`, `monte_carlo`, `history_output` | 0 without `physics%calc_neutrinos` |
 
-### 3.14 Private to one module
+### 3.15 Private to one module
 
 | member | meaning | unit | written by | read by | notes |
 |---|---|---|---|---|---|
@@ -404,7 +420,6 @@ How to read the tables:
 | `central_saha_state` | the central EOS call's Saha iteration counter | - | `observables` (compute_central_conditions) | `observables` | `eos_get` adds the Saha solver's iterations to it; nothing reads it |
 | `max_correction_index(4)` | point of the largest correction of each variable, for the convergence log | - | `henyey_iteration` (find_largest_corrections) | `henyey_iteration` |  |
 | `surface_bc(6)` | outer boundary-condition rows from the envelope fit, in `henyey_solve`'s form | - | `henyey_iteration` (form_surface_bc_rows) | `henyey_iteration` |  |
-| `mc_samples` (type `monte_carlo_samples`) | the Monte-Carlo samples, one entry per Monte-Carlo run, from the sample file | - | `monte_carlo` (setup_monte_carlo_runs) | `monte_carlo` | Read by `apply_monte_carlo_parameters` and the Monte-Carlo summary |
 <!-- END GENERATED members -->
 
 ## 4. Members removed
@@ -449,7 +464,7 @@ Still to watch:
 ## 6. Checks
 
 state/ holds types and constants, so its checks are about how the rest of the code uses them:
-- `test_generated_files.py` runs `tools/gen_star_docs.py --check`: it fails when sections 2 and 3 are stale, when a member has no comment of the form `<meaning> [<unit>]; <writers>. <notes>`, is declared with another member on one line, names a writer that does not write it, or is never written or never read outside the tests; when the first column of section 4's table names a live member; and when a member breaks a class rule: an earlier value (`<member>_start`, `_prev`, `_iteration_start`) is in the Step snapshot class and that class holds nothing else, and any other member that one module alone writes and reads is in the class "Private to one module" and that class holds nothing else. Each of these was confirmed to fail on a mutated copy of `star_info_lib.f90` or of this README.
+- `test_generated_files.py` runs `tools/gen_star_docs.py --check`: it fails when sections 2 and 3 are stale, when a member or a field of `mc_samples` has no comment of the form `<meaning> [<unit>]; <writers>. <notes>`, is declared with another member on one line, names a writer that does not write it, or is never written or never read outside the tests; when the first column of section 4's table names a live member; and when a member breaks a class rule: an earlier value (`<member>_start`, `_prev`, `_iteration_start`) is in the Step snapshot class and that class holds nothing else, and any other member that one module alone writes and reads is in the class "Private to one module" and that class holds nothing else, unless `ONE_MODULE_EXEMPT` lists it with the reason (`mc_samples`, the Monte-Carlo runs' input, which `monte_carlo` alone reads and applies, stays with the runs it samples). Each of these was confirmed to fail on a mutated copy of `star_info_lib.f90` or of this README.
 - `test_boundaries.py` runs `tools/check_boundaries.py` (the physics domains in `STAR_FREE_DIRS` never use `star_info_lib`; `STAR_ACCESS_BUDGET` keeps every directory at zero references to a module-level star) and `tools/check_star_contracts.py` (the declared `star reads:` / `star writes:` lists match the code; every procedure of `core/run/`, `core/step/`, `setup/` and `io/` that takes the star declares them, and the check fails on one that does not (`REQUIRED_DIRS`; `io/controls_sync.f90`, generated, is exempt, `CONTRACT_EXEMPT`); procedures are told apart by module and host, so two modules' `wind_now` are each checked against their own code). Both tools' `--self-test` (`test_star_tools_self_test`) runs their statement scan on synthetic cases: an assignment after `case (k);`, a labelled statement, an if-statement's condition, a `;` or `s%x` inside a string, `real(dp) function` and `type(t) function` headers, and a procedure without a contract in a required directory; each case was confirmed to fail when the part of the scan it covers is reverted.
 - `test_boundaries.py`, through `tools/check_boundaries.py`, also checks the controls records (2026-10-30): the old record names `ctrl` and `job` appear nowhere in `src/`; nothing but `io/controls_sync.f90` assigns `star%control` or `star%physics` (an assignment, a `read` target, an `intent(out)`/`intent(inout)` actual argument); each record's generated component list holds exactly the controls of its registry group; rotation reads neither record; every run copy is declared with its control's type and shape, its comment names the control and `controls_sync`, and `arm_run_copies` alone sets it from the control; and any other copy of a control into a star member is in a module its comment names, with the control named. Each was confirmed to fail on a planted violation (17 of them, among them a copy in an undocumented module, a run copy of another shape, a test's star under another name).
 - `test_reentry.py`: a second `run_yrec` call in one process writes the same files as a fresh process, i.e. the template star of `yrec_reset` is a clean start.

@@ -79,7 +79,7 @@ subroutine run_yrec(ierr)
       use model_files, only: write_mod_model
       use physical_constants
       use yrec_reset, only: yrec_run_prologue
-      use monte_carlo, only: apply_monte_carlo_parameters, &
+      use monte_carlo, only: begin_monte_carlo_run, &
            write_run_summaries
       use stop_conditions, only: step_kind_card_done, &
            step_leave_run_loop, init_stop_conditions, &
@@ -160,10 +160,11 @@ subroutine run_yrec(ierr)
       call warn_inconsistent_controls(s)
 
       do monte_carlo_run_number = s%first_mc_run,s%last_mc_run
-! Per-run setup: this run's Monte-Carlo parameters, then the network
-! settings (which take the Monte-Carlo rate factors), then the
-! calibration protocols.
-      call apply_monte_carlo_parameters(s, monte_carlo_run_number, &
+! Per-run setup: the start of the Monte-Carlo run (begin_monte_carlo_run,
+! the per-run hook: this run's samples), then the network settings
+! (which take the Monte-Carlo rate factors), then the calibration
+! protocols.
+      call begin_monte_carlo_run(s, monte_carlo_run_number, &
            age_scale_factor)
       call install_monte_carlo_settings(s, ierr)
       if (ierr /= 0) return

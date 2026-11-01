@@ -2,20 +2,22 @@
 ! monte_carlo
 !----------------------------------------------------------------------
 ! The built-in Monte-Carlo runs. Each run takes sampled nuclear
-! cross-section factors, a diffusion factor, and solar luminosity and
-! age factors from the dynamics file:
+! cross-section factors, a metal settling factor, and solar luminosity
+! and age factors from the sample file (control%dynamics_file; the
+! fields of star%mc_samples, state/README.md):
 !
-!  * setup_monte_carlo_runs -- the run range, and each run's sampled
-!    parameters read from the dynamics file;
-!  * apply_monte_carlo_parameters -- applies the current run's values;
+!  * setup_monte_carlo_runs -- the run range, and each run's samples
+!    read from the sample file (once, from prepare_run);
+!  * begin_monte_carlo_run -- the start of every Monte-Carlo run, the
+!    per-run hook: the run's sampled values (apply_monte_carlo_parameters);
+!    a value the run changes per Monte-Carlo run is set here;
 !  * write_run_summaries -- the end-of-run bookkeeping, including the
 !    Monte-Carlo model summary (write_monte_carlo_model, legacy
 !    wrtmonte), which reads star% directly.
 !
-! The Monte-Carlo loop itself is in run_yrec. No Stage-0 regression
-! deck sets monte_carlo_active, so the regression suite checks only
-! that the non-Monte-Carlo path is unchanged; the Monte-Carlo path is
-! compile-verified only.
+! The Monte-Carlo loop itself is in run_yrec. The deck
+! examples/run_config_matrix/cm_monte_carlo.inlist makes one Monte-Carlo
+! run, with the sample file mc_input.dat beside it.
 module monte_carlo
       use star_info_lib, only: json, i_h1, i_he4, i_metals, i_lum_grav, &
            max_mc_runs, star_info
@@ -23,54 +25,82 @@ module monte_carlo
       use model_files, only: write_mod_model
       implicit none
       private
-      public :: setup_monte_carlo_runs, apply_monte_carlo_parameters, &
+      public :: setup_monte_carlo_runs, begin_monte_carlo_run, &
            write_run_summaries
 
 contains
 
 ! ---------------------------------------------------------------
-! Set the run range and, for a Monte-Carlo job, read each run's
-! sampled parameters from the dynamics file (opened on dynamics_unit
-! when the namelist is read): the S11, S33, S34 and S17 factors, Z/X,
-! the diffusion factor, and the luminosity and age factors.
-! first_mc_run and last_mc_run are the star's copies of the controls
-! mc_run_start and mc_run_end (legacy IMBEG, IMEND). Only the records up
-! to last_mc_run (at
-! most max_mc_runs) are read (MHP 3/96). Without Monte Carlo the range
-! is the single run 1.
-!   star reads: physics%monte_carlo_active
-!   star writes: first_mc_run, last_mc_run, mc_samples
+! Set the run range and, for a Monte-Carlo job, read each run's samples
+! from the sample file (opened on dynamics_unit with the run's files):
+! the S11, S33, S34 and S17 factors, Z/X, the metal settling factor, and
+! the luminosity and age factors. Only the records up to last_mc_run (at
+! most max_mc_runs) are read (MHP 3/96).
+!   star reads: last_mc_run, physics%monte_carlo_active
+!   star writes: mc_samples
 subroutine setup_monte_carlo_runs(s)
       type(star_info), intent(inout) :: s
       integer :: i
+      call set_monte_carlo_range(s)
       if (s%physics%monte_carlo_active) then
-         s%last_mc_run = min(s%last_mc_run,max_mc_runs)
-! Read the sampled parameters, one two-line record per run.
+! Read the samples, one two-line record per run.
          do i = 1,s%last_mc_run
-            read(dynamics_unit,1511)s%mc_samples%s11_rate(i),s%mc_samples%s33_rate(i),s%mc_samples%s34_rate(i), &
-                 s%mc_samples%s17_rate(i),s%mc_samples%metal_to_h_ratio(i),s%mc_samples%helium_fraction_param(i), &
-                 s%mc_samples%luminosity_target(i),s%mc_samples%age_target(i)
+            read(dynamics_unit,1511)s%mc_samples%s11_factor(i),s%mc_samples%s33_factor(i), &
+                 s%mc_samples%s34_factor(i),s%mc_samples%s17_factor(i),s%mc_samples%metal_to_h_ratio(i), &
+                 s%mc_samples%settling_z_factor(i),s%mc_samples%luminosity_factor(i), &
+                 s%mc_samples%age_factor(i)
  1511       format(7X,1P7E10.3/E9.3)
-            write(terminal_unit,*)i,s%mc_samples%s11_rate(i),s%mc_samples%s33_rate(i),s%mc_samples%s34_rate(i),s%mc_samples%s17_rate(i), &
-                 s%mc_samples%metal_to_h_ratio(i),s%mc_samples%helium_fraction_param(i), &
-                 s%mc_samples%luminosity_target(i),s%mc_samples%age_target(i)
-            s%mc_samples%diffusion_factor(i) = s%mc_samples%helium_fraction_param(i)
+            write(terminal_unit,*)i,s%mc_samples%s11_factor(i),s%mc_samples%s33_factor(i), &
+                 s%mc_samples%s34_factor(i),s%mc_samples%s17_factor(i),s%mc_samples%metal_to_h_ratio(i), &
+                 s%mc_samples%settling_z_factor(i),s%mc_samples%luminosity_factor(i), &
+                 s%mc_samples%age_factor(i)
          end do
-      else
-         s%first_mc_run = 1
-         s%last_mc_run = 1
       endif
 end subroutine setup_monte_carlo_runs
 
 ! ---------------------------------------------------------------
+! The run range: first_mc_run and last_mc_run, the star's copies of the
+! controls mc_run_start and mc_run_end (legacy IMBEG, IMEND), with the
+! last clamped to max_mc_runs; without Monte Carlo the single run 1.
+!   star reads: physics%monte_carlo_active
+!   star writes: first_mc_run, last_mc_run
+subroutine set_monte_carlo_range(s)
+      type(star_info), intent(inout) :: s
+      if (s%physics%monte_carlo_active) then
+         s%last_mc_run = min(s%last_mc_run,max_mc_runs)
+      else
+         s%first_mc_run = 1
+         s%last_mc_run = 1
+      endif
+end subroutine set_monte_carlo_range
+
+! ---------------------------------------------------------------
+! The start of every Monte-Carlo run (and of the one run without Monte
+! Carlo): the per-run hook, the first call of run_yrec's Monte-Carlo
+! loop. It applies the run's samples (apply_monte_carlo_parameters). A
+! value the run changes per Monte-Carlo run is a star member of the
+! Monte-Carlo runs class, set here from the run's sample (as
+! settling_z_factor_in_use); state/README.md, "Add a value the run
+! changes per Monte-Carlo run".
+!   star reads: none
+!   star writes: none
+subroutine begin_monte_carlo_run(s, monte_carlo_run_number, &
+     age_scale_factor)
+      type(star_info), intent(inout) :: s
+      integer, intent(in) :: monte_carlo_run_number
+      double precision, intent(out) :: age_scale_factor
+      call apply_monte_carlo_parameters(s, monte_carlo_run_number, &
+           age_scale_factor)
+end subroutine begin_monte_carlo_run
+
+! ---------------------------------------------------------------
 ! For a Monte-Carlo run, apply the current run's sampled values: the
-! S-factor scales of p+p, He3+He3, He3+He4 and Be7+p (the
+! factors on the S-factors of p+p, He3+He3, He3+He4 and Be7+p (the
 ! cross-section scales r_pp, r_he3he3, r_he3he4 and the extra scale
-! xs_be7p), each times the factor
-! that takes the code's reference S0 to the Bahcall & Pinsonneault
-! (1996) value; the metal diffusion factor; the solar luminosity; and
-! the age scale factor. Outside Monte Carlo it only sets
-! age_scale_factor = 1.
+! xs_be7p), each times the factor that takes the code's reference S0 to
+! the Bahcall & Pinsonneault (1996) value; the metal settling factor;
+! the solar luminosity; and the age scale factor. Outside Monte Carlo it
+! only sets age_scale_factor = 1.
 !   star reads: mc_samples, physics%monte_carlo_active
 !   star writes: card_max_age_yr, cross_section_scale,
 !     extra_cross_section_scale, ln10_over_lsun, log10_solar_luminosity,
@@ -93,24 +123,23 @@ subroutine apply_monte_carlo_parameters(s, monte_carlo_run_number, &
            bp96_he3he3_factor = 0.9690, bp96_he3he4_factor = 0.9712, &
            bp96_be7p_factor = 0.92088
 ! The base solar luminosity in erg/s (MHP 3/96), which
-! luminosity_target scales.
+! luminosity_factor scales.
       double precision, parameter :: reference_solar_luminosity = 3.844D33
 
       if (s%physics%monte_carlo_active) then
-         s%cross_section_scale(r_pp) = s%mc_samples%s11_rate(monte_carlo_run_number)*bp96_pp_factor
-         s%cross_section_scale(r_he3he3) = s%mc_samples%s33_rate(monte_carlo_run_number)*bp96_he3he3_factor
-         s%cross_section_scale(r_he3he4) = s%mc_samples%s34_rate(monte_carlo_run_number)*bp96_he3he4_factor
-         s%extra_cross_section_scale(xs_be7p) = s%mc_samples%s17_rate(monte_carlo_run_number)*bp96_be7p_factor
-! The sampled diffusion factor (helium_fraction_param, legacy FHE,
-! copied to diffusion_factor) sets the metal diffusion factor fgrz
-! only; the helium factor fgry keeps its control value. (The F77 code
-! also copied it to FGRSET, which nothing read.) The sampled Z/X
+         s%cross_section_scale(r_pp) = s%mc_samples%s11_factor(monte_carlo_run_number)*bp96_pp_factor
+         s%cross_section_scale(r_he3he3) = s%mc_samples%s33_factor(monte_carlo_run_number)*bp96_he3he3_factor
+         s%cross_section_scale(r_he3he4) = s%mc_samples%s34_factor(monte_carlo_run_number)*bp96_he3he4_factor
+         s%extra_cross_section_scale(xs_be7p) = s%mc_samples%s17_factor(monte_carlo_run_number)*bp96_be7p_factor
+! The sampled metal settling factor (legacy FHE, which the F77 code also
+! copied to FZDIF and FGRSET) sets element diffusion's metal factor fgrz
+! only; the helium factor fgry keeps its control value. The sampled Z/X
 ! (metal_to_h_ratio) is only written to the summary.
-         s%settling_z_factor_in_use = s%mc_samples%diffusion_factor(monte_carlo_run_number)
-         s%solar_luminosity_cgs = reference_solar_luminosity*s%mc_samples%luminosity_target(monte_carlo_run_number)
+         s%settling_z_factor_in_use = s%mc_samples%settling_z_factor(monte_carlo_run_number)
+         s%solar_luminosity_cgs = reference_solar_luminosity*s%mc_samples%luminosity_factor(monte_carlo_run_number)
          s%log10_solar_luminosity = log10(s%solar_luminosity_cgs)
          s%ln10_over_lsun = ln10/s%solar_luminosity_cgs
-         age_scale_factor = s%mc_samples%age_target(monte_carlo_run_number)
+         age_scale_factor = s%mc_samples%age_factor(monte_carlo_run_number)
 ! Stop ages of cards 2 and 3 for a solar age of 4.57 Gyr. With the
 ! solar calibration on, setup_solar_calibration overwrites both, with
 ! 1e8 yr and target_solar_age times age_scale_factor.
@@ -204,13 +233,14 @@ subroutine write_monte_carlo_model(s, local_log_radius, &
       if (ierr /= 0) return
 ! The summary on monte_carlo_unit1. The surface Z/X:
       surface_z_over_x = s%xa(i_metals,s%nz)/s%xa(i_h1,s%nz)
-! Record 1: the run number and its sampled parameters.
-      write(mc_summary_unit,10)monte_carlo_run_number,s%mc_samples%s11_rate(monte_carlo_run_number), &
-              s%mc_samples%s33_rate(monte_carlo_run_number),s%mc_samples%s34_rate(monte_carlo_run_number), &
-              s%mc_samples%s17_rate(monte_carlo_run_number), &
-              s%mc_samples%metal_to_h_ratio(monte_carlo_run_number),s%mc_samples%helium_fraction_param(monte_carlo_run_number), &
-              s%mc_samples%diffusion_factor(monte_carlo_run_number),s%mc_samples%luminosity_target(monte_carlo_run_number), &
-              s%mc_samples%age_target(monte_carlo_run_number)
+! Record 1: the run number and its samples. The metal settling factor
+! is written twice, as WRTMONTE wrote FHE and its copy FZDIF.
+      write(mc_summary_unit,10)monte_carlo_run_number,s%mc_samples%s11_factor(monte_carlo_run_number), &
+              s%mc_samples%s33_factor(monte_carlo_run_number),s%mc_samples%s34_factor(monte_carlo_run_number), &
+              s%mc_samples%s17_factor(monte_carlo_run_number), &
+              s%mc_samples%metal_to_h_ratio(monte_carlo_run_number),s%mc_samples%settling_z_factor(monte_carlo_run_number), &
+              s%mc_samples%settling_z_factor(monte_carlo_run_number),s%mc_samples%luminosity_factor(monte_carlo_run_number), &
+              s%mc_samples%age_factor(monte_carlo_run_number)
    10 format(I7,1P9E10.3)
 ! Record 2: the number of calibration cycles, and the partial
 ! derivatives d log L/dX, d log R/dX, d log L/d alpha, d log R/d alpha.
