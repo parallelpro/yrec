@@ -29,11 +29,11 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 
 | inlist name | legacy name | code name | home | run copy | used | type | default | status | description |
 |---|---|---|---|---|---|---|---|---|---|
-| `mixing_length_alpha` | `cmixla` | `mixing_length_array` | control | `card_mixing_length_alpha` | run | real(50) | `0` | live | Per card: the mixing-length parameter alpha |
+| `mixing_length_alpha` | `cmixla` | `mixing_length_array` | control | `card_mixing_length_alpha` | run | real(max_runs) | `0` | live | Per card: the mixing-length parameter alpha |
 | `target_solar_age` | `calsolage` | `target_solar_age` | control | - | run | real | `4.57d9` | live | Solar calibration: the target age of the Sun (yr) |
 | `target_solar_zx` | `calsolzx` | `target_solar_zx` | control | - | run | real | `0.02292d0` | live | Solar calibration: the target surface Z/X (with calibrate_solar_zx) |
 | `run_description` | `descrip` | `run_description` | buffer | - | read | string(2) | `''` | live | Per-run description strings echoed in output headers |
-| `max_age` | `endage` | `target_end_age` | control | `card_max_age_yr` | run | real(50) | `0.0d0` | live | Stop the run card at this age (yr); 0 = no age limit |
+| `max_age` | `endage` | `target_end_age` | control | `card_max_age_yr` | run | real(max_runs) | `0.0d0` | live | Stop the run card at this age (yr); 0 = no age limit |
 | `laol_opacity_table_file` | `flaol` | `laol_table_path` | control | - | run | path | `''` | live | LAOL 1989 opacity table |
 | `pure_z_opacity_table_file` | `fpurez` | `pure_z_table_path` | control | - | run | path | `''` | live | Pure-Z opacity table (metal diffusion support) |
 | `laol_opacity_table2_file` | `flaol2` | `laol_table2_path` | control | - | run | path | `''` | live | LAOL 1989 opacity table, second Z |
@@ -65,8 +65,8 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `opal95_opacity_table_file` | `fliv95` | `opal95_table_path` | control | - | run | path | `''` | live | OPAL 1995-format opacity table (use_opal95_tables) |
 | `monte_carlo_file1_path` | `fmonte1` | `monte_carlo_file1_path` | control | - | run | path | `''` | live | Monte Carlo runs: the file for each run's summary |
 | `monte_carlo_file2_path` | `fmonte2` | `monte_carlo_file2_path` | control | - | run | path | `''` | live | Monte Carlo runs: the file for each run's final model |
-| `run_kind` | `kindrn` | `run_kind` | buffer | - | read | integer(50) | `1` | live | Per-run kind card: 1 = evolve, 2 = rescale (zero timestep, MS/CHeB), 3 = rescale and evolve (pre-MS) |
-| `first_call_flag` | `lfirst` | `first_call_flag` | control | `card_from_starting_model` | run | logical(50) | `.true.` | live | Per card: start from the starting model (first_model_file) rather than the previous card's model; .true. for every card unless the deck says otherwise, so a continuation card sets it .false. (card 1 always starts from the starting model) |
+| `run_kind` | `kindrn` | `run_kind` | buffer | - | read | integer(max_runs) | `1` | live | Per-run kind card: 1 = evolve, 2 = rescale (zero timestep, MS/CHeB), 3 = rescale and evolve (pre-MS) |
+| `first_call_flag` | `lfirst` | `first_call_flag` | control | `card_from_starting_model` | run | logical(max_runs) | `.true.` | live | Per card: start from the starting model (first_model_file) rather than the previous card's model; .true. for every card unless the deck says otherwise, so a continuation card sets it .false. (card 1 always starts from the starting model) |
 | `set_initial_model_number` | `set_initial_model_number` | `set_initial_model_number` | control | - | run | integer | `1` | live | Model number given to the first converged model after a fresh start-model load (first_call_flag card). <= 0 keeps the counter stored in the model file (restart continuation, the pre-2026 behavior). |
 | `use_z_ramp` | `lzramp` | `use_z_ramp` | control | - | run | logical | `.false.` | live | On a rescaling run with rescale_core_z, rescale_z_mix1 and rescale_z_mix2 positive: Z = rescale_core_z inside the mass fraction rescale_z_mix1, then linear to the surface Z at rescale_z_mix2 |
 | `specify_teff_flag` | `lteff` | `specify_teff_flag` | control | - | run | logical | `.false.` | live | Star calibration: match the target Teff (target_teff) instead of the target radius (target_radius_rsun) |
@@ -74,7 +74,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `use_pure_z_table` | `lpurez` | `use_pure_z_table` | control | - | run | logical | `.false.` | live | Use the pure C and N opacity tables (pure_z_opacity_table_file) for metal-enriched mixtures |
 | `isochrone_output_active` | `liso` | `isochrone_output_active` | control | - | run | logical | `.false.` | live | Write an isochrone record every model to isochrone_file |
 | `rewind_short_file` | `lrwsh` | `rewind_short_file` | control | - | run | logical | `.false.` | live | Rewind the run log every model, so it holds only the latest model's solver diagnostics |
-| `has_senv0_array` | `lsenv0a` | `has_senv0_array` | control | `card_moves_fit_point` | run | logical(50) | `.false.` | live | Per run: move the outer fitting point to the fractional envelope mass senv0_array |
+| `has_senv0_array` | `lsenv0a` | `has_senv0_array` | control | `card_moves_fit_point` | run | logical(max_runs) | `.false.` | live | Per run: move the outer fitting point to the fractional envelope mass senv0_array |
 | `calibrate_solar_model` | `lcals` | `calibrate_solar_model` | control | - | run | logical | `.false.` | live | Calibrate Y and the mixing length so that the model matches the solar L and R at target_solar_age |
 | `calibrate_solar_zx` | `lcalsolzx` | `calibrate_solar_zx` | control | - | run | logical | `.false.` | live | Solar calibration: also calibrate Z to match target_solar_zx (within zx_tolerance) |
 | `use_laol89_tables` | `llaol89` | `use_laol89_tables` | control | - | run | logical | `.false.` | live | Use the LAOL 1989 opacity tables (laol_opacity_table_file) |
@@ -84,26 +84,26 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `use_alex95_tables` | `lalex95` | `use_alex95_tables` | control | - | run | logical | `.false.` | live | Use the Alexander & Ferguson 1994 low-temperature opacity tables (alex95_table_z_list) |
 | `envelope_print_points` | `npenv` | `envelope_print_points` | buffer | - | read | integer | `0` | live | Envelope profile print count: read and used nowhere (the F77's one use, in SURFBC, was commented out); the read makes 0 or less into 9999, as PARMIN did |
 | `num_runs` | `numrun` | `num_runs` | control | `num_cards` | run | integer | `1` | live | The number of runs (kind cards): each rescales a model, evolves it, or both |
-| `max_model_number` | `nmodls` | `num_models` | control | `card_num_models` | run | integer(50) | `0` | live | Per run: the number of models to compute (the run stops earlier if a stop condition is met) |
+| `max_model_number` | `nmodls` | `num_models` | control | `card_num_models` | run | integer(max_runs) | `0` | live | Per run: the number of models to compute (the run stops earlier if a stop condition is met) |
 | `alex95_opacity_table_files` (`alex95_table_z_list`) | `opecalex` | `alex95_table_paths` | control | - | run | path(7) | `''` | live | The seven Alexander & Ferguson 1994 low-temperature opacity table files |
-| `rescale_mass` | `rsclm` | `rescale_mass` | buffer | - | read | real(50) | `0.0d0` | live | Per-run target mass (Msun) for rescale runs |
-| `rescale_x` | `rsclx` | `rescale_x` | buffer | - | read | real(50) | `0.0d0` | live | Per-run target hydrogen fraction for rescale runs |
-| `rescale_z` | `rsclz` | `rescale_z` | buffer | - | read | real(50) | `0.0d0` | live | Per-run target metallicity for rescale runs |
-| `rescale_core_mass` | `rsclcm` | `rescale_core_mass` | buffer | - | read | real(50) | `0.0d0` | live | Per-run rescale: core mass bound |
-| `rescale_core_z` | `rsclzc` | `rescale_core_z` | control | `card_z_ramp_core_z` | run | real(50) | `-1.0d0` | live | rscale/setcal: core-Z rescale target |
-| `rescale_z_mix1` | `rsclzm1` | `rescale_z_mix1` | control | `card_z_ramp_inner_mass_fraction` | run | real(50) | `-1.0d0` | live | rscale/setcal: Z-mix rescale parameter 1 |
-| `rescale_z_mix2` | `rsclzm2` | `rescale_z_mix2` | control | `card_z_ramp_outer_mass_fraction` | run | real(50) | `-1.0d0` | live | rscale/setcal: Z-mix rescale parameter 2 |
-| `timestep_override` | `setdt` | `timestep_override` | control | `card_fixed_timestep_yr` | run | real(50) | `0.0d0` | live | Per run: if positive, a fixed timestep (yr) for every model of the run, overriding the timestep limits |
-| `senv0_array` | `senv0a` | `senv0_array` | control | `card_log_fit_point_mass_fraction` | run | real(50) | `1.26d-4` | live | Per run: log10 of the fractional envelope mass of the outer fitting point (with has_senv0_array) |
+| `rescale_mass` | `rsclm` | `rescale_mass` | buffer | - | read | real(max_runs) | `0.0d0` | live | Per-run target mass (Msun) for rescale runs |
+| `rescale_x` | `rsclx` | `rescale_x` | buffer | - | read | real(max_runs) | `0.0d0` | live | Per-run target hydrogen fraction for rescale runs |
+| `rescale_z` | `rsclz` | `rescale_z` | buffer | - | read | real(max_runs) | `0.0d0` | live | Per-run target metallicity for rescale runs |
+| `rescale_core_mass` | `rsclcm` | `rescale_core_mass` | buffer | - | read | real(max_runs) | `0.0d0` | live | Per-run rescale: core mass bound |
+| `rescale_core_z` | `rsclzc` | `rescale_core_z` | control | `card_z_ramp_core_z` | run | real(max_runs) | `-1.0d0` | live | rscale/setcal: core-Z rescale target |
+| `rescale_z_mix1` | `rsclzm1` | `rescale_z_mix1` | control | `card_z_ramp_inner_mass_fraction` | run | real(max_runs) | `-1.0d0` | live | rscale/setcal: Z-mix rescale parameter 1 |
+| `rescale_z_mix2` | `rsclzm2` | `rescale_z_mix2` | control | `card_z_ramp_outer_mass_fraction` | run | real(max_runs) | `-1.0d0` | live | rscale/setcal: Z-mix rescale parameter 2 |
+| `timestep_override` | `setdt` | `timestep_override` | control | `card_fixed_timestep_yr` | run | real(max_runs) | `0.0d0` | live | Per run: if positive, a fixed timestep (yr) for every model of the run, overriding the timestep limits |
+| `senv0_array` | `senv0a` | `senv0_array` | control | `card_log_fit_point_mass_fraction` | run | real(max_runs) | `1.26d-4` | live | Per run: log10 of the fractional envelope mass of the outer fitting point (with has_senv0_array) |
 | `target_teff` | `steff` | `target_teff` | control | `calibration_target_teff` | run | real | `0` | live | Star calibration: the target Teff (K), with specify_teff_flag |
 | `target_radius_rsun` | `sr` | `target_radius_rsun` | control | `calibration_target_radius_rsun` | run | real | `0` | live | Star calibration: the target radius (Rsun) |
 | `radius_tolerance` | `tolr` | `radius_tolerance` | control | - | run | real | `1.0d-4` | live | Solar calibration: tolerance on \|log R/Rsun\| |
 | `luminosity_tolerance` | `toll` | `luminosity_tolerance` | control | - | run | real | `1.0d-5` | live | Solar calibration: tolerance on \|log L/Lsun\| |
 | `zx_tolerance` | `tolz` | `zx_tolerance` | control | - | run | real | `1.0d-3` | live | Solar calibration: the tolerance on log10(Z/X) |
-| `initial_x_array` | `xenv0a` | `initial_x_array` | control | `card_initial_x` | run | real(50) | `0` | live | Starting hydrogen mass fraction X, per run card |
+| `initial_x_array` | `xenv0a` | `initial_x_array` | control | `card_initial_x` | run | real(max_runs) | `0` | live | Starting hydrogen mass fraction X, per run card |
 | `target_luminosity_lsun` | `xls` | `target_luminosity_lsun` | control | - | run | real | `0` | live | Star calibration: the target luminosity (Lsun) |
 | `target_star_luminosity_tolerance` | `xlstol` | `target_star_luminosity_tolerance` | control | - | run | real | `0` | live | Star calibration: the tolerance on L/Lsun at the target radius or Teff |
-| `initial_z_array` | `zenv0a` | `initial_z_array` | control | `card_initial_z` | run | real(50) | `0` | live | Starting metal mass fraction Z, per run card |
+| `initial_z_array` | `zenv0a` | `initial_z_array` | control | `card_initial_z` | run | real(max_runs) | `0` | live | Starting metal mass fraction Z, per run card |
 | `laol_table_z1` | `zlaol1` | `laol_table_z1` | control | - | run | real | `0` | live | Metallicity of the first LAOL89 opacity table |
 | `laol_table_z2` | `zlaol2` | `laol_table_z2` | control | - | run | real | `0` | live | Metallicity of the second LAOL89 opacity table (two-Z interpolation) |
 | `opal_table_z1` | `zopal1` | `opal_table_z1` | control | - | run | real | `0` | live | Metallicity of the first OPAL92 opacity table |
@@ -119,9 +119,9 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `opal06_eos_table_file` | `fopale06` | `opal2006_eos_table_path` | buffer | - | read | path | `''` | live | OPAL 2006 EOS table (use_opal2006_eos) |
 | `alex06_opacity_table_file` | `falex06` | `alex06_table_path` | control | - | run | path | `''` | live | Ferguson/Alexander 2006 low-T opacity tables |
 | `use_alex06_tables` | `lalex06` | `use_alex06_tables` | control | - | run | logical | `.false.` | live | Use the Ferguson et al. 2005 molecular opacity tables (alex06_opacity_table_file) |
-| `central_deuterium_stop` | `end_dcen` | `central_deuterium_stop` | control | `card_central_deuterium_stop` | run | real(50) | `0.0d0` | live | Per run: stop when the central deuterium mass fraction falls below this (0: off) |
-| `central_hydrogen_stop` | `end_xcen` | `central_hydrogen_stop` | control | `card_central_hydrogen_stop` | run | real(50) | `0.0d0` | live | Per run: stop when the central hydrogen mass fraction falls below this (0: off) |
-| `central_helium_stop` | `end_ycen` | `central_helium_stop` | control | `card_central_helium_stop` | run | real(50) | `0.0d0` | live | Per run: stop when the central helium mass fraction falls below this (0: off) |
+| `central_deuterium_stop` | `end_dcen` | `central_deuterium_stop` | control | `card_central_deuterium_stop` | run | real(max_runs) | `0.0d0` | live | Per run: stop when the central deuterium mass fraction falls below this (0: off) |
+| `central_hydrogen_stop` | `end_xcen` | `central_hydrogen_stop` | control | `card_central_hydrogen_stop` | run | real(max_runs) | `0.0d0` | live | Per run: stop when the central hydrogen mass fraction falls below this (0: off) |
+| `central_helium_stop` | `end_ycen` | `central_helium_stop` | control | `card_central_helium_stop` | run | real(max_runs) | `0.0d0` | live | Per run: stop when the central helium mass fraction falls below this (0: off) |
 | `mixture_change_mode` | `isetmix` | `mixture_change_mode` | buffer | - | read | integer | `0` | live | 1: set the starting model's C, N and O fractions of Z from cno_mixture_name |
 | `isotope_change_mode` | `isetiso` | `isotope_change_mode` | buffer | - | read | integer | `0` | live | 1: set the starting model's CNO isotope ratios and light-element abundances from isotope_mixture_name |
 | `cno_mixture_name` | `amix` | `cno_mixture_name` | buffer | - | read | string | `'GS98'` | live | Heavy-element mixture selector (GS98/CUS/...) applied to the start model |
@@ -145,14 +145,14 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `history_columns_file` | `-` | `history_columns_file` | control | - | run | path | `' '` | live | File listing the history columns (one name per line, ! comments); blank: the default selection of defaults/history_columns.list |
 | `profile_columns_file` | `-` | `profile_columns_file` | control | - | run | path | `' '` | live | File listing the profile columns; blank: the default selection of defaults/profile_columns.list |
 | `inlist_used_file` | `inlist_used_file` | `inlist_used_file` | control | - | run | path | `' '` | live | Verbatim copy of the input namelist file(s), written at startup as run provenance; blank (the default): inlist_used in the output directory, the run log's |
-| `log_L_upper_limit` | `log_L_upper_limit` | `log_l_upper_limit` | control | - | run | real(50) | `1.0d99` | live | Per kind card: stop the card when log(L/Lsun) exceeds this (1d99 = off) |
-| `log_L_lower_limit` | `log_L_lower_limit` | `log_l_lower_limit` | control | - | run | real(50) | `-1.0d99` | live | Per kind card: stop the card when log(L/Lsun) drops below this (-1d99 = off) |
-| `Teff_upper_limit` | `Teff_upper_limit` | `teff_upper_limit` | control | - | run | real(50) | `1.0d99` | live | Per kind card: stop the card when Teff [K] exceeds this (1d99 = off) |
-| `Teff_lower_limit` | `Teff_lower_limit` | `teff_lower_limit` | control | - | run | real(50) | `-1.0d99` | live | Per kind card: stop the card when Teff [K] drops below this (-1d99 = off) |
-| `log_g_upper_limit` | `log_g_upper_limit` | `log_g_upper_limit` | control | - | run | real(50) | `1.0d99` | live | Per kind card: stop the card when surface log g [cgs] exceeds this (1d99 = off) |
-| `log_g_lower_limit` | `log_g_lower_limit` | `log_g_lower_limit` | control | - | run | real(50) | `-1.0d99` | live | Per kind card: stop the card when surface log g [cgs] drops below this (-1d99 = off) |
-| `nu_max_upper_limit` | `nu_max_upper_limit` | `nu_max_upper_limit` | control | - | run | real(50) | `1.0d99` | live | Per kind card: stop the card when nu_max [uHz] (scaling relation) exceeds this (1d99 = off) |
-| `nu_max_lower_limit` | `nu_max_lower_limit` | `nu_max_lower_limit` | control | - | run | real(50) | `-1.0d99` | live | Per kind card: stop the card when nu_max [uHz] (scaling relation) drops below this (-1d99 = off) |
+| `log_L_upper_limit` | `log_L_upper_limit` | `log_l_upper_limit` | control | - | run | real(max_runs) | `1.0d99` | live | Per kind card: stop the card when log(L/Lsun) exceeds this (1d99 = off) |
+| `log_L_lower_limit` | `log_L_lower_limit` | `log_l_lower_limit` | control | - | run | real(max_runs) | `-1.0d99` | live | Per kind card: stop the card when log(L/Lsun) drops below this (-1d99 = off) |
+| `Teff_upper_limit` | `Teff_upper_limit` | `teff_upper_limit` | control | - | run | real(max_runs) | `1.0d99` | live | Per kind card: stop the card when Teff [K] exceeds this (1d99 = off) |
+| `Teff_lower_limit` | `Teff_lower_limit` | `teff_lower_limit` | control | - | run | real(max_runs) | `-1.0d99` | live | Per kind card: stop the card when Teff [K] drops below this (-1d99 = off) |
+| `log_g_upper_limit` | `log_g_upper_limit` | `log_g_upper_limit` | control | - | run | real(max_runs) | `1.0d99` | live | Per kind card: stop the card when surface log g [cgs] exceeds this (1d99 = off) |
+| `log_g_lower_limit` | `log_g_lower_limit` | `log_g_lower_limit` | control | - | run | real(max_runs) | `-1.0d99` | live | Per kind card: stop the card when surface log g [cgs] drops below this (-1d99 = off) |
+| `nu_max_upper_limit` | `nu_max_upper_limit` | `nu_max_upper_limit` | control | - | run | real(max_runs) | `1.0d99` | live | Per kind card: stop the card when nu_max [uHz] (scaling relation) exceeds this (1d99 = off) |
+| `nu_max_lower_limit` | `nu_max_lower_limit` | `nu_max_lower_limit` | control | - | run | real(max_runs) | `-1.0d99` | live | Per kind card: stop the card when nu_max [uHz] (scaling relation) drops below this (-1d99 = off) |
 
 ## &physics
 
@@ -288,7 +288,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `monte_carlo_active` | `lmonte` | `monte_carlo_active` | physics | - | run | logical | `.false.` | live | Monte-Carlo multi-realization mode |
 | `mc_run_start` | `imbeg` | `mc_run_start` | physics | `first_mc_run` | run | integer | `1` | live | First Monte-Carlo realization index |
 | `mc_run_end` | `imend` | `mc_run_end` | physics | `last_mc_run` | run | integer | `1` | live | Last Monte-Carlo realization index |
-| `(legacy only)` | `sstandard` | `cross_section_ratios` | buffer | - | read | real(17) | `0.9828d0, 1.0485d0, 0.9815d0, 0.9241d0, 1.3818d0, 1.0542d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0108d0, 0.7819d0, 0.2875d0` | legacy | cross-section ratios used when use_new_nuclear_rates = .false. |
+| `(legacy only)` | `sstandard` | `cross_section_ratios` | buffer | - | read | real(num_sstandard) | `0.9828d0, 1.0485d0, 0.9815d0, 0.9241d0, 1.3818d0, 1.0542d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0108d0, 0.7819d0, 0.2875d0` | legacy | cross-section ratios used when use_new_nuclear_rates = .false. |
 | `use_scv_eos` | `lscv` | `use_scv_eos` | physics | - | run | logical | `.false.` | live | Use the SCV EOS where it is valid and the OPAL EOS is not |
 | `disk_locking_active` | `ldisk` | `disk_locking_active` | physics | - | run | logical | `.false.` | live | Disk locking: hold the surface rotation at disk_omega_rad_s until disk_locking_age_gyr |
 | `disk_locking_age_gyr` | `tdisk` | `disk_locking_age_gyr` | physics | - | run | real | `0.0d0` | live | Disk locking is enforced while star_age <= this value. UNITS: Gyr (historic deck comments wrongly said yr). |
@@ -429,16 +429,16 @@ file names, from the command line). Each is in the group of its topic.
 |---|---|---|---|---|---|---|---|
 | `opal_eos_table_path` | physics | physics | - | run | path | `''` | The OPAL EOS table the run reads: the newest vintage selected (use_opal2006_eos, use_opal2001_eos, use_opal95_eos), blank for none (set by derive_controls) |
 | `opal_eos_vintage` | physics | physics | - | run | integer | `0` | The OPAL EOS vintage the run uses: 0 none, 1 1995, 2 2001, 3 2006 (eos_lib's opal_vintage_*), the newest selected (set by derive_controls) |
-| `end_age_stop_active` | control | control | `card_stops_active` | run | logical(50) | `0` | Per card: an evolving card has a stop armed (max_age or a central-abundance stop positive); derived by the run plan (interpret_kind_cards) |
-| `timestep_override_active` | control | control | `card_fixed_timestep_active` | run | logical(50) | `0` | Per card: an evolving card takes the fixed timestep timestep_override (positive); derived by the run plan |
-| `rescale_params` | control | control | `card_rescale_targets` | run | real(4,50) | `0` | Per card: a rescaling card's targets M, X, Z and core mass (rescale_mass, rescale_x, rescale_z, rescale_core_mass); derived by the run plan |
-| `rescale_kind` | control | control | `card_kind` | run | integer(50) | `0` | Per card: evolve, rescale or both (run_kind for the cards the deck runs, 0 beyond); derived by the run plan |
+| `end_age_stop_active` | control | control | `card_stops_active` | run | logical(max_runs) | `0` | Per card: an evolving card has a stop armed (max_age or a central-abundance stop positive); derived by the run plan (interpret_kind_cards) |
+| `timestep_override_active` | control | control | `card_fixed_timestep_active` | run | logical(max_runs) | `0` | Per card: an evolving card takes the fixed timestep timestep_override (positive); derived by the run plan |
+| `rescale_params` | control | control | `card_rescale_targets` | run | real(4,max_runs) | `0` | Per card: a rescaling card's targets M, X, Z and core mass (rescale_mass, rescale_x, rescale_z, rescale_core_mass); derived by the run plan |
+| `rescale_kind` | control | control | `card_kind` | run | integer(max_runs) | `0` | Per card: evolve, rescale or both (run_kind for the cards the deck runs, 0 beyond); derived by the run plan |
 | `new_species_index` | physics | physics | - | run | integer | `0` | With rescale_species_active: the composition slot of change_species_name (set by the reader) |
 | `value_relative_to_h` | physics | physics | - | run | logical | `0` | With rescale_species_active: new_species_value is relative to hydrogen (from new_species_value_mode) |
-| `cross_section_scale` | physics | physics | `cross_section_scale_in_use` | run | real(11) | `1.0d0` | Each reaction's cross-section (S0) scale against Bahcall & Ulrich (1988), by reaction slot r_*: from the S-factor inputs (use_new_nuclear_rates) or from cross_section_ratios |
-| `extra_cross_section_scale` | physics | physics | `extra_cross_section_scale_in_use` | run | real(4) | `1.0d0` | The scales of the rates outside the reaction table, by extra slot xs_* (pep, Be7 + e, Be7 + p, hep): from the S-factor inputs (use_new_nuclear_rates) or from cross_section_ratios |
-| `s_prime_scale` | physics | physics | - | run | real(11) | `1.0d0` | Each reaction's S'/S scale against Solar Fusion I, by reaction slot (1 without use_new_nuclear_rates) |
-| `s_double_prime_scale` | physics | physics | - | run | real(11) | `1.0d0` | Each reaction's S''/S scale against Solar Fusion I, by reaction slot (1 without use_new_nuclear_rates) |
+| `cross_section_scale` | physics | physics | `cross_section_scale_in_use` | run | real(num_reactions) | `1.0d0` | Each reaction's cross-section (S0) scale against Bahcall & Ulrich (1988), by reaction slot r_*: from the S-factor inputs (use_new_nuclear_rates) or from cross_section_ratios |
+| `extra_cross_section_scale` | physics | physics | `extra_cross_section_scale_in_use` | run | real(num_extra_scales) | `1.0d0` | The scales of the rates outside the reaction table, by extra slot xs_* (pep, Be7 + e, Be7 + p, hep): from the S-factor inputs (use_new_nuclear_rates) or from cross_section_ratios |
+| `s_prime_scale` | physics | physics | - | run | real(num_reactions) | `1.0d0` | Each reaction's S'/S scale against Solar Fusion I, by reaction slot (1 without use_new_nuclear_rates) |
+| `s_double_prime_scale` | physics | physics | - | run | real(num_reactions) | `1.0d0` | Each reaction's S''/S scale against Solar Fusion I, by reaction slot (1 without use_new_nuclear_rates) |
 | `be7p_s_prime_scale` | physics | physics | - | run | real | `1.0d0` | Be7 + p's S'/S scale against Solar Fusion I |
 | `be7p_s_double_prime_scale` | physics | physics | - | run | real | `1.0d0` | Be7 + p's S''/S scale against Solar Fusion I |
 | `n15_pg_scale` | physics | physics | - | run | real | `1.0d0` | The N15(p,gamma)O16 branch's scale (s0_n15_p_o16_branch over net's reference) |

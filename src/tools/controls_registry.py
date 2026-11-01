@@ -18,7 +18,8 @@ Columns:
                  not read it (every control added since the freeze, and the
                  derived members)
   type           real, integer, logical, string or path, with (dims) for an
-                 array; path is a string that names a file the run reads or
+                 array, a size by its name in state/control_slots.f90 or
+                 state/reaction_layout.f90 (real(max_runs)); path is a string that names a file the run reads or
                  writes, whose {YREC_INPUT}, {YREC_START} or {YREC_OUTPUT}
                  placeholder the read expands (io/expand_paths.inc, generated)
   proposed_name  the name in a single-file inlist (for a derived member,
@@ -300,8 +301,10 @@ def buffer_members():
 
 
 def declared_type(cell):
-    """a registry type cell as the declaration's type: a path is a string"""
-    return re.sub(r"^path", "string", cell.replace(" ", ""))
+    """a registry type cell as type_of spells a declaration's type: a path
+    is a string, and a named size (real(max_runs)) is its value"""
+    base, _, dims = re.sub(r"^path", "string", cell.replace(" ", "")).partition("(")
+    return type_of(base, dims.rstrip(")"))
 
 
 def check_rows_against_buffer(rs, members):
