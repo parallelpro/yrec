@@ -17,8 +17,12 @@ module control_slots
 ! Maximum number of runs (kind cards) in one job: the dimension of
 ! every per-run array of the controls and of the star's run plan (the
 ! calibration protocols in core/run/calibration.f90 fill them up to
-! this limit). tools/gen_controls_state.py substitutes the literal value
-! into the generated type bodies of the controls.
+! this limit). The one source of the value: the controls buffer, the
+! star's run plan and the calibrations use this parameter, and
+! tools/gen_controls_state.py writes its value into the generated type
+! bodies of the controls; tools/controls_registry.py's MAX_RUNS and the
+! registry's per-run type cells repeat it, and tools/check_boundaries.py
+! (check_max_runs) fails when MAX_RUNS differs.
       integer, parameter, public :: max_runs = 50
 
 ! Slot names for atime (the per-phase timestep-control factors). The

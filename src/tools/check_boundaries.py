@@ -572,6 +572,21 @@ def check_controls_writer(src_root):
     return sorted(set(problems))
 
 
+# The run cards' capacity, max_runs, is state/control_slots.f90's
+# parameter; tools/controls_registry.py repeats it (MAX_RUNS) to read the
+# registry's per-run types, and the two must agree.
+def check_max_runs(src_root):
+    import controls_registry
+    m = re.search(r"(?im)^\s*integer\s*,\s*parameter\s*,\s*public\s*::\s*max_runs\s*=\s*(\d+)",
+                  (src_root / "state" / "control_slots.f90").read_text())
+    if not m:
+        return ["state/control_slots.f90: no max_runs parameter"]
+    if int(m.group(1)) != controls_registry.MAX_RUNS:
+        return [f"state/control_slots.f90 has max_runs = {m.group(1)}, tools/controls_registry.py "
+                f"MAX_RUNS = {controls_registry.MAX_RUNS}"]
+    return []
+
+
 def check_control_records(src_root):
     """Every control is in the record of its registry group: the
     registry's home is the group (or buffer), and the generated component
@@ -1054,7 +1069,8 @@ def main():
                           (check_control_records, "CONTROLS-RECORD GROUPS (a control is in the record "
                            "of its registry group):"),
                           (check_control_copies, "CONTROL COPIES (a star member that copies a control "
-                           "says so, where it is set):")):
+                           "says so, where it is set):"),
+                          (check_max_runs, "MAX_RUNS (state/control_slots.f90 is the one source):")):
         found = check(SRC)
         if found:
             print(header)

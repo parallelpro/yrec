@@ -347,15 +347,15 @@ end subroutine check_star_calibration
 !     num_cards, solar_calibration_converged
 subroutine setup_solar_calibration(s, age_scale_factor)
 
-      use controls_buffer, only: max_runs
+      use control_slots, only: max_runs
       implicit none
       type(star_info), intent(inout) :: s
 
       double precision, intent(in) :: age_scale_factor
 ! --- locals ---
       integer :: i, j
-! 48 cards: 16 three-card calibration cycles (the run arrays in
-! controls_buffer have max_runs = 50 slots).
+! 48 cards: 16 three-card calibration cycles (the run arrays have
+! max_runs = 50 slots, state/control_slots.f90).
       integer, parameter :: num_calibration_runs = max_runs-2
 
 ! Card 1's composition, mixing length and envelope-mass request go to
@@ -438,7 +438,7 @@ end subroutine setup_solar_calibration
 !     num_cards, r_rsun_prev_model, star_found_flag
 subroutine setup_star_calibration(s)
 
-      use controls_buffer, only: max_runs
+      use control_slots, only: max_runs
       use io_units
       use physical_constants
       use math_lib
