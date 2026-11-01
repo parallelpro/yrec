@@ -3464,8 +3464,9 @@ make and the four checks pass at every merged commit; the unit tests
 IDENTICAL against the snapshot of f01bae96, every pinned log OK (35),
 on the second run; in the first, one deck (cm_settle_he_z) exited 1
 because another deck of its directory had replaced the shared
-history.data under it, which the new full-disk check reports (M174;
-alone, and in the rerun, it is identical); test_mesa_baselines passes;
+history.data under it, which the new full-disk check reported (M174,
+fixed after the merge in fa04ff45; alone, and in the rerun, it is
+identical, and after the fix the full set at 8 jobs is ALL IDENTICAL twice); test_mesa_baselines passes;
 STATE3's three Monte Carlo decks give byte-identical files with the
 merged binary and with STATE3's own; coverage of io/ 93.4% of 2259
 lines (nine decks, a legacy pair among them), state/run_messages.f90
@@ -3484,8 +3485,7 @@ copies between Monte Carlo runs); the .mod and the isochrone file have
 no size check, and the Monte Carlo summary and the neutrino-flux table
 no error path (M173); M112's direct run-log writes; M170-M172
 (kap/alex06's unchecked open, the run plan's I6, the profile header's
-initial_z); M174 (the full-disk check fires when another run replaces
-a shared history file); M113's `used` column and M117's description;
+initial_z); M113's `used` column and M117's description;
 CI's first real run, which needs a push; and the flat 265-member star
 type (Phase 5's typed parts).
 
@@ -3497,7 +3497,12 @@ type (Phase 5's typed parts).
   disk image) showed it, and the defence is a check after the close,
   not more iostat. A check by path, though, also sees another
   process's file at that path (M174): the deck set's parallel runs,
-  which share a history file, found it at the merge.
+  which share a history file, found it at the merge. The fix measures
+  the file through the unit's own descriptor right after each flush
+  (fa04ff45): gfortran's inquire-by-unit answers from its own byte
+  count, not from the file, and a second open with status='replace'
+  truncates the same inode, so neither inquire nor an inode comparison
+  could have caught it.
 - The environment changed under the round: Xcode was updated and its
   license left unaccepted, so /usr/bin/git, make's linker and clang
   exited 69 from about 21:30. Every later build, test and commit used
