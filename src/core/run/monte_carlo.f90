@@ -22,7 +22,9 @@
 module monte_carlo
       use star_info_lib, only: json, i_h1, i_he4, i_metals, i_lum_grav, &
            max_mc_runs, star_info
-      use io_units
+      use run_messages, only: run_log_unit, terminal_unit
+      use run_files, only: last_model_unit, starting_model_unit, &
+           dynamics_unit, mc_summary_unit, mc_model_unit
       use model_files, only: write_mod_model
       implicit none
       private

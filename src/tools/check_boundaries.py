@@ -884,11 +884,36 @@ def check_no_io(src_root):
     return problems
 
 
+# The physics domains (and numerics, math) import no module of io/
+# (2026-10-31): their messages go through state/run_messages.f90, which
+# every layer may use, and their tables arrive in paths records; io is
+# above them. Their test programs may use io.
+PHYSICS_DIRS = STAR_FREE_DIRS + ["rotation", "math"]
+
+def check_physics_no_io(src_root):
+    io_modules = set()
+    for f in sorted((src_root / "io").rglob("*.f90")):
+        if "/test/" not in f.relative_to(src_root).as_posix():
+            io_modules |= {m.lower() for m in re.findall(r"(?im)^\s*module\s+(?!procedure)(\w+)\s*$",
+                                                         strip_comments(f.read_text(errors="replace")))}
+    problems = []
+    use_re = re.compile(r"(?im)^\s*use\s+(\w+)")
+    for d in PHYSICS_DIRS:
+        for f in sorted((src_root / d).rglob("*.f90")):
+            rel = f.relative_to(src_root).as_posix()
+            if "/test/" in rel:
+                continue
+            for m in use_re.finditer(strip_comments(f.read_text(errors="replace"))):
+                if m.group(1).lower() in io_modules:
+                    problems.append(f"{rel}: uses {m.group(1)}, an io/ module (messages: run_messages)")
+    return problems
+
+
 # Facades whose users must name what they take (docs/GUIDELINES.md,
 # "Declarations and interfaces", rule 2: every `use` has an only: list;
 # math_lib is the exception, since under USE_CRMATH its procedures
 # shadow the intrinsics). Add a module once its users comply.
-ONLY_LIST_MODULES = ["numerics_lib"]
+ONLY_LIST_MODULES = ["numerics_lib", "run_messages", "run_files"]
 
 def check_only_lists(src_root):
     problems = []
@@ -1145,6 +1170,13 @@ def main():
     if io_problems:
         print("NO-I/O CONTRACT VIOLATIONS (numerics/, math/):")
         for m in io_problems:
+            print("  " + m)
+        return 1
+
+    physics_io_problems = check_physics_no_io(SRC)
+    if physics_io_problems:
+        print("PHYSICS IMPORTS IO (PHYSICS_DIRS use no io/ module):")
+        for m in physics_io_problems:
             print("  " + m)
         return 1
 

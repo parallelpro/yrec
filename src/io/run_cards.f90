@@ -6,7 +6,7 @@
 ! terminal and the run log.
 module run_cards
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use io_units, only: terminal_unit, log_line
+      use run_messages, only: terminal_unit, log_line
       use controls_buffer, only: num_runs, run_kind, num_models, target_end_age, &
            timestep_override, central_deuterium_stop, central_hydrogen_stop, &
            central_helium_stop, rescale_mass, rescale_x, rescale_z, rescale_core_mass, &

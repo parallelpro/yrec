@@ -48,7 +48,7 @@ program test_net
       use user_inputs, only: map_user_inputs
       use controls_sync, only: store_controls_to_star, arm_run_copies
       use controls_buffer
-      use io_units
+      use run_messages, only: run_log_unit
       use star_info_lib, only: star_info, i_h1, i_h2, i_he3, i_he4, i_metals, &
            i_c12, i_c13, i_n14, i_o16, i_o18, n_species_extended
       use net_lib, only: compute_network_rates, deuterium_rate, &

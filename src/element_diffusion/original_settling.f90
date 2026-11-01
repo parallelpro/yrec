@@ -69,8 +69,7 @@ subroutine gravitational_settling(diff_scr, &
      suspension_reported, ierr)
 
       use composition_layout, only: json
-      use io_units
-      use run_log, only: solver_diagnostics
+      use run_messages, only: run_log_unit, terminal_unit, solver_diagnostics
       use physical_constants
       use numerics_lib, only: solve_tridiagonal, numerics_status_text
       implicit none
@@ -324,8 +323,7 @@ subroutine gravitational_settling_setup(diff_scr, timestep_seconds, dlnp_dr, log
       use species_table, only: thoul_h1, thoul_he4, thoul_fe, thoul_electron, &
            thoul_col_h, thoul_col_he, thoul_col_metal
       use bahcall_loeb_units, only: set_bahcall_loeb_scales
-      use io_units
-      use run_log, only: solver_diagnostics
+      use run_messages, only: run_log_unit, solver_diagnostics
       use physical_constants
       use math_lib
       implicit none

@@ -16,7 +16,7 @@
 ! in core and is covered by the full-model tests. Results print for
 ! byte-comparison against expected_test_atm.out.
 program test_atm
-      use io_units, only: run_log_unit, terminal_unit
+      use run_messages, only: run_log_unit, terminal_unit
       use atm_lib
       implicit none
       integer :: gerr

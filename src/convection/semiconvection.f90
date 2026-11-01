@@ -12,7 +12,7 @@ module semiconvection
       use temperature_gradients, only: compute_temperature_gradients
       use eos_lib, only: eos_result, eos_get
       use kap_lib, only: kap_get, num_kap_results
-      use io_units, only: run_log_unit
+      use run_messages, only: run_log_unit
       use physical_constants
       use math_lib
       implicit none

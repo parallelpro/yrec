@@ -83,8 +83,7 @@ subroutine rezone(s, envelope_store_index, point_reset_flag, &
            ichi_dm_min, ichi_dp_core_max, ichi_dp_czbase_max, ichi_dp_env_max, ichi_dx_max, &
            ichi_dz_max, ichi_flag_dw, ichi_flag_dx, ichi_flag_dz
       use settings_install, only: install_surface_x_settings
-      use io_units
-      use run_log, only: solver_diagnostics
+      use run_messages, only: run_log_unit, terminal_unit, solver_diagnostics
       use physical_constants
       use numerics_lib, only: natural_spline, splint, numerics_status_text
       use regridding, only: structure_profiles, rotation_profiles, &

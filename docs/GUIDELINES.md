@@ -390,8 +390,10 @@ them as it is rewritten.
    it did not have, and does not stop the run. The caller that knows what
    the failure means writes the message, and a domain writes its
    messages through one module (`net_messages`, `rotation_messages`,
-   `eos_messages`; io's `io_units`: `report_error`, `report_warning`,
-   `report_note`), to the terminal and the run log. numerics/ and math/ hold no I/O statement at all
+   `eos_messages`; the shared `state/run_messages.f90`: `report_error`,
+   `report_warning`, `report_note`, `log_line`, the run log's unit and the
+   solver-diagnostics gate), to the terminal and the run log. A physics
+   domain imports no io/ module (`check_physics_no_io`). numerics/ and math/ hold no I/O statement at all
    (`NO_IO_DIRS` in `tools/check_boundaries.py`).
 
 ## Verification tiers (2026): match the gate to the blast radius

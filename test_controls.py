@@ -194,7 +194,7 @@ def test_pristine_controls_are_the_defaults(tmp_path):
 
 def test_warnings_reach_the_terminal_and_the_run_log(tmp_path):
     """A deck that sets a control nothing uses gets a warning (controls_check's
-    warn_inert_controls, through io_units' report_warning) on the terminal
+    warn_inert_controls, through run_messages' report_warning) on the terminal
     and in the run log: a giant deck sets use_rotation_scaled_solar_wind =
     .TRUE. (its wind is commented out), cm_base sets it .FALSE.; both set
     surface_composition_file, which is accepted and ignored without a

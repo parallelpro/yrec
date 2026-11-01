@@ -335,7 +335,7 @@ end subroutine history_values
 !   star writes: none
 subroutine write_history_row(s, history, iprof, ierr)
       use star_info_lib, only: star_info
-      use io_units, only: check_io
+      use run_messages, only: check_io
       use output_files, only: open_output_file
       type(star_info), intent(in) :: s
       type(history_file), intent(inout) :: history

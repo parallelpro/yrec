@@ -24,8 +24,7 @@ subroutine run_microdiff(diff_scr, grid_spacing, timestep, total_mass, num_eq_po
       use microdiff_mapping, only: microdiff_grid
       use microdiff_coefficients
       use composition_layout, only: json
-      use io_units
-      use run_log, only: solver_diagnostics
+      use run_messages, only: run_log_unit, terminal_unit, solver_diagnostics
       use physical_constants
       use numerics_lib, only: solve_tridiagonal, numerics_status_text
       implicit none

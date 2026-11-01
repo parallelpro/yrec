@@ -15,7 +15,7 @@ module allard_atmosphere
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use atm_tables, only: atm_settings, atm_table, atm_table_nga, &
            atm_table_nta
-      use io_units, only: run_log_unit
+      use run_messages, only: run_log_unit
       use numerics_lib, only: locate, polint, numerics_status_text
       use math_lib
       implicit none

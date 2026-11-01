@@ -159,7 +159,7 @@ end subroutine set_mass_change_rate
 ! turnover timescale in yr and R/Rsun); without one, zeroes the turnover
 ! timescale and sets it to nz. Then sums the convective envelope's mass.
 subroutine measure_convective_envelope()
-      use run_log, only: solver_diagnostics
+      use run_messages, only: solver_diagnostics
 ! The turnover timescale was computed beforehand, for the previous model
 ! (compute_turnover_timescale; MHP 2/12). (The F77 code printed it
 ! unlabelled every step; it is now a diagnostic.)

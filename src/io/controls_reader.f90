@@ -15,18 +15,19 @@
 ! star's run state. The read opens no file of the run (run_yrec's
 ! open_run_files does, after it), but for the run log after a controls
 ! error (open_run_log_after_error, so that the log holds the error); its
-! messages reach the run log when that opens (io_units). The read's other steps live in user_inputs
-! (map_user_inputs), controls_check (the errors and warnings),
-! derived_controls and run_cards. Errors return via ierr.
+! messages reach the run log when that opens (run_messages). The read's
+! other steps live in user_inputs (map_user_inputs), controls_check (the
+! errors and warnings), derived_controls and run_cards. Errors return via
+! ierr.
 module controls_reader
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use run_log, only: set_solver_diagnostics
+      use run_messages, only: check_io, report_warning, discard_pending_log, &
+           set_solver_diagnostics
       use user_inputs, only: map_user_inputs
       use star_info_lib, only: star_info, control_nml_override, physics_nml_override
       use controls_sync, only: seed_controls_buffer, store_controls_to_star, &
            arm_run_copies
       use yrec_version, only: yrec_version_string, git_hash_string
-      use io_units, only: check_io, discard_pending_log, report_warning
       use controls_buffer, only: control_nml_file, physics_nml_file, report_solver_diagnostics, &
            log_output_file
       use legacy_controls, only: read_legacy_deck

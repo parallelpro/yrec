@@ -11,12 +11,12 @@
 !   warn_inconsistent_controls  combinations that are silently inert or
 !                               cancel each other; run_yrec calls it
 !                               after prepare_run
-! Their messages go through io_units (report_error, report_warning): on
+! Their messages go through run_messages (report_error, report_warning): on
 ! the terminal and in the run log. A warning never stops the run: an
 ! inert control is a probable mistake, not a certain one. Each rule
 ! names the code it is checked against.
 module controls_check
-      use io_units, only: report_error, report_warning
+      use run_messages, only: report_error, report_warning
       use numerics_lib, only: bsstep_max_stages, bsstep_max_extrap_order
       use star_info_lib, only: star_info
       use controls_buffer, only: max_runs, use_semiconvection, core_overshoot_active, &

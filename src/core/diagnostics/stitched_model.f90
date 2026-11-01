@@ -890,7 +890,7 @@ end function species_slot
 ! every point, then the pulse points. A column without a value in a
 ! point's region is an error (ierr = 1), reported once.
 subroutine fill_stitched_arrays(s, ierr)
-      use io_units, only: report_error
+      use run_messages, only: report_error
       type(star_info), intent(inout) :: s
       integer, intent(out) :: ierr
       type(output_column) :: cols(n_prof_cols)

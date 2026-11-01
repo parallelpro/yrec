@@ -23,7 +23,7 @@ program test_convection
       use kap_lib, only: num_kap_results, i_kap, i_dlnkap_dlnrho, i_dlnkap_dlnt
       use convection_lib, only: convection_settings_t, set_convection_settings, &
            compute_temperature_gradients, find_convection_zones, homogenize_convection_zones
-      use io_units, only: run_log_unit
+      use run_messages, only: run_log_unit
       implicit none
 ! the settings the cases change, installed before each use
       type(convection_settings_t) :: cs

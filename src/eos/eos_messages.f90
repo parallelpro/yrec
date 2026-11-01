@@ -15,7 +15,7 @@
 ! would. The terminal is standard output.
 module eos_messages
       use, intrinsic :: iso_fortran_env, only: output_unit
-      use io_units, only: run_log_unit
+      use run_messages, only: run_log_unit
       implicit none
       private
       public :: eos_log, eos_report

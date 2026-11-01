@@ -84,7 +84,7 @@
 ! or FAIL; the program stops with status 1 on any FAIL. Each check was
 ! confirmed to fail under a mutation of the code it covers (2026-10-29).
 ! The messages io reports go to the files terminal.txt and run_log.txt
-! (io_units' terminal_unit and run_log_unit), where the error checks
+! (run_messages' terminal_unit and run_log_unit), where the error checks
 ! look for them.
 program test_io
       use, intrinsic :: iso_fortran_env, only: dp => real64, int64
@@ -93,8 +93,8 @@ program test_io
       use star_info_lib, only: star_info, json, i_h1, i_he4, i_metals, i_he3, &
            i_c12, i_c13, i_n14, i_n15, i_o16, i_o17, i_o18, i_h2, i_li6, i_li7, &
            i_be9
-      use io_units, only: terminal_unit, run_log_unit, isochrone_unit
-      use run_files, only: expand_value, directory_of, copy_inlists_used
+      use run_messages, only: run_log_unit, terminal_unit
+      use run_files, only: expand_value, directory_of, copy_inlists_used, isochrone_unit
       use yrec_output, only: pulse_format_code, unknown_pulse_format, &
            pulse_gyre, pulse_fgong, pulse_gsm, output_run_header
       use run_cards, only: card_evolve

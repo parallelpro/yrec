@@ -17,7 +17,7 @@
 ! from the registry.
 module legacy_controls
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use io_units, only: check_io
+      use run_messages, only: check_io
       include 'legacy_use.inc'
       implicit none
       private

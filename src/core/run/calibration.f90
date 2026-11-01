@@ -60,7 +60,7 @@ contains
 !     solar_calibration_converged
 subroutine check_solar_calibration(s, log_l_lsun, log_r_rsun, run_index, current_zx)
 
-      use io_units
+      use run_messages, only: terminal_unit
       use math_lib
       implicit none
       type(star_info), intent(inout) :: s
@@ -174,7 +174,7 @@ end subroutine check_solar_calibration
 !     log_l_lsun_prev_model, r_rsun_prev_model, star_found_flag
 subroutine check_star_calibration(s, log_l_lsun, log_teff, current_age, run_index)
 
-      use io_units
+      use run_messages, only: run_log_unit
       use physical_constants
       use math_lib
       implicit none
@@ -439,7 +439,7 @@ end subroutine setup_solar_calibration
 subroutine setup_star_calibration(s)
 
       use control_slots, only: max_runs
-      use io_units
+      use run_messages, only: run_log_unit
       use physical_constants
       use math_lib
       implicit none

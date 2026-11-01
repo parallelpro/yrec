@@ -28,7 +28,7 @@
 ! it covers; a failed check makes the program stop with status 1. The
 ! run log (test_eos.short) gets eos's messages.
 program test_eos
-      use io_units
+      use run_messages, only: run_log_unit
       use eos_lib
       use eos_configuration, only: eos_settings, set_eos_settings
       use blended_eos, only: gamma1_at_density

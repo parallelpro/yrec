@@ -116,7 +116,7 @@ subroutine turnover_from_interior_new(s, shell_mass, convective_flag, log10_radi
      adiabatic_gradient, radius_at_bcz, ierr)
       use math_lib
       use numerics_lib, only: natural_spline, splint, numerics_status_text
-      use io_units, only: run_log_unit
+      use run_messages, only: run_log_unit
       use convection_geometry, only: cz_base_fraction
       use physical_constants, only: ln10
       use star_info_lib, only: json

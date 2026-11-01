@@ -10,21 +10,37 @@
 ! star%physics%log_output_file), so nothing here keeps state from the
 ! read.
 module run_files
-      use io_units, only: terminal_unit, last_model_unit, run_log_unit, check_io, &
-           starting_model_unit, dynamics_unit, mc_summary_unit, mc_model_unit, &
-           isochrone_unit, flush_pending_log
+      use run_messages, only: terminal_unit, run_log_unit, check_io, flush_pending_log
       use star_info_lib, only: star_info
       implicit none
       private
       public :: assign_unit_numbers, open_run_files, expand_value, &
            output_directory, directory_of, copy_inlists_used, open_run_log_after_error
+      public :: last_model_unit, starting_model_unit, dynamics_unit, mc_summary_unit, &
+           mc_model_unit, isochrone_unit
+
+! The units of the run's files besides the run log and the terminal
+! (run_messages'): the final model, written from everywhere (assigned
+! with them by assign_unit_numbers), and the starting model, the Monte
+! Carlo samples, summary and model files and the isochrone file, which
+! open_run_files opens with newunit (-1 until then):
+!   last_model_unit     -- the final .mod model (last_model_file)
+!   starting_model_unit -- the starting model (first_model_file)
+!   dynamics_unit       -- the Monte Carlo samples (dynamics_file)
+!   mc_summary_unit, mc_model_unit -- the Monte Carlo summary and model
+!                          files (monte_carlo_file1_path, _file2_path)
+!   isochrone_unit      -- the isochrone file (isochrone_file)
+! The table readers open their tables themselves, with newunit.
+      integer :: last_model_unit
+      integer :: starting_model_unit = -1, dynamics_unit = -1, &
+           mc_summary_unit = -1, mc_model_unit = -1, isochrone_unit = -1
 
 contains
 
 ! ---------------------------------------------------------------
-! The fixed units written from everywhere: the terminal, the final
-! model and the run log (io_units); the read calls this first, before
-! its paths are expanded.
+! The fixed units written from everywhere: the terminal and the run log
+! (run_messages'), and the final model; the read calls this first,
+! before its paths are expanded.
 subroutine assign_unit_numbers
       terminal_unit = 6
       last_model_unit = 11

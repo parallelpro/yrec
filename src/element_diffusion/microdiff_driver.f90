@@ -296,8 +296,7 @@ subroutine microdiff_setup(diff_scr, timestep, dlnp_dr, log_radius, log_density,
 
       use composition_layout, only: json, i_h1, i_he4
       use bahcall_loeb_units, only: set_bahcall_loeb_scales
-      use io_units
-      use run_log, only: solver_diagnostics
+      use run_messages, only: run_log_unit, solver_diagnostics
       use physical_constants
       use math_lib
       implicit none

@@ -46,7 +46,7 @@ subroutine compute_temperature_gradients(log_temperature, log_pressure, &
       use eos_lib, only: eos_result
       use kap_lib, only: num_kap_results, i_kap, i_dlnkap_dlnrho, &
            i_dlnkap_dlnt
-      use io_units
+      use run_messages, only: run_log_unit
       use physical_constants
       use math_lib
       implicit none

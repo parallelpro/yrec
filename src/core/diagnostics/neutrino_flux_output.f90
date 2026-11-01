@@ -40,7 +40,7 @@ subroutine write_neutrino_flux_table(s)
       use star_info_lib, only: json, i_h1, i_h2, i_he3, i_he4, i_c12, &
            i_c13, i_n14, i_o16, i_o18, i_nu_pp, i_nu_pep, i_nu_hep, &
            i_nu_be7, i_nu_b8, i_nu_n13, i_nu_o15, i_nu_f17, n_nu_fluxes
-      use io_units
+      use run_messages, only: run_log_unit
       use physical_constants
       use net_lib, only: nuclear_energy_result
       use burn_step, only: compute_zone_energy

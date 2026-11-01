@@ -17,7 +17,7 @@ module opal92_opacity
            opal92_table_set, opal92_x_match_tol
       use numerics_lib, only: findex, natural_spline, splint, &
            compute_spline_coefficients, numerics_status_text
-      use io_units, only: run_log_unit
+      use run_messages, only: run_log_unit
       use math_lib
       implicit none
       private

@@ -139,8 +139,7 @@ subroutine henyey_iterate(s, delta_time, max_iterations, converged, &
       use star_info_lib, only: i_lum_3alpha, i_lum_cno, i_lum_he_c, &
            i_lum_pp1, i_lum_pp2, i_lum_pp3, n_lum_channels
       use energy_sources, only: num_energy_sources
-      use io_units
-      use run_log, only: solver_diagnostics
+      use run_messages, only: run_log_unit, terminal_unit, solver_diagnostics
       use physical_constants
       use math_lib
       implicit none

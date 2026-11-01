@@ -10,7 +10,7 @@ module convection_zones
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use convection_configuration, only: convection_settings
       use eos_lib, only: eos_result, eos_get
-      use io_units, only: run_log_unit
+      use run_messages, only: run_log_unit
       use physical_constants, only: ln10
       use math_lib
       implicit none

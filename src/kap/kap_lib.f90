@@ -88,7 +88,7 @@ end subroutine kap_get
 subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
      metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, &
      ion_fraction, ierr)
-      use io_units
+      use run_messages, only: run_log_unit
       real(dp), intent(in) :: log10_density, log10_temperature, &
            hydrogen_fraction, metal_fraction
       real(dp), intent(out) :: opacity, log10_opacity, &

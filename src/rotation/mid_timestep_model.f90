@@ -390,8 +390,7 @@ subroutine burn_and_settle(s, sub_physics, timestep, composition, shell_mass, lo
      enclosed_mass, ierr)
       use rotation_scratch_lib, only: substep_physics_state
       use star_info_lib, only: star_info, json
-      use io_units
-      use run_log, only: solver_diagnostics
+      use run_messages, only: run_log_unit, solver_diagnostics
       use rotation_messages, only: rotation_report, message_length, unwritten_line
       use physical_constants
       use math_lib

@@ -19,7 +19,7 @@ module laol_opacity
       use opacity_tables, only: kap_settings, laol_opacity_cap, &
            laol_table_set, n_laol_rho, n_laol_t, n_laol_x, opacity_table
       use numerics_lib, only: natural_spline, locate, splint, numerics_status_text
-      use io_units, only: run_log_unit
+      use run_messages, only: run_log_unit
       use math_lib
       implicit none
       private

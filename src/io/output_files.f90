@@ -2,7 +2,7 @@
 ! output_files
 !----------------------------------------------------------------------
 ! The files io writes, opened and closed in one way, with a failure
-! reported through io_units' check_io ("ERROR: cannot write <path>:
+! reported through run_messages' check_io ("ERROR: cannot write <path>:
 ! <reason>", ierr = 1, which stops the run with exit 1):
 !   open_output_file   a new file at path (any old one replaced), for
 !                      writing
@@ -24,7 +24,7 @@
 ! a file shorter on disk than that was cut.
 module output_files
       use, intrinsic :: iso_fortran_env, only: int64
-      use io_units, only: check_io, report_error
+      use run_messages, only: check_io, report_error
       implicit none
       private
       public :: open_output_file, close_output_file

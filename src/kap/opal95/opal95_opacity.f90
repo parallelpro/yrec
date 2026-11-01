@@ -39,7 +39,7 @@ contains
 ! build_opal95_fixed_z_table. Any premature end of file (fewer than n_opal95_tables
 ! tables, or a truncated table body) is reported and returns ierr = 1.
 subroutine read_opal95_tables(opal95_table_path, ierr)
-      use io_units
+      use run_messages, only: run_log_unit
       integer, intent(out) :: ierr
 
 ! the table file's unit

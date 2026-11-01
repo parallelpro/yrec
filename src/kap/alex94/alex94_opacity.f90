@@ -16,7 +16,7 @@ module alex94_opacity
            opacity_table, stencil4_locate
       use numerics_lib, only: interp, lagrange4
       use physical_constants, only: ln10
-      use io_units, only: run_log_unit
+      use run_messages, only: run_log_unit
       use math_lib
       implicit none
       private

@@ -15,7 +15,7 @@
 ! without it, write_gsm_pulse is a stub and gsm_supported is .false.
 module pulsation_output
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use io_units, only: check_io
+      use run_messages, only: check_io
       use output_files, only: open_output_file, close_output_file
       implicit none
       private
@@ -221,7 +221,7 @@ end subroutine write_gsm_pulse
 #else
 subroutine write_gsm_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
      pulse_path, ierr)
-      use io_units, only: report_error
+      use run_messages, only: report_error
       integer, intent(in) :: n
       real(dp), intent(in) :: pts(:,:)
       real(dp), intent(in) :: mstar_g, rstar_cm, lstar_cgs

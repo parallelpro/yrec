@@ -28,7 +28,7 @@ program test_element_diffusion
       use star_info_lib, only: star_info, json, i_h1, i_he4, i_metals, i_he3, &
            i_c12, i_c13, i_n14, i_n15, i_o16, i_o17, i_o18, i_h2, i_li6, &
            i_li7, i_be9
-      use io_units, only: run_log_unit, terminal_unit
+      use run_messages, only: run_log_unit, terminal_unit
       use element_diffusion_lib, only: diffuse_elements, set_diffusion_settings
       use diffusion_settings_builder, only: diffusion_settings_from_star
       implicit none

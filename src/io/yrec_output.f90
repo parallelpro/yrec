@@ -71,7 +71,7 @@ contains
 subroutine output_open(s, output, ierr)
       use star_info_lib, only: star_info
       use run_files, only: output_directory
-      use io_units, only: report_error
+      use run_messages, only: report_error
       type(star_info), intent(in) :: s
       type(output_state), intent(inout) :: output
       integer, intent(out) :: ierr
@@ -146,7 +146,7 @@ end function pulse_format_code
 !   star writes: none
 subroutine output_write_model(s, output, ierr)
       use star_info_lib, only: star_info, i_he4
-      use io_units, only: last_model_unit, isochrone_unit
+      use run_files, only: last_model_unit, isochrone_unit
       type(star_info), intent(in) :: s
       type(output_state), intent(inout) :: output
       integer, intent(inout) :: ierr
@@ -310,7 +310,8 @@ end subroutine write_pulse
 !   star writes: none
 subroutine output_run_header(s, total_mass_msun, ierr)
       use star_info_lib, only: star_info
-      use io_units, only: terminal_unit, isochrone_unit
+      use run_messages, only: terminal_unit
+      use run_files, only: isochrone_unit
       use run_cards, only: card_evolve, card_rescale, card_rescale_and_evolve
       type(star_info), intent(in) :: s
       real(dp), intent(in) :: total_mass_msun
@@ -355,7 +356,8 @@ end subroutine output_run_header
 ! After a write to the isochrone file (open for the run) with
 ! iostat=ios and iomsg=msg: a failure reported, ierr = 1.
 subroutine check_isochrone_write(ios, msg, ierr)
-      use io_units, only: isochrone_unit, check_io
+      use run_messages, only: check_io
+      use run_files, only: isochrone_unit
       integer, intent(in) :: ios
       character(len=*), intent(in) :: msg
       integer, intent(inout) :: ierr

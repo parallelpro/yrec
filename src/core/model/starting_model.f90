@@ -66,7 +66,8 @@ subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
       use envelope_integration, only: atm_get, envint_step_config, fixed_envint_step, &
            ambient_log10_teff
       use envelope_refit, only: append_envelope_points
-      use io_units
+      use run_messages, only: run_log_unit, terminal_unit
+      use run_files, only: starting_model_unit
       use model_files, only: model_file_header, read_model_format_tag, read_mod_model, &
            read_yrec7, read_model2
       use physical_constants
@@ -175,7 +176,7 @@ subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
             return
       endif
 
-! The model file is on io_units' starting_model_unit (legacy IFIRST).
+! The model file is on run_files' starting_model_unit (legacy IFIRST).
       ikut_flag = 0
       iread = starting_model_unit
 

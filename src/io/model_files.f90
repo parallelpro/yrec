@@ -174,8 +174,8 @@ end subroutine read_model_format_tag
 !   star writes: none
 subroutine write_mod_model(s, iwrite, replace, ierr)
       use star_info_lib, only: star_info
-      use io_units, only: last_model_unit, run_log_unit, check_io
-      use run_log, only: solver_diagnostics
+      use run_messages, only: run_log_unit, check_io, solver_diagnostics
+      use run_files, only: last_model_unit
       type(star_info), intent(in) :: s
       integer, intent(in) :: iwrite
       logical, intent(in) :: replace
@@ -269,7 +269,7 @@ end subroutine write_mod_model
 !     omega, star_mass, xa
 subroutine read_mod_model(s, iread, header, ierr)
       use star_info_lib, only: star_info
-      use io_units, only: run_log_unit
+      use run_messages, only: run_log_unit
       type(star_info), intent(inout) :: s
       integer, intent(in) :: iread
       type(model_file_header), intent(out) :: header
@@ -366,7 +366,7 @@ end subroutine read_mod_model
 !     luminosity_breakdown_lsun, luminosity_lsun, model_number, nz,
 !     omega, star_mass, triangle_log_l_lsun, triangle_log_teff, xa
 subroutine read_yrec7(s, iread, header, ierr)
-      use io_units, only: run_log_unit
+      use run_messages, only: run_log_unit
       use star_info_lib, only: star_info, json
       use math_lib
       type(star_info), intent(inout) :: s
@@ -668,7 +668,7 @@ end subroutine luminosities_to_solar_units
 ! An error in the model file on unit iread: "the starting model <file>
 ! <what>", and ierr = 1.
 subroutine report_model_error(iread, what, ierr)
-      use io_units, only: report_error
+      use run_messages, only: report_error
       integer, intent(in) :: iread
       character(len=*), intent(in) :: what
       integer, intent(inout) :: ierr
@@ -684,7 +684,7 @@ end subroutine report_model_error
 ! iomsg=msg: on failure, report "cannot read <what> of the starting
 ! model <file>: <msg>" (check_io) and set ierr = 1.
 subroutine check_model_read(ios, msg, iread, what, ierr)
-      use io_units, only: check_io
+      use run_messages, only: check_io
       integer, intent(in) :: ios, iread
       character(len=*), intent(in) :: msg, what
       integer, intent(inout) :: ierr
@@ -700,7 +700,7 @@ end subroutine check_model_read
 ! otherwise report it and set ierr = 1.
 subroutine check_zone_count(nz, iread, ierr)
       use star_info_lib, only: json
-      use io_units, only: report_error
+      use run_messages, only: report_error
       integer, intent(in) :: nz, iread
       integer, intent(inout) :: ierr
       character(len=256) :: path
@@ -717,7 +717,7 @@ end subroutine check_zone_count
 ! A zone index from a model's header must lie in 1..nz; otherwise
 ! report it and set ierr = 1.
 subroutine check_zone_index(index, nz, iread, what, ierr)
-      use io_units, only: report_error
+      use run_messages, only: report_error
       integer, intent(in) :: index, nz, iread
       character(len=*), intent(in) :: what
       integer, intent(inout) :: ierr

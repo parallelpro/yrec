@@ -6,13 +6,13 @@
 ! envelope triangle for rotating runs, the starting model's mixture
 ! changes, the switches that diffusion options imply and the envelope's
 ! storage temperature; and it writes the run log's header. Its messages go to the terminal and the run log
-! through io_units (report_warning, report_note); the errors are
+! through run_messages (report_warning, report_note); the errors are
 ! controls_check's. Everything here works on the controls' code names,
 ! in the read's buffer (controls_buffer).
 module derived_controls
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use yrec_version, only: yrec_version_string, git_hash_string
-      use io_units, only: report_warning, report_note, log_line
+      use run_messages, only: report_warning, report_note, log_line
       use controls_buffer, only: atm_choice, envelope_store_log_temperature, &
            be9_palpha_rate_scale, be9_palpha_reference_xs, be9_pd_rate_scale, &
            be9_pd_reference_xs, be9_pg_rate_scale, be9_pg_reference_xs, &

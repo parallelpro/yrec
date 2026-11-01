@@ -464,7 +464,7 @@ subroutine burn_network_region(s, log_temperature, zone_begin, zone_end, &
       use net_lib, only: burn_implicitly, n_solved, n_network, &
            network_species_slot, s_h1, s_he3, s_he4, burn_not_converged, &
            burn_singular_jacobian
-      use io_units, only: report_error
+      use run_messages, only: report_error
       type(star_info), intent(inout) :: s
 
       double precision, intent(in) :: log_temperature(json)

@@ -75,7 +75,6 @@ subroutine check_angular_momentum(s, log_density, specific_angular_momentum_prev
       use omega_profile, only: solid_body_omega, omega_from_j, &
            default_inertia_tolerance
       use star_info_lib, only: star_info, json
-      use io_units
       implicit none
       type(star_info), intent(in) :: s
 
@@ -280,7 +279,6 @@ subroutine check_composition(s, sub_physics, composition, iteration_number, num_
      dt, cut_count, converged_flag, redo_flag, ierr)
       use rotation_scratch_lib, only: substep_physics_state
       use star_info_lib, only: star_info, json, i_h1, i_he4, i_metals, i_he3, n_species_basic
-      use io_units
       implicit none
       type(star_info), intent(in) :: s
       type(substep_physics_state), intent(inout) :: sub_physics
@@ -385,7 +383,6 @@ end subroutine check_mixed_species
 subroutine check_species_range(composition, species_begin, species_end, num_zones, &
      dt, cut_count, converged_flag, redo_flag, ierr)
       use star_info_lib, only: json, i_metals
-      use io_units
       double precision, intent(inout) :: composition(15,json)
       integer, intent(in) :: species_begin, species_end, num_zones
       double precision, intent(inout) :: dt

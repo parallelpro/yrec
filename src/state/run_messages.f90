@@ -1,10 +1,14 @@
 !----------------------------------------------------------------------
-! io_units
+! run_messages
 !----------------------------------------------------------------------
-! The units of the run's files, and io's messages, each on the terminal
-! and in the run log; a message from before the run log opens (the
-! controls read's) waits for it, and open_run_log writes the waiting
-! lines first (flush_pending_log), so the run log holds them in order:
+! The run's messages, each on the terminal and in the run log, and the
+! gate for the solver forensics. Every layer may use it: the physics
+! domains' own message modules (eos_messages, net_messages,
+! rotation_messages) write through its run_log_unit, and the star-free
+! code asks solver_diagnostics(). A message from before the run log
+! opens (the controls read's) waits for it, and open_run_log (run_files)
+! writes the waiting lines first (flush_pending_log), so the run log
+! holds them in order:
 !   check_io        after an open, read or write: "ERROR: cannot <action>
 !                   <path>: <reason>" on failure
 !   report_error    "ERROR: <text>", an error the run stops on
@@ -12,32 +16,21 @@
 !                   with (an inert control, a combination that cancels)
 !   report_note     "<text>", what the read did (a mixture applied)
 !   log_line        a line for the run log only (its header, the run plan)
-! The three fixed units written from everywhere, assigned at each read
-! (run_files' assign_unit_numbers):
+! The two units, assigned at each read (run_files' assign_unit_numbers):
 !   run_log_unit    -- the run log (log_output_file, default run.log)
 !   terminal_unit   -- stdout (always 6; kept as a named unit only
 !                      because ~20 files write through it)
-!   last_model_unit -- the final .mod model (last_model_file)
-! The files the controls read opens (run_files' open_run_files, with
-! newunit; -1 until then):
-!   starting_model_unit -- the starting model (first_model_file)
-!   dynamics_unit       -- the Monte Carlo samples (dynamics_file)
-!   mc_summary_unit, mc_model_unit -- the Monte Carlo summary and model
-!                          files (monte_carlo_file1_path, _file2_path)
-!   isochrone_unit      -- the isochrone file (isochrone_file)
-! The table readers open their tables themselves, with newunit.
-module io_units
+! The solver diagnostics' gate: the control report_solver_diagnostics, as
+! the controls read installs it (set_solver_diagnostics).
+module run_messages
       implicit none
       private
-      public :: last_model_unit, run_log_unit, terminal_unit, check_io, &
+      public :: run_log_unit, terminal_unit, check_io, &
            report_error, report_warning, report_note, log_line, &
            flush_pending_log, discard_pending_log
-      public :: starting_model_unit, dynamics_unit, mc_summary_unit, &
-           mc_model_unit, isochrone_unit
+      public :: solver_diagnostics, set_solver_diagnostics
 
-      integer :: last_model_unit, run_log_unit, terminal_unit
-      integer :: starting_model_unit = -1, dynamics_unit = -1, &
-           mc_summary_unit = -1, mc_model_unit = -1, isochrone_unit = -1
+      integer :: run_log_unit, terminal_unit
 
 ! The run log's lines written before it opened, in order (the most a
 ! read writes is its warnings, the header and a line or three per run
@@ -46,6 +39,10 @@ module io_units
       character(len=max_line_length) :: pending_line(max_pending_lines)
       integer :: pending_length(max_pending_lines)
       integer :: num_pending = 0
+
+! the control report_solver_diagnostics (set_solver_diagnostics), which
+! star-free code asks through solver_diagnostics()
+      logical :: solver_diagnostics_on = .false.
 
 contains
 
@@ -136,4 +133,17 @@ logical function run_log_is_open()
       if (run_log_unit == terminal_unit) run_log_is_open = .false.
 end function run_log_is_open
 
-end module io_units
+! ---------------------------------------------------------------
+! The control report_solver_diagnostics, as the controls read installs
+! it, so that star-free code can ask.
+subroutine set_solver_diagnostics(on)
+      logical, intent(in) :: on
+      solver_diagnostics_on = on
+end subroutine set_solver_diagnostics
+
+! The gate for the verbose solver forensics in the run log.
+logical function solver_diagnostics()
+      solver_diagnostics = solver_diagnostics_on
+end function solver_diagnostics
+
+end module run_messages

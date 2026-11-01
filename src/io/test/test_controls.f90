@@ -17,7 +17,8 @@
 ! deck in examples/ and testsuite/.
 program test_controls
       use star_info_lib, only: star_info, control_nml_override, physics_nml_override
-      use io_units, only: last_model_unit, run_log_unit, terminal_unit
+      use run_messages, only: run_log_unit, terminal_unit
+      use run_files, only: last_model_unit
       use controls_reader, only: read_controls
       use run_files, only: open_run_files
 ! the members the star does not hold (registry home buffer) are dumped

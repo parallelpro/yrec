@@ -7,7 +7,7 @@
 !   rotation_note    a report of each sub-step (the dynamical-shear
 !                    interfaces, the transport's convergence): to the
 !                    terminal, and to the run log when solver diagnostics
-!                    are on (run_log's solver_diagnostics);
+!                    are on (run_messages' solver_diagnostics);
 !   rotation_numerics_report
 !                    a numerics routine's failure, as a rotation_report
 !                    of one line: where, and its status's text
@@ -20,8 +20,7 @@
 ! write(*) meant), whether or not the run has assigned io's units.
 module rotation_messages
       use, intrinsic :: iso_fortran_env, only: output_unit
-      use io_units, only: run_log_unit
-      use run_log, only: solver_diagnostics
+      use run_messages, only: run_log_unit, solver_diagnostics
       use numerics_lib, only: numerics_status_text
       implicit none
       private

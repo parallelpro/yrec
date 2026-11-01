@@ -66,8 +66,7 @@ subroutine compute_surface_boundary(s, tri_teffl, tri_logl, envelope_coeffs, &
            fit_triangle_coefficients, max_reflections
       use atm_lib, only: atm_allard_teff_max
       use star_info_lib, only: json
-      use io_units
-      use run_log, only: solver_diagnostics
+      use run_messages, only: run_log_unit, terminal_unit, solver_diagnostics
       use physical_constants
       use math_lib
       implicit none

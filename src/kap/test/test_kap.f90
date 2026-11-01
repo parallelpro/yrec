@@ -17,7 +17,7 @@
 ! tables (check_families).
 program test_kap
       use run_setup, only: set_up_constants_and_tables
-      use io_units
+      use run_messages, only: run_log_unit
       use star_info_lib, only: star_info
       use kap_lib
       use opacity_tables

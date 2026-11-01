@@ -170,11 +170,10 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
       use kap_lib
       use atm_lib, only: atm_get_surface_pt, ttau_start_log10_temperature, &
            ttau_photosphere_x_limit
-      use io_units
+      use run_messages, only: run_log_unit, terminal_unit, solver_diagnostics
       use physical_constants
       use numerics_lib, only: bsstep, bsstep_max_extrap_order, bsstep_max_stages, &
            numerics_bad_input, numerics_status_text
-      use run_log, only: solver_diagnostics
       implicit none
 
       type(envint_config), intent(inout) :: cfg

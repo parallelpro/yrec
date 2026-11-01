@@ -1,19 +1,19 @@
 !----------------------------------------------------------------------
 ! run_log
 !----------------------------------------------------------------------
-! The compact MESA-style progress line and the gate for the solver
-! diagnostics. The run log holds a run header, warnings and events,
+! The compact MESA-style progress line and the end-of-run summary. The
+! run log holds a run header, warnings and events,
 ! and one progress line every terminal_interval models (the final
 ! model of a card always prints); the physical summary is in the
 ! history file, and the solver diagnostics (Henyey iteration trace,
 ! envelope/atmosphere integration statistics, triangle/rezoning
-! bookkeeping) print only with report_solver_diagnostics.
+! bookkeeping) print only with report_solver_diagnostics (run_messages'
+! gate, solver_diagnostics()).
 module run_log
       use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
       private
-      public :: solver_diagnostics, set_solver_diagnostics, log_model_line, &
-           log_final_model_line
+      public :: log_model_line, log_final_model_line
       public :: log_run_summary
       public :: progress_lines
 
@@ -30,23 +30,7 @@ module run_log
          integer :: last_printed_model = -1
       end type progress_lines
 
-! the control report_solver_diagnostics (set_solver_diagnostics), which
-! star-free code asks through solver_diagnostics()
-      logical :: solver_diagnostics_on = .false.
-
 contains
-
-! The control report_solver_diagnostics, as the controls read installs
-! it (set_solver_diagnostics), so that star-free code can ask.
-subroutine set_solver_diagnostics(on)
-      logical, intent(in) :: on
-      solver_diagnostics_on = on
-end subroutine set_solver_diagnostics
-
-! The gate for verbose solver forensics in the run log.
-logical function solver_diagnostics()
-      solver_diagnostics = solver_diagnostics_on
-end function solver_diagnostics
 
 ! The compact per-model progress line, to the terminal and the run
 ! log, throttled by terminal_interval (0 = off; final always prints).
@@ -76,7 +60,7 @@ end subroutine log_final_model_line
 !   star writes: none
 subroutine write_model_line(s, progress)
       use star_info_lib, only: star_info, i_h1
-      use io_units, only: run_log_unit, terminal_unit
+      use run_messages, only: run_log_unit, terminal_unit
       type(star_info), intent(in) :: s
       type(progress_lines), intent(inout) :: progress
       character(len=*), parameter :: header = &
@@ -108,7 +92,7 @@ end subroutine write_model_line
 !   star writes: none
 subroutine log_run_summary(s, wall_seconds)
       use star_info_lib, only: star_info
-      use io_units, only: run_log_unit, terminal_unit
+      use run_messages, only: run_log_unit, terminal_unit
       type(star_info), intent(in) :: s
       real(dp), intent(in) :: wall_seconds
       character(len=*), parameter :: reason_format = "(1x,'run finished: ',a)", &

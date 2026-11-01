@@ -74,7 +74,7 @@ subroutine run_yrec(ierr)
       use star_info_lib, only: star_info, i_h1, i_metals
       use yrec_output, only: output_state, output_open, output_close, &
            output_run_header, output_final_model_line
-      use io_units
+      use run_files, only: last_model_unit
       use model_files, only: write_mod_model
       use physical_constants
       use yrec_reset, only: yrec_run_prologue

@@ -83,8 +83,7 @@ subroutine advance_composition(s, timestep, opts, core_cz_edge, &
      envelope_cz_edge, mixed_zone_bounds_no_overshoot, ierr)
       use star_info_lib, only: i_h1, i_he3, i_he4, i_metals, json, &
            max_convective_zones, max_radiative_zones
-      use io_units
-      use run_log, only: solver_diagnostics
+      use run_messages, only: run_log_unit, solver_diagnostics
       use physical_constants
       use net_lib, only: num_rate_rows
       use burn_step, only: compute_burn_rates, burn_network, &

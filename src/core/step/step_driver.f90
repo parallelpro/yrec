@@ -89,7 +89,7 @@ subroutine evolve_step(s, output, model_iteration, step_status, ierr)
       use star_info_lib, only: evolve_step_reset_pending, i_h1, i_h2, &
            max_convective_zones, max_radiative_zones, &
            i_he4, n_species_basic, n_species_extended
-      use io_units
+      use run_messages, only: run_log_unit
       use physical_constants
       use burn_step, only: store_start_li_be_rates, store_end_li_be_rates, &
            burn_li_be

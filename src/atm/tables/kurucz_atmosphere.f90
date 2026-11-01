@@ -14,7 +14,7 @@ module kurucz_atmosphere
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use atm_tables, only: atm_table, atm_table_ng, atm_table_nt, &
            surface_p_table
-      use io_units, only: run_log_unit, terminal_unit
+      use run_messages, only: run_log_unit, terminal_unit
       use numerics_lib, only: inter3, natural_spline, splint, numerics_status_text
       implicit none
       private

@@ -33,7 +33,7 @@
 module stop_conditions
       use calibration, only: check_star_calibration
       use star_info_lib, only: i_h1, i_h2, i_he4, star_info
-      use io_units
+      use run_messages, only: run_log_unit
       use math_lib
       implicit none
       private

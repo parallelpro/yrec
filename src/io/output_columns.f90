@@ -52,7 +52,7 @@ contains
 ! ---------------------------------------------------------------
 subroutine parse_columns(fname, columns, default_names, sel, nsel, &
            label, ierr)
-      use io_units, only: check_io, report_error
+      use run_messages, only: check_io, report_error
       character(len=*), intent(in) :: fname, label
       type(output_column), intent(in) :: columns(:)
       character(len=column_name_len), intent(in) :: default_names(:)
@@ -104,7 +104,7 @@ end subroutine parse_columns
 ! to the selection; unknown names are fatal, with the valid list
 ! written to the run log.
 subroutine append_column(name, columns, sel, nsel, label, ierr)
-      use io_units, only: run_log_unit, report_error
+      use run_messages, only: run_log_unit, report_error
       character(len=*), intent(in) :: name, label
       type(output_column), intent(in) :: columns(:)
       integer, intent(inout) :: sel(max_cols), nsel

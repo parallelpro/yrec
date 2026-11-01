@@ -17,7 +17,7 @@ module kurucz_opacity
            kurucz_max_num_temps, kurucz_table_set, opacity_table
       use numerics_lib, only: findex, natural_spline, splint, &
            compute_spline_coefficients, numerics_status_text
-      use io_units, only: run_log_unit
+      use run_messages, only: run_log_unit
       use math_lib
       implicit none
       private

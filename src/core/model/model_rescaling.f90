@@ -41,7 +41,7 @@ subroutine rescale_model(s, luminosity_array, composition, shell_mass_log, &
      total_mass_log, num_zones, run_index, star_mass, convective_flag, ierr)
       use physical_constants
       use star_info_lib, only: json
-      use io_units
+      use run_messages, only: run_log_unit
       use settings_install, only: install_surface_z_settings
       use math_lib
       implicit none
