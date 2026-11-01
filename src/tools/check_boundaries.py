@@ -581,7 +581,8 @@ def check_control_records(src_root):
     problems = [f"{r['canonical']}: registry home {r['home']}, group {r['group']}"
                 for r in rows if r["home"] not in ("buffer", r["group"])]
     want = {g: {r["canonical"].lower() for r in rows if r["home"] == g} for g in CONTROL_RECORDS}
-    decl = re.compile(r"^\s*(?:double precision|integer|logical|character\(len=\d+\))\s*::\s*(\w+)", re.I)
+    decl = re.compile(r"^\s*(?:double precision|real\s*\(\s*dp\s*\)|integer|logical|character\(len=\d+\))"
+                      r"\s*::\s*(\w+)", re.I)
     for g, rel in CONTROL_RECORDS.items():
         have = {m.group(1).lower() for m in map(decl.match, (src_root / rel).read_text().splitlines()) if m}
         for n in sorted(have - want[g]):
@@ -595,7 +596,8 @@ def star_member_types(src_root):
     """{member: registry-style type (real(50), logical, ...)} of star_info's
     one-line declarations"""
     import controls_registry
-    decl = re.compile(r"(?i)^\s*(double precision|integer|logical|character\s*\(\s*len\s*=\s*\d+\s*\))"
+    decl = re.compile(r"(?i)^\s*(double precision|real\s*\(\s*dp\s*\)|integer|logical|"
+                      r"character\s*\(\s*len\s*=\s*\d+\s*\))"
                       r"\s*::\s*(\w+)\s*(\([^)]*\))?")
     out = {}
     for line in (src_root / "state" / "star_info_lib.f90").read_text().splitlines():

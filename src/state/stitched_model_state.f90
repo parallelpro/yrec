@@ -19,13 +19,14 @@
 ! The arrays are allocated, and zeroed, by the first build; columns and
 ! points a build does not write keep their earlier values.
 module stitched_model_state
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
       private
 
       type, public :: stitched_model_record
             integer :: n_ext = 0, n_ie = 0
             integer, allocatable :: region(:), index(:)
-            double precision, allocatable :: seismic(:,:), atm_height(:), &
+            real(dp), allocatable :: seismic(:,:), atm_height(:), &
                  prof(:,:), pulse(:,:)
       end type stitched_model_record
 

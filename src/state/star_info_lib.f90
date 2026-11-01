@@ -54,6 +54,7 @@ module star_info_lib
       use reaction_layout, only: num_reactions, num_extra_scales
 ! the length of the run plan's per-card arrays
       use control_slots, only: max_runs
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
       private
       public :: json
@@ -130,29 +131,29 @@ module star_info_lib
 ! the factor on the p + p S-factor (legacy S11) [-]; monte_carlo. The
 ! run's cross_section_scale(r_pp) is it times the ratio of the Bahcall &
 ! Pinsonneault (1996) S0 to the code's reference S0.
-            double precision :: s11_factor(max_mc_runs) = 0.0d0
+            real(dp) :: s11_factor(max_mc_runs) = 0.0d0
 ! the factor on the 3He + 3He S-factor (legacy S33) [-]; monte_carlo. As
 ! s11_factor, for cross_section_scale(r_he3he3).
-            double precision :: s33_factor(max_mc_runs) = 0.0d0
+            real(dp) :: s33_factor(max_mc_runs) = 0.0d0
 ! the factor on the 3He + 4He S-factor (legacy S34) [-]; monte_carlo. As
 ! s11_factor, for cross_section_scale(r_he3he4).
-            double precision :: s34_factor(max_mc_runs) = 0.0d0
+            real(dp) :: s34_factor(max_mc_runs) = 0.0d0
 ! the factor on the 7Be + p S-factor (legacy S17) [-]; monte_carlo. As
 ! s11_factor, for extra_cross_section_scale(xs_be7p).
-            double precision :: s17_factor(max_mc_runs) = 0.0d0
+            real(dp) :: s17_factor(max_mc_runs) = 0.0d0
 ! the sampled surface Z/X (legacy ZX) [-]; monte_carlo. Only written to
 ! the Monte-Carlo summary.
-            double precision :: metal_to_h_ratio(max_mc_runs) = 0.0d0
+            real(dp) :: metal_to_h_ratio(max_mc_runs) = 0.0d0
 ! the metal settling factor (legacy FHE and its copy FZDIF) [-];
 ! monte_carlo. The run's settling_z_factor_in_use, element diffusion's
 ! fgrz; helium's factor keeps physics%settling_y_factor.
-            double precision :: settling_z_factor(max_mc_runs) = 0.0d0
+            real(dp) :: settling_z_factor(max_mc_runs) = 0.0d0
 ! the factor on the reference solar luminosity, 3.844e33 erg/s [-];
 ! monte_carlo. The run's solar_luminosity_cgs.
-            double precision :: luminosity_factor(max_mc_runs) = 0.0d0
+            real(dp) :: luminosity_factor(max_mc_runs) = 0.0d0
 ! the factor on the solar age [-]; monte_carlo. The run's age scale: the
 ! solar calibration's stop ages and fixed timesteps.
-            double precision :: age_factor(max_mc_runs) = 0.0d0
+            real(dp) :: age_factor(max_mc_runs) = 0.0d0
       end type monte_carlo_samples
 
       type, public :: star_info
@@ -187,45 +188,45 @@ module star_info_lib
 
 ! Lsun, a copy of physics%solar_luminosity_cgs (legacy clsun) [erg/s];
 ! run_setup, monte_carlo. A Monte-Carlo run scales it.
-            double precision :: solar_luminosity_cgs
+            real(dp) :: solar_luminosity_cgs
 ! log10 Lsun [log10 erg/s]; run_setup, monte_carlo
-            double precision :: log10_solar_luminosity
+            real(dp) :: log10_solar_luminosity
 ! ln(10)/Lsun, not a logarithm: times the enclosed mass it scales the
 ! luminosity-equation terms [s/erg]; run_setup, monte_carlo
-            double precision :: ln10_over_lsun
+            real(dp) :: ln10_over_lsun
 ! Msun, a copy of physics%solar_mass_cgs [g]; run_setup
-            double precision :: solar_mass_cgs
+            real(dp) :: solar_mass_cgs
 ! Rsun, a copy of physics%solar_radius_cgs (legacy crsun) [cm]; run_setup
-            double precision :: solar_radius_cgs
+            real(dp) :: solar_radius_cgs
 ! log10 Rsun [log10 cm]; run_setup
-            double precision :: log10_solar_radius
+            real(dp) :: log10_solar_radius
 ! per-reaction scale of the cross section S0 against Bahcall & Ulrich
 ! (1988), by reaction_layout's slot r_* [-]; user_inputs,
 ! controls_reader, monte_carlo. Those of pp, He3 + He3 and He3 + He4 are
 ! rescaled per Monte-Carlo run.
-            double precision :: cross_section_scale(num_reactions)
+            real(dp) :: cross_section_scale(num_reactions)
 ! scale of each reaction's S'/S against Solar Fusion I, by reaction slot
 ! r_* [-]; user_inputs
-            double precision :: s_prime_scale(num_reactions)
+            real(dp) :: s_prime_scale(num_reactions)
 ! scale of each reaction's S''/S against Solar Fusion I, by reaction slot
 ! r_* [-]; user_inputs
-            double precision :: s_double_prime_scale(num_reactions)
+            real(dp) :: s_double_prime_scale(num_reactions)
 ! scale of the rates outside the reaction table, by reaction_layout's
 ! extra slot xs_* (pep, Be7 + e, Be7 + p, hep) [-]; user_inputs,
 ! controls_reader, monte_carlo. Be7 + p's is rescaled per Monte-Carlo run.
-            double precision :: extra_cross_section_scale(num_extra_scales)
+            real(dp) :: extra_cross_section_scale(num_extra_scales)
 ! scale of Be7 + p's S'/S against Solar Fusion I [-]; user_inputs
-            double precision :: be7p_s_prime_scale
+            real(dp) :: be7p_s_prime_scale
 ! scale of Be7 + p's S''/S against Solar Fusion I [-]; user_inputs
-            double precision :: be7p_s_double_prime_scale
+            real(dp) :: be7p_s_double_prime_scale
 ! scale of the N15(p,gamma)O16 branch [-]; user_inputs
-            double precision :: n15_pg_scale
+            real(dp) :: n15_pg_scale
 ! scale of the N15(p,alpha)C12 branch [-]; user_inputs
-            double precision :: n15_pa_scale
+            real(dp) :: n15_pa_scale
 ! log T at which an envelope integration stores its state for the surface
 ! boundary (stored_envelope_state): the mean of physics%rezone_env_logt0 and
 ! physics%rezone_env_logt1 [log10 K]; derived_controls
-            double precision :: envelope_store_log_temperature
+            real(dp) :: envelope_store_log_temperature
 ! atm_choice as read from the deck [-]; controls_reader. The run may
 ! change atm_choice_in_use (see use_ttau_relation); this keeps the original.
             integer :: atm_choice_initial
@@ -259,7 +260,7 @@ module star_info_lib
 ! the metal settling factor this Monte-Carlo run uses [-]; controls_sync,
 ! monte_carlo. From physics%settling_z_factor; with Monte Carlo,
 ! begin_monte_carlo_run sets it to the run's mc_samples%settling_z_factor.
-            double precision :: settling_z_factor_in_use
+            real(dp) :: settling_z_factor_in_use
 ! the Monte-Carlo samples, one entry per run, from the sample file [-];
 ! monte_carlo. Read by begin_monte_carlo_run and the Monte-Carlo summary;
 ! its fields are listed below it. One module alone uses it, and it stays
@@ -298,39 +299,39 @@ module star_info_lib
             integer :: card_num_models(max_runs)
 ! each card's starting X [-]; controls_sync, calibration. From
 ! control%initial_x_array; the solar calibration writes its guesses here.
-            double precision :: card_initial_x(max_runs)
+            real(dp) :: card_initial_x(max_runs)
 ! each card's starting Z [-]; controls_sync, calibration. From
 ! control%initial_z_array.
-            double precision :: card_initial_z(max_runs)
+            real(dp) :: card_initial_z(max_runs)
 ! each card's mixing-length parameter [-]; controls_sync, calibration.
 ! From control%mixing_length_array; the solar calibration writes its
 ! guesses here.
-            double precision :: card_mixing_length_alpha(max_runs)
+            real(dp) :: card_mixing_length_alpha(max_runs)
 ! the card moves the fitting point to card_log_fit_point_mass_fraction
 ! [logical]; controls_sync, calibration. From control%has_senv0_array.
             logical :: card_moves_fit_point(max_runs)
 ! each card's fitting-point mass, log10(m_fit/M), made negative when the
 ! card starts [log10]; controls_sync, calibration. From control%senv0_array.
-            double precision :: card_log_fit_point_mass_fraction(max_runs)
+            real(dp) :: card_log_fit_point_mass_fraction(max_runs)
 ! each rescale card's targets: the total mass, X, Z and the core mass,
 ! 0 to keep one [Msun, -, -, Msun]; controls_sync, calibration. From
 ! control%rescale_params (interpret_kind_cards); the solar calibration
 ! writes its X and Z guesses here.
-            double precision :: card_rescale_targets(4,max_runs)
+            real(dp) :: card_rescale_targets(4,max_runs)
 ! the Z ramp's core Z (with control%use_z_ramp: model_rescaling's
 ! ramp_interior_z) [-]; controls_sync, calibration. From
 ! control%rescale_core_z.
-            double precision :: card_z_ramp_core_z(max_runs)
+            real(dp) :: card_z_ramp_core_z(max_runs)
 ! the mass fraction m/M inside which the Z ramp sets the core Z [-];
 ! controls_sync, calibration. From control%rescale_z_mix1.
-            double precision :: card_z_ramp_inner_mass_fraction(max_runs)
+            real(dp) :: card_z_ramp_inner_mass_fraction(max_runs)
 ! the mass fraction m/M at which the Z ramp reaches the surface Z [-];
 ! controls_sync, calibration. From control%rescale_z_mix2.
-            double precision :: card_z_ramp_outer_mass_fraction(max_runs)
+            real(dp) :: card_z_ramp_outer_mass_fraction(max_runs)
 ! each card's stop age, 0 for none [yr]; controls_sync, calibration,
 ! monte_carlo. From control%target_end_age; the calibrations set their
 ! cycles' ages.
-            double precision :: card_max_age_yr(max_runs)
+            real(dp) :: card_max_age_yr(max_runs)
 ! the card's stops are armed: its age or a central-abundance stop
 ! [logical]; controls_sync, calibration. From control%end_age_stop_active
 ! (interpret_kind_cards).
@@ -339,19 +340,19 @@ module star_info_lib
 ! stop_conditions. From control%central_deuterium_stop;
 ! init_stop_conditions disarms (negates) a stop the card's starting model
 ! has already passed (set_stop_value).
-            double precision :: card_central_deuterium_stop(max_runs)
+            real(dp) :: card_central_deuterium_stop(max_runs)
 ! each card's central hydrogen stop, 0 for none [-]; controls_sync,
 ! stop_conditions. From control%central_hydrogen_stop; disarmed as
 ! card_central_deuterium_stop.
-            double precision :: card_central_hydrogen_stop(max_runs)
+            real(dp) :: card_central_hydrogen_stop(max_runs)
 ! each card's central helium stop, 0 for none [-]; controls_sync,
 ! stop_conditions. From control%central_helium_stop; disarmed as
 ! card_central_deuterium_stop.
-            double precision :: card_central_helium_stop(max_runs)
+            real(dp) :: card_central_helium_stop(max_runs)
 ! each card's fixed timestep [yr]; controls_sync, calibration. From
 ! control%timestep_override; the solar calibration scales its cycles' by the
 ! Monte-Carlo age factor.
-            double precision :: card_fixed_timestep_yr(max_runs)
+            real(dp) :: card_fixed_timestep_yr(max_runs)
 ! the card takes the fixed timestep card_fixed_timestep_yr [logical];
 ! controls_sync, calibration. From control%timestep_override_active
 ! (interpret_kind_cards).
@@ -377,11 +378,11 @@ module star_info_lib
 ! rescale's X target [-]; run_driver, model_rescaling, controls_sync. From
 ! control%initial_envelope_x until the first card; in the history and
 ! terminal headers.
-            double precision :: current_card_envelope_x
+            real(dp) :: current_card_envelope_x
 ! the current card's envelope Z, as current_card_envelope_x [-];
 ! run_driver, model_rescaling, controls_sync. From
 ! control%initial_envelope_z until the first card.
-            double precision :: current_card_envelope_z
+            real(dp) :: current_card_envelope_z
 ! the current card moves the fitting point (card_moves_fit_point at the
 ! card start) [logical]; run_driver, controls_sync. From
 ! control%change_envelope_mass_flag until the first card.
@@ -390,7 +391,7 @@ module star_info_lib
 ! card_log_fit_point_mass_fraction at the card start, made negative and at
 ! most -1e-12 by the starting model [log10]; run_driver, starting_model,
 ! controls_sync. From control%requested_envelope_mass until the first card.
-            double precision :: requested_log_fit_point_mass_fraction
+            real(dp) :: requested_log_fit_point_mass_fraction
 ! the atmosphere (surface boundary condition) the run uses now, an
 ! atm_choice code [-]; surface_boundary, envelope_integration,
 ! run_driver, controls_sync. From physics%atm_choice. The surface boundary
@@ -413,7 +414,7 @@ module star_info_lib
 ! [-]; starting_model, controls_sync. From
 ! physics%core_mass_reduction_factor. A second extension in one run (a later
 ! card read from file) starts from the shift, as found.
-            double precision :: core_mass_reduction
+            real(dp) :: core_mass_reduction
 ! the number of points the core extension added [-]; starting_model,
 ! controls_sync. From physics%num_core_shells_added; the extension
 ! recomputes it from core_mass_reduction.
@@ -421,20 +422,20 @@ module star_info_lib
 ! the star calibration's target Teff [K]; calibration, controls_sync.
 ! From control%target_teff; setup_star_calibration computes it from the
 ! target luminosity and radius unless control%specify_teff_flag.
-            double precision :: calibration_target_teff
+            real(dp) :: calibration_target_teff
 ! the star calibration's target radius [Rsun]; calibration,
 ! controls_sync. From control%target_radius_rsun; setup_star_calibration
 ! computes it from the target luminosity and Teff with
 ! control%specify_teff_flag.
-            double precision :: calibration_target_radius_rsun
+            real(dp) :: calibration_target_radius_rsun
 
 ! mixing-length parameter of the current run card [-]; run_driver. From
 ! card_mixing_length_alpha(current_card) at each card start (the solar calibration
 ! changes the later cards' entries); in .mod; 1.4 before the first card.
-            double precision :: mixing_length_alpha = 1.4d0
+            real(dp) :: mixing_length_alpha = 1.4d0
 ! star_mass at the start of the card, for the profile and pulsation
 ! headers [Msun]; run_driver
-            double precision :: pulsation_mass_msun
+            real(dp) :: pulsation_mass_msun
 ! the run has switched atm_choice to the gray atmosphere because Teff left
 ! the Kurucz or Allard table [logical]; surface_boundary,
 ! envelope_integration, controls_reader. Switches back when Teff returns.
@@ -458,38 +459,38 @@ module star_info_lib
 ! of 1/mu_ion in compute_shell_physics [-]; starting_model. Set once
 ! (update_surface_mixture) and kept for the run on purpose; the controls
 ! read and kap_init use it earlier, while it is still 0.
-            double precision :: envelope_hydrogen_fraction
+            real(dp) :: envelope_hydrogen_fraction
 ! surface Z of the EOS mixture: the first card's, or the last Z
 ! rescale's [-]; starting_model, model_rescaling, run_setup. The run
 ! setup (set_run_plan_envelope_z) first sets it from the run plan's
 ! rescale Z, before kap_init.
-            double precision :: envelope_metal_fraction
+            real(dp) :: envelope_metal_fraction
 ! surface Y = 1 - X - Z - X(He3) of the first card [-]; starting_model
-            double precision :: envelope_helium_fraction
+            real(dp) :: envelope_helium_fraction
 ! surface He3 of the first card [-]; starting_model
-            double precision :: envelope_he3_fraction
+            real(dp) :: envelope_he3_fraction
 ! the part of the first card's surface Z not in C, N and O, passed to
 ! convection's settings (envelope_metals_no_cno) [-]; starting_model
-            double precision :: envelope_metals_no_cno
+            real(dp) :: envelope_metals_no_cno
 ! inverse mean atomic weight of the surface mixture, sum X_i/A_i
 ! [1/amu]; starting_model
-            double precision :: envelope_inverse_atomic_weight
+            real(dp) :: envelope_inverse_atomic_weight
 ! number fractions of the 12 surface-mixture elements, slots ix_*, passed
 ! to the EOS (eos_set_mixture) [-]; starting_model
-            double precision :: envelope_number_fractions(n_mix_species)
+            real(dp) :: envelope_number_fractions(n_mix_species)
 ! d log L/dX of the last solar-calibration Newton step: calibration's
 ! parameter dlogl_dx_fixed, -3.78 [-]; calibration. 0 before the first
 ! step; printed in the Monte-Carlo summary, as the three below.
-            double precision :: dlum_dx
+            real(dp) :: dlum_dx
 ! d log R/dX of the last Newton step, dlogr_dx_fixed, -0.89 [-];
 ! calibration
-            double precision :: drad_dx
+            real(dp) :: drad_dx
 ! d log L/d alpha of the last Newton step, dlogl_dalpha_fixed, 0.0139
 ! [-]; calibration
-            double precision :: dlum_dalpha
+            real(dp) :: dlum_dalpha
 ! d log R/d alpha of the last Newton step, dlogr_dalpha_fixed, -0.050
 ! [-]; calibration
-            double precision :: drad_dalpha
+            real(dp) :: drad_dalpha
 ! the solar calibration has converged [logical]; calibration
             logical :: solar_calibration_converged
 ! the star calibration found a track through the target L and R, so the
@@ -517,49 +518,49 @@ module star_info_lib
 ! reset per card from control%set_initial_model_number.
             integer :: model_number
 ! age of the model [Gyr]; step_driver, model_files. In .mod.
-            double precision :: age_gyr
+            real(dp) :: age_gyr
 ! total mass M [Msun]; starting_model, mass_change, model_files. In .mod;
 ! MESA's history name, without the _msun suffix.
-            double precision :: star_mass
+            real(dp) :: star_mass
 ! log10 of the total mass M [log10 g]; starting_model, mass_change,
 ! model_files. In .mod.
-            double precision :: log_total_mass
+            real(dp) :: log_total_mass
 ! log10 of the luminosity at the fitting point, L(nz) [log10 Lsun];
 ! henyey_iteration, model_files. In .mod; reset after every Newton
 ! correction.
-            double precision :: log_L_lsun
+            real(dp) :: log_L_lsun
 ! log10 effective temperature, from the envelope fit (envelope_fit_coeffs
 ! 7-9) [log10 K]; henyey_iteration, model_files. In .mod; reset after
 ! every Newton correction.
-            double precision :: log_Teff
+            real(dp) :: log_Teff
 ! log10 of the mass m inside point k, the mesh coordinate [log10 g];
 ! rezoning, starting_model, mass_change, model_files. In .mod.
-            double precision :: log_mass(json)
+            real(dp) :: log_mass(json)
 ! mass inside point k [g]; rezoning, starting_model, mass_change. Rebuilt
 ! from log_mass after every rezone or read.
-            double precision :: m(json)
+            real(dp) :: m(json)
 ! mass of the shell around point k, half the span to the neighbouring
 ! points; dm(nz) reaches the total mass [g]; rezoning, starting_model,
 ! mass_change
-            double precision :: dm(json)
+            real(dp) :: dm(json)
 ! luminosity L(m) through point k [Lsun]; henyey_iteration, rezoning,
 ! starting_model, model_files. In .mod; a Newton variable (linear, not
 ! log).
-            double precision :: luminosity_lsun(json)
+            real(dp) :: luminosity_lsun(json)
 ! log10 radius [log10 cm]; henyey_iteration, rezoning, starting_model,
 ! model_files. In .mod; a Newton variable.
-            double precision :: logR(json)
+            real(dp) :: logR(json)
 ! log10 pressure [log10 dyn/cm^2]; henyey_iteration, rezoning,
 ! starting_model, model_files. In .mod; a Newton variable.
-            double precision :: logP(json)
+            real(dp) :: logP(json)
 ! log10 temperature [log10 K]; henyey_iteration, rezoning,
 ! starting_model, model_files. In .mod; a Newton variable.
-            double precision :: logT(json)
+            real(dp) :: logT(json)
 ! log10 density, from the EOS at (P, T, X, Z) [log10 g/cm^3];
 ! structure_equations, rezoning, starting_model, model_files. In .mod;
 ! rewritten from the EOS on every Newton iteration, at the structure that
 ! iteration linearized, so it can lag the last correction.
-            double precision :: logRho(json)
+            real(dp) :: logRho(json)
 ! true where the zone is convective by the temperature-gradient test
 ! [logical]; structure_equations, rezoning, starting_model, model_files.
 ! In .mod; rewritten on every Newton iteration and by
@@ -569,50 +570,50 @@ module star_info_lib
 ! i_metals the total Z [-]; burn_step, composition_step, rezoning,
 ! starting_model, model_files. In .mod; rows 12-15 only with
 ! physics%use_extended_composition.
-            double precision :: xa(n_species_extended,json)
+            real(dp) :: xa(n_species_extended,json)
 ! surface X for the envelope integrations and the surface opacity tables;
 ! follows xa(i_h1,nz) [-]; rezoning, starting_model, model_rescaling.
 ! Refreshed when it moves by more than 1e-8 (refresh_surface_opacity), or
 ! set by a rescale.
-            double precision :: surface_hydrogen_fraction
+            real(dp) :: surface_hydrogen_fraction
 ! surface Z for the envelope integrations, updated with
 ! surface_hydrogen_fraction [-]; rezoning, starting_model,
 ! model_rescaling
-            double precision :: surface_metal_fraction
+            real(dp) :: surface_metal_fraction
 ! log10(m(nz)/M), the mass fraction inside the fitting point [log10];
 ! henyey_iteration, rezoning, starting_model, mass_change,
 ! envelope_rebuild. Recomputed at every solve level (refresh_surface_bc).
-            double precision :: log_fit_point_mass_fraction
+            real(dp) :: log_fit_point_mass_fraction
 ! (log P, log T, log r, log m/M) where a vertex's envelope integration
 ! first reached envelope_store_log_temperature [log10 cgs];
 ! henyey_iteration. The rezone uses it to add a point at the surface.
-            double precision :: stored_envelope_state(4)
+            real(dp) :: stored_envelope_state(4)
 ! coefficients c(1:9) of the envelope fit at the fitting point: log R,
 ! log L and log Teff each = c log P + c log T + c [-]; henyey_iteration,
 ! model_files. Rebuilt by compute_surface_boundary when the triangle
 ! changes; read from YREC7/MODEL2 files, not written to .mod.
-            double precision :: envelope_fit_coeffs(9)
+            real(dp) :: envelope_fit_coeffs(9)
 ! log10 L of the three vertices of the envelope-fit triangle
 ! [log10 Lsun]; henyey_iteration, model_files
-            double precision :: triangle_log_l_lsun(3)
+            real(dp) :: triangle_log_l_lsun(3)
 ! log10 Teff of the three vertices of the envelope-fit triangle
 ! [log10 K]; henyey_iteration, model_files
-            double precision :: triangle_log_teff(3)
+            real(dp) :: triangle_log_teff(3)
 ! log10 P at the fitting point of each vertex's envelope integration
 ! [log10 dyn/cm^2]; henyey_iteration, model_files
-            double precision :: fit_point_logP(3)
+            real(dp) :: fit_point_logP(3)
 ! log10 T at the fitting point of each vertex [log10 K];
 ! henyey_iteration, model_files
-            double precision :: fit_point_logT(3)
+            real(dp) :: fit_point_logT(3)
 ! log10 r at the fitting point of each vertex [log10 cm];
 ! henyey_iteration, model_files
-            double precision :: fit_point_logR(3)
+            real(dp) :: fit_point_logR(3)
 ! which triangle vertex stored stored_envelope_state (0: none) [-];
 ! step_driver, run_driver
             integer :: stored_vertex_index
 ! orientation (+1 or -1) of the envelope-fit triangle [-]; step_driver,
 ! run_driver
-            double precision :: triangle_orientation
+            real(dp) :: triangle_orientation
 
 ! ==== Rotation state ===================================================
 ! The rotation curve and the shape of the rotating star. The specific
@@ -623,33 +624,33 @@ module star_info_lib
 
 ! angular velocity of each shell [rad/s]; henyey_iteration, rezoning,
 ! starting_model, evolve_rotation, model_files. In .mod.
-            double precision :: omega(json)
+            real(dp) :: omega(json)
 ! specific angular momentum of each shell, the conserved quantity; omega
 ! follows from it (omega_from_j) [cm^2/s]; rezoning, starting_model,
 ! evolve_rotation, secular_transport
-            double precision :: j_rot(json)
+            real(dp) :: j_rot(json)
 ! moment of inertia of each shell [g cm^2]; henyey_iteration, rezoning,
 ! starting_model, evolve_rotation
-            double precision :: i_rot(json)
+            real(dp) :: i_rot(json)
 ! rotational kinetic energy of each shell, omega j dm/2 [erg];
 ! henyey_iteration, rezoning, starting_model
-            double precision :: kinetic_energy_rot(json)
+            real(dp) :: kinetic_energy_rot(json)
 ! rotational correction f_P to the hydrostatic equation, 1 without
 ! rotation [-]; henyey_iteration, rezoning, starting_model. Set from omega
 ! by rotation_shape_factors.
-            double precision :: fp_rot(json)
+            real(dp) :: fp_rot(json)
 ! rotational correction f_T to the radiative-transfer equation, 1 without
 ! rotation [-]; henyey_iteration, rezoning, starting_model
-            double precision :: ft_rot(json)
+            real(dp) :: ft_rot(json)
 ! r0, the mean radius of the shell's level surface [cm];
 ! henyey_iteration, rezoning, starting_model, evolve_rotation
-            double precision :: mean_radius(json)
+            real(dp) :: mean_radius(json)
 ! Radau's eta_2 of each shell, the shape of its level surface [-];
 ! henyey_iteration, rezoning, starting_model, evolve_rotation
-            double precision :: eta_squared(json)
+            real(dp) :: eta_squared(json)
 ! effective gravity averaged over the level surface, <g> [cm/s^2];
 ! henyey_iteration, rezoning, starting_model
-            double precision :: mean_gravity(json)
+            real(dp) :: mean_gravity(json)
 ! true where a zone is convective for angular-momentum transport,
 ! overshoot included [logical]; rezoning, starting_model. From
 ! am_convective_regions at the model read and every rezone, i.e. before
@@ -659,10 +660,10 @@ module star_info_lib
 ! total angular momentum J of the star [g cm^2/s]; step_driver,
 ! run_driver, evolve_rotation. Zeroed at each card start, then totalled by
 ! the model read and every rezone.
-            double precision :: total_angular_momentum
+            real(dp) :: total_angular_momentum
 ! total rotational kinetic energy [erg]; step_driver, run_driver,
 ! evolve_rotation
-            double precision :: total_rotational_ke
+            real(dp) :: total_rotational_ke
 
 ! ==== Regions of the current model =====================================
 ! Point indices and bounds of the convective core, the surface convection
@@ -717,15 +718,15 @@ module star_info_lib
 ! compute_timestep) [s]; step_driver, run_driver, mass_change. Negative
 ! means solve without aging (a rescale or relaxation); made positive
 ! after convergence.
-            double precision :: dt
+            real(dp) :: dt
 ! copy of dt: when the end-age stop clips the next timestep to zero, the
 ! timestep just taken is restored from it [s]; step_driver, run_driver
-            double precision :: dt_saved
+            real(dp) :: dt_saved
 ! dt in years [yr]; step_driver, run_driver. In .mod.
-            double precision :: timestep_yr
+            real(dp) :: timestep_yr
 ! largest fractional change of omega over the step [-]; step_driver,
 ! run_driver. Written by compute_timestep and evolve_angular_momentum.
-            double precision :: max_domega_frac
+            real(dp) :: max_domega_frac
 ! the structure solve of this step diverged; a set flag stops the run on
 ! the next pass [logical]; step_driver, run_driver
             logical :: model_diverged_flag
@@ -754,111 +755,111 @@ module star_info_lib
 
 ! log P at the start of the step, on the current mesh [log10 dyn/cm^2];
 ! rezoning, starting_model, step_driver
-            double precision :: logP_start(json)
+            real(dp) :: logP_start(json)
 ! log T at the start of the step [log10 K]; rezoning, starting_model,
 ! step_driver
-            double precision :: logT_start(json)
+            real(dp) :: logT_start(json)
 ! log r at the start of the step [log10 cm]; rezoning, starting_model,
 ! step_driver
-            double precision :: logR_start(json)
+            real(dp) :: logR_start(json)
 ! L at the start of the step [Lsun]; rezoning, starting_model,
 ! step_driver
-            double precision :: luminosity_lsun_start(json)
+            real(dp) :: luminosity_lsun_start(json)
 ! log rho at the start of the step [log10 g/cm^3]; rezoning,
 ! step_driver. Not set by snapshot_step_start at a card start.
-            double precision :: logRho_start(json)
+            real(dp) :: logRho_start(json)
 ! composition at the start of the step [-]; rezoning, step_driver,
 ! evolve_rotation. Copied before the composition step; the corrector
 ! passes and the structure-rotation iteration restart from it.
-            double precision :: xa_start(n_species_extended,json)
+            real(dp) :: xa_start(n_species_extended,json)
 ! convective_flag at the start of the step, rotating models only
 ! [logical]; rezoning
             logical :: convective_flag_start(json)
 ! log Teff at the start of the step, for the HR-motion timestep limit
 ! [log10 K]; rezoning, starting_model, step_driver
-            double precision :: log_Teff_start
+            real(dp) :: log_Teff_start
 ! L(nz) at the start of the step, before the rezone, for the HR-motion
 ! timestep limit [Lsun]; rezoning, starting_model, step_driver
-            double precision :: surface_luminosity_lsun_start
+            real(dp) :: surface_luminosity_lsun_start
 ! kinetic_energy_rot at the start of the step, for d(E_rot)/dt in the
 ! energy equation of rotating models [erg]; step_driver
-            double precision :: kinetic_energy_rot_start(json)
+            real(dp) :: kinetic_energy_rot_start(json)
 ! omega at the start of the step [rad/s]; rezoning, starting_model. Read
 ! by the omega timestep limit and the transport.
-            double precision :: omega_start(json)
+            real(dp) :: omega_start(json)
 ! j_rot at the start of the step, the rezone's interpolation buffer
 ! [cm^2/s]; rezoning
-            double precision :: j_rot_start(json)
+            real(dp) :: j_rot_start(json)
 ! mean_gravity at the start of the step [cm/s^2]; rezoning
-            double precision :: mean_gravity_start(json)
+            real(dp) :: mean_gravity_start(json)
 ! mean_radius at the start of the step, the rezone's interpolation buffer
 ! [cm]; rezoning
-            double precision :: mean_radius_start(json)
+            real(dp) :: mean_radius_start(json)
 ! eta_squared at the start of the step, the rezone's interpolation buffer
 ! [-]; rezoning
-            double precision :: eta_squared_start(json)
+            real(dp) :: eta_squared_start(json)
 ! gradT at the start of the step, from which the rotation sub-steps
 ! interpolate in time (mid_timestep_model) [-]; rezoning. The rezone
 ! stores the twelve physics arrays from here on: the two energy
 ! sums in regrid_start_of_step_eps, the rest in rerun_physics_on_new_grid.
-            double precision :: gradT_start(json)
+            real(dp) :: gradT_start(json)
 ! grada at the start of the step [-]; rezoning
-            double precision :: grada_start(json)
+            real(dp) :: grada_start(json)
 ! mu at the start of the step [-]; rezoning
-            double precision :: mu_start(json)
+            real(dp) :: mu_start(json)
 ! opacity_zone at the start of the step [cm^2/g]; rezoning
-            double precision :: opacity_zone_start(json)
+            real(dp) :: opacity_zone_start(json)
 ! cp at the start of the step [erg/(g K)]; rezoning
-            double precision :: cp_start(json)
+            real(dp) :: cp_start(json)
 ! dlnrho_dlnt (d ln rho/d ln T at constant P) at the start of the step [-];
 ! rezoning
-            double precision :: dlnrho_dlnt_start(json)
+            real(dp) :: dlnrho_dlnt_start(json)
 ! conv_vel at the start of the step [cm/s]; rezoning
-            double precision :: conv_vel_start(json)
+            real(dp) :: conv_vel_start(json)
 ! kinematic_viscosity at the start of the step [cm^2/s]; rezoning
-            double precision :: kinematic_viscosity_start(json)
+            real(dp) :: kinematic_viscosity_start(json)
 ! thermal_diffusivity at the start of the step [cm^2/s]; rezoning
-            double precision :: thermal_diffusivity_start(json)
+            real(dp) :: thermal_diffusivity_start(json)
 ! eps_total at the start of the step, splined onto the step's mesh
 ! (regrid_start_of_step_eps) [erg/(g s)]; rezoning
-            double precision :: eps_total_start(json)
+            real(dp) :: eps_total_start(json)
 ! gradr at the start of the step [-]; rezoning
-            double precision :: gradr_start(json)
+            real(dp) :: gradr_start(json)
 ! eps_total + eps_nu + eps_grav at the start of the step [erg/(g s)];
 ! rezoning
-            double precision :: eps_plus_neu_grav_start(json)
+            real(dp) :: eps_plus_neu_grav_start(json)
 ! Li6 proton-capture rate rho X lambda at the start of the step; zero
 ! outward of log T = 6 [1/s]; burn_step, evolve_rotation. With
 ! physics%use_extended_composition.
-            double precision :: rate_li6_start(json)
+            real(dp) :: rate_li6_start(json)
 ! Li7 proton-capture rate at the start of the step [1/s]; burn_step,
 ! evolve_rotation
-            double precision :: rate_li7_start(json)
+            real(dp) :: rate_li7_start(json)
 ! Be9 proton-capture rate at the start of the step [1/s]; burn_step,
 ! evolve_rotation
-            double precision :: rate_be9_start(json)
+            real(dp) :: rate_be9_start(json)
 ! deuterium burning rate at the start of the step, stored by the
 ! composition step's predictor pass [1/s]; burn_step, rezoning
-            double precision :: deuterium_burning_rate_start(json)
+            real(dp) :: deuterium_burning_rate_start(json)
 ! envelope-overshoot depth alpha_ov H_P below the surface convection zone
 ! at the start of the step [cm]; step_driver, evolve_rotation
-            double precision :: envelope_overshoot_depth_start
+            real(dp) :: envelope_overshoot_depth_start
 ! convective_turnover_timescale of the previous model [s]; observables,
 ! starting_model. Copied after each converged model (and at a model
 ! read); the wind interpolates between it and the current value at
 ! substep_time_fraction.
-            double precision :: convective_turnover_timescale_prev
+            real(dp) :: convective_turnover_timescale_prev
 ! photosphere_logP of the previous model, copied with
 ! convective_turnover_timescale_prev [log10 dyn/cm^2]; observables,
 ! starting_model
-            double precision :: photosphere_logP_prev
+            real(dp) :: photosphere_logP_prev
 ! j_rot at the start of the structure-rotation iteration [cm^2/s];
 ! step_driver. Restored on each repeat pass when
 ! num_rotation_structure_passes > 1.
-            double precision :: j_rot_iteration_start(json)
+            real(dp) :: j_rot_iteration_start(json)
 ! xa_start at the start of the structure-rotation iteration [-];
 ! step_driver
-            double precision :: xa_iteration_start(n_species_extended,json)
+            real(dp) :: xa_iteration_start(n_species_extended,json)
 ! base point of the surface convection zone as the deuterium-burning cap
 ! uses it (nz: none) [-]; step_driver, run_driver, mass_change. A copy of
 ! envelope_cz_bottom_index taken at the card start and each rezone.
@@ -875,75 +876,75 @@ module star_info_lib
 
 ! d log T/dt over the last step, for the next step's first guess [1/s];
 ! step_driver, rezoning, run_driver
-            double precision :: dlog_temperature_dt(json)
+            real(dp) :: dlog_temperature_dt(json)
 ! d log P/dt over the last step [1/s]; step_driver, rezoning, run_driver
-            double precision :: dlog_pressure_dt(json)
+            real(dp) :: dlog_pressure_dt(json)
 ! d ln L/dt over the last step, 2 (L - L_start)/(L + L_start)/dt [1/s];
 ! step_driver, rezoning, run_driver
-            double precision :: dln_luminosity_dt(json)
+            real(dp) :: dln_luminosity_dt(json)
 ! d log r/dt over the last step [1/s]; step_driver, rezoning, run_driver
-            double precision :: dlog_radius_dt(json)
+            real(dp) :: dlog_radius_dt(json)
 ! age of the last converged model, for the disk-locking tests [Gyr];
 ! step_driver
-            double precision :: disk_gate_age_gyr
+            real(dp) :: disk_gate_age_gyr
 ! convective turnover time one pressure scale height above the base of
 ! the surface convection zone [s]; turnover_timescale, run_driver,
 ! mass_change. From the stitched model, every converged model; zero at a
 ! card start and without a surface convection zone.
-            double precision :: convective_turnover_timescale
+            real(dp) :: convective_turnover_timescale
 ! log10 photospheric pressure of the last atmosphere integration that
 ! reached the photosphere [log10 dyn/cm^2]; envelope_integration. Set
 ! inside atm_get, i.e. by any envelope integration (the triangle's too).
-            double precision :: photosphere_logP
+            real(dp) :: photosphere_logP
 ! fraction of the step elapsed at the current rotation sub-step [-];
 ! evolve_rotation, starting_model. 0.5 after a model read.
-            double precision :: substep_time_fraction
+            real(dp) :: substep_time_fraction
 ! omega of the latest rotation sub-step's model, the structure
 ! interpolated to the sub-step's end [rad/s]; mid_timestep_model,
 ! secular_transport, evolve_rotation. evolve_rotation copies it into
 ! omega at the end of the step; it outlives the step: the next step's
 ! first solid-body sub-step starts its Newton iteration from its mean.
-            double precision :: omega_substep(json)
+            real(dp) :: omega_substep(json)
 ! Li6 proton-capture rate rho X lambda at the end of the step, on the
 ! converged model [1/s]; burn_step. With physics%use_extended_composition.
-            double precision :: rate_li6(json)
+            real(dp) :: rate_li6(json)
 ! Li7 proton-capture rate at the end of the step [1/s]; burn_step
-            double precision :: rate_li7(json)
+            real(dp) :: rate_li7(json)
 ! Be9 proton-capture rate at the end of the step [1/s]; burn_step
-            double precision :: rate_be9(json)
+            real(dp) :: rate_be9(json)
 ! deuterium burning rate of each shell above the nuclear cutoff [1/s];
 ! burn_step. Zero while the surface D is below 1e-11.
-            double precision :: deuterium_burning_rate(json)
+            real(dp) :: deuterium_burning_rate(json)
 ! envelope-overshoot depth alpha_ov H_P at the end of the step [cm];
 ! step_driver, evolve_rotation
-            double precision :: envelope_overshoot_depth_end
+            real(dp) :: envelope_overshoot_depth_end
 ! radius of the base of the surface mixed region found by the last call
 ! within the step [cm]; convection_geometry, step_driver. With
 ! physics%use_extended_composition; zeroed at each step start to mean none
 ! yet.
-            double precision :: cz_base_radius_last_call
+            real(dp) :: cz_base_radius_last_call
 ! mass accreted during the step [g]; mass_change. Set only when the star
 ! accretes; its readers check that it does.
-            double precision :: accreted_mass
+            real(dp) :: accreted_mass
 ! shift of log P of the convection zone for the entropy of accreted
 ! matter [log10]; mass_change. Zero at present: change_mass zeroes
 ! envelope_specific_entropy first.
-            double precision :: delta_log_pressure
+            real(dp) :: delta_log_pressure
 ! shift of log T for the same [log10]; mass_change
-            double precision :: delta_log_temperature
+            real(dp) :: delta_log_temperature
 ! specific heat at constant pressure, for rotation (the viscosity, the
 ! transport) [erg/(g K)]; shell_physics
-            double precision :: cp(json)
+            real(dp) :: cp(json)
 ! mean molecular weight, for rotation [-]; shell_physics
-            double precision :: mu(json)
+            real(dp) :: mu(json)
 ! d ln rho/d ln T at constant P, for rotation [-]; shell_physics
-            double precision :: dlnrho_dlnt(json)
+            real(dp) :: dlnrho_dlnt(json)
 ! radiative thermal diffusivity K, from viscos, for rotational mixing
 ! [cm^2/s]; shell_physics
-            double precision :: thermal_diffusivity(json)
+            real(dp) :: thermal_diffusivity(json)
 ! kinematic viscosity (radiative plus ionic), from viscos, for rotational
 ! mixing [cm^2/s]; shell_physics
-            double precision :: kinematic_viscosity(json)
+            real(dp) :: kinematic_viscosity(json)
 ! the envelope of the latest envelope integration, point by point: log P,
 ! log T, log m, log rho, log r, X, Z, the gradients, the opacity and its
 ! derivatives [cgs, logs base 10]; envelope_integration, envelope_rebuild,
@@ -966,23 +967,23 @@ module star_info_lib
 ! block-elimination coefficients c(k,j,i) of henyey_elimination (its
 ! header gives the relations) [-]; henyey_elimination,
 ! structure_equations
-            double precision :: elim_coeff(4,2,json)
+            real(dp) :: elim_coeff(4,2,json)
 ! right-hand sides e(k,i): the residuals, then (after henyey_solve) the
 ! corrections dlog P, dlog T, dlog r, dL [log10, Lsun];
 ! henyey_elimination, henyey_iteration, structure_equations
-            double precision :: elim_rhs(4,json)
+            real(dp) :: elim_rhs(4,json)
 ! change of log P since the start of the step [log10]; step_driver,
 ! henyey_iteration. Zeroed (or set to the first-guess extrapolation)
 ! before the solve, then accumulated by every correction; feeds eps_grav.
-            double precision :: log_pressure_delta(json)
+            real(dp) :: log_pressure_delta(json)
 ! change of log T since the start of the step [log10]; step_driver,
 ! henyey_iteration. As log_pressure_delta.
-            double precision :: log_temperature_delta(json)
+            real(dp) :: log_temperature_delta(json)
 ! per equation (P, T, r, L): the largest |residual|, then the largest
 ! |correction|, then the signed correction there [log10, Lsun];
 ! henyey_elimination, henyey_iteration. Misnamed: holds residuals or
 ! corrections depending on the stage of the iteration.
-            double precision :: max_residual(4)
+            real(dp) :: max_residual(4)
 ! Newton iterations of the step's solve, counted over its levels up to
 ! the last convergence, for the run-log model line [-]; henyey_iteration
             integer :: newton_iterations = 0
@@ -992,7 +993,7 @@ module star_info_lib
 ! solve_structure starts it at |physics%solver_underrelax_start| -
 ! physics%solver_underrelax_increment each step, and henyey_iterate raises
 ! it by the increment per iteration, up to 1, when the start is positive.
-            double precision :: newton_correction_factor
+            real(dp) :: newton_correction_factor
 
 ! ==== Diagnostics written during the solve =============================
 ! Per-zone physics stored for output by compute_henyey_coefficients at
@@ -1007,76 +1008,76 @@ module star_info_lib
 
 ! eps_grav = -T ds/dt of each zone [erg/(g s)]; structure_equations,
 ! step_driver
-            double precision :: eps_grav(json)
+            real(dp) :: eps_grav(json)
 ! the extra energy sources' sum at each zone
 ! (core/structure/energy_sources.f90) [erg/(g s)]; structure_equations.
 ! Zero without a registered source.
-            double precision :: eps_extra(json)
+            real(dp) :: eps_extra(json)
 ! nuclear energy generation, the sum of the chains' eps: pp1 + pp2 +
 ! pp3 + CNO + triple alpha + the alpha captures [erg/(g s)];
 ! structure_equations. Zero below the burning cutoff; the neutrino losses
 ! are not in it.
-            double precision :: eps_total(json)
+            real(dp) :: eps_total(json)
 ! per channel i_eps_*: rows 1-5 the fractions of eps_total of pp1, pp2,
 ! pp3, CNO and triple alpha, row 6 eps_nu, row 7 eps_grav [rows 1-5: -;
 ! rows 6-7: erg/(g s)]; structure_equations. The alpha captures have no
 ! row, so rows 1-5 sum to less than 1 where they burn.
-            double precision :: eps_channels(7,json)
+            real(dp) :: eps_channels(7,json)
 ! luminosity per channel i_lum_* (pp1, pp2, pp3, CNO, 3 alpha, neutrinos,
 ! gravothermal, alpha captures, the extra energy sources), scaled to sum
 ! to L(nz) [Lsun]; structure_equations, observables, henyey_iteration,
 ! model_files. Summed every iteration, rescaled again after convergence
 ! (renormalize_luminosity_breakdown); compute_timestep reads it; read from
 ! YREC7/MODEL2 files, zeroed by the .mod reader.
-            double precision :: luminosity_breakdown_lsun(n_lum_channels)
+            real(dp) :: luminosity_breakdown_lsun(n_lum_channels)
 ! gas-pressure fraction P_gas/P [-]; structure_equations
-            double precision :: beta(json)
+            real(dp) :: beta(json)
 ! electron degeneracy parameter [-]; structure_equations. 0 unless the
 ! EOS treats the gas as fully ionized.
-            double precision :: eta(json)
+            real(dp) :: eta(json)
 ! Rosseland mean opacity kappa [cm^2/g]; structure_equations,
 ! shell_physics. Also written by compute_shell_physics (the rezone,
 ! rotation, the card start); the last writer wins.
-            double precision :: opacity_zone(json)
+            real(dp) :: opacity_zone(json)
 ! radiative temperature gradient grad_rad [-]; structure_equations,
 ! shell_physics. As opacity_zone.
-            double precision :: gradr(json)
+            real(dp) :: gradr(json)
 ! actual temperature gradient d ln T/d ln P [-]; structure_equations,
 ! shell_physics. As opacity_zone.
-            double precision :: gradT(json)
+            real(dp) :: gradT(json)
 ! adiabatic gradient grad_ad [-]; structure_equations, shell_physics. As
 ! opacity_zone.
-            double precision :: grada(json)
+            real(dp) :: grada(json)
 ! convective velocity from mixing-length theory [cm/s];
 ! structure_equations, shell_physics. As opacity_zone.
-            double precision :: conv_vel(json)
+            real(dp) :: conv_vel(json)
 ! first adiabatic exponent Gamma_1 [-]; structure_equations
-            double precision :: adiabatic_index_gamma1(json)
+            real(dp) :: adiabatic_index_gamma1(json)
 ! solar-neutrino fluxes at the Earth by slot i_nu_* (slots 9-10: the
 ! He3+He3 and He3+He4 rates in the same units) [10^10/(cm^2 s)];
 ! structure_equations, observables, neutrino_flux_output. Only with
 ! physics%calc_neutrinos; also overwritten by the card-start neutrino table.
-            double precision :: neutrino_flux_total_e10_per_cm2_s(n_nu_fluxes)
+            real(dp) :: neutrino_flux_total_e10_per_cm2_s(n_nu_fluxes)
 ! d eps_total/d ln rho, absolute (not logarithmic) [erg/(g s)];
 ! structure_equations. eps_nuc's, without the thermal neutrino loss, as
 ! eps_total; zero below the burning cutoff.
-            double precision :: pulse_deps_dlnrho(json)
+            real(dp) :: pulse_deps_dlnrho(json)
 ! d eps_total/d ln T, absolute [erg/(g s)]; structure_equations. As
 ! pulse_deps_dlnrho.
-            double precision :: pulse_deps_dlnt(json)
+            real(dp) :: pulse_deps_dlnt(json)
 ! d ln kappa/d ln rho [-]; structure_equations
-            double precision :: pulse_dlnkap_dlnrho(json)
+            real(dp) :: pulse_dlnkap_dlnrho(json)
 ! d ln kappa/d ln T [-]; structure_equations
-            double precision :: pulse_dlnkap_dlnt(json)
+            real(dp) :: pulse_dlnkap_dlnt(json)
 ! specific heat at constant pressure c_P [erg/(g K)]; structure_equations
-            double precision :: pulse_specific_heat(json)
+            real(dp) :: pulse_specific_heat(json)
 ! mean molecular weight mu = R/(specific gas constant) [-];
 ! structure_equations
-            double precision :: pulse_mean_molecular_weight(json)
+            real(dp) :: pulse_mean_molecular_weight(json)
 ! d ln rho/d ln T at constant P [-]; structure_equations
-            double precision :: pulse_dlnrho_dlnt(json)
+            real(dp) :: pulse_dlnrho_dlnt(json)
 ! 1/mu_e [-]; structure_equations
-            double precision :: pulse_electron_mean_weight_inverse(json)
+            real(dp) :: pulse_electron_mean_weight_inverse(json)
 
 ! ==== Diagnostics written after convergence ============================
 ! Observables computed once per model by compute_observables (after the
@@ -1092,91 +1093,91 @@ module star_info_lib
 ! each rotational transport mechanism's velocity at interface k, slots
 ! i_mech_* of transport_mechanism_layout [cm/s]; secular_transport. From
 ! the last iteration of the step's last rotation sub-step.
-            double precision :: mechanism_velocity(n_transport_mechanisms, json)
+            real(dp) :: mechanism_velocity(n_transport_mechanisms, json)
 ! angular-momentum diffusion coefficient D_omega on the model grid
 ! [cm^2/s]; secular_transport. The step's last sub-step wins; 0 without
 ! rotation.
-            double precision :: am_diffusion_coeff(json)
+            real(dp) :: am_diffusion_coeff(json)
 ! rotational mixing coefficient D_mix on the model grid [cm^2/s];
 ! secular_transport. As am_diffusion_coeff.
-            double precision :: mixing_diffusion_coeff(json)
+            real(dp) :: mixing_diffusion_coeff(json)
 ! log10 of the photospheric radius from L = 4 pi R^2 sigma Teff^4
 ! [log10 Rsun]; observables
-            double precision :: log_R_surface_rsun
+            real(dp) :: log_R_surface_rsun
 ! log10 surface gravity G M/R^2 [log10 cm/s^2]; observables
-            double precision :: log_g_surface
+            real(dp) :: log_g_surface
 ! frequency of maximum oscillation power, scaled from the Sun's by g and
 ! Teff [uHz]; observables
-            double precision :: nu_max_uhz
+            real(dp) :: nu_max_uhz
 ! large frequency separation scaled from the mean density [uHz];
 ! observables
-            double precision :: delta_nu_rho_uhz
+            real(dp) :: delta_nu_rho_uhz
 ! asymptotic p-mode large separation, from the sound-travel time [uHz];
 ! observables
-            double precision :: delta_nu_uhz
+            real(dp) :: delta_nu_uhz
 ! asymptotic l = 1 g-mode period spacing of the inner cavity, from the
 ! Brunt-Vaisala integral [s]; observables. 0 without a cavity.
-            double precision :: delta_Pg
+            real(dp) :: delta_Pg
 ! moment of inertia of the star [g cm^2]; observables
-            double precision :: total_moment_of_inertia
+            real(dp) :: total_moment_of_inertia
 ! moment of inertia of the surface convection zone [g cm^2]; observables
-            double precision :: cz_moment_of_inertia
+            real(dp) :: cz_moment_of_inertia
 ! surface rotation period 2 pi/omega(nz), capped at 9999 [d];
 ! observables. 0 without rotation.
-            double precision :: rotation_period_days
+            real(dp) :: rotation_period_days
 ! surface equatorial velocity omega(nz) R [km/s]; observables
-            double precision :: surf_velocity_kms
+            real(dp) :: surf_velocity_kms
 ! mass coordinate of the bottom of the H-burning shell [Msun];
 ! observables. 0 without a shell, as the five below.
-            double precision :: h_shell_bot_mass_msun
+            real(dp) :: h_shell_bot_mass_msun
 ! mass coordinate of the middle of the H-burning shell [Msun];
 ! observables
-            double precision :: h_shell_mid_mass_msun
+            real(dp) :: h_shell_mid_mass_msun
 ! mass coordinate of the top of the H-burning shell [Msun]; observables
-            double precision :: h_shell_top_mass_msun
+            real(dp) :: h_shell_top_mass_msun
 ! radius of the bottom of the H-burning shell [r/R]; observables
-            double precision :: h_shell_bot_radius_fraction
+            real(dp) :: h_shell_bot_radius_fraction
 ! radius of the middle of the H-burning shell [r/R]; observables
-            double precision :: h_shell_mid_radius_fraction
+            real(dp) :: h_shell_mid_radius_fraction
 ! radius of the top of the H-burning shell [r/R]; observables
-            double precision :: h_shell_top_radius_fraction
+            real(dp) :: h_shell_top_radius_fraction
 ! central temperature, extrapolated from the first point [log10 K];
 ! observables
-            double precision :: central_log10_temperature
+            real(dp) :: central_log10_temperature
 ! central pressure [log10 dyn/cm^2]; observables
-            double precision :: central_log10_pressure
+            real(dp) :: central_log10_pressure
 ! central density, from the EOS [log10 g/cm^3]; observables
-            double precision :: central_log10_density
+            real(dp) :: central_log10_density
 ! central P_gas/P [-]; observables
-            double precision :: central_beta
+            real(dp) :: central_beta
 ! central electron degeneracy parameter [-]; observables
-            double precision :: central_degeneracy_eta
+            real(dp) :: central_degeneracy_eta
 ! mass of the surface convection zone [Msun]; observables
-            double precision :: envelope_mass_msun
+            real(dp) :: envelope_mass_msun
 ! radius of the base of the surface convection zone [Rsun]; observables,
 ! starting_model. Written twice per model: by locate_surface_cz_base,
 ! then by the turnover-time walk.
-            double precision :: envelope_radius_rsun
+            real(dp) :: envelope_radius_rsun
 ! mass of the convective core [Msun]; observables. 0 without one.
-            double precision :: core_cz_mass_msun
+            real(dp) :: core_cz_mass_msun
 ! temperature at the base of the surface convection zone, linear [K];
 ! observables
-            double precision :: envelope_cz_temperature
+            real(dp) :: envelope_cz_temperature
 ! density at the base of the surface convection zone [g/cm^3];
 ! observables
-            double precision :: envelope_cz_density
+            real(dp) :: envelope_cz_density
 ! pressure at the base of the surface convection zone [dyn/cm^2];
 ! observables
-            double precision :: envelope_cz_pressure
+            real(dp) :: envelope_cz_pressure
 ! opacity at the base of the surface convection zone [cm^2/g];
 ! observables
-            double precision :: envelope_cz_opacity
+            real(dp) :: envelope_cz_opacity
 ! chlorine (37Cl) detector capture rate [SNU]; observables. 0 without
 ! physics%calc_neutrinos.
-            double precision :: cl37_snu_rate
+            real(dp) :: cl37_snu_rate
 ! gallium (71Ga) detector capture rate [SNU]; observables. 0 without
 ! physics%calc_neutrinos.
-            double precision :: ga71_snu_rate
+            real(dp) :: ga71_snu_rate
 
 ! ==== Private to one module ===========================================
 ! Values kept on the star for one module alone, which writes and reads
@@ -1189,32 +1190,32 @@ module star_info_lib
 
 ! log(L/Lsun) at the previous solar-calibration check, only printed
 ! [log10 Lsun]; calibration
-            double precision :: log_l_lsun_prev_check
+            real(dp) :: log_l_lsun_prev_check
 ! log(R/Rsun) at the previous solar-calibration check, only printed
 ! [log10 Rsun]; calibration
-            double precision :: log_r_rsun_prev_check
+            real(dp) :: log_r_rsun_prev_check
 ! the solar calibration's Newton correction to X [-]; calibration
-            double precision :: delta_x
+            real(dp) :: delta_x
 ! the solar calibration's Newton correction to the mixing length [-];
 ! calibration
-            double precision :: delta_alpha
+            real(dp) :: delta_alpha
 ! age interpolated at the star calibration's target radius [Gyr];
 ! calibration
-            double precision :: age_gyr_at_target_radius
+            real(dp) :: age_gyr_at_target_radius
 ! age of the previous model, for the star calibration [Gyr]; calibration
-            double precision :: age_gyr_prev_model
+            real(dp) :: age_gyr_prev_model
 ! log(L/Lsun) interpolated at the star calibration's target radius
 ! [log10 Lsun]; calibration
-            double precision :: log_l_lsun_at_target_radius
+            real(dp) :: log_l_lsun_at_target_radius
 ! log(L/Lsun) at the target radius in the previous star-calibration
 ! run [log10 Lsun]; calibration
-            double precision :: log_l_lsun_at_target_radius_prev_run
+            real(dp) :: log_l_lsun_at_target_radius_prev_run
 ! log(L/Lsun) of the previous model, for the star calibration
 ! [log10 Lsun]; calibration
-            double precision :: log_l_lsun_prev_model
+            real(dp) :: log_l_lsun_prev_model
 ! R/Rsun of the previous model, for the star calibration [Rsun];
 ! calibration
-            double precision :: r_rsun_prev_model
+            real(dp) :: r_rsun_prev_model
 ! zone of the base of the surface mixed region found by the last call
 ! within the step (cz_base_radius_last_call), the starting zone of the
 ! next call [-]; convection_geometry
@@ -1227,7 +1228,7 @@ module star_info_lib
             integer :: max_correction_index(4)
 ! outer boundary-condition rows from the envelope fit, in henyey_solve's
 ! form [-]; henyey_iteration
-            double precision :: surface_bc(6)
+            real(dp) :: surface_bc(6)
       end type star_info
 
 ! Module-level (deliberately outside the star, which run_yrec builds

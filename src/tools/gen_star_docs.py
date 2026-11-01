@@ -77,7 +77,8 @@ README = SRC / "state" / "README.md"
 # star_info's classes and member comments
 
 CLASS_RE = re.compile(r"^!\s*====\s*(.+?)\s*=+\s*$")
-MEMBER_DECL_RE = re.compile(r"^\s*(double precision|integer|logical|character\s*\(\s*len\s*=\s*\d+\s*\)|"
+MEMBER_DECL_RE = re.compile(r"^\s*(double precision|real\s*\(\s*dp\s*\)|integer|logical|"
+                            r"character\s*\(\s*len\s*=\s*\d+\s*\)|"
                             r"type\s*\(\s*(\w+)\s*\))\s*::\s*(.*)$", re.I)
 DOC_RE = re.compile(r"^(?P<meaning>[^\[]+?)\s*\[(?P<unit>[^\]]*)\];\s*(?P<writers>\w+(?:\s*,\s*\w+)*)"
                     r"(?:\.\s*(?P<notes>.*?))?\.?$", re.S)

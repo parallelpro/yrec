@@ -25,22 +25,23 @@
 ! from here rather than from star_info_lib.
 module envelope_points
       use composition_layout, only: json
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
       private
 
       type, public :: envelope_structure_state
-            double precision :: env_log10_pressure(json), &
+            real(dp) :: env_log10_pressure(json), &
                  env_log10_temperature(json)
-            double precision :: env_log10_mass(json), env_log10_density(json), &
+            real(dp) :: env_log10_mass(json), env_log10_density(json), &
                  env_log10_radius(json)
-            double precision :: env_hydrogen_fraction(json), &
+            real(dp) :: env_hydrogen_fraction(json), &
                  env_metal_fraction(json)
             logical :: env_convective_flag(json)
-            double precision :: env_gradients(3,json), &
+            real(dp) :: env_gradients(3,json), &
                  env_convective_velocity(json), env_beta(json)
-            double precision :: env_gamma1(json), env_specific_heat_cp(json), &
+            real(dp) :: env_gamma1(json), env_specific_heat_cp(json), &
                  env_ion_fraction(3,json)
-            double precision :: env_opacity(json), env_luminosity(json), &
+            real(dp) :: env_opacity(json), env_luminosity(json), &
                  env_dlnrho_dlnt(json)
 ! the opacity derivatives the envelope
 ! integration computes at every point (envelope_derivs: pt%qqod,
@@ -48,30 +49,30 @@ module envelope_points
 ! kap_kap_T and kap_kap_rho columns of the envelope points (they were
 ! written as zero, which switches off the kappa mechanism of the
 ! hydrogen ionisation zone in any nonadiabatic calculation on the file).
-            double precision :: env_dlnkap_dlnrho(json), env_dlnkap_dlnt(json)
+            real(dp) :: env_dlnkap_dlnrho(json), env_dlnkap_dlnt(json)
             integer :: num_env_points
       end type envelope_structure_state
 
       type, public :: atmosphere_structure_state
-            double precision :: atmo_log10_pressure(json), &
+            real(dp) :: atmo_log10_pressure(json), &
                  atmo_log10_temperature(json)
-            double precision :: atmo_log10_density(json), &
+            real(dp) :: atmo_log10_density(json), &
                  atmo_delta_depth(json)
-            double precision :: atmo_gradients(3,json), atmo_beta(json)
-            double precision :: atmo_gamma1(json), atmo_dlnrho_dlnt(json), &
+            real(dp) :: atmo_gradients(3,json), atmo_beta(json)
+            real(dp) :: atmo_gamma1(json), atmo_dlnrho_dlnt(json), &
                  atmo_ion_fraction(3,json)
-            double precision :: atmo_opacity(json), atmo_specific_heat_cp(json)
+            real(dp) :: atmo_opacity(json), atmo_specific_heat_cp(json)
 ! opacity derivatives at every atmosphere
 ! point (atmosphere_derivs: pt%qqod, pt%qqot), for the pulse
 ! writers' kap_kap_T and kap_kap_rho columns (see envelope_structure_state).
-            double precision :: atmo_dlnkap_dlnrho(json), atmo_dlnkap_dlnt(json)
+            real(dp) :: atmo_dlnkap_dlnrho(json), atmo_dlnkap_dlnt(json)
             integer :: num_atm_points
       end type atmosphere_structure_state
 
       type, public :: atmosphere_point_state
-            double precision :: log10_tau, log10_pressure, log10_temperature, &
+            real(dp) :: log10_tau, log10_pressure, log10_temperature, &
                  log10_density, opacity
-            double precision :: ion_fraction(3)
+            real(dp) :: ion_fraction(3)
       end type atmosphere_point_state
 
 end module envelope_points
