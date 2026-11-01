@@ -64,10 +64,17 @@ subroutine write_fgong_pulse(s, n, pts, mstar_g, rstar_cm, lstar_cgs, &
       glob(1) = mstar_g
       glob(2) = rstar_cm
       glob(3) = lstar_cgs
-      glob(4) = pts(ipul_z, n)
-      glob(5) = pts(ipul_h1, n)
-! glob(6) (mixing length alpha), glob(11)/glob(12) (central second
-! derivatives) not tracked here -- zero, as tools tolerate.
+! the run's initial Z and X, the first card's starting composition
+! (the history header's initial_z and initial_x), and the model's
+! mixing length (the current card's), as MESA writes s%initial_z, 1 - initial_y - initial_z and
+! s%mixing_length_alpha (mesa-26.04.1 star/private/pulse_fgong.f90
+! :171-176; the FGONG notes call glob(5) X_0, the initial hydrogen
+! abundance). (A later card's own X and Z can be unset, 0, on an evolve
+! card.) glob(11) and glob(12), the central second derivatives, are not
+! computed: zero, as tools tolerate.
+      glob(4) = s%card_initial_z(1)
+      glob(5) = s%card_initial_x(1)
+      glob(6) = s%mixing_length_alpha
       glob(13) = s%age_gyr*1.0d9
       glob(14) = exp10(s%log_Teff)
       glob(15) = grav_const_cgs

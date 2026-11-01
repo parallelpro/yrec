@@ -74,7 +74,10 @@
 !                written (gfortran's runtime reports no error on the
 !                writes themselves, io/output_files.f90; a runtime that
 !                does reports it at the write, with the same message
-!                head).
+!                head);
+!   FGONG        write_fgong_pulse's globals 4-6 are the first card's
+!                starting Z and X and the mixing length (MESA's initial
+!                Z, X and alpha), whatever the current card's are.
 ! The expected values are formed here: through the text of the layouts'
 ! formats (expected = what the text written here reads back as, by an
 ! internal read), never by the reader under test. Each check prints ok
@@ -184,6 +187,7 @@ program test_io
       call model2_check()
       call tables_check()
       call writes_check()
+      call fgong_check()
 
       call end_capture()
       if (failures > 0) then
@@ -1181,5 +1185,33 @@ subroutine writes_check()
       call report("writes: a copy of the deck cut short by a full disk is an error", ierr == 1 .and. &
            captured(terminal_file, 'cannot write full_inlist_used'))
 end subroutine writes_check
+
+! ---------------------------------------------------------------
+subroutine fgong_check()
+      integer, parameter :: n_points = 4
+      character(len=*), parameter :: fgong_value = '(1P,X,E26.18E3)'
+      real(dp) :: pts(n_pulse_cols, n_points), glob(15)
+      integer :: u, ierr, i
+
+      call fill_mod_model(s)
+      pts = 0.5d0
+      s%card_initial_x(1) = 0.7123456789012345d0
+      s%card_initial_z(1) = 0.0187654321098765d0
+      s%current_card_envelope_x = 0.0d0
+      s%current_card_envelope_z = 0.0d0
+      s%mixing_length_alpha = 1.8518851851851851d0
+      ierr = 0
+      call write_fgong_pulse(s, n_points, pts, 1.0d33, 7.0d10, 3.8d33, 'globals.FGONG', ierr)
+      open(newunit=u, file='globals.FGONG', status='old', action='read')
+      do i = 1, 5
+         read(u,*)
+      end do
+      read(u,*) glob
+      close(u)
+      call report("FGONG: globals 4-6 the run's initial Z, X and the mixing length", &
+           ierr == 0 .and. glob(4) == through(fgong_value, s%card_initial_z(1)) .and. &
+           glob(5) == through(fgong_value, s%card_initial_x(1)) .and. &
+           glob(6) == through(fgong_value, s%mixing_length_alpha))
+end subroutine fgong_check
 
 end program test_io

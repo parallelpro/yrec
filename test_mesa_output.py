@@ -195,6 +195,13 @@ def test_mesa_output_contract(tmp_path):
     glob = fgong_vals(data[:n_glob_lines])[:iconst]
     surf = fgong_vals(data[n_glob_lines:n_glob_lines + n_var_lines])[:ivar]
     r_star, teff = glob[1], glob[13]
+    # globals 4-6: the initial Z and X and the mixing length, as MESA
+    # writes them: the history header's initial X and Z, and the model's
+    # mixing length, which on this deck is every card's
+    header = (custom_out / "history.data").read_text().splitlines()[2].split()
+    initial_x, initial_z, alpha = (float(header[i]) for i in (2, 4, 5))
+    assert glob[3:6] == pytest.approx([initial_z, initial_x, alpha], rel=1e-15), \
+        (glob[3:6], initial_z, initial_x, alpha)
     assert surf[0] >= 0.999 * r_star, (surf[0], r_star)
     assert surf[2] < 1.2 * teff, (surf[2], teff)
 
