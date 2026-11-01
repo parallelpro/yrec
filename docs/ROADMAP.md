@@ -3281,3 +3281,246 @@ M126 (a second core extension in one run starts from the first one's
 log-mass shift; F77). Open: docs/TARGET_ARCHITECTURE.md's controls section
 predates the decision; the five derived controls with no deck input could
 leave the buffer.
+
+### Round 3: io and state to 9 (yrec-next, 2026-10-31/11-01)
+
+**Why.** The fourth evaluation (at e8c847ba,
+audit/module-evaluation-4-2026-10-31/SUMMARY.md, scored out of 10
+against rotation/'s bar) put io at 7.5 (7.5 on all five criteria) and
+state at 7.8 (8 / 7.5 / 8 / 8 / 7.5), the lowest after eos, and setup
+at 8.2 (9 / 8 / 8 / 8 / 8), level with net. What held io back was
+structure: a control still travelled through three copies (its inlist
+name, its legacy name, its code name); controls_buffer and
+legacy_controls declared about 700 module variables, public by
+default, and the read's state outlived the read in them (the run's
+file paths, the output directory, the solver-diagnostics gate); the
+physics domains imported io for their messages (19 files); and the
+read wrote eleven star members besides its two records. state and
+setup were held back by a Monte Carlo record with misleading names,
+run copies not re-armed between Monte Carlo runs (M95), a contract
+check that covered only the procedures that opted in (M143), the
+atmosphere choice in three homes (M140), and two builder naming
+schemes. The owner asked for io and state (with setup) at 9: every
+"what would raise" item of the two reports done, and the bugs their
+lists name fixed (docs/bug_sweep.md sections 9-10).
+
+**How.** Three work packages from f01bae96, each in its own git
+worktree with the files it owned, as in rounds 1 and 2: READ3 (the
+controls read: controls_buffer, legacy_controls, controls_reader,
+derived_controls, controls_check, controls_sync, user_inputs,
+run_cards, the generators and the registry, io_units' move), OUT3
+(io's writers, the model files, the run log, run_files' opening half,
+io/README.md, test_io, CI) and STATE3 (state/ but the controls'
+members, setup/, the two star tools, the Monte Carlo re-arm, the
+surface-mixture installs). Each kept a hand-off note: commits, bugs in
+this list's format, decisions with revisable defaults, ROADMAP drafts,
+and ready-to-paste text for the files another package owned (READ3's
+controls sections of io/README.md and state/README.md). Renames across
+packages were scripts run after the merges (STATE3's builder module
+names, READ3's io_units split and its edits outside its files).
+Verification as before: every commit built and checked
+(check_boundaries, the star contracts and docs, the generated files),
+the unit tests, and the scratchpad check.py, which byte-compares every
+per-deck output file of the 56-deck set with a snapshot of f01bae96
+(whose outputs the pins hold) and the run logs with the pins; a
+results-changing fix is its own commit, measured on decks that reach
+it. The controls dumps were allowed to change in labels and order,
+with every value shown unchanged under the label map (scratchpad
+dumpcmp.py: two test_controls binaries over the pristine defaults and
+all 314 decks).
+
+The packages were merged onto one branch (mods3) in order: OUT3's 6
+commits, STATE3's 12, READ3's 14, then the cross-package steps:
+06fd32b5 (STATE3's rename script over the merged tree: comments in io
+only), e149a803 and ff74305d (READ3's ready-to-paste text in the two
+READMEs, adjusted to the merged code), b475f0b6 (M155's last comment),
+and this documentation. READ3's io_units split script was re-run at
+its commit (509cd96d) and rewrote the use lines of OUT3's and STATE3's
+new code too (nine files). The merge's own decisions are in the
+commit messages: run_files keeps OUT3's order (the run log first) and
+READ3's stateless design (every path from the star), so after a
+controls error, when the records are not stored, the read itself opens
+the run log alone from the deck's expanded path (b7348468); the
+microphysics_settings split stays STATE3's, with READ3's edits on the
+new builder files; star_info_lib keeps STATE3's classes in real(dp)
+with READ3's members; and STATE3's run-copy recipe gains the dump
+regeneration that READ3's dump of every run copy made necessary
+(ff74305d).
+
+#### The controls read (READ3, 14 commits)
+
+- **One copy, the code name** (86061038, e311ee8e): every control the
+  read uses has a code name in controls_buffer (the 32 live controls
+  that had only a legacy name among them), and an inlist's groups bind
+  the code names directly: a value is read straight into its code name
+  for 342 of the 380 inlist controls (three copies before: inlist
+  name, legacy name, code name), and copied once from a local for the
+  38 whose inlist name differs. A legacy pair is read by
+  read_legacy_deck through generated declarations, defaults and
+  translation. M109: an alias counts where the deck sets it and not
+  the new name, decided by reading the groups twice with different
+  seeds.
+- **The read writes only its records and the run copies**
+  (3a44ae33, 63628c4a): the rate scales and the envelope's storage
+  temperature are derived controls in star%physics (the two scales the
+  Monte Carlo runs rescale with run copies, cross_section_scale_in_use
+  and extra_cross_section_scale_in_use); atm_choice has one home
+  (M140); the five no-input pseudo-controls are gone (M152). The
+  read's star writes besides the two records and arm_run_copies: 11
+  members before, 0 after.
+- **The read's state ends with the read** (b7348468, 509cd96d): the
+  run's file paths are controls the star holds, opened by
+  open_run_files(s, ierr); the output directory is computed
+  (output_directory(s)); io_units and the solver-diagnostics gate are
+  state/run_messages.f90, a module every layer may use, and the run
+  files' units run_files'. Physics files importing an io module: 19
+  before, 0 after (check_physics_no_io keeps it so).
+- **Paths, privacy, one description** (196f6397, 239913c4, 54b970f8,
+  58f6648f, 14191a5d): a path control has the registry type `path`
+  and expand_paths is generated (M149); controls_buffer and
+  legacy_controls are private, with generated public lists and
+  only-lists everywhere, enforced: default-public module variables
+  700 before, 0 after; controls_buffer is laid out in &control and
+  &physics sections with each member's description as the comment
+  above it (the registry's description column moved there: M152,
+  M154, M165, M113 in part); test_controls dumps the run copies and
+  not two fields the read never set (M120); the stale headers and the
+  format labels fixed.
+- 67a92997 and 6988dd6f are STATE3's two hand-offs: the registry's
+  types spell max_runs by name, read from control_slots, and the
+  generated records spell real(dp). de2b5d96 closed the design
+  document's controls items (4.6).
+
+#### The output (OUT3, 6 commits)
+
+- **Every write checked** (ffd5ce50, M110, M138): io/output_files.f90
+  opens and closes the output's files, and iostat guards every write of
+  the .mod, history, profile, FGONG, GYRE, GSM, isochrone and
+  deck-copy writers. A full disk needed more: gfortran 15.2 reports
+  nothing when a formatted write fills the disk (measured on a 2 MB
+  disk image and under RLIMIT_FSIZE: every iostat 0, the file cut
+  short, exit 0), so close_output_file compares the size on disk with
+  what the unit wrote. Nine test_io checks and two test_error_exit
+  cases; 15 mutations caught.
+- **The run log first** (1a8a4155, M98; results-changing for failing
+  runs only): the run log is the first file the run opens, and after a
+  controls error it is opened alone, so a failed run leaves its reason
+  in it. Measured: every shipped and pinned log unchanged (--set all,
+  35 pins); a sample_cases/LowM_HB deck, whose starting model is
+  missing, now leaves a run log with the header, the run plan and the
+  ERROR line, where it left none.
+- **FGONG's globals** (82bd89fc, M130; results-changing, FGONG files
+  only): globals 4-6 are the run's initial Z and X (the first card's)
+  and the mixing length, as MESA writes them. Measured on cm_base with
+  FGONG every 2 models: glob(5) 0.719606 -> 0.71962, glob(6) 0 ->
+  1.707575; on Test_solar_GS_norot (an FGONG at 3.5e7 yr): glob(4)
+  0.0187993 -> 0.018804, glob(5) 0.708552 -> 0.708483 (the history
+  header's initial_z and initial_x), glob(6) 0 -> 1.852729; every
+  other value identical. No shipped deck writes FGONG.
+- 70a47ab9: model_file_header's disk fields named for what they hold
+  (M155); f66688ca: CI runs on yrec-next, fetches what its steps read
+  (traced), builds the tests and runs 26 test files and the six
+  generators' checks; both jobs replayed locally from a fresh sparse
+  clone (80 passed, 1 skipped), the first GitHub run needs a push
+  (M125); e251b6c4: io/README.md for the new code, coverage 93.1%.
+
+#### state/ and setup/ (STATE3, 12 commits)
+
+- **The Monte Carlo runs** (7a06885f, ecb084fd): a lifetime class of
+  their own with honest sample names (M151) and a per-run hook,
+  begin_monte_carlo_run, which re-arms every run copy at the start of
+  every Monte Carlo run (M95; results-changing for multi-run Monte
+  Carlo decks only, none shipped). Measured on three two-run decks: a
+  solar calibration, identical; cm_monte_carlo with two identical
+  samples and a central D stop, where run 2 failed in card 2 before
+  (TPGRAD NaN, exit 1, after inheriting run 1's disarmed stop and
+  switched-off timestep limits) and now repeats run 1 (to about 1e-15
+  relative, M169); fixed timesteps with an age factor of 1.02, which
+  compounded in run 2 before (2.0808e6 yr) and are 2.04e6 yr as in run
+  1 now (run 2's calibrated alpha 1.7139 -> 1.7138). --set all
+  identical. The merged code gives the same files on all three decks.
+- **Contracts required** (d1d14a6b, 2c09e12b): the star tools see
+  `case (k);` assignments, `real(dp) function` headers and an
+  if-condition's reads (M116, M168), with mutation-checked self-tests;
+  every star-taking procedure in core/run, core/step, setup and io
+  declares its contract (M143; 95 contracts on STATE3's branch, 92 on
+  the merged tree, where the read's procedures no longer take the star
+  and open_run_files and output_directory do).
+- **Declarations and docs** (e44a84cb, fd5aa722, 78262046, f8746f4a):
+  real(dp) in star_info_lib; control_slots the one source of max_runs;
+  state/README's opening in short paragraphs, complete class banners
+  (M163); check_control_copies covers the read's own copies (M140's
+  checker part).
+- **setup** (bc9e2017, 74beeaba, db9c44e6, 28049c9c): every install of
+  the state that follows the surface mixture goes through
+  settings_install; the atm builder copies the deck's choice and the
+  kap builder derives use_two_z_tables (M164); one builder module per
+  domain, <x>_settings_builder, all ten pure; six recipes traced on a
+  throwaway branch (M150).
+
+**Verification of the merged tree** (b475f0b6, the last code commit):
+make and the four checks pass at every merged commit; the unit tests
+81 passed, 1 skipped (HDF5); check.py --set all, 56 decks: ALL
+IDENTICAL against the snapshot of f01bae96, every pinned log OK (35),
+on the second run; in the first, one deck (cm_settle_he_z) exited 1
+because another deck of its directory had replaced the shared
+history.data under it, which the new full-disk check reports (M174;
+alone, and in the rerun, it is identical); test_mesa_baselines passes;
+STATE3's three Monte Carlo decks give byte-identical files with the
+merged binary and with STATE3's own; coverage of io/ 93.4% of 2259
+lines (nine decks, a legacy pair among them), state/run_messages.f90
+100%. Bugs: sections 9 and 10 of docs/bug_sweep.md record what the
+round fixed (M95, M98, M109, M110, M116, M120, M125 locally, M130,
+M138, M140, M143, M149-M155, M163-M165; M113 in part); section 11
+holds what it found, M166-M174 (three fixed in the round, M174 found
+at the merge). No pins were reseeded: the round's three
+results-changing commits move no pinned file.
+
+**Still open.** The control-to-field mapping check (a registry column
+naming each control's settings field; STATE3's design in setup/README
+§6); the solver-diagnostics gate and the read's buffer as module state
+(TARGET_ARCHITECTURE 4.6); M169 (rounding-level state outside the run
+copies between Monte Carlo runs); the .mod and the isochrone file have
+no size check, and the Monte Carlo summary and the neutrino-flux table
+no error path (M173); M112's direct run-log writes; M170-M172
+(kap/alex06's unchecked open, the run plan's I6, the profile header's
+initial_z); M174 (the full-disk check fires when another run replaces
+a shared history file); M113's `used` column and M117's description;
+CI's first real run, which needs a push; and the flat 265-member star
+type (Phase 5's typed parts).
+
+#### Learned
+
+- A compiler can lose data without an error: gfortran's runtime drops
+  the bytes a full disk refuses and returns iostat 0 on the write, the
+  flush and the close. Only a measurement on a real full disk (a 2 MB
+  disk image) showed it, and the defence is a check after the close,
+  not more iostat. A check by path, though, also sees another
+  process's file at that path (M174): the deck set's parallel runs,
+  which share a history file, found it at the merge.
+- The environment changed under the round: Xcode was updated and its
+  license left unaccepted, so /usr/bin/git, make's linker and clang
+  exited 69 from about 21:30. Every later build, test and commit used
+  DEVELOPER_DIR=/Library/Developer/CommandLineTools (and clang
+  -isysroot of the CLT SDK); check.py's byte compares showed the
+  Command Line Tools' linker gives the same results. A background job
+  started without that variable failed at its first make.
+- Two packages' good designs can conflict only in combination: OUT3's
+  "log the controls error" needed state from the read that READ3 had
+  just removed from run_files; the merge put the call where the state
+  is (the read). Ready-to-paste text needed the same care: READ3's
+  text described the run log opened after the models.
+- A recipe traced on one package's branch can be made wrong by
+  another's: STATE3's traced run-copy recipe said the dump generator
+  was not needed, true until READ3 dumped every run copy.
+- A helper one package removes and another imports breaks the
+  intermediate merge commit, not the final tree (controls_registry's
+  MAX_RUNS); bringing the later fix forward kept every merged commit
+  building and checked.
+- One generated list shared by two features pays off:
+  begin_monte_carlo_run calls the generated arm_run_copies, so READ3's
+  new run copies were re-armed per Monte Carlo run with no edit, and
+  STATE3's decks gave identical files on the merged code.
+- A make preprocessor rule reaches comments: `/*` in a Fortran comment
+  opens a C comment under -cpp (M167), hit twice in one round, once in
+  a generated description.
