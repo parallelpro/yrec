@@ -628,9 +628,13 @@ def check_control_copies(src_root):
     control's type and shape, its comment names the control
     (<group>%<name>) and controls_sync among its writers, and
     controls_sync's arm_run_copies sets it from the control, once and
-    nowhere else. Any other copy of a control into a whole star member
-    (s%m = s%<group>%x, outside the read and the tests) is in a module the
-    member's comment names as a writer, and the comment names the control."""
+    nowhere else. Any other copy of a control into a whole star member is
+    in a module the member's comment names as a writer, and the comment
+    names the control: outside the read and the tests s%m = s%<group>%x;
+    in the read's own files (CONTROLS_READ_FILES but controls_sync)
+    s%m = x, with x the control's buffer name or its legacy name (READ_COPY
+    below). A run copy is set from its control by arm_run_copies alone, in
+    the read as outside it."""
     import controls_registry
     import gen_star_docs
     _, members, _ = gen_star_docs.parse_star_info(src_root / "state" / "star_info_lib.f90")
@@ -692,7 +696,43 @@ def check_control_copies(src_root):
             if not names_control(e, ref):
                 problems.append(f"{rel}: copies {ref} into {member}, but {member}'s comment does "
                                 f"not name {ref}")
+    # the read's own copies: s%m = <the control's buffer or legacy name>
+    by_name = {}
+    for r in controls_registry.rows():
+        if not r["canonical"]:
+            continue
+        ref = f"{r['group']}%{r['canonical']}".lower()
+        by_name[r["canonical"].lower()] = ref
+        if r["legacy"] and r["legacy"] != "-":
+            by_name.setdefault(r["legacy"].lower(), ref)
+    for rel in sorted(CONTROLS_READ_FILES - {CONTROLS_WRITER}):
+        p = src_root / rel
+        if not p.exists():
+            continue
+        text = p.read_text(errors="replace")
+        mods = module_re.findall(text)
+        module = mods[0].lower() if mods else p.stem.lower()
+        for stmt in join_continuations(strip_comments(text)):
+            m = READ_COPY.match(stmt)
+            if not m or m.group(2).lower() not in by_name or m.group(1).lower() not in doc:
+                continue
+            member, ref = m.group(1).lower(), by_name[m.group(2).lower()]
+            e = doc[member]
+            if member in copies:
+                problems.append(f"{rel}: sets the run copy {member} from {m.group(2)} ({ref}); "
+                                "only arm_run_copies arms it, from the control")
+                continue
+            if module not in [w.lower() for w in e["writers"]]:
+                problems.append(f"{rel}: copies {ref} ({m.group(2)}) into {member}, but {member}'s "
+                                f"comment does not name {module} as a writer")
+            if not names_control(e, ref):
+                problems.append(f"{rel}: copies {ref} ({m.group(2)}) into {member}, but {member}'s "
+                                f"comment does not name {ref}")
     return sorted(set(problems))
+
+
+# a copy of one name into a whole star member, s%m = x, inside the read
+READ_COPY = re.compile(r"(?i)^\s*(?:if\s*\(.*\)\s*)?s%(\w+)\s*=\s*(\w+)\s*$")
 
 # The star layer's access to the star object (2026-10). Routines come in
 # three kinds, never mixed in one routine:

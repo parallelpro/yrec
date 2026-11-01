@@ -300,7 +300,9 @@ a latch that every card re-arms is armed in `begin_kind_card`
 (`ctrl`, `job`) stay gone; nothing but `controls_sync` assigns the two
 records; every control is in its group's record; the controls-free domains
 read neither record; and a star member that copies a control is declared
-with the control's shape, names the control in its comment, and is set
+with the control's shape, names the control in its comment (in the
+controls read's own files too, for a copy from the buffer's or the legacy
+name), and is set
 only where its comment says. Add a control by `io/README.md` §5, and a
 value the run changes by `state/README.md` §7.
 

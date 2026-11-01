@@ -232,8 +232,9 @@ module star_info_lib
 ! boundary (stored_envelope_state): the mean of physics%rezone_env_logt0 and
 ! physics%rezone_env_logt1 [log10 K]; derived_controls
             real(dp) :: envelope_store_log_temperature
-! atm_choice as read from the deck [-]; controls_reader. The run may
-! change atm_choice_in_use (see use_ttau_relation); this keeps the original.
+! physics%atm_choice as read from the deck (legacy kttau) [-];
+! controls_reader. The run may change atm_choice_in_use (see
+! use_ttau_relation); this keeps the original.
             integer :: atm_choice_initial
 ! load a second opacity-table set at another Z (the Z ramp or Z
 ! diffusion) [logical]; run_driver
