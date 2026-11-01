@@ -51,8 +51,6 @@
       write(u,'(a," = ",l1)') 'control%timestep_override_active('//itoa(i1)//')', star%control%timestep_override_active(i1)
       end do
       write(u,'(a," = ",i0)') 'control%pulse_gyre_interval', star%control%pulse_gyre_interval
-      write(u,'(a," = ",es25.17e3)') 'control%requested_envelope_mass', star%control%requested_envelope_mass
-      write(u,'(a," = ",l1)') 'control%change_envelope_mass_flag', star%control%change_envelope_mass_flag
       do i2 = 1, 50
       do i1 = 1, 4
       write(u,'(a," = ",es25.17e3)') 'control%rescale_params('//itoa(i1)//','//itoa(i2)//')', star%control%rescale_params(i1,i2)
@@ -68,8 +66,6 @@
       do i1 = 1, 50
       write(u,'(a," = ",l1)') 'control%first_call_flag('//itoa(i1)//')', star%control%first_call_flag(i1)
       end do
-      write(u,'(a," = ",es25.17e3)') 'control%initial_envelope_x', star%control%initial_envelope_x
-      write(u,'(a," = ",es25.17e3)') 'control%initial_envelope_z', star%control%initial_envelope_z
       write(u,'(a," = ",l1)') 'control%change_cno_mixture_active', star%control%change_cno_mixture_active
       write(u,'(a," = ",l1)') 'control%change_isotope_ratios_active', star%control%change_isotope_ratios_active
       write(u,'(a," = ",es25.17e3)') 'control%target_carbon_cno_fraction', star%control%target_carbon_cno_fraction
@@ -264,7 +260,6 @@
       end do
       write(u,'(a," = ",es25.17e3)') 'physics%solver_underrelax_start', star%physics%solver_underrelax_start
       write(u,'(a," = ",es25.17e3)') 'physics%solver_underrelax_increment', star%physics%solver_underrelax_increment
-      write(u,'(a," = ",es25.17e3)') 'physics%solver_underrelax_factor', star%physics%solver_underrelax_factor
       do i1 = 1, 12
       write(u,'(a," = ",es25.17e3)') 'physics%chi_grid_scale('//itoa(i1)//')', star%physics%chi_grid_scale(i1)
       end do

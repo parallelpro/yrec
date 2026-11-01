@@ -431,13 +431,8 @@ file names, from the command line). Each is in the group of its topic.
 | `opal_eos_vintage` | physics | physics | - | run | integer | `0` | The OPAL EOS vintage the run uses: 0 none, 1 1995, 2 2001, 3 2006 (eos_lib's opal_vintage_*), the newest selected (set by derive_controls) |
 | `end_age_stop_active` | control | control | `card_stops_active` | run | logical(50) | `0` | Per run: a stop condition is armed (max_age or a central-abundance stop; set by the run plan, rewritten by the calibration) |
 | `timestep_override_active` | control | control | `card_fixed_timestep_active` | run | logical(50) | `0` | Per run: the run takes the fixed timestep timestep_override (set by the run plan) |
-| `solver_underrelax_factor` | physics | physics | `newton_correction_factor` | run | real | `0` | The Newton iteration's current correction factor (the run ramps it from fcorr0 and fcorri) |
-| `requested_envelope_mass` | control | control | `requested_log_fit_point_mass_fraction` | run | real | `0` | The current card's fitting-point envelope mass (from senv0_array at the card start) |
-| `change_envelope_mass_flag` | control | control | `fit_point_move_requested` | run | logical | `0` | The current card moves the fitting point (from has_senv0_array at the card start) |
 | `rescale_params` | control | control | `card_rescale_targets` | run | real(4,50) | `0` | Per run: the rescaling targets M, X, Z and core mass (from rescale_mass, _x, _z and _core_mass; the calibration rewrites them) |
 | `rescale_kind` | control | control | `card_kind` | run | integer(50) | `0` | Per run: evolve, rescale or both (from run_kind) |
-| `initial_envelope_x` | control | control | `current_card_envelope_x` | run | real | `0.7d0` | The current card's envelope X (from initial_x_array; a rescale changes it) |
-| `initial_envelope_z` | control | control | `current_card_envelope_z` | run | real | `0.02d0` | The current card's envelope Z (from initial_z_array; a rescale changes it) |
 | `new_species_index` | physics | physics | - | run | integer | `0` | With rescale_species_active: the composition slot of change_species_name (set by the reader) |
 | `value_relative_to_h` | physics | physics | - | run | logical | `0` | With rescale_species_active: new_species_value is relative to hydrogen (from new_species_value_mode) |
 | `cross_section_scale` | physics | physics | `cross_section_scale_in_use` | run | real(11) | `1.0d0` | Each reaction's cross-section (S0) scale against Bahcall & Ulrich (1988), by reaction slot r_*: from the S-factor inputs (use_new_nuclear_rates) or from cross_section_ratios |

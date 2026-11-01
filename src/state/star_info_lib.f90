@@ -361,22 +361,18 @@ module star_info_lib
 ! step, the writers and the calibrations' cycle arithmetic.
             integer :: current_card
 ! the current card's envelope X: card_initial_x at the card start, or a
-! rescale's X target [-]; run_driver, model_rescaling, controls_sync. From
-! control%initial_envelope_x until the first card; in the history and
+! rescale's X target [-]; run_driver, model_rescaling. In the history and
 ! terminal headers.
-            real(dp) :: current_card_envelope_x
+            real(dp) :: current_card_envelope_x = 0.7d0
 ! the current card's envelope Z, as current_card_envelope_x [-];
-! run_driver, model_rescaling, controls_sync. From
-! control%initial_envelope_z until the first card.
-            real(dp) :: current_card_envelope_z
+! run_driver, model_rescaling
+            real(dp) :: current_card_envelope_z = 0.02d0
 ! the current card moves the fitting point (card_moves_fit_point at the
-! card start) [logical]; run_driver, controls_sync. From
-! control%change_envelope_mass_flag until the first card.
+! card start) [logical]; run_driver
             logical :: fit_point_move_requested
 ! the fitting-point mass the current card asks for, log10(m_fit/M):
 ! card_log_fit_point_mass_fraction at the card start, made negative and at
-! most -1e-12 by the starting model [log10]; run_driver, starting_model,
-! controls_sync. From control%requested_envelope_mass until the first card.
+! most -1e-12 by the starting model [log10]; run_driver, starting_model
             real(dp) :: requested_log_fit_point_mass_fraction
 ! the atmosphere (surface boundary condition) the run uses now, an
 ! atm_choice code [-]; surface_boundary, envelope_integration,
@@ -981,11 +977,10 @@ module star_info_lib
 ! the last convergence, for the run-log model line [-]; henyey_iteration
             integer :: newton_iterations = 0
 ! the Newton iteration's correction factor (the corrections are applied
-! times it) [-]; step_driver, henyey_iteration, controls_sync. From
-! physics%solver_underrelax_factor (no input; 0 until the first step);
-! solve_structure starts it at |physics%solver_underrelax_start| -
-! physics%solver_underrelax_increment each step, and henyey_iterate raises
-! it by the increment per iteration, up to 1, when the start is positive.
+! times it) [-]; step_driver, henyey_iteration. solve_structure starts it
+! at |physics%solver_underrelax_start| - physics%solver_underrelax_increment
+! each step, and henyey_iterate raises it by the increment per iteration,
+! up to 1, when the start is positive.
             real(dp) :: newton_correction_factor
 
 ! ==== Diagnostics written during the solve =============================

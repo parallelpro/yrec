@@ -297,11 +297,11 @@ def test_monte_carlo_paths_are_expanded(tmp_path):
 
 def test_a_second_read_starts_from_the_defaults(tmp_path):
     """read_controls resets the controls and re-arms the run's working
-    copies of them: a deck read into a star that a run has used (the Newton
-    factor ramped, the card's envelope X set, a card's mixing length
-    rewritten) dumps exactly as a fresh read, and the copies equal their
-    controls again (test_controls prints a line otherwise), as an
-    embedding host or a second in-process run needs."""
+    copies of them: a deck read into a star that a run has used (a card's
+    mixing length rewritten, the atmosphere in use switched, a
+    cross-section scale rescaled) dumps exactly as a fresh read, and the
+    copies equal their controls again (test_controls prints a line
+    otherwise), as an embedding host or a second in-process run needs."""
     if not BINARY.exists():
         pytest.skip("src/test_controls not built (run `make tests` in src/)")
     deck = REPO / "examples" / "run_config_matrix" / "cm_base.inlist"

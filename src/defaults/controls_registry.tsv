@@ -388,13 +388,8 @@ physics	-	logical	write_pulse_flag	live		MESA mode: master toggle for pulse outp
 physics	-	logical	compute_neutrino_fluxes	live		Diagnostic: write the per-zone solar neutrino production table (fluxes per shell, normalized profiles, Bahcall-Pinsonneault layout) to the short/log stream at the start of each run	compute_neutrino_fluxes	physics		run	
 control	-	logical(50)	end_age_stop_active	derived		Per run: a stop condition is armed (max_age or a central-abundance stop; set by the run plan, rewritten by the calibration)	end_age_stop_active	control	card_stops_active	run	
 control	-	logical(50)	timestep_override_active	derived		Per run: the run takes the fixed timestep timestep_override (set by the run plan)	timestep_override_active	control	card_fixed_timestep_active	run	
-physics	-	real	solver_underrelax_factor	derived		The Newton iteration's current correction factor (the run ramps it from fcorr0 and fcorri)	solver_underrelax_factor	physics	newton_correction_factor	run	
-control	-	real	requested_envelope_mass	derived		The current card's fitting-point envelope mass (from senv0_array at the card start)	requested_envelope_mass	control	requested_log_fit_point_mass_fraction	run	
-control	-	logical	change_envelope_mass_flag	derived		The current card moves the fitting point (from has_senv0_array at the card start)	change_envelope_mass_flag	control	fit_point_move_requested	run	
 control	-	real(4,50)	rescale_params	derived		Per run: the rescaling targets M, X, Z and core mass (from rescale_mass, _x, _z and _core_mass; the calibration rewrites them)	rescale_params	control	card_rescale_targets	run	
 control	-	integer(50)	rescale_kind	derived		Per run: evolve, rescale or both (from run_kind)	rescale_kind	control	card_kind	run	
-control	-	real	initial_envelope_x	derived		The current card's envelope X (from initial_x_array; a rescale changes it)	initial_envelope_x	control	current_card_envelope_x	run	
-control	-	real	initial_envelope_z	derived		The current card's envelope Z (from initial_z_array; a rescale changes it)	initial_envelope_z	control	current_card_envelope_z	run	
 physics	-	integer	new_species_index	derived		With rescale_species_active: the composition slot of change_species_name (set by the reader)	new_species_index	physics		run	
 physics	-	logical	value_relative_to_h	derived		With rescale_species_active: new_species_value is relative to hydrogen (from new_species_value_mode)	value_relative_to_h	physics		run	
 physics	-	real(11)	cross_section_scale	derived		Each reaction's cross-section (S0) scale against Bahcall & Ulrich (1988), by reaction slot r_*: from the S-factor inputs (use_new_nuclear_rates) or from cross_section_ratios	cross_section_scale	physics	cross_section_scale_in_use	run	

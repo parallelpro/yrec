@@ -257,12 +257,13 @@ module controls_buffer
       logical :: monte_carlo_active = .false.
       integer :: mc_run_start = 1, mc_run_end = 1
 
-! Newton iteration: tolerances, corrections, zoning scales and iteration
-! limits. solver_underrelax_factor has no input; the run's copy, star%newton_correction_factor, is set by
-! the Newton iteration.
+! Newton iteration: tolerances, the under-relaxation of the corrections
+! (the step starts the factor, star%newton_correction_factor, at
+! |solver_underrelax_start| - solver_underrelax_increment), zoning scales
+! and iteration limits.
       real(dp) :: solver_tolerances(5,2) = reshape((/6.0d-5,4.5d-5,3.0d-5, &
            9.0d-5,3.0d-5,9.0d-1,5.0d-1,5.0d-1,2.0d0,2.5d-6/), (/5,2/))
-      real(dp) :: solver_underrelax_start = 0.8d0, solver_underrelax_increment = 0.1d0, solver_underrelax_factor
+      real(dp) :: solver_underrelax_start = 0.8d0, solver_underrelax_increment = 0.1d0
       real(dp) :: chi_grid_scale(12) = (/ 1.0d-8, 8.0d-2, 5.0d-2, &
            5.0d-2, 1.0d0, 1.0d0, 0.0d0, 5.0d-2, 2.0d-2, 5.0d-2, 5.0d-2, &
            1.0d-1 /)
@@ -327,13 +328,11 @@ module controls_buffer
 ! GYRE pulsation-output cadence.
       integer :: pulse_gyre_interval = 0
 
-! The envelope-fit triangle (its limits; new_triangle_init_flag forces a fresh one at run
-! start) and the requested envelope mass (set from the starting model).
+! The envelope-fit triangle: its limits, and new_triangle_init_flag,
+! which forces a fresh one at the run's start.
       real(dp) :: tri_delta_teffl = 1.0d-2
       real(dp) :: tri_delta_logl = 8.0d-2
       logical :: new_triangle_init_flag = .false.
-      real(dp) :: requested_envelope_mass
-      logical :: change_envelope_mass_flag
 
 ! The run list: per-run model counts, first-call flags and rescaling
 ! (rescale_params and rescale_kind are derived from rescale_mass,
@@ -360,10 +359,6 @@ module controls_buffer
 
 ! Helium flash.
       logical :: helium_flash_active = .false.
-
-! The starting envelope composition, used by the reader.
-      real(dp) :: initial_envelope_x = 0.7d0
-      real(dp) :: initial_envelope_z = 0.02d0
 
 ! Rescaling one species of the starting model: the species
 ! (change_species_name, a composition name from He3 on) and how its new

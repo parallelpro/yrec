@@ -85,7 +85,6 @@
             double precision :: solver_tolerances(5,2) = reshape((/6.0d-5,4.5d-5,3.0d-5, 9.0d-5,3.0d-5,9.0d-1,5.0d-1,5.0d-1,2.0d0,2.5d-6/), (/5,2/))
             double precision :: solver_underrelax_start = 0.8d0
             double precision :: solver_underrelax_increment = 0.1d0
-            double precision :: solver_underrelax_factor = 0.0d0
             double precision :: chi_grid_scale(12) = (/ 1.0d-8, 8.0d-2, 5.0d-2, 5.0d-2, 1.0d0, 1.0d0, 0.0d0, 5.0d-2, 2.0d-2, 5.0d-2, 5.0d-2, 1.0d-1 /)
             integer :: max_iter_level1 = 2
             integer :: max_iter_level2 = 20

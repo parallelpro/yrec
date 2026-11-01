@@ -22,15 +22,11 @@
             logical :: end_age_stop_active(max_runs) = .false.
             logical :: timestep_override_active(max_runs) = .false.
             integer :: pulse_gyre_interval = 0
-            double precision :: requested_envelope_mass = 0.0d0
-            logical :: change_envelope_mass_flag = .false.
             double precision :: rescale_params(4,max_runs) = 0.0d0
             integer :: rescale_kind(max_runs) = 0
             integer :: num_models(max_runs) = 0
             integer :: num_runs = 1
             logical :: first_call_flag(max_runs) = .true.
-            double precision :: initial_envelope_x = 0.7d0
-            double precision :: initial_envelope_z = 0.02d0
             logical :: change_cno_mixture_active = .false.
             logical :: change_isotope_ratios_active = .false.
             double precision :: target_carbon_cno_fraction = 0.172148d0

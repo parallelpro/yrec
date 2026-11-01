@@ -60,8 +60,8 @@ module controls_sync
            metal_fraction_match_tolerance, envelope_print_points, &
            monte_carlo_active, mc_run_start, mc_run_end, solver_tolerances, &
            solver_underrelax_start, solver_underrelax_increment, &
-           solver_underrelax_factor, chi_grid_scale, max_iter_level1, &
-           max_iter_level2, max_iter_level3, diffusion_timestep_factor, &
+           chi_grid_scale, max_iter_level1, max_iter_level2, &
+           max_iter_level3, diffusion_timestep_factor, &
            convergence_tolerance, num_rotation_structure_iters, &
            max_diffusion_iters, settling_tolerance, coulomb_log_choice, &
            settling_num_iterations, diffuse_helium_active, &
@@ -74,13 +74,12 @@ module controls_sync
            tolerance_fraction, max_stage_index, extrap_order, atm_choice, &
            mixture_weights_seed, monte_carlo_file1_path, &
            monte_carlo_file2_path, pulse_gyre_interval, tri_delta_teffl, &
-           tri_delta_logl, new_triangle_init_flag, requested_envelope_mass, &
-           change_envelope_mass_flag, run_kind, rescale_mass, rescale_x, &
-           rescale_z, rescale_core_mass, rescale_params, rescale_kind, &
-           num_models, num_runs, first_call_flag, max_domega_global, &
-           use_structure_dt_limits, atm_step_size, envelope_step_size, &
-           envelope_generation_flag, helium_flash_active, &
-           initial_envelope_x, initial_envelope_z, change_species_name, &
+           tri_delta_logl, new_triangle_init_flag, run_kind, rescale_mass, &
+           rescale_x, rescale_z, rescale_core_mass, rescale_params, &
+           rescale_kind, num_models, num_runs, first_call_flag, &
+           max_domega_global, use_structure_dt_limits, atm_step_size, &
+           envelope_step_size, envelope_generation_flag, &
+           helium_flash_active, change_species_name, &
            new_species_value_mode, new_species_value, new_species_index, &
            rescale_species_active, value_relative_to_h, cno_mixture_name, &
            isotope_mixture_name, mixture_change_mode, isotope_change_mode, &
@@ -295,7 +294,6 @@ subroutine seed_controls_buffer(s)
       solver_tolerances = s%physics%solver_tolerances
       solver_underrelax_start = s%physics%solver_underrelax_start
       solver_underrelax_increment = s%physics%solver_underrelax_increment
-      solver_underrelax_factor = s%physics%solver_underrelax_factor
       chi_grid_scale = s%physics%chi_grid_scale
       max_iter_level1 = s%physics%max_iter_level1
       max_iter_level2 = s%physics%max_iter_level2
@@ -338,8 +336,6 @@ subroutine seed_controls_buffer(s)
       tri_delta_teffl = s%physics%tri_delta_teffl
       tri_delta_logl = s%physics%tri_delta_logl
       new_triangle_init_flag = s%physics%new_triangle_init_flag
-      requested_envelope_mass = s%control%requested_envelope_mass
-      change_envelope_mass_flag = s%control%change_envelope_mass_flag
       run_kind = 1
       rescale_mass = 0.0d0
       rescale_x = 0.0d0
@@ -356,8 +352,6 @@ subroutine seed_controls_buffer(s)
       envelope_step_size = s%physics%envelope_step_size
       envelope_generation_flag = .false.
       helium_flash_active = s%physics%helium_flash_active
-      initial_envelope_x = s%control%initial_envelope_x
-      initial_envelope_z = s%control%initial_envelope_z
       change_species_name = '   '
       new_species_value_mode = repeat(achar(0), 3)
       new_species_value = s%physics%new_species_value
@@ -685,7 +679,6 @@ subroutine store_controls_to_star(s)
       s%physics%solver_tolerances = solver_tolerances
       s%physics%solver_underrelax_start = solver_underrelax_start
       s%physics%solver_underrelax_increment = solver_underrelax_increment
-      s%physics%solver_underrelax_factor = solver_underrelax_factor
       s%physics%chi_grid_scale = chi_grid_scale
       s%physics%max_iter_level1 = max_iter_level1
       s%physics%max_iter_level2 = max_iter_level2
@@ -726,8 +719,6 @@ subroutine store_controls_to_star(s)
       s%physics%tri_delta_teffl = tri_delta_teffl
       s%physics%tri_delta_logl = tri_delta_logl
       s%physics%new_triangle_init_flag = new_triangle_init_flag
-      s%control%requested_envelope_mass = requested_envelope_mass
-      s%control%change_envelope_mass_flag = change_envelope_mass_flag
       s%control%rescale_params = rescale_params
       s%control%rescale_kind = rescale_kind
       s%control%num_models = num_models
@@ -738,8 +729,6 @@ subroutine store_controls_to_star(s)
       s%physics%atm_step_size = atm_step_size
       s%physics%envelope_step_size = envelope_step_size
       s%physics%helium_flash_active = helium_flash_active
-      s%control%initial_envelope_x = initial_envelope_x
-      s%control%initial_envelope_z = initial_envelope_z
       s%physics%new_species_value = new_species_value
       s%physics%new_species_index = new_species_index
       s%physics%rescale_species_active = rescale_species_active
@@ -900,20 +889,15 @@ subroutine arm_run_copies(s)
       s%card_fixed_timestep_active = s%control%timestep_override_active
       s%first_mc_run = s%physics%mc_run_start
       s%last_mc_run = s%physics%mc_run_end
-      s%newton_correction_factor = s%physics%solver_underrelax_factor
       s%num_rotation_structure_passes = s%physics%num_rotation_structure_iters
       s%settling_z_factor_in_use = s%physics%settling_z_factor
       s%atm_choice_in_use = s%physics%atm_choice
-      s%requested_log_fit_point_mass_fraction = s%control%requested_envelope_mass
-      s%fit_point_move_requested = s%control%change_envelope_mass_flag
       s%card_rescale_targets = s%control%rescale_params
       s%card_kind = s%control%rescale_kind
       s%card_num_models = s%control%num_models
       s%num_cards = s%control%num_runs
       s%card_from_starting_model = s%control%first_call_flag
       s%structure_dt_limits_active = s%physics%use_structure_dt_limits
-      s%current_card_envelope_x = s%control%initial_envelope_x
-      s%current_card_envelope_z = s%control%initial_envelope_z
       s%num_core_points_added = s%physics%num_core_shells_added
       s%core_mass_reduction = s%physics%core_mass_reduction_factor
       s%card_initial_x = s%control%initial_x_array
