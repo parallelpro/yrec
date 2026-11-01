@@ -70,6 +70,10 @@ writes: a file whose directory cannot be made is an error              ok
 writes: a GYRE file cut short by a full disk is an error               ok
 writes: an FGONG file cut short by a full disk is an error             ok
 writes: a profile cut short by a full disk is an error                 ok
-writes: a history file cut short is an error by its close              ok
+writes: a history row cut short by a full disk is an error             ok
 writes: a copy of the deck cut short by a full disk is an error        ok
+writes: a history file another run truncated is not a full disk        ok
+writes: a history file another run replaced is not a full disk         ok
+writes: a closed file is measured, not the one now at its path         ok
+writes: the size check keeps the unit's place in its file              ok
 FGONG: globals 4-6 the run's initial Z, X and the mixing length        ok

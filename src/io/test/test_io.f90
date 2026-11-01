@@ -69,12 +69,21 @@
 !                file's header; a file whose directory cannot be made;
 !                and a full disk, as a file-size limit (RLIMIT_FSIZE)
 !                stands in for one, for the files io closes, the GYRE,
-!                FGONG and profile files, the history file and the copy
-!                of the deck, which end up shorter on disk than what was
-!                written (gfortran's runtime reports no error on the
-!                writes themselves, io/output_files.f90; a runtime that
-!                does reports it at the write, with the same message
-!                head);
+!                FGONG and profile files and the copy of the deck (at
+!                their close), and the history file (at its row), which
+!                end up shorter on disk than what was written (gfortran's
+!                runtime reports no error on the writes themselves,
+!                io/output_files.f90; a runtime that does reports it at
+!                the write, with the same message head);
+!                two runs that write one path (M174) are not a full
+!                disk: a history file that another run truncates in
+!                place after this run's last row (the C library's fopen
+!                "w", the open gfortran's status='replace' makes) or
+!                replaces by a new file, and a file io closes whose path
+!                another file has taken, close without error (the file
+!                measured is the unit's own); and the size check keeps
+!                the unit's place (a line written after another writer
+!                lengthened the file follows the unit's last line);
 !   FGONG        write_fgong_pulse's globals 4-6 are the first card's
 !                starting Z and X and the mixing length (MESA's initial
 !                Z, X and alpha), whatever the current card's are.
@@ -89,7 +98,7 @@
 program test_io
       use, intrinsic :: iso_fortran_env, only: dp => real64, int64
       use, intrinsic :: iso_c_binding, only: c_char, c_int, c_null_char, c_int64_t, &
-           c_funptr, c_intptr_t, c_null_funptr
+           c_funptr, c_intptr_t, c_null_funptr, c_ptr, c_associated, c_new_line
       use star_info_lib, only: star_info, json, i_h1, i_he4, i_metals, i_he3, &
            i_c12, i_c13, i_n14, i_n15, i_o16, i_o17, i_o18, i_h2, i_li6, i_li7, &
            i_be9
@@ -108,6 +117,7 @@ program test_io
            write_history_row, close_history
       use profile_output, only: profile_selection, profile_output_init, write_profile
       use pulsation_output, only: write_gyre_pulse, write_fgong_pulse
+      use output_files, only: open_output_file, flush_output_file, close_output_file
       use stitched_model, only: profile_columns, n_prof_cols, n_pulse_cols
       implicit none
 
@@ -145,6 +155,23 @@ program test_io
             integer(c_int), value :: signal
             type(c_funptr), value :: handler
          end function c_signal
+         type(c_ptr) function c_fopen(path, mode) bind(c, name='fopen')
+            import :: c_ptr, c_char
+            character(kind=c_char), intent(in) :: path(*), mode(*)
+         end function c_fopen
+         integer(c_int) function c_fputs(text, stream) bind(c, name='fputs')
+            import :: c_int, c_char, c_ptr
+            character(kind=c_char), intent(in) :: text(*)
+            type(c_ptr), value :: stream
+         end function c_fputs
+         integer(c_int) function c_fclose(stream) bind(c, name='fclose')
+            import :: c_int, c_ptr
+            type(c_ptr), value :: stream
+         end function c_fclose
+         integer(c_int) function c_rename(old_path, new_path) bind(c, name='rename')
+            import :: c_int, c_char
+            character(kind=c_char), intent(in) :: old_path(*), new_path(*)
+         end function c_rename
       end interface
 
 ! the files the checks write and read, in the working directory
@@ -1086,13 +1113,41 @@ subroutine limit_file_size(max_bytes)
 end subroutine limit_file_size
 
 ! ---------------------------------------------------------------
+! Another run that writes the same path, through the C library (the
+! file is open on a unit here, which gfortran would not open twice):
+! mode 'w' opens it as gfortran's status='replace' does, the same file
+! truncated in place; 'a' appends to it. The line text is written and
+! the file closed.
+subroutine other_run_writes(path, mode, text)
+      character(len=*), intent(in) :: path, mode, text
+      type(c_ptr) :: stream
+      integer(c_int) :: rc
+      stream = c_fopen(path // c_null_char, mode // c_null_char)
+      if (.not. c_associated(stream)) error stop 'other_run_writes: fopen failed'
+      rc = c_fputs(text // c_new_line // c_null_char, stream)
+      rc = c_fclose(stream)
+end subroutine other_run_writes
+
+! Another run's file put at path in place of the one there: a new file
+! of one line renamed over it.
+subroutine other_run_replaces(path, text)
+      character(len=*), intent(in) :: path, text
+      integer(c_int) :: rc
+      call write_text_file('other_run.tmp', [text])
+      rc = c_rename('other_run.tmp' // c_null_char, path // c_null_char)
+      if (rc /= 0) error stop 'other_run_replaces: rename failed'
+end subroutine other_run_replaces
+
+! ---------------------------------------------------------------
 subroutine writes_check()
       integer, parameter :: n_points = 20, limit_bytes = 2000
       type(history_file) :: history
       type(profile_selection) :: profiles
       real(dp) :: pts(n_pulse_cols, n_points)
       character(len=200) :: deck_lines(100)
-      integer :: u, ierr, i, j
+      character(len=256) :: msg
+      character(len=8) :: lines(3)
+      integer :: u, ierr, i, j, ios, row_ierr
 
       call fill_mod_model(s)
       do j = 1, n_points
@@ -1167,10 +1222,11 @@ subroutine writes_check()
       call history_output_init(s, history, 'full_', ierr)
       call limit_file_size(limit_bytes)
       call write_history_row(s, history, 0, ierr)
+      row_ierr = ierr
       call close_history(history, ierr)
       call limit_file_size(-1)
-      call report("writes: a history file cut short is an error by its close", ierr == 1 .and. &
-           captured(terminal_file, 'cannot write full_history.data'))
+      call report("writes: a history row cut short by a full disk is an error", row_ierr == 1 .and. &
+           ierr == 1 .and. captured(terminal_file, 'cannot write full_history.data'))
 
 ! the copy of the deck (an inlist: one file, copied once)
       do i = 1, size(deck_lines)
@@ -1184,6 +1240,55 @@ subroutine writes_check()
       call limit_file_size(-1)
       call report("writes: a copy of the deck cut short by a full disk is an error", ierr == 1 .and. &
            captured(terminal_file, 'cannot write full_inlist_used'))
+
+! Two runs that write one path (M174: several decks in one directory
+! all write output/history.data). The other run's open, after this
+! run's last row, truncates the file in place (gfortran's
+! status='replace' keeps the file, O_TRUNC) or puts a new file at the
+! path; this run's close is not a full disk.
+      history = history_file()
+      call history_output_init(s, history, 'shared_', ierr)
+      call write_history_row(s, history, 0, ierr)
+      call other_run_writes('shared_history.data', 'w', 'another run''s header')
+      call close_history(history, ierr)
+      call report("writes: a history file another run truncated is not a full disk", ierr == 0 .and. &
+           .not. captured(terminal_file, 'shared_history.data'))
+      history = history_file()
+      call history_output_init(s, history, 'replaced_', ierr)
+      call write_history_row(s, history, 0, ierr)
+      call other_run_replaces('replaced_history.data', 'another run''s header')
+      call close_history(history, ierr)
+      call report("writes: a history file another run replaced is not a full disk", ierr == 0 .and. &
+           .not. captured(terminal_file, 'replaced_history.data'))
+! a file io closes, its path taken by another file before the close:
+! the file measured is the one this unit wrote
+      ierr = 0
+      call open_output_file('replaced.txt', u, ierr)
+      ios = 0
+      do i = 1, size(deck_lines)
+         if (ios == 0) write(u, '(a)', iostat=ios, iomsg=msg) trim(deck_lines(i))
+      end do
+      call other_run_replaces('replaced.txt', 'another run''s line')
+      call close_output_file(u, 'replaced.txt', ios, msg, ierr)
+      call report("writes: a closed file is measured, not the one now at its path", ierr == 0 .and. &
+           .not. captured(terminal_file, 'replaced.txt'))
+! the size check keeps the unit's place: another writer has made the
+! file longer than this unit's writes when they are checked, and the
+! next line still follows this unit's last one
+      ierr = 0
+      call open_output_file('place.txt', u, ierr)
+      write(u, '(a)') 'line 1'
+      call flush_output_file(u, 'place.txt', 0, ' ', ierr)
+      call other_run_writes('place.txt', 'a', 'a longer line that another run appended')
+      write(u, '(a)') 'line 2'
+      call flush_output_file(u, 'place.txt', 0, ' ', ierr)
+      write(u, '(a)') 'line 3'
+      call close_output_file(u, 'place.txt', 0, ' ', ierr)
+      open(newunit=u, file='place.txt', status='old', action='read')
+      read(u, '(a)') lines
+      close(u)
+      call report("writes: the size check keeps the unit's place in its file", ierr == 0 .and. &
+           all(lines == [character(len=8) :: 'line 1', 'line 2', 'line 3']))
 end subroutine writes_check
 
 ! ---------------------------------------------------------------

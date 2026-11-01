@@ -95,13 +95,20 @@ subroutine history_output_init(s, history, out_dir, ierr)
       call hoist_id_columns(history%sel, history%nsel)
 end subroutine history_output_init
 
-! The history file closed, if a row has opened it, and its size on disk
-! checked (output_files' close_output_file).
+! The history file closed, if a row has opened it. Each row's flush
+! checked the file on disk (write_history_row), so the close checks only
+! itself: a size check now would take another run's truncation of a
+! shared history file for this run's write failing (output_files).
 subroutine close_history(history, ierr)
-      use output_files, only: close_output_file
+      use run_messages, only: check_io
       type(history_file), intent(inout) :: history
       integer, intent(inout) :: ierr
-      if (history%is_open) call close_output_file(history%unit, history%path, 0, ' ', ierr)
+      character(len=256) :: msg
+      integer :: ios
+      if (history%is_open) then
+         close(history%unit, iostat=ios, iomsg=msg)
+         call check_io(ios, msg, 'write', history%path, ierr)
+      end if
       history%is_open = .false.
 end subroutine close_history
 
@@ -328,15 +335,15 @@ end subroutine history_values
 
 ! This model's row; the first row opens the file and writes its header
 ! (MESA's layout: the global block, then the column numbers and names).
-! The file stays open for the run, each row's writes checked
-! (output_files' header).
+! The file stays open for the run; each row's writes are checked, and
+! the row is flushed and the file's size on disk checked
+! (output_files' flush_output_file).
 !   star reads: current_card_envelope_x, current_card_envelope_z,
 !     mixing_length_alpha, star_mass
 !   star writes: none
 subroutine write_history_row(s, history, iprof, ierr)
       use star_info_lib, only: star_info
-      use run_messages, only: check_io
-      use output_files, only: open_output_file
+      use output_files, only: open_output_file, flush_output_file
       type(star_info), intent(in) :: s
       type(history_file), intent(inout) :: history
       integer, intent(in) :: iprof
@@ -388,9 +395,8 @@ subroutine write_history_row(s, history, iprof, ierr)
       end do
       if (ios == 0) write(hist_unit, '(a)', iostat=ios, iomsg=msg) ''
 ! Flush so the file is live during the run (tail -f / editor view),
-! matching MESA's behavior.
-      if (ios == 0) flush(hist_unit, iostat=ios, iomsg=msg)
-      call check_io(ios, msg, 'write', history%path, ierr)
+! matching MESA's behavior, and so the row's bytes are checked on disk.
+      call flush_output_file(hist_unit, history%path, ios, msg, ierr)
 end subroutine write_history_row
 
 ! ---------------------------------------------------------------

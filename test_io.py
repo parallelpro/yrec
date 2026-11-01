@@ -11,8 +11,11 @@ errors, nml_file_has_group, a bit-exact .mod write and read with its
 replace/append modes, an unknown global and the reader's errors, the
 model files' format tag, synthetic YREC7 and MODEL2 starting models
 (every value placed where the layout says, and the files cut or
-damaged), and the history and profile column tables (unique names,
-valid kinds, the default selections). Each check was confirmed to fail
+damaged), the history and profile column tables (unique names,
+valid kinds, the default selections), the writes' failures (a failed
+write, a directory that cannot be made, a full disk through a file-size
+limit, and two runs that write one path, which is not a full disk) and
+FGONG's globals. Each check was confirmed to fail
 under a mutation of the code it covers (see the header of
 src/io/test/test_io.f90).
 """
