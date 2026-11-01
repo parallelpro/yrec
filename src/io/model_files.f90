@@ -20,9 +20,8 @@
 !     composition in model2_slots).
 ! Both hold the seven luminosities of file_luminosities. Each record's
 ! layout is a named format below. The three readers fill star% directly
-! and return the file's other header values in a model_file_header;
-! several of those share names with controls_buffer members, so this
-! module never uses controls_buffer.
+! and return the file's other header values in a model_file_header (the
+! module reads no control: a reader takes what the file says).
 module model_files
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use star_info_lib, only: i_h1, i_he4, i_metals, i_he3, i_c12, i_c13, &
@@ -35,8 +34,18 @@ module model_files
            read_yrec7, read_model2
 
 ! The header values of a model file that the star does not hold, as
-! read_mod_model, read_yrec7 and read_model2 return them; a layout
-! without one of them leaves its default.
+! read_mod_model, read_yrec7 and read_model2 return them: each reader
+! returns every value its layout holds, and a layout without one leaves
+! its default. Who uses them:
+!   read_starting_model     the mixing length and the extended-
+!                           composition flag (checked against the
+!                           controls), the timestep (the first step's);
+!   read_yrec7 itself       the rotation flag and the convection-zone
+!                           edges, which lay out the rest of the file;
+!   none (the format's      the triangle orientation (reset_state_after_
+!   record; test_io checks  read sets the run's to 1 after every read)
+!   each is read from its   and MODEL2's codes, flags and disk and wind
+!   place)                  constants.
       type, public :: model_file_header
 ! the model's mixing length (0 when the file has none) and timestep [yr]
          real(dp) :: mixing_length = 0.0d0
@@ -50,16 +59,20 @@ module model_files
          integer :: core_cz_top_index = 0, envelope_cz_bottom_index = 0
          real(dp) :: triangle_orientation = 1.0d0
 ! MODEL2's physics-option codes, read verbatim (their encoding is not
-! interpreted; "?" in the other layouts), its flags and disk constants
-! (these defaults in the other layouts)
+! interpreted; "?" in the other layouts); its flags, the switches of the
+! run that wrote it, under their controls' names; and its disk and wind
+! constants (TDISK, PDISK, WMAX): the disk-locking age [Gyr], the disk's
+! angular velocity [rad/s] and the wind's saturation angular velocity
+! [rad/s], as the controls disk_locking_age_gyr, disk_omega_rad_s and
+! wind_saturation_omega hold them (their defaults in the other layouts)
          character(len=6) :: eos_code = '    ? '
          character(len=4) :: atm_code = '  ? ', alok_code = '  ? ', hik_code = '  ? '
          logical :: use_diffusion_y = .false., use_diffusion_z = .false., &
               disk_locking_active = .false., instability_transport_active = .false., &
               use_wind_torque = .false., core_overshoot_active = .false., &
-              envelope_overshoot_active = .false., lovstm = .false., &
+              envelope_overshoot_active = .false., intermediate_overshoot_active = .false., &
               use_pure_z_table = .false., use_semiconvection = .false.
-         real(dp) :: disk_pressure = 7.2722d-6, disk_temperature = 0.0d0, &
+         real(dp) :: disk_locking_age_gyr = 0.0d0, disk_omega_rad_s = 7.2722d-6, &
               wind_saturation_omega = 3.0d-4
       end type model_file_header
 
@@ -567,9 +580,10 @@ subroutine read_model2(s, iread, header, ierr)
            header%atm_code, header%alok_code, header%hik_code, header%use_pure_z_table, &
            composition_code, header%use_extended_composition, header%use_diffusion_y, &
            header%use_diffusion_z, header%use_semiconvection, header%core_overshoot_active, &
-           header%envelope_overshoot_active, header%lovstm, header%rotation_active, &
-           header%instability_transport_active, header%use_wind_torque, &
-           header%disk_locking_active, header%disk_temperature, header%disk_pressure, &
+           header%envelope_overshoot_active, header%intermediate_overshoot_active, &
+           header%rotation_active, header%instability_transport_active, &
+           header%use_wind_torque, header%disk_locking_active, &
+           header%disk_locking_age_gyr, header%disk_omega_rad_s, &
            header%wind_saturation_omega
       call check_model_read(ios, msg, iread, 'the flags', ierr)
       if (ierr /= 0) return

@@ -18,6 +18,8 @@ module output_columns
       private
       public :: max_cols, column_name_len, parse_columns
       public :: output_column, real_column, integer_column
+      public :: column_integer_format, column_real_format, column_numbers_format, &
+           column_names_format
       public :: hist_default_names, n_hist_default
       public :: prof_default_names, n_prof_default
 
@@ -27,6 +29,13 @@ module output_columns
 ! How a column is written: real_column as es40.16e3, integer_column as
 ! i40 (the id columns, the zone number, the mixing type).
       integer, parameter :: real_column = 1, integer_column = 2
+! MESA's layout of a history or profile file: every value in a field of
+! 40 after a blank, an integer value, a real value, and a line of
+! column numbers or names (the global block's and the columns').
+      character(len=*), parameter :: column_integer_format = '(1x,i40)', &
+           column_real_format = '(1x,es40.16e3)', &
+           column_numbers_format = '(999(1x,i40))', &
+           column_names_format = '(999(1x,a40))'
 
 ! One column of a history or profile file: its name in the file and how
 ! it is written. Each writer's table holds one per column, at the

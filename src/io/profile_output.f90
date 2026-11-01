@@ -16,7 +16,8 @@ module profile_output
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use stitched_model, only: n_prof_cols, profile_columns, ip_zone
       use output_columns, only: max_cols, parse_columns, output_column, &
-           integer_column, prof_default_names
+           integer_column, prof_default_names, column_integer_format, &
+           column_real_format, column_numbers_format, column_names_format
       implicit none
       private
       public :: profile_selection, profile_output_init, write_profile
@@ -64,8 +65,8 @@ subroutine write_profile(s, profiles, out_dir, iprof, ierr)
       call open_output_file(path, u, ierr)
       if (ierr /= 0) return
 ! global block (MESA profile shape: numbers / names / values)
-      write(u, '(8(1x,i40))', iostat=ios, iomsg=msg) 1, 2, 3, 4, 5, 6, 7, 8
-      if (ios == 0) write(u, '(8(1x,a40))', iostat=ios, iomsg=msg) adjustr('model_number'), &
+      write(u, column_numbers_format, iostat=ios, iomsg=msg) 1, 2, 3, 4, 5, 6, 7, 8
+      if (ios == 0) write(u, column_names_format, iostat=ios, iomsg=msg) adjustr('model_number'), &
            adjustr('num_zones'), adjustr('initial_mass'), &
            adjustr('initial_z'), adjustr('star_age'), &
            adjustr('time_step'), adjustr('log_Teff'), &
@@ -78,8 +79,8 @@ subroutine write_profile(s, profiles, out_dir, iprof, ierr)
            s%current_card_envelope_z, s%age_gyr*1.0d9, &
            s%timestep_yr, s%log_Teff, s%star_mass
       if (ios == 0) write(u, '(a)', iostat=ios, iomsg=msg) ''
-      if (ios == 0) write(u, '(999(1x,i40))', iostat=ios, iomsg=msg) (k, k = 1, profiles%nsel)
-      if (ios == 0) write(u, '(999(1x,a40))', iostat=ios, iomsg=msg) &
+      if (ios == 0) write(u, column_numbers_format, iostat=ios, iomsg=msg) (k, k = 1, profiles%nsel)
+      if (ios == 0) write(u, column_names_format, iostat=ios, iomsg=msg) &
            (adjustr(trim(cols(profiles%sel(k))%name)), k = 1, profiles%nsel)
 ! rows: zone 1 = the outermost point (MESA convention). The extended
 ! model (interior + envelope + atmosphere, from stitched_model)
@@ -94,9 +95,9 @@ subroutine write_profile(s, profiles, out_dir, iprof, ierr)
                v = s%stitched%prof(profiles%sel(i), kz)
             end if
             if (cols(profiles%sel(i))%kind == integer_column) then
-               write(u, '(1x,i40)', advance='no', iostat=ios, iomsg=msg) nint(v)
+               write(u, column_integer_format, advance='no', iostat=ios, iomsg=msg) nint(v)
             else
-               write(u, '(1x,es40.16e3)', advance='no', iostat=ios, iomsg=msg) v
+               write(u, column_real_format, advance='no', iostat=ios, iomsg=msg) v
             end if
          end do
          if (ios /= 0) exit

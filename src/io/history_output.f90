@@ -16,7 +16,8 @@ module history_output
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use yrec_version, only: yrec_version_string
       use output_columns, only: max_cols, parse_columns, output_column, &
-           real_column, integer_column, hist_default_names
+           real_column, integer_column, hist_default_names, column_integer_format, &
+           column_real_format, column_numbers_format, column_names_format
       implicit none
       private
       public :: history_file, history_output_init, write_history_row, &
@@ -335,8 +336,8 @@ subroutine write_history_row(s, history, iprof, ierr)
 ! carried (initial composition + mixing length). The initial_* values
 ! are the kind card's starting envelope composition (initial_y by
 ! closure), not the current surface values.
-         write(hist_unit, '(6(1x,i40))', iostat=ios, iomsg=msg) 1, 2, 3, 4, 5, 6
-         if (ios == 0) write(hist_unit, '(6(1x,a40))', iostat=ios, iomsg=msg) &
+         write(hist_unit, column_numbers_format, iostat=ios, iomsg=msg) 1, 2, 3, 4, 5, 6
+         if (ios == 0) write(hist_unit, column_names_format, iostat=ios, iomsg=msg) &
               adjustr('version_number'), &
               adjustr('initial_mass'), adjustr('initial_x'), &
               adjustr('initial_y'), adjustr('initial_z'), &
@@ -347,19 +348,19 @@ subroutine write_history_row(s, history, iprof, ierr)
               1.0d0 - s%current_card_envelope_x - s%current_card_envelope_z, &
               s%current_card_envelope_z, s%mixing_length_alpha
          if (ios == 0) write(hist_unit, '(a)', iostat=ios, iomsg=msg) ''
-         if (ios == 0) write(hist_unit, '(999(1x,i40))', iostat=ios, iomsg=msg) &
+         if (ios == 0) write(hist_unit, column_numbers_format, iostat=ios, iomsg=msg) &
               (k, k = 1, history%nsel)
-         if (ios == 0) write(hist_unit, '(999(1x,a40))', iostat=ios, iomsg=msg) &
+         if (ios == 0) write(hist_unit, column_names_format, iostat=ios, iomsg=msg) &
               (adjustr(trim(cols(history%sel(k))%name)), k = 1, history%nsel)
       end if
       hist_unit = history%unit
       do i = 1, history%nsel
          if (ios /= 0) exit
          if (cols(history%sel(i))%kind == integer_column) then
-            write(hist_unit, '(1x,i40)', advance='no', iostat=ios, iomsg=msg) &
+            write(hist_unit, column_integer_format, advance='no', iostat=ios, iomsg=msg) &
                  nint(vals(history%sel(i)))
          else
-            write(hist_unit, '(1x,es40.16e3)', advance='no', iostat=ios, iomsg=msg) &
+            write(hist_unit, column_real_format, advance='no', iostat=ios, iomsg=msg) &
                  vals(history%sel(i))
          end if
       end do

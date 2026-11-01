@@ -786,8 +786,9 @@ subroutine yrec7_check()
            .and. h%hik_code == '  ? ' .and. .not. (h%use_diffusion_y .or. h%use_diffusion_z &
            .or. h%disk_locking_active .or. h%instability_transport_active .or. &
            h%use_wind_torque .or. h%core_overshoot_active .or. h%envelope_overshoot_active &
-           .or. h%lovstm .or. h%use_pure_z_table .or. h%use_semiconvection) .and. &
-           h%disk_pressure == 7.2722d-6 .and. h%disk_temperature == 0.0d0 .and. &
+           .or. h%intermediate_overshoot_active .or. h%use_pure_z_table .or. &
+           h%use_semiconvection) .and. &
+           h%disk_omega_rad_s == 7.2722d-6 .and. h%disk_locking_age_gyr == 0.0d0 .and. &
            h%wind_saturation_omega == 3.0d-4
       call report("YREC7: MODEL2's header values at their defaults", ok)
       ok = all(s%log_mass(1:y7_nz) == f%log_mass) .and. all(s%logR(1:y7_nz) == f%log_r) &
@@ -908,7 +909,7 @@ subroutine fill_model2(f)
       end do
 ! the flags line's logicals, in file order: the pure-Z table, then the
 ! extended composition, the diffusion of Y and of Z, semiconvection,
-! core and envelope overshoot, lovstm, rotation, instability transport,
+! core and envelope overshoot, intermediate overshoot, rotation, instability transport,
 ! the wind torque, disk locking
       f%flags = [.false., .true., .false., .true., .false., .false., .true., .false., &
            .true., .false., .true., .true.]
@@ -985,12 +986,13 @@ subroutine model2_check()
            (h%use_diffusion_y .eqv. f%flags(3)) .and. (h%use_diffusion_z .eqv. f%flags(4)) .and. &
            (h%use_semiconvection .eqv. f%flags(5)) .and. &
            (h%core_overshoot_active .eqv. f%flags(6)) .and. &
-           (h%envelope_overshoot_active .eqv. f%flags(7)) .and. (h%lovstm .eqv. f%flags(8)) .and. &
+           (h%envelope_overshoot_active .eqv. f%flags(7)) .and. &
+           (h%intermediate_overshoot_active .eqv. f%flags(8)) .and. &
            (h%rotation_active .eqv. f%flags(9)) .and. &
            (h%instability_transport_active .eqv. f%flags(10)) .and. &
            (h%use_wind_torque .eqv. f%flags(11)) .and. (h%disk_locking_active .eqv. f%flags(12)) &
-           .and. h%disk_temperature == through('(1PE18.10)', 1.0d0/3.0d0) .and. &
-           h%disk_pressure == through('(1PE18.10)', 7.2722d-6) .and. &
+           .and. h%disk_locking_age_gyr == through('(1PE18.10)', 1.0d0/3.0d0) .and. &
+           h%disk_omega_rad_s == through('(1PE18.10)', 7.2722d-6) .and. &
            h%wind_saturation_omega == through('(1PE18.10)', 3.0d-4)
       call report("MODEL2: the codes, the flags and the disk constants", ok)
       ok = all(s%luminosity_breakdown_lsun(1:7) == f%lums) .and. &
