@@ -96,6 +96,8 @@ module user_inputs
 
 contains
 
+!   star reads: none
+!   star writes: none
 subroutine map_user_inputs(s)
       type(star_info), intent(inout) :: s
 
@@ -113,6 +115,9 @@ end subroutine map_user_inputs
 
 ! ---------------------------------------------------------------
 ! The rate-derivative scales and the N15 + p branch scales, at unity.
+!   star reads: none
+!   star writes: be7p_s_double_prime_scale, be7p_s_prime_scale,
+!     n15_pa_scale, n15_pg_scale, s_double_prime_scale, s_prime_scale
 subroutine reset_rate_scale_defaults(s)
       type(star_info), intent(inout) :: s
       s%s_prime_scale = 1.0d0
@@ -131,6 +136,9 @@ end subroutine reset_rate_scale_defaults
 ! to that of Bahcall & Ulrich (1988); here the scales come from explicit
 ! S0 values for the individual reactions. The helium-burning reactions
 ! keep unit scale.
+!   star reads: none
+!   star writes: cross_section_scale, extra_cross_section_scale,
+!     n15_pa_scale, n15_pg_scale
 subroutine set_cross_section_scales(s)
       type(star_info), intent(inout) :: s
       s%cross_section_scale = 1.0d0
@@ -157,6 +165,8 @@ end subroutine set_cross_section_scales
 ! terms: q2 and q3 are proportional to S'/S and q4 and q5 to S''/S, both
 ! from Solar Fusion I; s_prime_scale multiplies the q2 and q3 terms. Be7 + p,
 ! outside the reaction table, has its own.
+!   star reads: none
+!   star writes: be7p_s_prime_scale, s_prime_scale
 subroutine set_first_derivative_scales(s)
       type(star_info), intent(inout) :: s
       s%s_prime_scale(r_pp) = derivative_scale(s0p_pp, s0_pp, s_prime_pp_a98, s0_pp_a98)
@@ -175,6 +185,8 @@ end subroutine set_first_derivative_scales
 ! The second-derivative scales: s_double_prime_scale multiplies the q4 and q5
 ! terms of the rate fits. None are set for pp, He3 + He3, He3 + He4 or
 ! N14 + p (dropped in the 2003 version); theirs stay at unity.
+!   star reads: none
+!   star writes: be7p_s_double_prime_scale, s_double_prime_scale
 subroutine set_second_derivative_scales(s)
       type(star_info), intent(inout) :: s
       s%s_double_prime_scale(r_pc12) = derivative_scale(s0pp_p_c12, s0_p_c12, &

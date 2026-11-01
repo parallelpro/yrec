@@ -76,6 +76,8 @@ contains
 ! The job's history file: a file a previous job left open is closed (an
 ! in-process rerun), and the path and the column selection are set; the
 ! first row opens the file.
+!   star reads: control%history_columns_file, physics%star_history_name
+!   star writes: none
 subroutine history_output_init(s, history, out_dir, ierr)
       use star_info_lib, only: star_info
       type(star_info), intent(in) :: s
@@ -204,6 +206,23 @@ end function history_columns
 ! ---------------------------------------------------------------
 ! Every column's value for this model, at its named index (iprof: the
 ! profile written with this model, 0 for none).
+!   star reads: age_gyr, central_beta, central_degeneracy_eta,
+!     central_log10_density, central_log10_pressure,
+!     central_log10_temperature, cl37_snu_rate,
+!     convective_turnover_timescale, core_cz_mass_msun,
+!     cz_moment_of_inertia, delta_nu_rho_uhz, delta_nu_uhz, delta_Pg,
+!     envelope_cz_density, envelope_cz_opacity, envelope_cz_pressure,
+!     envelope_cz_temperature, envelope_mass_msun, envelope_radius_rsun,
+!     ga71_snu_rate, h_shell_bot_mass_msun, h_shell_bot_radius_fraction,
+!     h_shell_mid_mass_msun, h_shell_mid_radius_fraction,
+!     h_shell_top_mass_msun, h_shell_top_radius_fraction, log_g_surface,
+!     log_L_lsun, log_R_surface_rsun, log_Teff,
+!     luminosity_breakdown_lsun, model_number,
+!     neutrino_flux_total_e10_per_cm2_s, nu_max_uhz, nz, omega,
+!     photosphere_logP, rotation_period_days, star_mass,
+!     surf_velocity_kms, total_angular_momentum,
+!     total_moment_of_inertia, total_rotational_ke, xa
+!   star writes: none
 subroutine history_values(s, vals, iprof)
       use star_info_lib, only: star_info, i_h1, i_he4, i_metals, i_he3, &
            i_c12, i_c13, i_n14, i_n15, i_o16, i_o17, i_o18, i_h2, i_li6, &
@@ -311,6 +330,9 @@ end subroutine history_values
 ! (MESA's layout: the global block, then the column numbers and names).
 ! The file stays open for the run, each row's writes checked
 ! (output_files' header).
+!   star reads: current_card_envelope_x, current_card_envelope_z,
+!     mixing_length_alpha, star_mass
+!   star writes: none
 subroutine write_history_row(s, history, iprof, ierr)
       use star_info_lib, only: star_info
       use io_units, only: check_io

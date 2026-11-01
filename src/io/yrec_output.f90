@@ -66,6 +66,8 @@ contains
 ! and the pulse format is checked, so that a bad one stops the run
 ! before its first model (an unknown name, or GSM on a build without
 ! HDF5).
+!   star reads: physics%pulse_format, physics%write_pulse_flag
+!   star writes: none
 subroutine output_open(s, output, ierr)
       use star_info_lib, only: star_info
       use run_files, only: output_directory
@@ -135,6 +137,13 @@ end function pulse_format_code
 ! One converged model's output: the progress line, the isochrone
 ! record, the profile and pulse files when due, the history row, the
 ! .mod model, and the interval GYRE file.
+!   star reads: age_gyr, control%isochrone_output_active,
+!     control%pulse_gyre_interval, h_shell_bot_index, has_h_shell,
+!     log_g_surface, log_L_lsun, log_R_surface_rsun, log_Teff, m,
+!     model_number, physics%write_profile_flag,
+!     physics%write_pulse_flag, solar_luminosity_cgs, solar_radius_cgs,
+!     xa
+!   star writes: none
 subroutine output_write_model(s, output, ierr)
       use star_info_lib, only: star_info, i_he4
       use io_units, only: last_model_unit, isochrone_unit
@@ -205,6 +214,8 @@ end subroutine output_write_model
 ! nz of its point set (centre to the fitting point), with the outermost
 ! interior shell's mass, radius and luminosity as M_star, R_star and
 ! L_star.
+!   star reads: model_number, nz, physics%profile_data_prefix, stitched
+!   star writes: none
 subroutine write_interior_gyre(s, output, ierr)
       use star_info_lib, only: star_info
       use stitched_model, only: ipul_m, ipul_r, ipul_L
@@ -223,6 +234,8 @@ end subroutine write_interior_gyre
 ! ---------------------------------------------------------------
 ! The end of a card: the progress line of its last converged model,
 ! whatever the terminal_interval phase.
+!   star reads: none
+!   star writes: none
 subroutine output_final_model_line(s, output)
       use star_info_lib, only: star_info
       type(star_info), intent(in) :: s
@@ -233,6 +246,9 @@ end subroutine output_final_model_line
 ! ---------------------------------------------------------------
 ! Is a profile/pulse write due this model? A positive cadence, at
 ! least one of the two enabled, and the model number on the cadence.
+!   star reads: model_number, physics%profile_interval,
+!     physics%write_profile_flag, physics%write_pulse_flag
+!   star writes: none
 logical function profile_write_due(s)
       use star_info_lib, only: star_info
       type(star_info), intent(in) :: s
@@ -248,6 +264,10 @@ end function profile_write_due
 ! .GSM, over the whole extended model (s%stitched's pulse points).
 ! M_star, R_star and L_star refer to the photosphere (atmosphere points
 ! sit above R_star, as in MESA's add_atmosphere).
+!   star reads: log10_solar_radius, log_L_lsun, log_R_surface_rsun,
+!     log_total_mass, physics%profile_data_prefix, solar_luminosity_cgs,
+!     stitched
+!   star writes: none
 subroutine write_pulse(s, output, iprof, ierr)
       use star_info_lib, only: star_info
       type(star_info), intent(in) :: s
@@ -283,6 +303,11 @@ end subroutine write_pulse
 ! ---------------------------------------------------------------
 ! At the start of each run card: the card's line on the terminal, and
 ! the isochrone file's header.
+!   star reads: card_kind, card_num_models,
+!     control%isochrone_output_active, current_card,
+!     current_card_envelope_x, current_card_envelope_z,
+!     mixing_length_alpha, solar_mass_cgs
+!   star writes: none
 subroutine output_run_header(s, total_mass_msun, ierr)
       use star_info_lib, only: star_info
       use io_units, only: terminal_unit, isochrone_unit

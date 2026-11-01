@@ -32,6 +32,8 @@ contains
 
 ! ---------------------------------------------------------------
 ! The job's profile columns, from profile_columns_file.
+!   star reads: control%profile_columns_file
+!   star writes: none
 subroutine profile_output_init(s, profiles, ierr)
       use star_info_lib, only: star_info
       type(star_info), intent(in) :: s
@@ -45,6 +47,10 @@ end subroutine profile_output_init
 ! ---------------------------------------------------------------
 ! Profile iprof, <out_dir><profile_data_prefix><iprof>.data, of the
 ! stitched model (s%stitched).
+!   star reads: age_gyr, current_card_envelope_z, log_Teff,
+!     model_number, physics%profile_data_prefix, pulsation_mass_msun,
+!     star_mass, stitched, timestep_yr
+!   star writes: none
 subroutine write_profile(s, profiles, out_dir, iprof, ierr)
       use star_info_lib, only: star_info
       use output_files, only: open_output_file, close_output_file

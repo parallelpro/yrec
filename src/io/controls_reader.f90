@@ -40,6 +40,8 @@ module controls_reader
 
 contains
 
+!   star reads: none
+!   star writes: none
 subroutine read_controls(s, ierr)
       type(star_info), intent(inout) :: s
 
@@ -177,6 +179,9 @@ end subroutine read_inlist
 ! Copy each control read under a legacy name into its canonical home
 ! (controls_buffer or star). map_user_inputs,
 ! which runs next, reads use_new_nuclear_rates and the s0_* values.
+!   star reads: none
+!   star writes: atm_choice_initial, cross_section_scale,
+!     extra_cross_section_scale, use_ttau_relation
 subroutine adopt_canonical_names(s)
       type(star_info), intent(inout) :: s
       include 'adopt_canonical.inc'

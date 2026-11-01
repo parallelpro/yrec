@@ -51,6 +51,8 @@ contains
 ! ---------------------------------------------------------------
 ! The derivations, in order, and the run log's header. (controls_check's
 ! check_controls has rejected the controls the run cannot use.)
+!   star reads: none
+!   star writes: envelope_store_log_temperature
 subroutine derive_controls(s)
       type(star_info), intent(inout) :: s
 

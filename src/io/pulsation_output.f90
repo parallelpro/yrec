@@ -30,6 +30,9 @@ contains
 ! the dlnGamma1 partials, X_Be7, X_Ne20, r_X) are zero, as MESA writes
 ! several of them. var(18) = R_star - r is negative for atmosphere
 ! points.
+!   star reads: age_gyr, card_initial_x, card_initial_z, log_Teff,
+!     mixing_length_alpha, model_number
+!   star writes: none
 subroutine write_fgong_pulse(s, n, pts, mstar_g, rstar_cm, lstar_cgs, &
      pulse_path, ierr)
       use star_info_lib, only: star_info

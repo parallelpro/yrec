@@ -50,6 +50,8 @@ end function solver_diagnostics
 
 ! The compact per-model progress line, to the terminal and the run
 ! log, throttled by terminal_interval (0 = off; final always prints).
+!   star reads: model_number, physics%terminal_interval
+!   star writes: none
 subroutine log_model_line(s, progress)
       use star_info_lib, only: star_info
       type(star_info), intent(in) :: s
@@ -60,6 +62,8 @@ subroutine log_model_line(s, progress)
 end subroutine log_model_line
 
 ! The end-of-card call: the last converged model always prints.
+!   star reads: none
+!   star writes: none
 subroutine log_final_model_line(s, progress)
       use star_info_lib, only: star_info
       type(star_info), intent(in) :: s
@@ -67,6 +71,9 @@ subroutine log_final_model_line(s, progress)
       call write_model_line(s, progress)
 end subroutine log_final_model_line
 
+!   star reads: age_gyr, log_L_lsun, log_R_surface_rsun, log_Teff,
+!     model_number, newton_iterations, nz, timestep_yr, xa
+!   star writes: none
 subroutine write_model_line(s, progress)
       use star_info_lib, only: star_info, i_h1
       use io_units, only: run_log_unit, terminal_unit
@@ -97,6 +104,8 @@ end subroutine write_model_line
 ! set by stop_conditions and the calibration verdict) and the final
 ! model. The wall-clock line differs from run to run, so it goes to the
 ! terminal only, which keeps the run log byte-pinnable.
+!   star reads: age_gyr, model_number, termination_reason
+!   star writes: none
 subroutine log_run_summary(s, wall_seconds)
       use star_info_lib, only: star_info
       use io_units, only: run_log_unit, terminal_unit

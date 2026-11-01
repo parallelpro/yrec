@@ -166,6 +166,12 @@ end subroutine read_model_format_tag
 ! one model per run). The unit stays open. A failed write is reported
 ! ("cannot write the model file <path>: <reason>") and returns ierr = 1;
 ! the writes after it are skipped.
+!   star reads: age_gyr, convective_flag, log_L_lsun, log_mass,
+!     log_Teff, log_total_mass, logP, logR, logRho, logT,
+!     luminosity_lsun, mixing_length_alpha, model_number, nz, omega,
+!     physics%rotation_active, physics%use_extended_composition,
+!     star_mass, timestep_yr, xa
+!   star writes: none
 subroutine write_mod_model(s, iwrite, replace, ierr)
       use star_info_lib, only: star_info
       use io_units, only: last_model_unit, run_log_unit, check_io
@@ -256,6 +262,11 @@ end subroutine write_mod_model
 ! seeding need. The luminosity breakdown is zeroed; the first
 ! energy-generation call computes it. A malformed file is reported and
 ! returns ierr = 1.
+!   star reads: none
+!   star writes: age_gyr, convective_flag, log_L_lsun, log_mass,
+!     log_Teff, log_total_mass, logP, logR, logRho, logT,
+!     luminosity_breakdown_lsun, luminosity_lsun, model_number, nz,
+!     omega, star_mass, xa
 subroutine read_mod_model(s, iread, header, ierr)
       use star_info_lib, only: star_info
       use io_units, only: run_log_unit
@@ -348,6 +359,12 @@ end subroutine read_mod_model
 ! length, timestep and triangle orientation, MODEL2's values at their
 ! defaults. xa and omega are zeroed first, for what the file does not
 ! hold.
+!   star reads: none
+!   star writes: age_gyr, convective_flag, envelope_fit_coeffs,
+!     fit_point_logP, fit_point_logR, fit_point_logT, log_L_lsun,
+!     log_mass, log_Teff, log_total_mass, logP, logR, logRho, logT,
+!     luminosity_breakdown_lsun, luminosity_lsun, model_number, nz,
+!     omega, star_mass, triangle_log_l_lsun, triangle_log_teff, xa
 subroutine read_yrec7(s, iread, header, ierr)
       use io_units, only: run_log_unit
       use star_info_lib, only: star_info, json
@@ -542,6 +559,12 @@ end subroutine read_yrec7
 ! ---------------------------------------------------------------
 ! A MODEL2-format model (the module header gives its layout) into
 ! star%; the header returns the file's other header values.
+!   star reads: none
+!   star writes: age_gyr, convective_flag, envelope_fit_coeffs,
+!     fit_point_logP, fit_point_logR, fit_point_logT, log_L_lsun,
+!     log_mass, log_Teff, log_total_mass, logP, logR, logRho, logT,
+!     luminosity_breakdown_lsun, luminosity_lsun, model_number, nz,
+!     omega, star_mass, triangle_log_l_lsun, triangle_log_teff, xa
 subroutine read_model2(s, iread, header, ierr)
       use star_info_lib, only: star_info
       type(star_info), intent(inout) :: s
@@ -625,6 +648,8 @@ end subroutine read_model2
 ! ---------------------------------------------------------------
 ! The file's seven luminosities in Lsun: a model that stores them in
 ! erg/s (any above 1e20, |L_nu| for the neutrinos) is converted.
+!   star reads: solar_luminosity_cgs
+!   star writes: luminosity_breakdown_lsun
 subroutine luminosities_to_solar_units(s)
       use star_info_lib, only: star_info
       type(star_info), intent(inout) :: s
