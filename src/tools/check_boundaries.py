@@ -31,12 +31,13 @@ DOMAINS = ["eos", "kap", "atm", "net", "convection",
 # The controls-read BUFFER (io/controls_buffer.f90) is reader-internal:
 # star%control and star%physics are the authoritative post-read home, and
 # every consumer reads them (or the run's working copy of a control the
-# run changes). Only the read pipeline itself may import the
-# buffer's bare names -- read_controls (the reader), controls_sync
-# (the generated buffer<->star copies), map_user_inputs (runs inside
-# the read, before the store), and net's test harness (which seeds
-# the buffer to simulate that pipeline). A new name here is a design
-# regression, not an allowlist entry.
+# run changes). Only the read's own files may import the buffer's names
+# (or legacy_controls): the reader and its steps (controls_reader,
+# legacy_controls, derived_controls, run_cards, controls_check,
+# user_inputs), the generated copies (controls_sync), and two test
+# programs (test_controls, which dumps the buffer-only members, and
+# test_net, which seeds the buffer to simulate the read). A new name here
+# is a design regression, not an allowlist entry.
 CONTROLS_BUFFER_IMPORTERS = {
     "io/controls_reader.f90",
     "io/legacy_controls.f90",
@@ -49,13 +50,6 @@ CONTROLS_BUFFER_IMPORTERS = {
     "io/test/test_controls.f90",
 }
 
-# Named constants in controls_buffer that are not buffer state: any file
-# may `use controls_buffer, only: <these>` (an only-list drawn entirely
-# from these is not a buffer import). max_runs dimensions the per-run
-# arrays; ichi_*/itime_* name the chi_grid_scale/atime slots (declared in
-# state/control_slots.f90, which new code uses; the buffer re-exports
-# them).
-CONTROLS_LIB_CONSTANT_RE = re.compile(r"^(max_runs|ichi_\w+|itime_\w+)$")
 
 # domain -> names callable from outside that domain.
 PUBLIC = {
@@ -913,7 +907,8 @@ def check_physics_no_io(src_root):
 # "Declarations and interfaces", rule 2: every `use` has an only: list;
 # math_lib is the exception, since under USE_CRMATH its procedures
 # shadow the intrinsics). Add a module once its users comply.
-ONLY_LIST_MODULES = ["numerics_lib", "run_messages", "run_files"]
+ONLY_LIST_MODULES = ["numerics_lib", "run_messages", "run_files", "controls_buffer",
+                     "legacy_controls"]
 
 def check_only_lists(src_root):
     problems = []
@@ -1039,16 +1034,7 @@ def main():
             if re.match(r"(?i)^\s*use\s+legacy_controls\b", line):
                 buffer_violations.append(rel)
                 break
-            if line.strip().lower().startswith("use controls_buffer"):
-                stmt = line
-                while stmt.rstrip().endswith("&") and i + 1 < len(code_lines):
-                    i += 1
-                    stmt = stmt.rstrip()[:-1] + code_lines[i].lstrip().lstrip("&")
-                m = re.match(r"^\s*use\s+controls_buffer\s*,\s*only\s*:\s*(.*)$",
-                             stmt, re.IGNORECASE)
-                if m and all(CONTROLS_LIB_CONSTANT_RE.match(x.strip())
-                             for x in m.group(1).split(",")):
-                    continue
+            if re.match(r"(?i)^\s*use\s+controls_buffer\b", line):
                 buffer_violations.append(rel)
                 break
     if buffer_violations:

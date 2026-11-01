@@ -19,7 +19,8 @@ module controls_check
       use run_messages, only: report_error, report_warning
       use numerics_lib, only: bsstep_max_stages, bsstep_max_extrap_order
       use star_info_lib, only: star_info
-      use controls_buffer, only: max_runs, use_semiconvection, core_overshoot_active, &
+      use control_slots, only: max_runs
+      use controls_buffer, only: use_semiconvection, core_overshoot_active, &
            envelope_overshoot_active, intermediate_overshoot_active, tri_delta_teffl, tri_delta_logl, &
            rotation_active, max_diffusion_iters, tolerance_fraction, max_stage_index, &
            extrap_order, num_runs

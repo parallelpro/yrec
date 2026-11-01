@@ -47,7 +47,12 @@ program test_net
       use run_setup, only: set_up_constants_and_tables
       use user_inputs, only: map_user_inputs
       use controls_sync, only: store_controls_to_star, arm_run_copies
-      use controls_buffer
+      use controls_buffer, only: s0_be7_electron, s0_be7_p, s0_he3he3, &
+           s0_he3he4, s0_n15_p_c12_branch, s0_n15_p_o16_branch, s0_p_c12, &
+           s0_p_c13, s0_p_n14, s0_p_o16, s0_pp, s0p_be7_p, s0p_he3he3, &
+           s0p_he3he4, s0p_p_c12, s0p_p_c13, s0p_p_n14, s0p_p_o16, s0p_pp, &
+           s0pp_be7_p, s0pp_p_c12, s0pp_p_c13, s0pp_p_o16, &
+           use_new_nuclear_rates
       use run_messages, only: run_log_unit
       use star_info_lib, only: star_info, i_h1, i_h2, i_he3, i_he4, i_metals, &
            i_c12, i_c13, i_n14, i_o16, i_o18, n_species_extended

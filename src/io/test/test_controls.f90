@@ -18,19 +18,15 @@
 program test_controls
       use star_info_lib, only: star_info, control_nml_override, physics_nml_override
       use run_messages, only: run_log_unit, terminal_unit
-      use run_files, only: last_model_unit
+      use run_files, only: last_model_unit, open_run_files
       use controls_reader, only: read_controls
-      use run_files, only: open_run_files
-! the members the star does not hold (registry home buffer) are dumped
-! from the read's buffer
-      use controls_buffer
       implicit none
 ! the test's star (star_info_lib declares no instance); static, as it
 ! is too large for the stack
       type(star_info), save :: star
       character(len=256) :: deck1, deck2
       character(len=8) :: twice
-      integer :: ierr, u, i1, i2, nargs
+      integer :: ierr, u, i1, nargs
       logical :: kept_first = .false.
 
       u = 6
@@ -74,7 +70,7 @@ program test_controls
       else
          write(u,'(a)') "# controls (pristine defaults)"
       end if
-      include 'controls_dump.inc'
+      call dump_controls(star, u)
       do i1 = 1, size(star%cross_section_scale_in_use)
          write(u,'(a," = ",es25.17e3)') 'star%cross_section_scale_in_use('//itoa(i1)//')', &
               star%cross_section_scale_in_use(i1)
@@ -90,6 +86,10 @@ program test_controls
       write(u,'(a," = ",i0)') 'terminal_unit', terminal_unit
 
 contains
+
+! every control (generated: the members the star does not hold, registry
+! home buffer, from the read's buffer)
+      include 'controls_dump.inc'
 
 function itoa(i) result(s)
       integer, intent(in) :: i

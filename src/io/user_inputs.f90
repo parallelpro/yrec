@@ -36,30 +36,32 @@
 ! functional forms, e.g. NACRE II).
 module user_inputs
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use controls_buffer, only: use_new_nuclear_rates, use_new_rate_variables, &
-           cross_section_ratios, cross_section_scale, extra_cross_section_scale, &
-           s_prime_scale, s_double_prime_scale, be7p_s_prime_scale, &
-           be7p_s_double_prime_scale, n15_pa_scale, n15_pg_scale, &
-           s0_pp, s0_he3he3, s0_he3he4, s0_p_c12, s0_p_c13, s0_p_n14, s0_p_o16, &
-           s0_pep, s0_be7_electron, s0_be7_p, s0_hep, s0_n15_p_c12_branch, &
-           s0_n15_p_o16_branch, s0p_pp, s0p_he3he3, s0p_he3he4, s0p_p_c12, &
-           s0p_p_c13, s0p_p_n14, s0p_p_o16, s0p_be7_p, s0pp_p_c12, s0pp_p_c13, &
-           s0pp_p_o16, s0pp_be7_p, &
-           chi_grid_scale, ichi_dm_min, ichi_dm_max, ichi_dl_max, ichi_dp_core_max, &
-           ichi_dp_env_max, ichi_dp_czbase_max, ichi_czbase_fine_width, ichi_dx_max, &
-           ichi_dz_max, ichi_flag_dx, ichi_flag_dz, ichi_flag_dw, &
-           tol_dm_min, tol_dm_max, tol_dl_max, tol_dp_core_max, tol_dp_env_max, &
-           tol_dp_czbase_max, tol_czbase_fine_width, tol_dx_max, tol_dz_max, &
-           flag_dx, flag_dz, flag_dw, &
-           timestep_factors, itime_core_min, itime_dx_core_tot, itime_dx_core_frac, &
-           itime_dx_total, itime_dx_shell, itime_dy_core_tot, itime_dy_core_frac, &
-           itime_dy_shell, itime_dy_total, itime_dt, itime_dp, itime_dr, itime_dl, &
-           itime_max_dt_frac, &
-           time_core_min, time_dx_core_tot, time_dx_core_frac, time_dx_total, &
-           time_dx_shell, time_dy_core_tot, time_dy_core_frac, time_dy_shell, &
-           time_dy_total, time_dt, time_dp, time_dr, time_dl, time_max_dt_frac, &
-           time_dw_global, time_dw_mix, use_structure_time_limits, &
-           use_structure_dt_limits, max_domega_global, diffusion_timestep_factor
+      use control_slots, only: ichi_dm_min, ichi_dm_max, ichi_dl_max, &
+           ichi_dp_core_max, ichi_dp_env_max, ichi_dp_czbase_max, &
+           ichi_czbase_fine_width, ichi_dx_max, ichi_dz_max, ichi_flag_dx, &
+           ichi_flag_dz, ichi_flag_dw, itime_core_min, itime_dx_core_tot, &
+           itime_dx_core_frac, itime_dx_total, itime_dx_shell, &
+           itime_dy_core_tot, itime_dy_core_frac, itime_dy_shell, &
+           itime_dy_total, itime_dt, itime_dp, itime_dr, itime_dl, &
+           itime_max_dt_frac
+      use controls_buffer, only: use_new_nuclear_rates, &
+           use_new_rate_variables, cross_section_ratios, cross_section_scale, &
+           extra_cross_section_scale, s_prime_scale, s_double_prime_scale, &
+           be7p_s_prime_scale, be7p_s_double_prime_scale, n15_pa_scale, &
+           n15_pg_scale, s0_pp, s0_he3he3, s0_he3he4, s0_p_c12, s0_p_c13, &
+           s0_p_n14, s0_p_o16, s0_pep, s0_be7_electron, s0_be7_p, s0_hep, &
+           s0_n15_p_c12_branch, s0_n15_p_o16_branch, s0p_pp, s0p_he3he3, &
+           s0p_he3he4, s0p_p_c12, s0p_p_c13, s0p_p_n14, s0p_p_o16, s0p_be7_p, &
+           s0pp_p_c12, s0pp_p_c13, s0pp_p_o16, s0pp_be7_p, chi_grid_scale, &
+           tol_dm_min, tol_dm_max, tol_dl_max, tol_dp_core_max, &
+           tol_dp_env_max, tol_dp_czbase_max, tol_czbase_fine_width, &
+           tol_dx_max, tol_dz_max, flag_dx, flag_dz, flag_dw, &
+           timestep_factors, time_core_min, time_dx_core_tot, &
+           time_dx_core_frac, time_dx_total, time_dx_shell, time_dy_core_tot, &
+           time_dy_core_frac, time_dy_shell, time_dy_total, time_dt, time_dp, &
+           time_dr, time_dl, time_max_dt_frac, time_dw_global, time_dw_mix, &
+           use_structure_time_limits, use_structure_dt_limits, &
+           max_domega_global, diffusion_timestep_factor
       use net_lib, only: r_pp, r_he3he3, r_he3he4, r_pc12, r_pc13, r_pn14, r_po16, &
            xs_pep, xs_be7e, xs_be7p, xs_hep, reference_s0, pep_coefficient, &
            be7_ecapture_coefficient, s0_be7p_kevb, s0_hep_kevb, s0_n15pa_kevb, &

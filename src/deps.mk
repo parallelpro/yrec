@@ -416,7 +416,7 @@ eos/test/test_eos.o: blended_eos.mod eos_configuration.mod eos_lib.mod eos_mixtu
 eos/yale/yale_eos.o: eos_configuration.mod eos_messages.mod eos_mixture.mod eos_results.mod math_lib.mod physical_constants.mod yale_eos_tables.mod
 eos/yale_eos_tables.o: physical_constants.mod
 io/controls_buffer.o: control_slots.mod reaction_layout.mod
-io/controls_check.o: controls_buffer.mod numerics_lib.mod rotation_configuration.mod run_messages.mod star_info_lib.mod
+io/controls_check.o: control_slots.mod controls_buffer.mod numerics_lib.mod rotation_configuration.mod run_messages.mod star_info_lib.mod
 io/controls_reader.o: control_slots.mod controls_buffer.mod controls_check.mod controls_sync.mod derived_controls.mod legacy_controls.mod run_cards.mod run_files.mod run_messages.mod star_info_lib.mod user_inputs.mod yrec_version.mod
 io/controls_sync.o: controls_buffer.mod star_info_lib.mod
 io/derived_controls.o: composition_layout.mod controls_buffer.mod eos_lib.mod run_messages.mod yrec_version.mod
@@ -432,7 +432,7 @@ io/run_files.o: output_files.mod run_messages.mod star_info_lib.mod
 io/run_log.o: run_messages.mod star_info_lib.mod
 io/test/test_controls.o: controls_buffer.mod controls_reader.mod run_files.mod run_messages.mod star_info_lib.mod
 io/test/test_io.o: controls_reader.mod history_output.mod model_files.mod output_columns.mod profile_output.mod pulsation_output.mod run_cards.mod run_files.mod run_messages.mod star_info_lib.mod stitched_model.mod yrec_output.mod
-io/user_inputs.o: controls_buffer.mod net_lib.mod
+io/user_inputs.o: control_slots.mod controls_buffer.mod net_lib.mod
 io/yrec_output.o: history_output.mod math_lib.mod model_files.mod physical_constants.mod profile_output.mod pulsation_output.mod run_cards.mod run_files.mod run_log.mod run_messages.mod star_info_lib.mod stitched_model.mod
 kap/alex06/alex06_opacity.o: math_lib.mod numerics_lib.mod opacity_tables.mod physical_constants.mod
 kap/alex94/alex94_opacity.o: math_lib.mod numerics_lib.mod opacity_tables.mod physical_constants.mod run_messages.mod
@@ -500,6 +500,7 @@ state/physical_constants.o: math_lib.mod
 state/star_info_lib.o: composition_layout.mod control_slots.mod envelope_points.mod neutrino_flux_layout.mod reaction_layout.mod stitched_model_state.mod transport_mechanism_layout.mod
 
 # real prerequisites: include files
+io/controls_buffer.o: io/controls_buffer_public.inc
 io/controls_reader.o: io/expand_paths.inc io/inlist_decl.inc io/inlist_read.inc
 io/legacy_controls.o: io/legacy_decl.inc io/legacy_defaults.inc io/legacy_to_code.inc io/legacy_use.inc
 io/output_columns.o: io/default_columns.inc

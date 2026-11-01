@@ -16,22 +16,21 @@
 ! generates the two records' types and the copies (io/controls_sync.f90)
 ! from these declarations: regenerate after changing a member, and give
 ! it its registry row. Only the controls read's files
-! (tools/check_boundaries.py's CONTROLS_BUFFER_IMPORTERS) use this module;
-! any file may import its named constants (max_runs and the slot names
-! itime_* and ichi_*, which are state/control_slots.f90's, re-exported
-! here). check_boundaries enforces both.
+! (tools/check_boundaries.py's CONTROLS_BUFFER_IMPORTERS) use this module,
+! each naming what it takes (use ..., only:); the sizes and slots it uses
+! are state/control_slots.f90's and state/reaction_layout.f90's.
 
 module controls_buffer
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use control_slots
+      use control_slots, only: max_runs
       use reaction_layout, only: num_reactions, num_extra_scales, num_sstandard
       implicit none
-! Everything here is public: the buffer is the controls read's shared
-! state (tools/check_boundaries.py's CONTROLS_BUFFER_IMPORTERS lists the
-! files that may use it), and the named constants max_runs, itime_* and
-! ichi_* are for any file.
-      public
-      private :: dp
+! The buffer is the read's shared state: every member, and the reference
+! cross sections, are public, in the generated list (the read's files
+! import them by name; tools/check_boundaries.py's
+! CONTROLS_BUFFER_IMPORTERS).
+      private
+      include 'controls_buffer_public.inc'
 
 ! The per-run arrays below have max_runs entries (state/control_slots.f90).
 
