@@ -25,8 +25,8 @@ DEFS = [("control", SRC / "state" / "control_group_def.inc"),
         ("physics", SRC / "state" / "physics_group_def.inc")]
 OUT = SRC / "io" / "test" / "controls_dump.inc"
 
-DECL = re.compile(r"^\s*(double precision|integer|logical|character\(len=\d+\))\s*::\s*(\w+)\s*(\(([^)]*)\))?")
-FMT = {"double precision": "es25.17e3", "integer": "i0", "logical": "l1"}
+DECL = re.compile(r"^\s*(real\(dp\)|integer|logical|character\(len=\d+\))\s*::\s*(\w+)\s*(\(([^)]*)\))?")
+FMT = {"real(dp)": "es25.17e3", "integer": "i0", "logical": "l1"}
 # The deck's own file names: where the deck came from, not what it sets
 # (test_controls names its decks by their paths, which differ from one
 # checkout to the next).
@@ -82,13 +82,13 @@ buffer_only = {r["canonical"] for r in controls_registry.rows() if r["home"] == 
 for typespec, name, dims, _ in gen_controls_state.parse():
     if name.lower() not in buffer_only or name.lower() in NOT_DUMPED:
         continue
-    kind = "double precision" if typespec == "double precision" else typespec
+    kind = typespec
     body += writes_for("buffer", name, kind, dims_of(dims.strip("()")))
     buffer_names.append(name)
     n += 1
 # the run copies, star members of their controls' types (check_boundaries
 # checks the declarations): what arm_run_copies set from the read
-KIND = {"real": "double precision", "integer": "integer", "logical": "logical"}
+KIND = {"real": "real(dp)", "integer": "integer", "logical": "logical"}
 for r in controls_registry.rows():
     if not r["run_copy"]:
         continue

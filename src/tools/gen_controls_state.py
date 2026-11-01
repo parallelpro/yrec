@@ -76,7 +76,7 @@ PARAM_RE = re.compile(
 )
 
 ZERO = {
-    "double precision": "0.0d0",
+    "real(dp)": "0.0d0",
     "integer": "0",
     "logical": ".false.",
     "character": "' '",
@@ -141,8 +141,8 @@ def parse():
         if not m:
             continue
         typespec = re.sub(r"\s+", " ", m.group(1).lower()).replace(" (", "(")
-        if typespec.replace(" ", "") == "real(dp)":
-            typespec = "double precision"   # star_info_lib's spelling
+        if typespec.replace(" ", "") in ("real(dp)", "doubleprecision"):
+            typespec = "real(dp)"   # star_info_lib's spelling (dp => real64 there)
         for ent in split_entities(m.group(3)):
             em = re.match(r"^(\w+)\s*(\([^)]*\))?\s*(=\s*(.*))?$", ent, re.S)
             if not em:
