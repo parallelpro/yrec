@@ -57,7 +57,7 @@ end subroutine warn
 !     (above, its step-size retry loop has no end); or the tolerance is
 !     not positive;
 !   - num_runs is outside 0 to max_runs (the run cards' arrays).
-! It reads the controls in the read's buffer, after adopt_canonical_names
+! It reads the controls in the read's buffer, after the deck is read
 ! and map_user_inputs.
 subroutine check_controls(ierr)
       integer, intent(inout) :: ierr

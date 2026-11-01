@@ -9,11 +9,10 @@ module run_files
       use io_units, only: terminal_unit, last_model_unit, run_log_unit, check_io, &
            starting_model_unit, dynamics_unit, mc_summary_unit, mc_model_unit, &
            isochrone_unit, flush_pending_log
-      use legacy_controls, only: control_nml_file, physics_nml_file
       use controls_buffer, only: alex06_table_path, alex95_table_paths, &
            allard_table_path, atm_table_path, centre1_table_path, &
            centre2_table_path, centre3_table_path, centre4_table_path, &
-           centre5_table_path, conductive_table_path, dynamics_file, &
+           centre5_table_path, conductive_table_path, control_nml_file, dynamics_file, &
            fermi_table_path, first_model_file, isochrone_file, last_model_file, &
            log_output_file, history_columns_file, &
            inlist_used_file, isochrone_output_active, kurucz_table2_path, &
@@ -21,7 +20,7 @@ module run_files
            monte_carlo_active, monte_carlo_file1_path, monte_carlo_file2_path, &
            opal2001_eos_table_path, opal2006_eos_table_path, opal92_table2_path, &
            opal92_table_path, opal95_eos_table_path, opal95_table_path, &
-           profile_columns_file, pure_z_table_path, &
+           physics_nml_file, profile_columns_file, pure_z_table_path, &
            scv_h_table_path, scv_he_table_path, scv_z_table_path, &
            zams_a_table_path, zams_b_table_path, zams_c_table_path
       implicit none
@@ -53,9 +52,8 @@ end subroutine assign_unit_numbers
 ! ---------------------------------------------------------------
 ! The {YREC_INPUT}, {YREC_START} and {YREC_OUTPUT} placeholders in
 ! every path control, expanded (expand_value): every string control
-! that names a file, by its canonical name where it has one (after
-! adopt_canonical_names), else by its legacy name (test_generated_files.py
-! checks the list against the registry).
+! that names a file, by its code name (test_generated_files.py checks
+! the list against the registry).
 subroutine expand_paths
       integer :: i
 

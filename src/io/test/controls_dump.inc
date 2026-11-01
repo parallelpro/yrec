@@ -368,6 +368,7 @@
       write(u,'(a," = ",a)') 'buffer%dynamics_file', '"'//trim(dynamics_file)//'"'
       write(u,'(a," = ",a)') 'buffer%isochrone_file', '"'//trim(isochrone_file)//'"'
       write(u,'(a," = ",a)') 'buffer%surface_composition_file', '"'//trim(surface_composition_file)//'"'
+      write(u,'(a," = ",a)') 'buffer%stored_change_file', '"'//trim(stored_change_file)//'"'
       do i1 = 1, 2
       write(u,'(a," = ",a)') 'buffer%run_description('//itoa(i1)//')', '"'//trim(run_description(i1))//'"'
       end do
@@ -419,6 +420,7 @@
       write(u,'(a," = ",es25.17e3)') 'buffer%coupling_factor', coupling_factor
       write(u,'(a," = ",i0)') 'buffer%enable_eddington_sweet', enable_eddington_sweet
       write(u,'(a," = ",i0)') 'buffer%enable_mu_gradient', enable_mu_gradient
+      write(u,'(a," = ",es25.17e3)') 'buffer%mu_gradient_scale', mu_gradient_scale
       write(u,'(a," = ",l1)') 'buffer%use_opal95_eos', use_opal95_eos
       write(u,'(a," = ",l1)') 'buffer%use_opal2001_eos', use_opal2001_eos
       write(u,'(a," = ",l1)') 'buffer%use_opal2006_eos', use_opal2006_eos

@@ -5,19 +5,19 @@
 ! inlist's two namelist groups. Each read starts from the pristine
 ! defaults (control_group_controls() and physics_group_controls(),
 ! generated from controls_buffer's declarations), seeded into the buffer
-! (seed_controls_buffer); read_input
-! reads the deck over the buffer, the steps below turn it into the
-! controls the run uses, store_controls_to_star copies the result back,
-! and arm_run_copies sets the run's working copies of the controls it
-! changes (the run plan, the latches; the registry's run_copy column)
-! from them. The read never reads the star's run state. The read opens no
-! file of the run (run_yrec's open_run_files does, after it); its
-! messages reach the run log when that opens (io_units). The read's steps
-! live in legacy_controls (the namelist variables and their defaults),
-! run_files, controls_check (the errors and warnings), derived_controls
-! and run_cards; the copies between the legacy and the canonical names
-! are generated from the registry (adopt_canonical.inc,
-! legacy_mirror.inc). Errors return via ierr.
+! (seed_controls_buffer); read_input reads the deck over the buffer,
+! straight into the controls' code names (an inlist through read_inlist,
+! a legacy pair through legacy_controls' read_legacy_deck), the steps
+! below turn it into the controls the run uses, store_controls_to_star
+! copies the result to the star, and arm_run_copies sets the run's
+! working copies of the controls it changes (the run plan, the latches;
+! the registry's run_copy column) from them. The read never reads the
+! star's run state. The read opens no file of the run (run_yrec's
+! open_run_files does, after it); its messages reach the run log when
+! that opens (io_units). The read's other steps live in user_inputs
+! (map_user_inputs), run_files (expand_paths), controls_check (the
+! errors and warnings), derived_controls and run_cards. Errors return
+! via ierr.
 module controls_reader
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use run_log, only: set_solver_diagnostics
@@ -27,9 +27,10 @@ module controls_reader
       use controls_sync, only: seed_controls_buffer, store_controls_to_star, &
            arm_run_copies
       use yrec_version, only: yrec_version_string, git_hash_string
-      use io_units, only: check_io, discard_pending_log
-! the generated includes name every namelist variable
-      use legacy_controls
+      use io_units, only: check_io, discard_pending_log, report_warning
+      use controls_buffer, only: atm_choice, control_nml_file, cross_section_ratios, &
+           physics_nml_file, report_solver_diagnostics, use_new_nuclear_rates
+      use legacy_controls, only: read_legacy_deck
       use run_files, only: assign_unit_numbers, expand_paths
       use derived_controls, only: derive_controls
       use controls_check, only: check_controls, warn_inert_controls
@@ -38,13 +39,19 @@ module controls_reader
       private
       public :: read_controls, nml_file_has_group
 
+! A value other than the one given, of its type (read_inlist's first read
+! of the aliased names, inlist_read.inc): for the types of today's aliases
+! (gen_inlist asks for another when an alias of a new type appears).
+      interface other_than
+         module procedure other_than_real, other_than_text
+      end interface other_than
+
 contains
 
 !   star reads: none
 !   star writes: none
 subroutine read_controls(s, ierr)
       type(star_info), intent(inout) :: s
-
       integer, intent(out) :: ierr
 
       ierr = 0
@@ -52,7 +59,7 @@ subroutine read_controls(s, ierr)
 ! the declared defaults, whatever an earlier read left on s
       call seed_controls_buffer(s)
       call set_solver_diagnostics(report_solver_diagnostics)
-! the deck, under the canonical names, and the readable inputs mapped
+! the deck, under the code names, and the readable inputs mapped
       call read_input(ierr)
       if (ierr /= 0) return
       call adopt_canonical_names(s)
@@ -80,7 +87,6 @@ subroutine read_input(ierr)
       integer, intent(out) :: ierr
 
       ierr = 0
-      call set_legacy_defaults
       call assign_unit_numbers
 
       print *,''
@@ -91,8 +97,8 @@ subroutine read_input(ierr)
       if (control_nml_override /= ' ') then
          control_nml_file = control_nml_override
       else
-      call getarg(1, control_nml_file)
-      if (control_nml_file(1:2) == ' ') control_nml_file = 'yrec8.nml1'
+         call getarg(1, control_nml_file)
+         if (control_nml_file(1:2) == ' ') control_nml_file = 'yrec8.nml1'
       end if
       print *, ' '
       call read_namelist_files(ierr)
@@ -103,13 +109,12 @@ end subroutine read_input
 ! Read the deck. A file that holds both a &control and a &physics group
 ! is an inlist, read by read_inlist; anything else is a legacy pair, the
 ! CONTROL namelist in the first file and the PHYSICS namelist in the
-! second. An inlist from before 2026-10, with &star_job and &controls
-! groups, is refused with the command that renames its groups.
+! second, read by read_legacy_deck. An inlist from before 2026-10, with
+! &star_job and &controls groups, is refused with the command that
+! renames its groups.
 subroutine read_namelist_files(ierr)
       integer, intent(inout) :: ierr
       logical :: single_inlist
-      integer :: ios, namelist_unit
-      character(len=256) :: msg
 
       if (nml_file_has_group(control_nml_file, 'star_job')) then
          write(*,'(a)') ' '//trim(control_nml_file)//' names its groups &star_job and &controls;'
@@ -124,78 +129,73 @@ subroutine read_namelist_files(ierr)
       if (physics_nml_override /= ' ') then
          physics_nml_file = physics_nml_override
       else
-      call getarg(2, physics_nml_file)
-      if (physics_nml_file(1:2) == ' ') physics_nml_file = 'yrec8.nml2'
+         call getarg(2, physics_nml_file)
+         if (physics_nml_file(1:2) == ' ') physics_nml_file = 'yrec8.nml2'
       end if
 ! a single-file inlist is both files (copy_inlists_used copies it once)
       if (single_inlist) physics_nml_file = control_nml_file
 
       if (single_inlist) then
          write(*,*) 'inlist           :  ',control_nml_file(1:len_trim(control_nml_file))
+         call read_inlist(control_nml_file, ierr)
       else
-      write(*,*) 'CONTROL namelist :  ',control_nml_file(1:len_trim(control_nml_file))
-      write(*,*) 'PHYSICS namelist :  ',physics_nml_file(1:len_trim(physics_nml_file))
-      end if
-
-      if (single_inlist) then
-      call read_inlist(ierr)
-      else
-      open(newunit=namelist_unit, file=control_nml_file, status='OLD', iostat=ios, iomsg=msg)
-      call check_io(ios, msg, 'open the CONTROL namelist file', control_nml_file, ierr)
-      if (ierr /= 0) return
-      read(unit=namelist_unit, nml=control, iostat=ios, iomsg=msg)
-      call check_io(ios, msg, 'read the CONTROL namelist from', control_nml_file, ierr, namelist_unit)
-      if (ierr /= 0) return
-      close(namelist_unit)
-      open(newunit=namelist_unit, file=physics_nml_file, status='OLD', iostat=ios, iomsg=msg)
-      call check_io(ios, msg, 'open the PHYSICS namelist file', physics_nml_file, ierr)
-      if (ierr /= 0) return
-      read(unit=namelist_unit, nml=physics, iostat=ios, iomsg=msg)
-      call check_io(ios, msg, 'read the PHYSICS namelist from', physics_nml_file, ierr, namelist_unit)
-      if (ierr /= 0) return
-      close(namelist_unit)
+         write(*,*) 'CONTROL namelist :  ',control_nml_file(1:len_trim(control_nml_file))
+         write(*,*) 'PHYSICS namelist :  ',physics_nml_file(1:len_trim(physics_nml_file))
+         call read_legacy_deck(control_nml_file, physics_nml_file, ierr)
       end if
 end subroutine read_namelist_files
 
 ! ---------------------------------------------------------------
-! Read a single-file inlist: its &control and &physics groups, under the
-! new names (defaults/control.defaults, defaults/physics.defaults).
-! Both files are generated by tools/gen_inlist.py: inlist_new_decl.inc
-! declares the groups -- named like legacy_controls' CONTROL and PHYSICS
-! groups, which they hide here -- and the new-name variables that have
-! no legacy twin; inlist_new_read.inc seeds the new names from the
-! legacy defaults, reads the groups and copies the values back onto the
-! legacy names.
-subroutine read_inlist(ierr)
+! Read a single-file inlist, inlist_file: its &control and &physics
+! groups, under the inlist names (defaults/control.defaults,
+! defaults/physics.defaults), into the controls' code names. Both
+! includes are generated by tools/gen_inlist.py: inlist_decl.inc binds
+! the groups to the code names (and to a local, copied into its code
+! name after the read, for an inlist name that is not its code name),
+! and inlist_read.inc reads them (twice, for the aliases).
+subroutine read_inlist(inlist_file, ierr)
+      include 'inlist_decl.inc'
+      character(len=*), intent(in) :: inlist_file
       integer, intent(inout) :: ierr
       integer :: ios, namelist_unit
       character(len=256) :: msg
-      include 'inlist_new_decl.inc'
 
-      include 'inlist_new_read.inc'
+      include 'inlist_read.inc'
 end subroutine read_inlist
 
 ! ---------------------------------------------------------------
-! Copy each control read under a legacy name into its canonical home
-! (controls_buffer or star). map_user_inputs,
-! which runs next, reads use_new_nuclear_rates and the s0_* values.
+! What the deck's controls put on the star directly. lnewnuc = .false.
+! takes the cross sections from cross_section_ratios (legacy sstandard,
+! ratios to Bahcall & Ulrich 1988, mapped onto the reaction and extra
+! scales by net); map_user_inputs sets them from the s0_* inputs
+! otherwise. An inlist gets the default ratios.
 !   star reads: none
 !   star writes: atm_choice_initial, cross_section_scale,
 !     extra_cross_section_scale, use_ttau_relation
 subroutine adopt_canonical_names(s)
       type(star_info), intent(inout) :: s
-      include 'adopt_canonical.inc'
-! What the copies do not give.
-! lnewnuc = .false. takes the cross sections from sstandard (ratios to
-! Bahcall & Ulrich 1988, mapped onto the reaction and extra scales by
-! net); map_user_inputs sets them from the s0_* inputs otherwise. An
-! inlist gets the default ratios.
       if (.not. use_new_nuclear_rates) call cross_section_scales_from_sstandard( &
            cross_section_ratios, s%cross_section_scale, s%extra_cross_section_scale)
 ! the atmosphere choice as read; the run may change star%atm_choice_in_use
       s%atm_choice_initial = atm_choice
       s%use_ttau_relation = .false.
 end subroutine adopt_canonical_names
+
+! ---------------------------------------------------------------
+! A value other than x, of its type, element by element: read_inlist
+! seeds the aliased names with it, so that an element the deck names
+! differs from its seed in one of the two reads.
+elemental function other_than_real(x) result(y)
+      real(dp), intent(in) :: x
+      real(dp) :: y
+      y = merge(1.0_dp, 0.0_dp, x == 0.0_dp)
+end function other_than_real
+
+elemental function other_than_text(x) result(y)
+      character(len=*), intent(in) :: x
+      character(len=len(x)) :: y
+      y = merge('b', 'a', x(1:1) == 'a')
+end function other_than_text
 
 ! Does this namelist file contain the group &<gname> (in any case, and
 ! not merely a group whose name begins with gname)?

@@ -1,29 +1,25 @@
 !----------------------------------------------------------------------
 ! controls_buffer
 !----------------------------------------------------------------------
-! The run controls under their canonical names: the buffer the input
-! decks are read into. read_controls seeds it from the pristine
-! star%control and star%physics defaults (seed_controls_buffer), the namelists read over it, and
-! adopt_canonical_names and map_user_inputs fill the members the decks
-! set under other names; store_controls_to_star then copies it into
-! star%control and star%physics, where the rest of the code reads its
-! controls, and
-! arm_run_copies sets the run's working copies of the controls the run
-! changes. The declarations below are the defaults:
-! tools/gen_controls_state.py generates the two records' types and the copies
-! (io/controls_sync.f90)
-! from them, so regenerate after changing a member, and add the control
-! to defaults/controls_registry.tsv, which maps it to its legacy and
-! new-inlist names. Each control's default is stated once in the code:
-! here; set_legacy_defaults (io/legacy_controls.f90) gives each legacy
-! name its canonical twin's default, and holds only the defaults of the
-! legacy names that have no canonical home. The legacy namelists are
-! frozen: a new control is read only by the new format. Only the
-! controls read's files (tools/check_boundaries.py's
-! CONTROLS_BUFFER_IMPORTERS) use this module; any file may import its
-! named constants (max_runs and the slot names itime_* and ichi_*,
-! which are state/control_slots.f90's, re-exported here).
-! check_boundaries enforces both.
+! The controls under their code names, each with its default as its
+! initializer, the one place a control's default is written: the buffer
+! the decks are read into. read_controls seeds it from the pristine
+! star%control and star%physics (seed_controls_buffer) and reads the deck
+! into it: an inlist's groups bind these names (or a local copied into
+! one, for an inlist name that differs), a legacy pair's names are copied
+! to them (tools/gen_inlist.py, from defaults/controls_registry.tsv, which
+! gives each control its names). map_user_inputs and derive_controls then
+! compute the controls derived from others, and store_controls_to_star
+! copies the buffer into star%control and star%physics, where the rest of
+! the code reads its controls; arm_run_copies sets the run's working
+! copies of the controls the run changes. tools/gen_controls_state.py
+! generates the two records' types and the copies (io/controls_sync.f90)
+! from these declarations: regenerate after changing a member, and give
+! it its registry row. Only the controls read's files
+! (tools/check_boundaries.py's CONTROLS_BUFFER_IMPORTERS) use this module;
+! any file may import its named constants (max_runs and the slot names
+! itime_* and ichi_*, which are state/control_slots.f90's, re-exported
+! here). check_boundaries enforces both.
 
 module controls_buffer
       use, intrinsic :: iso_fortran_env, only: dp => real64
@@ -81,8 +77,16 @@ module controls_buffer
       character(len=256) :: log_output_file = '{YREC_OUTPUT}/run.log'
       character(len=256) :: dynamics_file = repeat(achar(0), 256)
       character(len=256) :: isochrone_file = repeat(achar(0), 256)
-! a surface composition file the decks may name, which nothing reads
+! a surface composition file and a stored-change file the decks may
+! name, which nothing reads
       character(len=256) :: surface_composition_file = repeat(achar(0), 256)
+      character(len=256) :: stored_change_file = repeat(achar(0), 256)
+! The deck's own files, which read_input finds (the command line, or an
+! embedding host's override): the single-file inlist, or the legacy
+! pair's CONTROL and PHYSICS namelist files (for an inlist,
+! physics_nml_file is the inlist again).
+      character(len=256) :: control_nml_file = repeat(achar(0), 256)
+      character(len=256) :: physics_nml_file = repeat(achar(0), 256)
 ! the run's description, two lines of the run log's header
       character(len=256) :: run_description(2) = repeat(achar(0), 256)
       character(len=8) :: pulse_format = 'GYRE'
@@ -376,8 +380,9 @@ module controls_buffer
       real(dp) :: initial_b10_fraction = 1.002d-9
       real(dp) :: initial_b11_fraction = 4.405d-9
 
-! Rotational mixing velocity and coefficient scales (the legacy enable_eddington_sweet, enable_mu_gradient
-! and fmu are read and then unused).
+! Rotational mixing velocity and coefficient scales (enable_eddington_sweet,
+! enable_mu_gradient and mu_gradient_scale, the legacy ies, imu and fmu, are
+! read and then unused).
       real(dp) :: coupling_factor = 1.0d0
       real(dp) :: difad_velocity_scale = 1.0d0
       real(dp) :: mixing_velocity_scale = 1.0d0
@@ -387,6 +392,7 @@ module controls_buffer
       real(dp) :: critical_reynolds = 1.0d3
       integer :: enable_eddington_sweet = 1
       integer :: enable_mu_gradient = 1
+      real(dp) :: mu_gradient_scale = 1.0d0
       real(dp) :: es_mixing_scale = 1.0d0
       real(dp) :: secular_shear_mixing_scale = 1.0d0
       real(dp) :: gsf_mixing_scale = 1.0d0

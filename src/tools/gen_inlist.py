@@ -1,117 +1,97 @@
 #!/usr/bin/env python3
-"""Generate the new-style inlist reader + .defaults docs from the registry.
+"""Generate the deck readers' declarations and copies, and the controls'
+documents, from the registry (defaults/controls_registry.tsv) and
+controls_buffer's declarations.
 
-Source of truth: defaults/controls_registry.tsv. Emits:
-  io/inlist_new_decl.inc    -- read_inlist's declarations: the new-name
-                               variables that do not already exist in the
-                               reader's scope, and the &control / &physics
-                               namelist groups (named like the legacy
-                               groups, which they hide in read_inlist)
-  io/legacy_mirror.inc      -- set_legacy_defaults' seeding of every legacy
-                               name from its canonical twin's default
-  io/adopt_canonical.inc    -- adopt_canonical_names' copies of the legacy
-                               names' values into their canonical homes
-  io/inlist_new_read.inc    -- read_inlist's body: seed new names from
-                               the legacy defaults already assigned by
-                               read_input, read the two groups from the
-                               one file, then map back onto the legacy
-                               names so ALL downstream code is untouched
-  defaults/control.defaults, defaults/physics.defaults -- documentation
-  defaults/controls_registry.md -- the registry as a table (every row's
-                               names, home, use, type, default, description)
+Every control has a code name, a controls_buffer member (the registry's
+canonical column), which holds its one default as its initializer. Both
+kinds of deck are read into the code names:
 
-Entry classes (per live row): keep (new == legacy: the legacy variable
-itself joins the new group), direct (new == the canonical internal name
-read_input already copies into post-read: that variable joins the group),
-newlocal (a fresh local is declared). A row's aliases (older inlist names)
-are locals in the group too; one the deck sets counts when the deck does
-not set the inlist name. Rows with status 'unused' are dead legacy
-controls, accepted by the legacy path only and read nowhere; rows with
-status 'legacy' are accepted by the legacy path only but still used
-(documented separately in the .defaults files).
+  * a single-file inlist (read_inlist, io/controls_reader.f90): its
+    &control and &physics groups bind the code names themselves where the
+    inlist name is the code name, and a local named for the inlist name
+    otherwise, which starts at the code name's default and is copied into
+    it after the read (one copy). An alias (an older inlist name) is a
+    local too; it counts, element by element, where the deck sets it and
+    not the inlist name, "set" meaning the deck names the element: the
+    groups are read twice, the aliased names seeded with another value
+    the first time (other_than) and with their default the second, and an
+    element is set when either read changed it from its seed. A deck that
+    sets both gets the inlist name's value and a warning.
+  * a legacy CONTROL/PHYSICS pair (read_legacy_deck, io/legacy_controls.f90):
+    its two frozen namelist groups bind the code name where the legacy
+    name is spelled the same, and a legacy variable otherwise, which takes
+    its code name's default before the read and hands its value to it
+    after.
 
-Defaults strategy: the generated code NEVER re-states default values.
-Pre-read it seeds every new-style variable from its legacy twin (which
-set_legacy_defaults has already defaulted); post-read it copies back.
-Defaults thus stay defined in one place and the two paths agree by
-construction. The .defaults files document the same values: each
-control's default is read from set_legacy_defaults (io/legacy_controls.f90),
-else from its initializer in io/controls_buffer.f90. The registry holds
-no defaults; a live control without one in the code is an error.
+Emits:
+  io/inlist_decl.inc       read_inlist's declarations: the code names it
+                           binds or copies into (use controls_buffer,
+                           only: ...), the inlist-name locals, the
+                           aliases with their defaults and masks, and the
+                           &control and &physics groups
+  io/inlist_read.inc       read_inlist's body: the locals seeded, the
+                           groups read (twice when there are aliases), the
+                           aliases resolved, the locals copied
+  io/legacy_use.inc        legacy_controls' use of the code names
+  io/legacy_decl.inc       legacy_controls' legacy variables (each of its
+                           code name's type)
+  io/legacy_defaults.inc   read_legacy_deck: each legacy variable its code
+                           name's default (the buffer's pristine value)
+  io/legacy_to_code.inc    read_legacy_deck: each code name the value read
+                           under its legacy name
+  defaults/control.defaults, defaults/physics.defaults -- every inlist
+                           control with its default and description
+  defaults/controls_registry.md -- the registry as a table
+
+It stops, naming the row, when a row's code name is not a controls_buffer
+member of the row's type, when a name is used twice, when an inlist local
+would hide a code name, and when the legacy namelists and the registry
+disagree (a legacy name in neither group, or a group member without a
+row).
 """
 import pathlib
-
-from generated_files import emit, finish
-import controls_registry
 import re
 import sys
 
+from generated_files import emit, finish
+import controls_registry
+
 SRC = pathlib.Path(__file__).resolve().parent.parent
-REG = SRC / "defaults" / "controls_registry.tsv"
+LEGACY = SRC / "io" / "legacy_controls.f90"
+HEAD = ["! GENERATED by tools/gen_inlist.py from defaults/controls_registry.tsv",
+        "! and io/controls_buffer.f90 -- do not edit; regenerate instead."]
 
 
-def joined_decl_lines(text):
-    out, buf = [], ""
-    for l in text.splitlines():
-        c = l.split("!")[0]
-        buf = (buf + " " + c.strip().lstrip("&")) if buf else c
-        if c.rstrip().endswith("&"):
-            buf = buf.rstrip().rstrip("&")
-            continue
-        out.append(buf)
-        buf = ""
+def wrapped(prefix, names, cont="           & ", width=78):
+    """a statement listing names, continued with & before width columns"""
+    lines, line = [], prefix
+    for i, n in enumerate(names):
+        piece = n + ("," if i < len(names) - 1 else "")
+        if len(line) + len(piece) + 1 > width:
+            lines.append(line.rstrip() + " &")
+            line = cont
+        line += piece + " "
+    return lines + [line.rstrip()]
+
+
+def legacy_groups():
+    """{group: [legacy names, in order]} of legacy_controls' frozen
+    namelists"""
+    text = "\n".join(l.split("!")[0] for l in LEGACY.read_text().splitlines())
+    out = {}
+    for g in ("control", "physics"):
+        m = re.search(r"namelist\s*/" + g + r"/(.*?)(?=\bnamelist\b|\bcontains\b)", text, re.S | re.I)
+        if not m:
+            sys.exit(f"gen_inlist: legacy_controls.f90 has no namelist /{g}/")
+        out[g] = [n.strip().lower() for n in m.group(1).replace("&", " ").split(",") if n.strip()]
     return out
-
-
-def legacy_decl(name, decl_lines):
-    """Return (type_spec, dims) for a legacy namelist variable."""
-    for c in decl_lines:
-        lc = c.lower()
-        if "::" not in lc:
-            continue
-        typ, rest = lc.split("::", 1)
-        for g in re.split(r",(?![^()]*\))", rest):
-            m = re.match(r"\s*([a-z][a-z0-9_]*)\s*(\(([^)]*)\))?", g)
-            if m and m.group(1) == name:
-                return typ.strip(), (m.group(3) or "")
-    return None, None
-
-
-def reader_defaults(joined, rows=()):
-    """{name: default as written in the code}: set_legacy_defaults'
-    assignments, then controls_buffer's declaration initializers, a
-    legacy name taking its canonical twin's (the generated mirrors)"""
-    lc = (SRC / "io" / "legacy_controls.f90").read_text()
-    body = lc[lc.index("subroutine set_legacy_defaults"):
-              lc.index("end subroutine set_legacy_defaults")]
-    buffer, params = {}, {}
-    for c in joined((SRC / "io" / "controls_buffer.f90").read_text()):
-        if "::" not in c:
-            continue
-        into = params if "parameter" in c.split("::")[0].lower() else buffer
-        for g in re.split(r",(?![^()]*\))", c.split("::", 1)[1]):
-            m = re.match(r"\s*([a-z]\w*)(\([^)]*\))?\s*=\s*(.+?)\s*$", g, re.I)
-            if m:
-                into[m.group(1).lower()] = m.group(3)
-    # an initializer that names a parameter (li6_reference_xs) is its value
-    buffer = {k: params.get(v.lower(), v) for k, v in buffer.items()}
-    vals = {}
-    for c in joined(body):
-        m = re.match(r"\s*([a-z]\w*)\s*=\s*(.+?)\s*$", c, re.I)
-        if m:
-            value = m.group(2)
-            # a mirror of a canonical control takes that control's default
-            vals[m.group(1).lower()] = buffer.get(value.lower(), value)
-    for r in rows:
-        if r["home"] and r["canonical"] in buffer:
-            vals.setdefault(r["legacy"].lower(), buffer[r["canonical"]])
-    for name, value in buffer.items():
-        vals.setdefault(name, value)
-    return vals
 
 
 def shown(value):
     """a default as an inlist would write it"""
+    if value is None:
+        return "0"
     if value.startswith("repeat(achar(0)"):
         return "''"
     m = re.match(r"reshape\(\(/(.*?)/\)", value) or re.match(r"\(/(.*)/\)$", value)
@@ -120,181 +100,204 @@ def shown(value):
     return ", ".join(x.strip() for x in value.split(","))
 
 
+def assign(target, value, width=90):
+    """target = value, continued after the = when the line is long"""
+    line = f"      {target} = {value}"
+    return [line] if len(line) <= width else [f"      {target} = &", f"           {value}"]
+
+
+def guarded(condition, statement, width=90):
+    """if (condition) statement (or where), continued when long"""
+    line = f"      {condition} {statement}"
+    return [line] if len(line) <= width else [f"      {condition} &", f"           {statement}"]
+
+
+def declaration(member, name):
+    """a local of member's type and shape, named name"""
+    return f"      {member['decl']} :: {name}{member['dims']}"
+
+
 def main():
-    rows = [dict(group=r["group"], legacy=r["legacy"], typ=r["type"],
-                 new=r["proposed_name"], status=r["status"], mesa=r["mesa_note"],
-                 doc=r["doc"], canonical=r["canonical"], home=r["home"], used=r["used"],
-                 run_copy=r["run_copy"],
-                 aliases=[a for a in r["aliases"].split(",") if a])
-            for r in controls_registry.rows()]
-    derived = [r for r in rows if r["status"] == "derived"]
-    rows = [r for r in rows if r["status"] != "derived"]
-    # the controls reader's declarations
-    reader = "".join((SRC / "io" / f).read_text() for f in (
-        "controls_reader.f90", "legacy_controls.f90", "run_files.f90",
-        "derived_controls.f90", "run_cards.f90"))
-    decls = joined_decl_lines(reader)
-    for extra in ("io/controls_buffer.f90", "state/physical_constants.f90",
-                  "kap/opacity_tables.f90"):
-        decls += joined_decl_lines((SRC / extra).read_text())
-    code_default = reader_defaults(joined_decl_lines, rows)
-
-    live = [r for r in rows if r["status"] not in controls_registry.DEAD]
-    for r in live:
-        if r["new"] == r["legacy"]:
-            r["cls"] = "keep"
-        elif r["canonical"] == r["new"].lower():
-            r["cls"] = "direct"
-        else:
-            r["cls"] = "newlocal"
-        if r["aliases"] and r["cls"] == "keep":
-            sys.exit(f"gen_inlist: {r['legacy']}: an alias needs an inlist name other than "
-                     "the legacy one")
-    # each row's type is its legacy variable's (which the inlist name shares)
-    wrong = []
+    rows = controls_registry.rows()
+    members = controls_registry.buffer_members()
+    problems = controls_registry.check_rows_against_buffer(rows, members)
+    by_name = {m["name"]: m for m in members}
     for r in rows:
-        typ, dims = legacy_decl(r["legacy"], decls)
-        if typ is not None and controls_registry.type_of(typ, dims) != r["typ"].replace(" ", ""):
-            wrong.append(f"{r['legacy']}: registry {r['typ']}, declared "
-                         f"{controls_registry.type_of(typ, dims)}")
-    if wrong:
-        sys.exit("gen_inlist: registry types disagree with the declarations:\n  " + "\n  ".join(wrong))
+        r["code"] = r["canonical"].lower()
+        r["inlist"] = r["proposed_name"]
+        r["alias_list"] = [a for a in r["aliases"].split(",") if a]
+    deck_rows = [r for r in rows if r["status"] != "derived"]
+    live = [r for r in deck_rows if r["status"] == "live"]
 
-    # ---- declarations ----
-    decl = ["! GENERATED by tools/gen_inlist.py from defaults/controls_registry.tsv",
-            "! -- do not edit by hand. read_inlist's declarations: the inlist",
-            "! variables that have no existing symbol in the reader's scope, and",
-            "! the &control and &physics groups under the new names (they hide",
-            "! legacy_controls' groups of the same names in read_inlist). See",
-            "! defaults/*.defaults for docs."]
+    # the names a deck can use: unique, and an inlist local hides no code name
+    seen = {}
     for r in live:
-        if r["cls"] != "newlocal" and not r["aliases"]:
-            continue
-        typ, dims = legacy_decl(r["legacy"], decls)
-        if typ is None:
-            print("WARNING: no legacy declaration found for", r["legacy"])
-            typ, dims = "double precision", ""
-        d = f"({dims})" if dims else ""
-        if r["cls"] == "newlocal":
-            decl.append(f"      {typ} :: {r['new']}{d}")
-        for alias in r["aliases"]:
-            decl.append(f"      {typ} :: {alias}{d}")
-    for gname in ("control", "physics"):
-        members = [n for r in live if r["group"] == gname
-                   for n in [r["new"] if r["cls"] != "keep" else r["legacy"]] + r["aliases"]]
-        decl.append(f"      namelist /{gname}/ &")
-        line = "           & "
-        outl = []
-        for i, mname in enumerate(members):
-            piece = mname + ("," if i < len(members) - 1 else "")
-            if len(line) + len(piece) > 72:
-                outl.append(line.rstrip() + " &")
-                line = "           & "
-            line += piece + " "
-        outl.append(line.rstrip())
-        decl.extend(outl)
-    emit(SRC / "io" / "inlist_new_decl.inc", "\n".join(decl) + "\n")
-
-    # ---- the legacy <-> canonical translation ----
-    # every legacy variable the read copies into a controls_buffer member:
-    # set_legacy_defaults seeds it from the member's default, and
-    # adopt_canonical_names copies the value read back into the member
-    copies = [r for r in rows if r["home"] and r["legacy"] != "-"
-              and r["legacy"].lower() != r["canonical"]]
-    head = ["! GENERATED by tools/gen_inlist.py from defaults/controls_registry.tsv",
-            "! -- do not edit by hand."]
-    emit(SRC / "io" / "legacy_mirror.inc", "\n".join(
-        head + ["! set_legacy_defaults: each legacy name takes its canonical twin's",
-                "! default (the controls_buffer initializer, in the buffer's pristine",
-                "! state at this point)."]
-        + [f"      {r['legacy']} = {r['canonical']}" for r in copies]) + "\n")
-    emit(SRC / "io" / "adopt_canonical.inc", "\n".join(
-        head + ["! adopt_canonical_names: each value read under a legacy name, copied",
-                "! into its canonical home in controls_buffer."]
-        + [f"      {r['canonical']} = {r['legacy']}" for r in copies]) + "\n")
-
-    # ---- read block ----
-    rd = ["! GENERATED by tools/gen_inlist.py -- do not edit by hand.",
-          "! read_inlist's body: the inlist read. Runs instead of the legacy",
-          "! CONTROL/PHYSICS read; set_legacy_defaults has already run, so",
-          "! seeding the new names from their legacy twins gives the same",
-          "! defaults, and the copies after the read hand the values back to",
-          "! the legacy names, which the rest of the read (adopt_canonical_names",
-          "! on) reads.",
-          "! Seed new-style names from the legacy defaults:"]
+        for n in [r["inlist"]] + r["alias_list"]:
+            if n.lower() in seen:
+                problems.append(f"{n}: the inlist name of two rows ({seen[n.lower()]}, {r['code']})")
+            seen[n.lower()] = r["code"]
+            if n.lower() != r["code"] and n.lower() in by_name:
+                problems.append(f"{n}: an inlist name (of {r['code']}) that is another control's "
+                                "code name")
+    groups = legacy_groups()
+    in_groups = {n: g for g, ns in groups.items() for n in ns}
+    with_legacy = [r for r in deck_rows if r["legacy"] != "-"]
+    for r in with_legacy:
+        if r["legacy"].lower() not in in_groups:
+            problems.append(f"{r['inlist']}: legacy name {r['legacy']} is in neither legacy namelist "
+                            "(io/legacy_controls.f90); a control the legacy decks do not read has "
+                            "legacy '-'")
+    named = {r["legacy"].lower() for r in with_legacy}
+    problems += [f"{n}: in the legacy namelist /{g}/ but in no registry row"
+                 for n, g in in_groups.items() if n not in named]
     for r in live:
-        if r["cls"] == "keep":
-            continue
-        rd.append(f"      {r['new']} = {r['legacy']}")
-        for alias in r["aliases"]:
-            rd.append(f"      {alias} = {r['legacy']}")
-    rd += [
-        "! Read &control and &physics, in either order, from the one file.",
-        "      open(newunit=namelist_unit, file=control_nml_file, status='OLD', iostat=ios, iomsg=msg)",
-        "      call check_io(ios, msg, 'open the inlist', control_nml_file, ierr)",
-        "      if (ierr /= 0) return",
+        if r["alias_list"] and not re.match(r"(real|string)\b", by_name.get(r["code"], {}).get("type", "real")):
+            problems.append(f"{r['inlist']}: an alias of a {by_name[r['code']]['type']} control; add "
+                            "its type to controls_reader's other_than")
+    if problems:
+        sys.exit("gen_inlist: the registry, controls_buffer and the legacy namelists disagree:\n  "
+                 + "\n  ".join(problems) + "\n" + controls_registry.CELLS_GUIDE)
+
+    # ---- the inlist reader ----
+    local = [r for r in live if r["inlist"].lower() != r["code"]]
+    aliased = [r for r in live if r["alias_list"]]
+    bound = sorted({r["code"] for r in live})
+    decl = HEAD + [
+        "! read_inlist's declarations: the code names the inlist binds, or copies",
+        "! an inlist local into; a local for each inlist name that is not its",
+        "! code name, and for each alias; the aliased controls' defaults and the",
+        "! elements the deck sets (inlist_read.inc); the &control and &physics",
+        "! groups.",
+    ]
+    decl += ["      use control_slots, only: max_runs"]
+    decl += wrapped("      use controls_buffer, only: ", bound, cont="           ")
+    decl += ["! the inlist names that differ from their code names"]
+    decl += [declaration(by_name[r["code"]], r["inlist"]) for r in local]
+    if aliased:
+        decl += ["! the aliases, their controls' defaults, and the elements the deck sets"]
+    for r in aliased:
+        m = by_name[r["code"]]
+        decl += [declaration(m, a) for a in r["alias_list"]]
+        decl.append(declaration(m, r["code"] + "_default"))
+        decl += [f"      logical :: {n}_set{m['dims']}" for n in [r["inlist"]] + r["alias_list"]]
+    for g in ("control", "physics"):
+        names = [n for r in live if r["group"] == g for n in [r["inlist"]] + r["alias_list"]]
+        decl.append(f"      namelist /{g}/ &")
+        decl += wrapped("           & ", names)
+    emit(SRC / "io" / "inlist_decl.inc", "\n".join(decl) + "\n")
+
+    def inlist_var(r):
+        return r["inlist"] if r["inlist"].lower() != r["code"] else r["code"]
+
+    read_groups = [
         "      read(unit=namelist_unit, nml=control, iostat=ios, iomsg=msg)",
-        "      call check_io(ios, msg, 'read &control from', control_nml_file, ierr, namelist_unit)",
+        "      call check_io(ios, msg, 'read &control from', inlist_file, ierr, namelist_unit)",
         "      if (ierr /= 0) return",
         "      rewind(namelist_unit)",
         "      read(unit=namelist_unit, nml=physics, iostat=ios, iomsg=msg)",
-        "      call check_io(ios, msg, 'read &physics from', control_nml_file, ierr, namelist_unit)",
+        "      call check_io(ios, msg, 'read &physics from', inlist_file, ierr, namelist_unit)",
         "      if (ierr /= 0) return",
-        "      close(namelist_unit)",
     ]
-    aliased = [r for r in live if r["aliases"]]
-    if aliased:
-        rd.append("! An older inlist name (an alias) counts when the deck sets it and not")
-        rd.append("! the inlist name:")
-    for r in aliased:
-        ne = ".neqv." if r["typ"].startswith("logical") else "/="
-        for alias in r["aliases"]:
-            rd.append(f"      if (any([{alias} {ne} {r['legacy']}]) .and. "
-                      f".not. any([{r['new']} {ne} {r['legacy']}])) &")
-            rd.append(f"           {r['new']} = {alias}")
-    rd.append("! Map the new-style values back onto the legacy names:")
-    for r in live:
-        if r["cls"] == "keep":
-            continue
-        rd.append(f"      {r['legacy']} = {r['new']}")
-    emit(SRC / "io" / "inlist_new_read.inc", "\n".join(rd) + "\n")
+    rd = HEAD + [
+        "! read_inlist's body: the deck's &control and &physics groups, in either",
+        "! order, read into the code names (inlist_decl.inc).",
+        "! The inlist locals start at their code names' defaults:",
+    ]
+    rd += [f"      {r['inlist']} = {r['code']}" for r in local]
+    rd += ["      open(newunit=namelist_unit, file=inlist_file, status='OLD', iostat=ios, iomsg=msg)",
+           "      call check_io(ios, msg, 'open the inlist', inlist_file, ierr)",
+           "      if (ierr /= 0) return"]
+    def names(r):
+        """(mask name, variable) of the inlist name and of each alias"""
+        return [(r["inlist"], inlist_var(r))] + [(a, a) for a in r["alias_list"]]
 
-    # ---- defaults docs ----
-    for gname in ("control", "physics"):
-        out = [f"! {gname}.defaults -- every &{gname} variable with its default.",
+    def differs(r):
+        return ".neqv." if by_name[r["code"]]["type"].startswith("logical") else "/="
+
+    if aliased:
+        rd += ["! An alias counts, element by element, where the deck sets it and not",
+               "! the inlist name. An element is set when the deck names it: the",
+               "! groups are read twice, the aliased names seeded with another value",
+               "! (other_than) the first time and with their default the second, and",
+               "! an element the deck names differs from its seed after one read or",
+               "! the other."]
+        for r in aliased:
+            rd.append(f"      {r['code']}_default = {r['code']}")
+            rd += [f"      {v} = other_than({r['code']}_default)" for _, v in names(r)]
+        rd += read_groups
+        for r in aliased:
+            for k, v in names(r):
+                rd += assign(f"{k}_set", f"{v} {differs(r)} other_than({r['code']}_default)")
+            rd += [f"      {v} = {r['code']}_default" for _, v in names(r)]
+        rd += ["      rewind(namelist_unit)"]
+    rd += read_groups + ["      close(namelist_unit)"]
+    for r in aliased:
+        for k, v in names(r):
+            rd += assign(f"{k}_set", f"{k}_set .or. {v} {differs(r)} {r['code']}_default")
+        v = inlist_var(r)
+        for a in r["alias_list"]:
+            take = "where" if by_name[r["code"]]["dims"] else "if"
+            rd += guarded(f"{take} ({a}_set .and. .not. {r['inlist']}_set)", f"{v} = {a}")
+            rd += [f"      if (any([{a}_set .and. {r['inlist']}_set])) call report_warning( &",
+                   f"           '{a} and {r['inlist']} are both set: ' // &",
+                   f"           '{r['inlist']}''s value is used')"]
+    rd += ["! The inlist locals copied into their code names:"]
+    rd += [f"      {r['code']} = {r['inlist']}" for r in local]
+    emit(SRC / "io" / "inlist_read.inc", "\n".join(rd) + "\n")
+
+    # ---- the legacy reader ----
+    same = sorted({r["code"] for r in with_legacy if r["legacy"].lower() == r["code"]})
+    renamed = [r for r in with_legacy if r["legacy"].lower() != r["code"]]
+    use = HEAD + ["! legacy_controls' code names: those the legacy groups bind (spelled",
+                  "! as their legacy names), and those a legacy variable is copied into."]
+    use += wrapped("      use controls_buffer, only: ",
+                   sorted(set(same) | {r["code"] for r in renamed}), cont="           ")
+    emit(SRC / "io" / "legacy_use.inc", "\n".join(use) + "\n")
+    emit(SRC / "io" / "legacy_decl.inc", "\n".join(
+        HEAD + ["! The legacy names that differ from their code names, each of its code",
+                "! name's type and shape (the frozen legacy namelists bind them)."]
+        + [declaration(by_name[r["code"]], r["legacy"]) for r in renamed]) + "\n")
+    emit(SRC / "io" / "legacy_defaults.inc", "\n".join(
+        HEAD + ["! read_legacy_deck: each legacy name its code name's default (the",
+                "! buffer is at its declared defaults before a deck is read)."]
+        + [f"      {r['legacy']} = {r['code']}" for r in renamed]) + "\n")
+    emit(SRC / "io" / "legacy_to_code.inc", "\n".join(
+        HEAD + ["! read_legacy_deck: each code name the value read under its legacy",
+                "! name."]
+        + [f"      {r['code']} = {r['legacy']}" for r in renamed]) + "\n")
+
+    # ---- the documents ----
+    def default_of(r):
+        return shown(by_name[r["code"]]["init"])
+
+    for g in ("control", "physics"):
+        out = [f"! {g}.defaults -- every &{g} variable with its default.",
                "! GENERATED by tools/gen_inlist.py from",
                "! defaults/controls_registry.tsv (edit that, then regenerate).",
-               "! The defaults are the reader's: set_legacy_defaults, else the",
-               "! controls_buffer initializer.",
-               "", f"&{gname}", ""]
+               "! The defaults are the code's: each control's controls_buffer initializer.",
+               "", f"&{g}", ""]
         for r in live:
-            if r["group"] != gname:
+            if r["group"] != g:
                 continue
-            name = r["new"] if r["cls"] != "keep" else r["legacy"]
             if r["doc"]:
                 out.append(f"      ! {r['doc']}")
-            if r["legacy"] != name:
+            if r["legacy"] not in ("-", r["inlist"]):
                 out.append(f"      ! (legacy name: {r['legacy']})")
-            if r["aliases"]:
-                out.append(f"      ! (also accepted: {', '.join(r['aliases'])})")
-            if r["legacy"].lower() not in code_default:
-                sys.exit(f"gen_inlist: no default for {r['legacy']} in "
-                         "set_legacy_defaults or controls_buffer")
-            out.append(f"      {name} = {shown(code_default[r['legacy'].lower()])}")
-            out.append("")
+            if r["alias_list"]:
+                out.append(f"      ! (also accepted: {', '.join(r['alias_list'])})")
+            out += [f"      {r['inlist']} = {default_of(r)}", ""]
         out += ["/", ""]
-        dead = [r for r in rows if r["status"] == "unused" and r["group"] == gname]
+        dead = [r for r in deck_rows if r["status"] == "unused" and r["group"] == g]
         if dead:
-            out.append("! Unused legacy controls (accepted by the legacy reader only,")
-            out.append("! referenced nowhere in the code; dropped from the new format):")
-            out.append("!   " + ", ".join(r["legacy"] for r in dead))
-        for r in rows:
-            if r["status"] == "legacy" and r["group"] == gname:
-                out.append(f"! Legacy-reader only, dropped from the new format: {r['legacy']}, the")
-                out.append(f"! {r['doc']}")
-        emit(SRC / "defaults" / f"{gname}.defaults", "\n".join(out) + "\n")
+            out += ["! Unused legacy controls (accepted by the legacy reader only,",
+                    "! referenced nowhere in the code; dropped from the new format):",
+                    "!   " + ", ".join(r["legacy"] for r in dead)]
+        for r in deck_rows:
+            if r["status"] == "legacy" and r["group"] == g:
+                out += [f"! Legacy-reader only, dropped from the new format: {r['legacy']}, the",
+                        f"! {r['doc']}"]
+        emit(SRC / "defaults" / f"{g}.defaults", "\n".join(out) + "\n")
 
-    # ---- the registry as a document ----
     def cell(text):
         return text.replace("|", "\\|")
 
@@ -318,44 +321,45 @@ def main():
           "  read (an input-only control: `map_user_inputs` or `derive_controls`",
           "  turns it into others); `none`, nowhere. `tools/check_boundaries.py`",
           "  checks it.",
-          "- **status**: `live`, read by both formats (an inlist name in",
-          "  parentheses is an older one the inlist format still accepts);",
-          "  `legacy`, read from the legacy decks only; `unused`, read from the",
-          "  legacy decks only and used nowhere; `derived`, a member no deck sets.",
-          "  The columns are described in `tools/controls_registry.py`.",
+          "- **status**: `live`, read by the inlist format (an inlist name in",
+          "  parentheses is an older one it still accepts) and, unless its legacy",
+          "  name is `-`, by the legacy decks; `legacy`, read from the legacy decks",
+          "  only; `unused`, read from the legacy decks only and used nowhere;",
+          "  `derived`, a member no deck sets. The columns are described in",
+          "  `tools/controls_registry.py`.",
           ""]
-    for gname in ("control", "physics"):
-        md += [f"## &{gname}", "",
+    for g in ("control", "physics"):
+        md += [f"## &{g}", "",
                "| inlist name | legacy name | code name | home | run copy | used | type | default | status | description |",
                "|---|---|---|---|---|---|---|---|---|---|"]
-        for r in rows:
-            if r["group"] != gname:
+        for r in deck_rows:
+            if r["group"] != g:
                 continue
-            name = r["new"] if r["status"] not in controls_registry.DEAD else "(legacy only)"
-            name = f"`{name}`" + "".join(f" (`{a}`)" for a in r["aliases"])
-            default = shown(code_default.get(r["legacy"].lower(), "")) or " "
+            name = r["inlist"] if r["status"] == "live" else "(legacy only)"
+            name = f"`{name}`" + "".join(f" (`{a}`)" for a in r["alias_list"])
             copy = f"`{r['run_copy']}`" if r["run_copy"] else "-"
-            md.append(f"| {name} | `{r['legacy']}` | `{r['canonical'] or '-'}` | {r['home'] or '-'} | "
-                      f"{copy} | {r['used'] or '-'} | {r['typ']} | `{cell(default)}` | {r['status']} | "
+            md.append(f"| {name} | `{r['legacy']}` | `{r['code']}` | {r['home']} | "
+                      f"{copy} | {r['used']} | {r['type']} | `{cell(default_of(r))}` | {r['status']} | "
                       f"{cell(r['doc'])} |")
         md.append("")
     md += ["## Members no deck sets", "",
-           "The read computes them (unit numbers, flags derived from other controls)",
-           "or the run keeps them. Each is in the group of its topic.", "",
+           "The read derives them from the controls a deck sets (or, for the deck's",
+           "file names, from the command line). Each is in the group of its topic.", "",
            "| code name | group | home | run copy | used | type | default | description |",
            "|---|---|---|---|---|---|---|---|"]
-    for r in derived:
-        default = shown(code_default.get(r["canonical"], "0")) or " "
+    for r in rows:
+        if r["status"] != "derived":
+            continue
         copy = f"`{r['run_copy']}`" if r["run_copy"] else "-"
-        md.append(f"| `{r['canonical']}` | {r['group']} | {r['home']} | {copy} | {r['used']} | {r['typ']} | "
-                  f"`{cell(default)}` | {cell(r['doc'])} |")
+        md.append(f"| `{r['code']}` | {r['group']} | {r['home']} | {copy} | {r['used']} | {r['type']} | "
+                  f"`{cell(default_of(r))}` | {cell(r['doc'])} |")
     emit(SRC / "defaults" / "controls_registry.md", "\n".join(md) + "\n")
 
     finish("gen_inlist.py")
-    print(f"live: {len(live)} (keep {sum(r['cls']=='keep' for r in live)}, "
-          f"direct {sum(r['cls']=='direct' for r in live)}, "
-          f"newlocal {sum(r['cls']=='newlocal' for r in live)}); "
-          f"dead: {len(rows)-len(live)}")
+    print(f"inlist: {len(live)} controls ({len(live) - len(local)} read into their code names, "
+          f"{len(local)} through a local), {sum(len(r['alias_list']) for r in live)} aliases; "
+          f"legacy decks: {len(with_legacy)} names ({len(same)} bound to their code names, "
+          f"{len(renamed)} translated)")
 
 
 if __name__ == "__main__":

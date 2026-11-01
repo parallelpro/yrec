@@ -27,6 +27,10 @@ OUT = SRC / "io" / "test" / "controls_dump.inc"
 
 DECL = re.compile(r"^\s*(double precision|integer|logical|character\(len=\d+\))\s*::\s*(\w+)\s*(\(([^)]*)\))?")
 FMT = {"double precision": "es25.17e3", "integer": "i0", "logical": "l1"}
+# The deck's own file names: where the deck came from, not what it sets
+# (test_controls names its decks by their paths, which differ from one
+# checkout to the next).
+NOT_DUMPED = {"control_nml_file", "physics_nml_file"}
 
 
 def dims_of(spec):
@@ -67,11 +71,13 @@ for group, path in DEFS:
         if not m:
             continue
         kind, name, dims = m.group(1), m.group(2), dims_of(m.group(4))
+        if name.lower() in NOT_DUMPED:
+            continue
         out += writes_for(group, name, kind, dims)
         n += 1
 buffer_only = {r["canonical"] for r in controls_registry.rows() if r["home"] == "buffer"}
 for typespec, name, dims, _ in gen_controls_state.parse():
-    if name.lower() not in buffer_only:
+    if name.lower() not in buffer_only or name.lower() in NOT_DUMPED:
         continue
     kind = "double precision" if typespec == "double precision" else typespec
     out += writes_for("buffer", name, kind, dims_of(dims.strip("()")))

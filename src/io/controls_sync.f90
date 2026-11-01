@@ -23,7 +23,8 @@ module controls_sync
            solar_radius_cgs, G_cgs, nu_max_sun, delta_nu_sun, Teff_sun, &
            profile_data_prefix, inlist_used_file, first_model_file, &
            last_model_file, log_output_file, dynamics_file, isochrone_file, &
-           surface_composition_file, run_description, pulse_format, &
+           surface_composition_file, stored_change_file, control_nml_file, &
+           physics_nml_file, run_description, pulse_format, &
            write_profile_flag, write_pulse_flag, terminal_interval, &
            set_initial_model_number, report_solver_diagnostics, &
            compute_neutrino_fluxes, timestep_factors, nuclear_logT_cutoffs, &
@@ -90,21 +91,22 @@ module controls_sync
            difad_velocity_scale, mixing_velocity_scale, es_velocity_scale, &
            gsf_velocity_scale, secular_shear_velocity_scale, &
            critical_reynolds, enable_eddington_sweet, enable_mu_gradient, &
-           es_mixing_scale, secular_shear_mixing_scale, gsf_mixing_scale, &
-           solberg_hoiland_velocity_scale, solberg_hoiland_mixing_scale, &
-           gsf_inhibition_mode, min_abundance, absolute_tolerance, &
-           relative_tolerance, max_burn_iterations, extend_core_inward, &
-           num_core_shells_added, core_mass_reduction_factor, &
-           rewind_short_file, isochrone_output_active, initial_x_array, &
-           initial_z_array, mixing_length_array, senv0_array, &
-           has_senv0_array, luminosity_tolerance, radius_tolerance, &
-           zx_tolerance, target_solar_zx, target_solar_age, &
-           calibrate_solar_model, calibrate_solar_zx, rescale_core_z, &
-           rescale_z_mix1, rescale_z_mix2, use_z_ramp, &
-           target_luminosity_lsun, target_star_luminosity_tolerance, &
-           target_teff, target_radius_rsun, specify_teff_flag, &
-           calibrate_star_flag, use_opal95_eos, use_opal2001_eos, &
-           use_opal2006_eos, use_numerical_derivatives, use_scv_eos, &
+           mu_gradient_scale, es_mixing_scale, secular_shear_mixing_scale, &
+           gsf_mixing_scale, solberg_hoiland_velocity_scale, &
+           solberg_hoiland_mixing_scale, gsf_inhibition_mode, &
+           min_abundance, absolute_tolerance, relative_tolerance, &
+           max_burn_iterations, extend_core_inward, num_core_shells_added, &
+           core_mass_reduction_factor, rewind_short_file, &
+           isochrone_output_active, initial_x_array, initial_z_array, &
+           mixing_length_array, senv0_array, has_senv0_array, &
+           luminosity_tolerance, radius_tolerance, zx_tolerance, &
+           target_solar_zx, target_solar_age, calibrate_solar_model, &
+           calibrate_solar_zx, rescale_core_z, rescale_z_mix1, &
+           rescale_z_mix2, use_z_ramp, target_luminosity_lsun, &
+           target_star_luminosity_tolerance, target_teff, &
+           target_radius_rsun, specify_teff_flag, calibrate_star_flag, &
+           use_opal95_eos, use_opal2001_eos, use_opal2006_eos, &
+           use_numerical_derivatives, use_scv_eos, &
            use_debye_huckel_correction, debye_huckel_eta_min, &
            debye_huckel_eta_max, laol_table_z1, laol_table_z2, &
            opal_table_z1, opal_table_z2, opal95_single_table_z, &
@@ -192,6 +194,9 @@ subroutine seed_controls_buffer(s)
       dynamics_file = repeat(achar(0), 256)
       isochrone_file = repeat(achar(0), 256)
       surface_composition_file = repeat(achar(0), 256)
+      stored_change_file = repeat(achar(0), 256)
+      control_nml_file = repeat(achar(0), 256)
+      physics_nml_file = repeat(achar(0), 256)
       run_description = repeat(achar(0), 256)
       pulse_format = s%physics%pulse_format
       write_profile_flag = s%physics%write_profile_flag
@@ -377,6 +382,7 @@ subroutine seed_controls_buffer(s)
       critical_reynolds = s%physics%critical_reynolds
       enable_eddington_sweet = 1
       enable_mu_gradient = 1
+      mu_gradient_scale = 1.0d0
       es_mixing_scale = s%physics%es_mixing_scale
       secular_shear_mixing_scale = s%physics%secular_shear_mixing_scale
       gsf_mixing_scale = s%physics%gsf_mixing_scale

@@ -12,7 +12,7 @@ control	flast	string	last_model_file	live		Path for the final model (.mod) writt
 control	ffirst	string	first_model_file	live		Starting model read when read_first_model is set for a run	first_model_file	buffer		read	
 control	ffermi	string	fermi_table_file	live		Fermi-Dirac integral table (Yale/Prather degenerate-electron EOS)	fermi_table_path	control		run	
 physics	fshort	string	log_output_file	live		Run log path; its directory part defines the output directory (legacy FSHORT)	log_output_file	buffer		read	
-control	fstch	string	stored_change_file	unused		Unused: read by the legacy reader and ignored					
+control	fstch	string	stored_change_file	unused		Unused: read by the legacy reader and ignored	stored_change_file	buffer		none	
 control	fdyn	string	dynamics_file	live		Opened on the dynamics unit (formatted, STATUS=OLD)	dynamics_file	buffer		read	
 control	flldat	string	opal92_opacity_table_file	live		OPAL 1992 opacity table (use_opal92_tables)	opal92_table_path	control		run	ll_data_file
 control	fscomp	string	surface_composition_file	live		Accepted and ignored: no surface-composition file is written any more (the light elements are history columns); kept so that decks setting it still read	surface_composition_file	buffer		none	
@@ -154,7 +154,7 @@ physics	fk	real	wind_law_constant	live		The constant factor of both wind laws (1
 physics	fw	real	difad_velocity_scale	live		Scale of the angular momentum diffusion coefficients in the diffusion-advection transport	difad_velocity_scale	physics		run	
 physics	fc	real	mixing_velocity_scale	live		Ratio of the chemical mixing to the angular momentum diffusion coefficients (calibrated to Li depletion)	mixing_velocity_scale	physics		run	
 physics	fo	real	coupling_factor	live		Inert: read and used nowhere (the F77 code only echoed it, as COUPLING, in the .short header)	coupling_factor	buffer		none	
-physics	fmu	real	mu_gradient_scale	unused		Unused: read from the legacy decks and ignored (the mu-gradient scale had no effect, docs/bug_sweep.md O15; dropped from the inlist format)					
+physics	fmu	real	mu_gradient_scale	unused		Unused: read from the legacy decks and ignored (the mu-gradient scale had no effect, docs/bug_sweep.md O15; dropped from the inlist format)	mu_gradient_scale	buffer		none	
 physics	fes	real	es_velocity_scale	live		Scale of the Eddington-Sweet circulation velocity in the angular momentum transport	es_velocity_scale	physics		run	
 physics	fcore	real	core_mass_reduction_factor	live		With extend_core_inward: the factor by which the innermost mass is reduced	core_mass_reduction_factor	physics	core_mass_reduction	run	
 physics	fgsf	real	gsf_velocity_scale	live		Scale of the GSF and ABCD instability velocities in the angular momentum transport	gsf_velocity_scale	physics		run	
@@ -363,11 +363,11 @@ physics	tol_dz_max	real	tol_dz_max	live		With use_new_rate_variables: the larges
 physics	time_max_dt_frac	real	time_max_dt_frac	live		With use_new_rate_variables: the largest factor by which the timestep changes from one model to the next	time_max_dt_frac	buffer		read	
 physics	lnewvars	logical	use_new_rate_variables	live		Take the zoning and timestep tolerances from the named tol_*, flag_* and time_* controls (and lstruct_time) instead of zoning_tolerances and timestep_factors; nothing to do with reaction rates	use_new_rate_variables	buffer		read	
 physics	lcalcenv	logical	calc_envelope_flag	live		Integrate the full envelope (false: the atmosphere to the photosphere only)	calc_envelope_flag	physics		run	
-control	history_columns_file	string	history_columns_file	live	mesa: same	File listing the history columns (one name per line, ! comments); blank: the default selection of defaults/history_columns.list	history_columns_file	control		run	
-control	profile_columns_file	string	profile_columns_file	live	mesa: same	File listing the profile columns; blank: the default selection of defaults/profile_columns.list	profile_columns_file	control		run	
+control	-	string	history_columns_file	live	mesa: same	File listing the history columns (one name per line, ! comments); blank: the default selection of defaults/history_columns.list	history_columns_file	control		run	
+control	-	string	profile_columns_file	live	mesa: same	File listing the profile columns; blank: the default selection of defaults/profile_columns.list	profile_columns_file	control		run	
 physics	profile_data_prefix	string	profile_data_prefix	live	mesa: same	Profile/pulse file name prefix: <prefix><N>.data[.GYRE/.FGONG/.GSM] in the output directory	profile_data_prefix	physics		run	
 control	inlist_used_file	string	inlist_used_file	live		Verbatim copy of the input namelist file(s), written at startup as run provenance; blank (the default): inlist_used in the output directory, the run log's	inlist_used_file	buffer		read	
-physics	star_history_name	string	star_history_name	live	mesa: same	MESA mode: history file name (written to the output directory)	star_history_name	physics		run	
+physics	-	string	star_history_name	live	mesa: same	MESA mode: history file name (written to the output directory)	star_history_name	physics		run	
 physics	terminal_interval	integer	terminal_interval	live	mesa: same	Print the compact per-model progress line (terminal + run log) every N models; 0 = off; the final model always prints	terminal_interval	physics		run	
 control	log_L_upper_limit	real(50)	log_L_upper_limit	live	mesa: same	Per kind card: stop the card when log(L/Lsun) exceeds this (1d99 = off)	log_l_upper_limit	control		run	
 control	log_L_lower_limit	real(50)	log_L_lower_limit	live	mesa: same	Per kind card: stop the card when log(L/Lsun) drops below this (-1d99 = off)	log_l_lower_limit	control		run	
@@ -381,11 +381,11 @@ physics	nu_max_sun	real	nu_max_sun	live		Solar nu_max [uHz] for the scaling rela
 physics	delta_nu_sun	real	delta_nu_sun	live		Solar delta_nu [uHz] for the mean-density scaling relation (Huber et al. 2011)	delta_nu_sun	physics		run	
 physics	Teff_sun	real	Teff_sun	live		Solar effective temperature [K] for the nu_max scaling relation (IAU nominal value)	teff_sun	physics		run	
 physics	report_solver_diagnostics	logical	report_solver_diagnostics	live	~ mesa report_solver_progress	Verbose run-log diagnostics: Henyey iteration trace, envelope/atmosphere integration statistics, surface-triangle and rezoning bookkeeping	report_solver_diagnostics	buffer		read	
-physics	profile_interval	integer	profile_interval	live	mesa: same	MESA mode: write profile{N}.data every N converged models (0 = off); the history profile_number column maps models to profiles	profile_interval	physics		run	
-physics	pulse_format	string	pulse_format	live	mesa: pulse_data_format	MESA mode: pulse file format (GYRE text, FGONG, or GSM = GYRE HDF5 [needs make USE_HDF5=1]), written alongside each profile as profile{N}.data.{format}	pulse_format	physics		run	
-physics	write_profile_flag	logical	write_profile_flag	live		MESA mode: master toggle for profile{N}.data output (cadence from profile_interval)	write_profile_flag	physics		run	
-physics	write_pulse_flag	logical	write_pulse_flag	live		MESA mode: master toggle for pulse output (format from pulse_format; written with each profile number)	write_pulse_flag	physics		run	
-physics	compute_neutrino_fluxes	logical	compute_neutrino_fluxes	live		Diagnostic: write the per-zone solar neutrino production table (fluxes per shell, normalized profiles, Bahcall-Pinsonneault layout) to the short/log stream at the start of each run	compute_neutrino_fluxes	physics		run	
+physics	-	integer	profile_interval	live	mesa: same	MESA mode: write profile{N}.data every N converged models (0 = off); the history profile_number column maps models to profiles	profile_interval	physics		run	
+physics	-	string	pulse_format	live	mesa: pulse_data_format	MESA mode: pulse file format (GYRE text, FGONG, or GSM = GYRE HDF5 [needs make USE_HDF5=1]), written alongside each profile as profile{N}.data.{format}	pulse_format	physics		run	
+physics	-	logical	write_profile_flag	live		MESA mode: master toggle for profile{N}.data output (cadence from profile_interval)	write_profile_flag	physics		run	
+physics	-	logical	write_pulse_flag	live		MESA mode: master toggle for pulse output (format from pulse_format; written with each profile number)	write_pulse_flag	physics		run	
+physics	-	logical	compute_neutrino_fluxes	live		Diagnostic: write the per-zone solar neutrino production table (fluxes per shell, normalized profiles, Bahcall-Pinsonneault layout) to the short/log stream at the start of each run	compute_neutrino_fluxes	physics		run	
 control	-	logical(50)	end_age_stop_active	derived		Per run: a stop condition is armed (max_age or a central-abundance stop; set by the run plan, rewritten by the calibration)	end_age_stop_active	control	card_stops_active	run	
 control	-	logical(50)	timestep_override_active	derived		Per run: the run takes the fixed timestep timestep_override (set by the run plan)	timestep_override_active	control	card_fixed_timestep_active	run	
 physics	-	real	solver_underrelax_factor	derived		The Newton iteration's current correction factor (the run ramps it from fcorr0 and fcorri)	solver_underrelax_factor	physics	newton_correction_factor	run	
@@ -399,3 +399,5 @@ physics	-	integer	new_species_index	derived		With rescale_species_active: the co
 physics	-	logical	value_relative_to_h	derived		With rescale_species_active: new_species_value is relative to hydrogen (from new_species_value_mode)	value_relative_to_h	physics		run	
 control	-	logical	change_cno_mixture_active	derived		The starting model's CNO mixture is changed (cno_mixture_mode = 1 and a valid mixture)	change_cno_mixture_active	control		run	
 control	-	logical	change_isotope_ratios_active	derived		The starting model's isotope ratios are changed (isotope_mixture_mode = 1 and a valid mixture)	change_isotope_ratios_active	control		run	
+control	-	string	control_nml_file	derived		The deck's file: the single-file inlist, or the legacy pair's CONTROL namelist (.nml1); read_input finds it (the first command-line argument, default yrec8.nml1, or an embedding host's override)	control_nml_file	buffer		read	
+control	-	string	physics_nml_file	derived		The legacy pair's PHYSICS namelist (.nml2; the second command-line argument, default yrec8.nml2), or the inlist again	physics_nml_file	buffer		read	

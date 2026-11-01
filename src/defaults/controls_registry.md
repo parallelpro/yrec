@@ -18,11 +18,12 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
   read (an input-only control: `map_user_inputs` or `derive_controls`
   turns it into others); `none`, nowhere. `tools/check_boundaries.py`
   checks it.
-- **status**: `live`, read by both formats (an inlist name in
-  parentheses is an older one the inlist format still accepts);
-  `legacy`, read from the legacy decks only; `unused`, read from the
-  legacy decks only and used nowhere; `derived`, a member no deck sets.
-  The columns are described in `tools/controls_registry.py`.
+- **status**: `live`, read by the inlist format (an inlist name in
+  parentheses is an older one it still accepts) and, unless its legacy
+  name is `-`, by the legacy decks; `legacy`, read from the legacy decks
+  only; `unused`, read from the legacy decks only and used nowhere;
+  `derived`, a member no deck sets. The columns are described in
+  `tools/controls_registry.py`.
 
 ## &control
 
@@ -40,7 +41,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `last_model_file` | `flast` | `last_model_file` | buffer | - | read | string | `'{YREC_OUTPUT}/final.mod'` | live | Path for the final model (.mod) written every model; reloadable |
 | `first_model_file` | `ffirst` | `first_model_file` | buffer | - | read | string | `''` | live | Starting model read when read_first_model is set for a run |
 | `fermi_table_file` | `ffermi` | `fermi_table_path` | control | - | run | string | `''` | live | Fermi-Dirac integral table (Yale/Prather degenerate-electron EOS) |
-| `(legacy only)` | `fstch` | `-` | - | - | - | string | `''` | unused | Unused: read by the legacy reader and ignored |
+| `(legacy only)` | `fstch` | `stored_change_file` | buffer | - | none | string | `''` | unused | Unused: read by the legacy reader and ignored |
 | `dynamics_file` | `fdyn` | `dynamics_file` | buffer | - | read | string | `''` | live | Opened on the dynamics unit (formatted, STATUS=OLD) |
 | `opal92_opacity_table_file` (`ll_data_file`) | `flldat` | `opal92_table_path` | control | - | run | string | `''` | live | OPAL 1992 opacity table (use_opal92_tables) |
 | `surface_composition_file` | `fscomp` | `surface_composition_file` | buffer | - | none | string | `''` | live | Accepted and ignored: no surface-composition file is written any more (the light elements are history columns); kept so that decks setting it still read |
@@ -141,8 +142,8 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `initial_b10_fraction` | `xb10_ini` | `initial_b10_fraction` | buffer | - | read | real | `1.002d-9` | live | Initial B10 mass fraction for isotope_mixture_name 'CUS' |
 | `initial_b11_fraction` | `xb11_ini` | `initial_b11_fraction` | buffer | - | read | real | `4.405d-9` | live | Initial B11 mass fraction for isotope_mixture_name 'CUS' |
 | `pulse_gyre_interval` | `pulse_gyre_interval` | `pulse_gyre_interval` | control | - | run | integer | `0` | live | Write the interior-only GYRE file every this many models (0 = off) |
-| `history_columns_file` | `history_columns_file` | `history_columns_file` | control | - | run | string | `' '` | live | File listing the history columns (one name per line, ! comments); blank: the default selection of defaults/history_columns.list |
-| `profile_columns_file` | `profile_columns_file` | `profile_columns_file` | control | - | run | string | `' '` | live | File listing the profile columns; blank: the default selection of defaults/profile_columns.list |
+| `history_columns_file` | `-` | `history_columns_file` | control | - | run | string | `' '` | live | File listing the history columns (one name per line, ! comments); blank: the default selection of defaults/history_columns.list |
+| `profile_columns_file` | `-` | `profile_columns_file` | control | - | run | string | `' '` | live | File listing the profile columns; blank: the default selection of defaults/profile_columns.list |
 | `inlist_used_file` | `inlist_used_file` | `inlist_used_file` | buffer | - | read | string | `' '` | live | Verbatim copy of the input namelist file(s), written at startup as run provenance; blank (the default): inlist_used in the output directory, the run log's |
 | `log_L_upper_limit` | `log_L_upper_limit` | `log_l_upper_limit` | control | - | run | real(50) | `1.0d99` | live | Per kind card: stop the card when log(L/Lsun) exceeds this (1d99 = off) |
 | `log_L_lower_limit` | `log_L_lower_limit` | `log_l_lower_limit` | control | - | run | real(50) | `-1.0d99` | live | Per kind card: stop the card when log(L/Lsun) drops below this (-1d99 = off) |
@@ -197,7 +198,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `difad_velocity_scale` | `fw` | `difad_velocity_scale` | physics | - | run | real | `1.0d0` | live | Scale of the angular momentum diffusion coefficients in the diffusion-advection transport |
 | `mixing_velocity_scale` | `fc` | `mixing_velocity_scale` | physics | - | run | real | `1.0d0` | live | Ratio of the chemical mixing to the angular momentum diffusion coefficients (calibrated to Li depletion) |
 | `coupling_factor` | `fo` | `coupling_factor` | buffer | - | none | real | `1.0d0` | live | Inert: read and used nowhere (the F77 code only echoed it, as COUPLING, in the .short header) |
-| `(legacy only)` | `fmu` | `-` | - | - | - | real | `1.0d0` | unused | Unused: read from the legacy decks and ignored (the mu-gradient scale had no effect, docs/bug_sweep.md O15; dropped from the inlist format) |
+| `(legacy only)` | `fmu` | `mu_gradient_scale` | buffer | - | none | real | `1.0d0` | unused | Unused: read from the legacy decks and ignored (the mu-gradient scale had no effect, docs/bug_sweep.md O15; dropped from the inlist format) |
 | `es_velocity_scale` | `fes` | `es_velocity_scale` | physics | - | run | real | `1.0d0` | live | Scale of the Eddington-Sweet circulation velocity in the angular momentum transport |
 | `core_mass_reduction_factor` | `fcore` | `core_mass_reduction_factor` | physics | `core_mass_reduction` | run | real | `1.0d0` | live | With extend_core_inward: the factor by which the innermost mass is reduced |
 | `gsf_velocity_scale` | `fgsf` | `gsf_velocity_scale` | physics | - | run | real | `1.0d0` | live | Scale of the GSF and ABCD instability velocities in the angular momentum transport |
@@ -407,22 +408,22 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `use_new_rate_variables` | `lnewvars` | `use_new_rate_variables` | buffer | - | read | logical | `.false.` | live | Take the zoning and timestep tolerances from the named tol_*, flag_* and time_* controls (and lstruct_time) instead of zoning_tolerances and timestep_factors; nothing to do with reaction rates |
 | `calc_envelope_flag` | `lcalcenv` | `calc_envelope_flag` | physics | - | run | logical | `.true.` | live | Integrate the full envelope (false: the atmosphere to the photosphere only) |
 | `profile_data_prefix` | `profile_data_prefix` | `profile_data_prefix` | physics | - | run | string | `'profile'` | live | Profile/pulse file name prefix: <prefix><N>.data[.GYRE/.FGONG/.GSM] in the output directory |
-| `star_history_name` | `star_history_name` | `star_history_name` | physics | - | run | string | `'history.data'` | live | MESA mode: history file name (written to the output directory) |
+| `star_history_name` | `-` | `star_history_name` | physics | - | run | string | `'history.data'` | live | MESA mode: history file name (written to the output directory) |
 | `terminal_interval` | `terminal_interval` | `terminal_interval` | physics | - | run | integer | `50` | live | Print the compact per-model progress line (terminal + run log) every N models; 0 = off; the final model always prints |
 | `nu_max_sun` | `nu_max_sun` | `nu_max_sun` | physics | - | run | real | `3090.0d0` | live | Solar nu_max [uHz] for the scaling relation (Huber et al. 2011) |
 | `delta_nu_sun` | `delta_nu_sun` | `delta_nu_sun` | physics | - | run | real | `135.1d0` | live | Solar delta_nu [uHz] for the mean-density scaling relation (Huber et al. 2011) |
 | `Teff_sun` | `Teff_sun` | `teff_sun` | physics | - | run | real | `5772.0d0` | live | Solar effective temperature [K] for the nu_max scaling relation (IAU nominal value) |
 | `report_solver_diagnostics` | `report_solver_diagnostics` | `report_solver_diagnostics` | buffer | - | read | logical | `.false.` | live | Verbose run-log diagnostics: Henyey iteration trace, envelope/atmosphere integration statistics, surface-triangle and rezoning bookkeeping |
-| `profile_interval` | `profile_interval` | `profile_interval` | physics | - | run | integer | `50` | live | MESA mode: write profile{N}.data every N converged models (0 = off); the history profile_number column maps models to profiles |
-| `pulse_format` | `pulse_format` | `pulse_format` | physics | - | run | string | `'GYRE'` | live | MESA mode: pulse file format (GYRE text, FGONG, or GSM = GYRE HDF5 [needs make USE_HDF5=1]), written alongside each profile as profile{N}.data.{format} |
-| `write_profile_flag` | `write_profile_flag` | `write_profile_flag` | physics | - | run | logical | `.false.` | live | MESA mode: master toggle for profile{N}.data output (cadence from profile_interval) |
-| `write_pulse_flag` | `write_pulse_flag` | `write_pulse_flag` | physics | - | run | logical | `.false.` | live | MESA mode: master toggle for pulse output (format from pulse_format; written with each profile number) |
-| `compute_neutrino_fluxes` | `compute_neutrino_fluxes` | `compute_neutrino_fluxes` | physics | - | run | logical | `.false.` | live | Diagnostic: write the per-zone solar neutrino production table (fluxes per shell, normalized profiles, Bahcall-Pinsonneault layout) to the short/log stream at the start of each run |
+| `profile_interval` | `-` | `profile_interval` | physics | - | run | integer | `50` | live | MESA mode: write profile{N}.data every N converged models (0 = off); the history profile_number column maps models to profiles |
+| `pulse_format` | `-` | `pulse_format` | physics | - | run | string | `'GYRE'` | live | MESA mode: pulse file format (GYRE text, FGONG, or GSM = GYRE HDF5 [needs make USE_HDF5=1]), written alongside each profile as profile{N}.data.{format} |
+| `write_profile_flag` | `-` | `write_profile_flag` | physics | - | run | logical | `.false.` | live | MESA mode: master toggle for profile{N}.data output (cadence from profile_interval) |
+| `write_pulse_flag` | `-` | `write_pulse_flag` | physics | - | run | logical | `.false.` | live | MESA mode: master toggle for pulse output (format from pulse_format; written with each profile number) |
+| `compute_neutrino_fluxes` | `-` | `compute_neutrino_fluxes` | physics | - | run | logical | `.false.` | live | Diagnostic: write the per-zone solar neutrino production table (fluxes per shell, normalized profiles, Bahcall-Pinsonneault layout) to the short/log stream at the start of each run |
 
 ## Members no deck sets
 
-The read computes them (unit numbers, flags derived from other controls)
-or the run keeps them. Each is in the group of its topic.
+The read derives them from the controls a deck sets (or, for the deck's
+file names, from the command line). Each is in the group of its topic.
 
 | code name | group | home | run copy | used | type | default | description |
 |---|---|---|---|---|---|---|---|
@@ -441,3 +442,5 @@ or the run keeps them. Each is in the group of its topic.
 | `value_relative_to_h` | physics | physics | - | run | logical | `0` | With rescale_species_active: new_species_value is relative to hydrogen (from new_species_value_mode) |
 | `change_cno_mixture_active` | control | control | - | run | logical | `0` | The starting model's CNO mixture is changed (cno_mixture_mode = 1 and a valid mixture) |
 | `change_isotope_ratios_active` | control | control | - | run | logical | `0` | The starting model's isotope ratios are changed (isotope_mixture_mode = 1 and a valid mixture) |
+| `control_nml_file` | control | buffer | - | read | string | `''` | The deck's file: the single-file inlist, or the legacy pair's CONTROL namelist (.nml1); read_input finds it (the first command-line argument, default yrec8.nml1, or an embedding host's override) |
+| `physics_nml_file` | control | buffer | - | read | string | `''` | The legacy pair's PHYSICS namelist (.nml2; the second command-line argument, default yrec8.nml2), or the inlist again |

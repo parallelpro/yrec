@@ -2,8 +2,8 @@
 ! user_inputs
 !----------------------------------------------------------------------
 ! map_user_inputs (legacy remap.f, MHP 6/2014), a step of the controls
-! read (after adopt_canonical_names): the descriptively named controls
-! onto the arrays the code uses.
+! read (after the deck is read): the descriptively named controls onto
+! the arrays the code uses.
 !  - With use_new_nuclear_rates (legacy LNEWNUC), the per-reaction S0
 !    values and their first and second derivatives (s0_*, s0p_*,
 !    s0pp_*) become the cross-section scales s%cross_section_scale

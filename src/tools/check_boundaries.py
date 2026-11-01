@@ -1004,7 +1004,8 @@ def main():
             continue
         code_lines = strip_comments(path.read_text()).splitlines()
         for i, line in enumerate(code_lines):
-# legacy_controls re-exports the buffer (its namelists bind to it)
+# legacy_controls is the read's (read_legacy_deck reads a legacy pair
+# into the buffer)
             if re.match(r"(?i)^\s*use\s+legacy_controls\b", line):
                 buffer_violations.append(rel)
                 break

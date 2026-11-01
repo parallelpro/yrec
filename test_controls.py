@@ -349,3 +349,36 @@ def test_older_inlist_names_still_read(tmp_path):
     assert "physics%cz_rotation_law_exponent = -1.50000000000000000E+000" in dumps["new"]
     assert 'control%kurucz_table_path = "kurucz1"' in dumps["new"]
     assert 'control%alex95_table_paths(3) = "alex3"' in dumps["new"]
+
+
+def test_an_alias_counts_where_the_deck_sets_it_and_not_the_new_name(tmp_path):
+    """An alias counts, element by element, where the deck names it and not
+    the inlist name ("names" decided by reading the groups twice, the
+    aliased names seeded differently each time): a deck that sets the new
+    name to its default and the alias to another value gets the default;
+    an array split across the two names gets each part; and a deck that
+    sets both is warned."""
+    if not BINARY.exists():
+        pytest.skip("src/test_controls not built (run `make tests` in src/)")
+    deck = REPO / "examples" / "run_config_matrix" / "cm_rot_base.inlist"
+    text = deck.read_text()
+    old = " new_zone_omega_weight = 0.0"
+    assert old in text
+    body = text.replace(old, " cz_rotation_law_exponent = 0.0\n new_zone_omega_weight = -1.5").replace(
+        "&control", "&control\n alex95_table_z_list(1:2) = 'a1', 'a2'\n"
+                    " alex95_opacity_table_files(3) = 'n3'\n", 1)
+    d = tmp_path / "split.inlist"
+    d.write_text(body)
+    out = tmp_path / "out"
+    out.mkdir()
+    r = subprocess.run([str(BINARY), str(d)], cwd=deck.parent, capture_output=True,
+                       env=dict(os.environ, YREC_OUTPUT=str(out)))
+    messages = r.stdout.decode("latin-1").split("# controls")[0]
+    dump = dump_of(r.stdout, out)
+    assert "ierr = 0" in dump
+    assert "physics%cz_rotation_law_exponent =  0.00000000000000000E+000" in dump
+    assert " WARNING: new_zone_omega_weight and cz_rotation_law_exponent are both set" in messages
+    assert 'control%alex95_table_paths(1) = "a1"' in dump
+    assert 'control%alex95_table_paths(2) = "a2"' in dump
+    assert 'control%alex95_table_paths(3) = "n3"' in dump
+    assert "alex95_table_z_list and alex95_opacity_table_files are both set" not in messages

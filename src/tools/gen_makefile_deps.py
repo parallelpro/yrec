@@ -22,7 +22,9 @@ from the loop:
     left stale caller objects passing the old ABI -- a segfault.);
   * emits real prerequisites for `include '<file>.inc'` lines
     (resolved relative to the source's directory, gfortran's own
-    search rule), so editing a generated .inc rebuilds its includer.
+    search rule), so editing a generated .inc rebuilds its includer;
+    a `use` inside an included file counts as its includer's (the
+    controls readers' generated use lists).
 
 Test-program objects (*/test/*.f90) get rules too -- they build via
 their own targets but obey the same module ordering.
@@ -65,6 +67,8 @@ def main():
             cand = (p.parent / i.group(1))
             if cand.is_file():
                 found.append(cand.relative_to(SRC).as_posix())
+                inc_text = strip_comments(cand.read_text(errors="replace"))
+                uses[rel] |= {u.group(1).lower() for u in USE_RE.finditer(inc_text)}
         if found:
             incs[rel] = found
 
