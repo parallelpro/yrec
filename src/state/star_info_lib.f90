@@ -10,8 +10,13 @@
 ! the run's star, and every star-layer procedure takes it as its
 ! argument s (docs/GUIDELINES.md, "The star object: six rules"). The
 ! physics domains never use this module; they take the slot constants
-! from the constants-only layout modules it re-exports, and their
-! configuration from the settings records setup/ builds.
+! from the constants-only layout modules (composition_layout,
+! neutrino_flux_layout, reaction_layout, transport_mechanism_layout,
+! control_slots), and their configuration from the settings records
+! setup/ builds. This module re-exports composition_layout's and
+! neutrino_flux_layout's constants and transport_mechanism_layout's
+! slots, count and names; of the others it imports only the sizes it
+! needs.
 !
 ! The members of star_info are grouped by lifetime, longest-lived first:
 ! per run (the controls, the constants set at setup), per Monte-Carlo run
@@ -181,7 +186,7 @@ module star_info_lib
 ! ==== Constants set at setup ===========================================
 ! Values fixed for the whole run by the controls read, the controls'
 ! derivation or the setup before the first card: the solar units, the
-! nuclear rate scales, a few atmosphere and opacity settings.
+! nuclear rate scales, a few envelope, atmosphere and opacity settings.
 ! Valid: after read_controls and prepare_run; each Monte-Carlo run
 ! rescales the solar luminosity and the first rate scales
 ! (begin_monte_carlo_run).
@@ -360,9 +365,11 @@ module star_info_lib
 
 ! ==== Run and card bookkeeping =========================================
 ! Per-run and per-card state: the current card, its composition, mixing
-! length, mass and fitting-point request, the atmosphere and the latches
-! the run switches, the core extension, the surface mixture of the first
-! card, the solar and star calibration loops, the reason the run ended.
+! length, mass (for the profile headers) and fitting-point request, the
+! atmosphere and the latches the run switches (the settling latch and
+! its report flag among them), the core extension, the surface mixture
+! of the first card, the solar and star calibration loops (targets,
+! derivatives, verdicts), the reason the run ended.
 ! The members armed from a control (each names it) are the run's working
 ! copies of controls it changes, armed by the controls read and again at
 ! the start of every Monte-Carlo run (begin_monte_carlo_run); the
@@ -706,7 +713,10 @@ module star_info_lib
             integer :: h_shell_top_index
 
 ! ==== Step control =====================================================
-! The timestep and the flags that steer one step's solve.
+! The timestep and the flags that steer one step's solve: the passes of
+! the structure-rotation iteration, the timestep (and its copy and its
+! value in years), the largest omega change, the diverged and save-model
+! flags, the envelope-triangle requests.
 ! Valid: during and between steps.
 
 ! the passes of the structure-rotation iteration per step [-];
@@ -870,7 +880,8 @@ module star_info_lib
 ! step: rates of change, burning rates, the depth of the surface mixed
 ! region, the turnover time, the shell physics that rotation uses, the
 ! outer layers of the latest envelope integration, the last rotation
-! sub-step's omega. A few are printed too (the history prints the
+! sub-step's omega and time fraction, the step's changes of log P and
+! log T, the accreted mass, the disk-locking gate. A few are printed too (the history prints the
 ! turnover time and the photospheric pressure).
 ! Valid: from the stage that writes them; each member says which.
 
@@ -960,7 +971,8 @@ module star_info_lib
             type(atmosphere_point_state) :: atm_point
 
 ! ==== Newton ===========================================================
-! Arrays of the Henyey solve, rewritten on every iteration.
+! Arrays of the Henyey solve, rewritten on every iteration, with the
+! iteration count and the correction factor.
 ! Valid: during the solve; log_pressure_delta and log_temperature_delta,
 ! the changes over the step, until the next step's solve starts.
 
@@ -997,8 +1009,9 @@ module star_info_lib
 
 ! ==== Diagnostics written during the solve =============================
 ! Per-zone physics stored for output by compute_henyey_coefficients at
-! every shell on every Newton iteration (energy channels, EOS and opacity
-! values, gradients, pulsation derivatives). Rule 5 of the six
+! every shell on every Newton iteration (energy channels and the
+! luminosity breakdown, neutrino fluxes, EOS and opacity values,
+! gradients, pulsation derivatives). Rule 5 of the six
 ! (diagnostics written once, after convergence) is the planned
 ! replacement.
 ! Valid: after convergence they hold the last iteration's values, the
@@ -1080,9 +1093,9 @@ module star_info_lib
             real(dp) :: pulse_electron_mean_weight_inverse(json)
 
 ! ==== Diagnostics written after convergence ============================
-! Observables computed once per model by compute_observables (after the
-! stitched model is built), and the rotational transport's coefficients
-! and velocities kept for the profiles.
+! The stitched model, the observables computed once per model from it by
+! compute_observables, and the rotational transport's coefficients and
+! velocities kept for the profiles.
 ! Valid: from compute_observables (or the rotation step) until the next
 ! model; zero at a run start.
 
@@ -1310,7 +1323,7 @@ end module star_info_lib
 ! env_struct, atmo_struct and observables' ksaha_center -> env_points,
 ! atm_points and central_saha_state; es_circulation_velocity,
 ! gsf_circulation_velocity, secular_shear_velocity -> the slots of
-! mechanism_velocity. state/README.md section 5 lists the members
+! mechanism_velocity. state/README.md section 4 lists the members
 ! removed in 2026-10.
 !
 ! The rotation-scaled solar wind of core/step/mass_change.f90, commented

@@ -205,7 +205,8 @@ which replaces them).
 
 ## The star object: six rules (2026-10)
 
-The star (`state/star_info_lib.f90`'s `star_info`, ~240 members) is a
+The star (`state/star_info_lib.f90`'s `star_info`; state/README.md
+section 2 counts its members) is a
 large record, and nothing in Fortran stops a procedure that can see it
 from reading or writing any member. Since 2026-10 there is no global
 star: `run_yrec` (core/run/run_driver.f90) owns the run's star, and

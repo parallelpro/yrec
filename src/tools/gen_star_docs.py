@@ -19,7 +19,9 @@ member; the README lists every writer and reader, from the code:
   component of it), is a read statement's target or is allocated, or is
   passed to a dummy argument that is intent(out), or intent(inout) (or
   without an intent) and that the callee assigns, directly, in its
-  internal procedures or through its own callees. A member written
+  internal procedures or through its own callees. (check_star_contracts
+  counts every intent(inout) argument as a write, so a contract may list
+  as written what this table lists only as read.) A member written
   inside a callee therefore appears under its caller, when the caller
   passes s%member explicitly. More than six procedures: the modules only.
 - read by: the modules where the value of s%member is used: in an
