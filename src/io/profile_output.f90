@@ -46,7 +46,7 @@ end subroutine profile_output_init
 ! stitched model (s%stitched).
 subroutine write_profile(s, profiles, out_dir, iprof, ierr)
       use star_info_lib, only: star_info
-      use io_units, only: check_io
+      use output_files, only: open_output_file, close_output_file
       type(star_info), intent(in) :: s
       type(profile_selection), intent(in) :: profiles
       character(len=*), intent(in) :: out_dir
@@ -61,12 +61,11 @@ subroutine write_profile(s, profiles, out_dir, iprof, ierr)
       cols = profile_columns()
       write(numstr, '(i0)') iprof
       path = trim(out_dir) // trim(s%physics%profile_data_prefix) // trim(numstr) // '.data'
-      open(newunit=u, file=path, status='REPLACE', action='WRITE', iostat=ios, iomsg=msg)
-      call check_io(ios, msg, 'write', path, ierr)
+      call open_output_file(path, u, ierr)
       if (ierr /= 0) return
 ! global block (MESA profile shape: numbers / names / values)
-      write(u, '(8(1x,i40))') 1, 2, 3, 4, 5, 6, 7, 8
-      write(u, '(8(1x,a40))') adjustr('model_number'), &
+      write(u, '(8(1x,i40))', iostat=ios, iomsg=msg) 1, 2, 3, 4, 5, 6, 7, 8
+      if (ios == 0) write(u, '(8(1x,a40))', iostat=ios, iomsg=msg) adjustr('model_number'), &
            adjustr('num_zones'), adjustr('initial_mass'), &
            adjustr('initial_z'), adjustr('star_age'), &
            adjustr('time_step'), adjustr('log_Teff'), &
@@ -74,13 +73,13 @@ subroutine write_profile(s, profiles, out_dir, iprof, ierr)
 ! initial_mass/initial_z are the kind card's starting values
 ! (pulsation_mass_msun is stamped by begin_kind_card); star_age and
 ! time_step are in years, matching MESA's profile header.
-      write(u, '(2(1x,i40),6(1x,es40.16e3))') s%model_number, &
-           s%stitched%n_ext, s%pulsation_mass_msun, &
+      if (ios == 0) write(u, '(2(1x,i40),6(1x,es40.16e3))', iostat=ios, iomsg=msg) &
+           s%model_number, s%stitched%n_ext, s%pulsation_mass_msun, &
            s%current_card_envelope_z, s%age_gyr*1.0d9, &
            s%timestep_yr, s%log_Teff, s%star_mass
-      write(u, '(a)') ''
-      write(u, '(999(1x,i40))') (k, k = 1, profiles%nsel)
-      write(u, '(999(1x,a40))') &
+      if (ios == 0) write(u, '(a)', iostat=ios, iomsg=msg) ''
+      if (ios == 0) write(u, '(999(1x,i40))', iostat=ios, iomsg=msg) (k, k = 1, profiles%nsel)
+      if (ios == 0) write(u, '(999(1x,a40))', iostat=ios, iomsg=msg) &
            (adjustr(trim(cols(profiles%sel(k))%name)), k = 1, profiles%nsel)
 ! rows: zone 1 = the outermost point (MESA convention). The extended
 ! model (interior + envelope + atmosphere, from stitched_model)
@@ -88,20 +87,22 @@ subroutine write_profile(s, profiles, out_dir, iprof, ierr)
       do k = 1, s%stitched%n_ext
          kz = s%stitched%n_ext - k + 1
          do i = 1, profiles%nsel
+            if (ios /= 0) exit
             if (profiles%sel(i) == ip_zone) then
                v = dble(k)
             else
                v = s%stitched%prof(profiles%sel(i), kz)
             end if
             if (cols(profiles%sel(i))%kind == integer_column) then
-               write(u, '(1x,i40)', advance='no') nint(v)
+               write(u, '(1x,i40)', advance='no', iostat=ios, iomsg=msg) nint(v)
             else
-               write(u, '(1x,es40.16e3)', advance='no') v
+               write(u, '(1x,es40.16e3)', advance='no', iostat=ios, iomsg=msg) v
             end if
          end do
-         write(u, '(a)') ''
+         if (ios /= 0) exit
+         write(u, '(a)', iostat=ios, iomsg=msg) ''
       end do
-      close(u)
+      call close_output_file(u, path, ios, msg, ierr)
 end subroutine write_profile
 
 end module profile_output

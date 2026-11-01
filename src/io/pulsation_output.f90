@@ -16,6 +16,7 @@
 module pulsation_output
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use io_units, only: check_io
+      use output_files, only: open_output_file, close_output_file
       implicit none
       private
       public :: write_fgong_pulse, write_gsm_pulse, write_gyre_pulse, gsm_supported
@@ -47,14 +48,15 @@ subroutine write_fgong_pulse(s, n, pts, mstar_g, rstar_cm, lstar_cgs, &
       integer, intent(inout) :: ierr
 
       integer, parameter :: iconst = 15, ivar = 40, ivers = 1300
+! the globals' and each point's values, five per line
+      character(len=*), parameter :: fgong_record_format = '(1P,5(X,E26.18E3))'
       real(dp) :: glob(iconst), var(ivar)
       integer :: u, j, k, i, ios
       character(len=256) :: msg
       real(dp) :: radius_cm, mass_g, grav
       real(dp) :: grav_const_cgs
 
-      open(newunit=u, file=pulse_path, status='REPLACE', form='FORMATTED', iostat=ios, iomsg=msg)
-      call check_io(ios, msg, 'write', pulse_path, ierr)
+      call open_output_file(pulse_path, u, ierr)
       if (ierr /= 0) return
 
       grav_const_cgs = exp(ln10*cgl)
@@ -73,16 +75,17 @@ subroutine write_fgong_pulse(s, n, pts, mstar_g, rstar_cm, lstar_cgs, &
 ! MESA-style 4-line comment header (FGONG spec: lines 1-4 free text),
 ! followed by the standard `nn iconst ivar ivers` record. ivers 1300
 ! selects the wide E26.18E3 layout, exactly as MESA writes it.
-      write(u,'(a)') 'FGONG file'
-      write(u,'(a)') 'Created by YREC'
-      write(u,'(a,i8,a,1pe16.9,a,0pf10.6)') 'model_number ', &
-           s%model_number, '  star_age_yr ', s%age_gyr*1.0d9, &
+      write(u,'(a)',iostat=ios,iomsg=msg) 'FGONG file'
+      if (ios == 0) write(u,'(a)',iostat=ios,iomsg=msg) 'Created by YREC'
+      if (ios == 0) write(u,'(a,i8,a,1pe16.9,a,0pf10.6)',iostat=ios,iomsg=msg) &
+           'model_number ', s%model_number, '  star_age_yr ', s%age_gyr*1.0d9, &
            '  log_Teff ', s%log_Teff
-      write(u,'(a)') ''
-      write(u,'(4I10)') n, iconst, ivar, ivers
-      write(u,'(1P,5(X,E26.18E3))') (glob(i), i = 1, iconst)
+      if (ios == 0) write(u,'(a)',iostat=ios,iomsg=msg) ''
+      if (ios == 0) write(u,'(4I10)',iostat=ios,iomsg=msg) n, iconst, ivar, ivers
+      if (ios == 0) write(u,fgong_record_format,iostat=ios,iomsg=msg) (glob(i), i = 1, iconst)
 
       do j = 1, n
+         if (ios /= 0) exit
          k = n - j + 1
          radius_cm = pts(ipul_r,k)
          mass_g = pts(ipul_m,k)
@@ -130,11 +133,9 @@ subroutine write_fgong_pulse(s, n, pts, mstar_g, rstar_cm, lstar_cgs, &
          var(35) = pts(ipul_species_base+11,k)
 ! var(36) X_Ne20 and var(37)-var(40): not tracked -> 0
 
-         write(u,'(1P,5(X,E26.18E3))') (var(i), i = 1, ivar)
+         write(u,fgong_record_format,iostat=ios,iomsg=msg) (var(i), i = 1, ivar)
       end do
-
-      close(u)
-      return
+      call close_output_file(u, pulse_path, ios, msg, ierr)
 end subroutine write_fgong_pulse
 
 ! ---------------------------------------------------------------
@@ -160,7 +161,7 @@ subroutine write_gsm_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
       ! pulse_gsm.f90 case(110).  (101 is the *text* GYRE format's schema
       ! number and is not a valid GSM version; GYRE aborts on it.)
       integer, parameter :: gyre_schema = 110
-      integer :: i, herr
+      integer :: i, herr, close_err
       integer(hid_t) :: file_id
       integer(hsize_t) :: dims1(1)
       character(len=12) :: dset_names(18)
@@ -170,31 +171,42 @@ subroutine write_gsm_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
            'kap_kap_T', 'kap_kap_rho', 'eps', 'eps_eps_T', &
            'eps_eps_rho', 'Omega_rot']
 
+! Each call's status (herr, 0 on success) is checked: after the first
+! that fails the later writes are skipped, the file and the library are
+! closed, and the failure is reported.
       call h5open_f(herr)
-      call h5fcreate_f(trim(pulse_path), H5F_ACC_TRUNC_F, file_id, herr)
-      call check_io(herr, 'HDF5 could not create the file', 'write', pulse_path, ierr)
+      call check_io(herr, 'HDF5 could not start', 'write', pulse_path, ierr)
       if (ierr /= 0) return
+      call h5fcreate_f(trim(pulse_path), H5F_ACC_TRUNC_F, file_id, herr)
+      if (herr /= 0) then
+         call h5close_f(close_err)
+         call check_io(herr, 'HDF5 could not create the file', 'write', pulse_path, ierr)
+         return
+      end if
 
       call h5ltset_attribute_int_f(file_id, '/', 'n', &
            [n], 1_size_t, herr)
-      call h5ltset_attribute_double_f(file_id, '/', 'M_star', &
+      if (herr == 0) call h5ltset_attribute_double_f(file_id, '/', 'M_star', &
            [mstar_g], 1_size_t, herr)
-      call h5ltset_attribute_double_f(file_id, '/', 'R_star', &
+      if (herr == 0) call h5ltset_attribute_double_f(file_id, '/', 'R_star', &
            [rstar_cm], 1_size_t, herr)
-      call h5ltset_attribute_double_f(file_id, '/', 'L_star', &
+      if (herr == 0) call h5ltset_attribute_double_f(file_id, '/', 'L_star', &
            [lstar_cgs], 1_size_t, herr)
-      call h5ltset_attribute_int_f(file_id, '/', 'version', &
+      if (herr == 0) call h5ltset_attribute_int_f(file_id, '/', 'version', &
            [gyre_schema], 1_size_t, herr)
 
       dims1(1) = int(n, hsize_t)
       do i = 1, ipul_gyre_last
+         if (herr /= 0) exit
          call h5ltmake_dataset_double_f(file_id, trim(dset_names(i)), &
               1, dims1, pts(i,1:n), herr)
       end do
 
-      call h5fclose_f(file_id, herr)
-      call h5close_f(herr)
-      return
+      call h5fclose_f(file_id, close_err)
+      if (herr == 0) herr = close_err
+      call h5close_f(close_err)
+      if (herr == 0) herr = close_err
+      call check_io(herr, 'HDF5 could not write the file', 'write', pulse_path, ierr)
 end subroutine write_gsm_pulse
 #else
 subroutine write_gsm_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
@@ -242,15 +254,15 @@ subroutine write_gyre_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, path, ierr)
       integer :: u, j, i, ios
       character(len=256) :: msg
 
-      open(newunit=u, file=path, status='REPLACE', form='FORMATTED', iostat=ios, iomsg=msg)
-      call check_io(ios, msg, 'write', path, ierr)
+      call open_output_file(path, u, ierr)
       if (ierr /= 0) return
-      write(u,'(I6,3(1X,1PE26.16),1X,I6)') n, mstar_g, rstar_cm, &
+      write(u,'(I6,3(1X,1PE26.16),1X,I6)',iostat=ios,iomsg=msg) n, mstar_g, rstar_cm, &
            lstar_cgs, gyre_schema
       do j = 1, n
-         write(u,'(I6,99(1X,1PE26.16))') j, (pts(i,j), i = 1, ipul_gyre_last)
+         if (ios /= 0) exit
+         write(u,'(I6,99(1X,1PE26.16))',iostat=ios,iomsg=msg) j, (pts(i,j), i = 1, ipul_gyre_last)
       end do
-      close(u)
+      call close_output_file(u, path, ios, msg, ierr)
 end subroutine write_gyre_pulse
 
 end module pulsation_output

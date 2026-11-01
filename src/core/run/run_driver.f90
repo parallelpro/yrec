@@ -239,11 +239,13 @@ subroutine run_yrec(ierr)
 ! output units and write the Monte-Carlo summary
 ! (core/run/monte_carlo.f90).
       call write_run_summaries(s, monte_carlo_run_number, &
-           convergence_iterations, log_r_rsun)
+           convergence_iterations, log_r_rsun, ierr)
+      if (ierr /= 0) return
       end do
 
-! Normal end of job: the history file closed, and ierr = 0.
-      call output_close(output)
+! Normal end of job: the history file closed (ierr = 0 unless its
+! last rows did not reach the disk).
+      call output_close(output, ierr)
       return
 
 contains
@@ -398,14 +400,16 @@ subroutine begin_kind_card
          s%envelope_cz_bottom_index_start = s%envelope_cz_bottom_index
          s%convective_turnover_timescale = 0.0D0
 ! Write the headers of the output files.
-      call output_run_header(s, s%star_mass)
+      call output_run_header(s, s%star_mass, ierr)
+      if (ierr /= 0) return
 
        if (s%physics%helium_flash_active) then
 ! Through the helium flash a timestep cut reloads the model stored on
 ! last_model_unit, and fails if none is there; so once a model has been
 ! computed, store the card's starting model on that unit.
           if (s%punch_pending_flag) then
-             call write_mod_model(s, last_model_unit, replace=.true.)
+             call write_mod_model(s, last_model_unit, replace=.true., ierr=ierr)
+             if (ierr /= 0) return
           endif
        endif
 

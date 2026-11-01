@@ -142,10 +142,11 @@ end subroutine apply_monte_carlo_parameters
 !     solar_calibration_converged
 !   star writes: none
 subroutine write_run_summaries(s, monte_carlo_run_number, &
-     convergence_iterations, log_r_rsun)
+     convergence_iterations, log_r_rsun, ierr)
       type(star_info), intent(inout) :: s
       integer, intent(in) :: monte_carlo_run_number, convergence_iterations
       double precision, intent(in) :: log_r_rsun
+      integer, intent(inout) :: ierr
 
 ! A Monte-Carlo run that failed to converge: rewind the output units
 ! and write the model with its cycle count.
@@ -154,14 +155,14 @@ subroutine write_run_summaries(s, monte_carlo_run_number, &
          rewind(starting_model_unit)
          rewind(run_log_unit)
          call write_monte_carlo_model(s, log_r_rsun, convergence_iterations, &
-              s%current_card, monte_carlo_run_number)
+              s%current_card, monte_carlo_run_number, ierr)
       else if (s%control%calibrate_solar_model .and. s%physics%calc_neutrinos .and. s%solar_calibration_converged) then
          rewind(last_model_unit)
          rewind(starting_model_unit)
          rewind(run_log_unit)
          if (s%physics%monte_carlo_active) then
             call write_monte_carlo_model(s, log_r_rsun, convergence_iterations, &
-                 s%current_card, monte_carlo_run_number)
+                 s%current_card, monte_carlo_run_number, ierr)
          endif
       endif
 end subroutine write_run_summaries
@@ -185,19 +186,22 @@ end subroutine write_run_summaries
 !     neutrino_flux_total_e10_per_cm2_s, nz, xa
 !   star writes: none
 subroutine write_monte_carlo_model(s, local_log_radius, &
-     convergence_iterations, run_index, monte_carlo_run_number)
+     convergence_iterations, run_index, monte_carlo_run_number, ierr)
       use math_lib
       type(star_info), intent(inout) :: s
       double precision, intent(in) :: local_log_radius
       integer, intent(in) :: convergence_iterations, run_index, &
            monte_carlo_run_number
+! a failed write of the model (write_mod_model) returns ierr = 1
+      integer, intent(inout) :: ierr
 ! --- locals ---
       integer :: iwrite, j
       double precision :: surface_z_over_x, tcen, pcen, dcen, yini, zini
 
 ! Append the last converged model to monte_carlo_unit2 (legacy IMONTE2).
       iwrite = mc_model_unit
-      call write_mod_model(s, iwrite, replace=.false.)
+      call write_mod_model(s, iwrite, replace=.false., ierr=ierr)
+      if (ierr /= 0) return
 ! The summary on monte_carlo_unit1. The surface Z/X:
       surface_z_over_x = s%xa(i_metals,s%nz)/s%xa(i_h1,s%nz)
 ! Record 1: the run number and its sampled parameters.

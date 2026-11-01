@@ -25,7 +25,7 @@ module run_files
       implicit none
       private
       public :: assign_unit_numbers, expand_paths, open_run_files, expand_value, &
-           output_directory, directory_of
+           output_directory, directory_of, copy_inlists_used
 
 ! The run's output directory, the run log's (open_run_files sets it at
 ! every read; output_directory returns it).
@@ -108,12 +108,12 @@ subroutine open_run_files(ierr)
       integer :: ios
 
       output_dir = directory_of(fshort)
-      print *,"OUTPUT placed in :  ",trim(output_dir)
-      print *, ''
+      write(terminal_unit,*) "OUTPUT placed in :  ",trim(output_dir)
+      write(terminal_unit,*) ''
       call make_directory(output_dir)
       inlist_copy = inlist_used_file
       if (len_trim(inlist_copy) == 0) inlist_copy = trim(output_dir) // 'inlist_used'
-      call copy_inlists_used(trim(inlist_copy), ierr)
+      call copy_inlists_used([control_nml_file, physics_nml_file], trim(inlist_copy), ierr)
       if (ierr /= 0) return
 
       call close_run_files
@@ -246,37 +246,39 @@ subroutine make_directory(dir)
 end subroutine make_directory
 
 ! ---------------------------------------------------------------
-! A verbatim copy of the deck's file(s) in the output directory: the
-! run's record of its settings.
-subroutine copy_inlists_used(dest, ierr)
-      character(len=*), intent(in) :: dest
+! A verbatim copy of the deck's files (sources: the CONTROL and PHYSICS
+! files, the same file twice for an inlist, copied once) at dest, in the
+! output directory: the run's record of its settings. A source that
+! cannot be opened is skipped; a failed write is an error
+! (output_files).
+subroutine copy_inlists_used(sources, dest, ierr)
+      use output_files, only: open_output_file, close_output_file
+      character(len=*), intent(in) :: sources(2), dest
       integer, intent(inout) :: ierr
       integer :: src_unit, dst_unit
       character(len=4096) :: line
       character(len=256) :: msg
-      integer :: ios, nfile
-      character(len=256) :: sources(2)
-      sources(1) = control_nml_file
-      sources(2) = physics_nml_file
-      open(newunit=dst_unit, file=dest, &
-           form='FORMATTED', status='UNKNOWN', iostat=ios, iomsg=msg)
-      call check_io(ios, msg, 'write the copy of the inlist', dest, ierr)
+      integer :: ios, read_ios, nfile
+
+      call open_output_file(dest, dst_unit, ierr)
       if (ierr /= 0) return
+      ios = 0
       do nfile = 1, 2
          if (nfile == 2 .and. trim(sources(2)) == trim(sources(1))) exit
          open(newunit=src_unit, file=sources(nfile), form='FORMATTED', &
-              status='OLD', iostat=ios)
-         if (ios /= 0) cycle
-         write(dst_unit,'(2a)') '! ==== copied verbatim from: ', &
+              status='OLD', iostat=read_ios)
+         if (read_ios /= 0) cycle
+         write(dst_unit,'(2a)',iostat=ios,iomsg=msg) '! ==== copied verbatim from: ', &
               trim(sources(nfile))
-         do
-            read(src_unit,'(a)',iostat=ios) line
-            if (ios /= 0) exit
-            write(dst_unit,'(a)') trim(line)
+         do while (ios == 0)
+            read(src_unit,'(a)',iostat=read_ios) line
+            if (read_ios /= 0) exit
+            write(dst_unit,'(a)',iostat=ios,iomsg=msg) trim(line)
          end do
          close(src_unit)
+         if (ios /= 0) exit
       end do
-      close(dst_unit)
+      call close_output_file(dst_unit, dest, ios, msg, ierr)
 end subroutine copy_inlists_used
 
 ! ---------------------------------------------------------------

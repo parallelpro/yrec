@@ -61,7 +61,20 @@
 !                blank, shorter than column_name_len and unique, every
 !                kind real_column or integer_column; each default
 !                selection (blank columns file) resolves, in the .list
-!                order.
+!                order;
+!   writes       a failed write is an error (ierr = 1) with its message
+!                ("cannot write ..."): a write to a unit open for
+!                reading only (which gfortran reports) for the files
+!                kept open, the .mod, a history row and the isochrone
+!                file's header; a file whose directory cannot be made;
+!                and a full disk, as a file-size limit (RLIMIT_FSIZE)
+!                stands in for one, for the files io closes, the GYRE,
+!                FGONG and profile files, the history file and the copy
+!                of the deck, which end up shorter on disk than what was
+!                written (gfortran's runtime reports no error on the
+!                writes themselves, io/output_files.f90; a runtime that
+!                does reports it at the write, with the same message
+!                head).
 ! The expected values are formed here: through the text of the layouts'
 ! formats (expected = what the text written here reads back as, by an
 ! internal read), never by the reader under test. Each check prints ok
@@ -72,23 +85,37 @@
 ! look for them.
 program test_io
       use, intrinsic :: iso_fortran_env, only: dp => real64, int64
-      use, intrinsic :: iso_c_binding, only: c_char, c_int, c_null_char
+      use, intrinsic :: iso_c_binding, only: c_char, c_int, c_null_char, c_int64_t, &
+           c_funptr, c_intptr_t, c_null_funptr
       use star_info_lib, only: star_info, json, i_h1, i_he4, i_metals, i_he3, &
            i_c12, i_c13, i_n14, i_n15, i_o16, i_o17, i_o18, i_h2, i_li6, i_li7, &
            i_be9
-      use io_units, only: terminal_unit, run_log_unit
-      use run_files, only: expand_value, directory_of
+      use io_units, only: terminal_unit, run_log_unit, isochrone_unit
+      use run_files, only: expand_value, directory_of, copy_inlists_used
       use yrec_output, only: pulse_format_code, unknown_pulse_format, &
-           pulse_gyre, pulse_fgong, pulse_gsm
+           pulse_gyre, pulse_fgong, pulse_gsm, output_run_header
+      use run_cards, only: card_evolve
       use output_columns, only: output_column, real_column, integer_column, &
            parse_columns, max_cols, column_name_len, hist_default_names, &
            prof_default_names
       use controls_reader, only: nml_file_has_group
       use model_files, only: model_file_header, write_mod_model, read_mod_model, &
            read_yrec7, read_model2, read_model_format_tag
-      use history_output, only: history_columns
-      use stitched_model, only: profile_columns
+      use history_output, only: history_columns, history_file, history_output_init, &
+           write_history_row, close_history
+      use profile_output, only: profile_selection, profile_output_init, write_profile
+      use pulsation_output, only: write_gyre_pulse, write_fgong_pulse
+      use stitched_model, only: profile_columns, n_prof_cols, n_pulse_cols
       implicit none
+
+! A process's file-size limits (struct rlimit; rlim_t is 64 bits on
+! 64-bit Linux and macOS), RLIMIT_FSIZE and SIGXFSZ (the same numbers
+! on both), and SIG_IGN, the handler that ignores a signal.
+      type, bind(c) :: file_size_limits
+         integer(c_int64_t) :: soft, hard
+      end type file_size_limits
+      integer(c_int), parameter :: rlimit_fsize = 1, sigxfsz = 25
+      integer(c_intptr_t), parameter :: sig_ign = 1
 
       interface
          integer(c_int) function c_setenv(name, value, overwrite) bind(c, name='setenv')
@@ -100,6 +127,21 @@ program test_io
             import :: c_char, c_int
             character(kind=c_char), intent(in) :: name(*)
          end function c_unsetenv
+         integer(c_int) function c_getrlimit(resource, limits) bind(c, name='getrlimit')
+            import :: c_int, file_size_limits
+            integer(c_int), value :: resource
+            type(file_size_limits), intent(out) :: limits
+         end function c_getrlimit
+         integer(c_int) function c_setrlimit(resource, limits) bind(c, name='setrlimit')
+            import :: c_int, file_size_limits
+            integer(c_int), value :: resource
+            type(file_size_limits), intent(in) :: limits
+         end function c_setrlimit
+         type(c_funptr) function c_signal(signal, handler) bind(c, name='signal')
+            import :: c_int, c_funptr
+            integer(c_int), value :: signal
+            type(c_funptr), value :: handler
+         end function c_signal
       end interface
 
 ! the files the checks write and read, in the working directory
@@ -124,6 +166,8 @@ program test_io
 
       type(star_info), save :: s, s2
       integer :: failures
+! the file-size limit the program started with (limit_file_size)
+      type(file_size_limits) :: starting_limits
 
       failures = 0
       call start_capture()
@@ -139,6 +183,7 @@ program test_io
       call yrec7_check()
       call model2_check()
       call tables_check()
+      call writes_check()
 
       call end_capture()
       if (failures > 0) then
@@ -460,7 +505,8 @@ subroutine mod_round_trip_check()
 
       call fill_mod_model(s)
       open(newunit=u, file='round_trip.mod', status='replace')
-      call write_mod_model(s, u, replace=.true.)
+      ierr = 0
+      call write_mod_model(s, u, replace=.true., ierr=ierr)
       s2%nz = 0
       s2%xa = -1.0d0
       call read_mod_model(s2, u, h, ierr)
@@ -514,15 +560,16 @@ subroutine mod_files_check()
 
       call fill_mod_model(s)
 ! one model replaced, then two appended
+      ierr = 0
       open(newunit=u, file='replace.mod', status='replace')
-      call write_mod_model(s, u, replace=.true.)
-      call write_mod_model(s, u, replace=.true.)
+      call write_mod_model(s, u, replace=.true., ierr=ierr)
+      call write_mod_model(s, u, replace=.true., ierr=ierr)
       close(u)
       open(newunit=u, file='append.mod', status='replace')
-      call write_mod_model(s, u, replace=.false.)
-      call write_mod_model(s, u, replace=.false.)
+      call write_mod_model(s, u, replace=.false., ierr=ierr)
+      call write_mod_model(s, u, replace=.false., ierr=ierr)
       close(u)
-      call report(".mod: replace keeps one model, append adds one", &
+      call report(".mod: replace keeps one model, append adds one", ierr == 0 .and. &
            count_lines_starting('replace.mod', 'YMOD 1') == 1 .and. &
            count_lines_starting('append.mod', 'YMOD 1') == 2)
 
@@ -1009,5 +1056,128 @@ subroutine table_check(label, table, defaults)
       if (ok) ok = all(table(sel(1:nsel))%name == defaults)
       call report(label // " default selection resolves, in order", ok)
 end subroutine table_check
+
+! ---------------------------------------------------------------
+! A full disk, as a writer sees it: files no longer than max_bytes
+! (RLIMIT_FSIZE, with the signal a write past it raises ignored, so the
+! write fails with EFBIG, as one to a full disk fails with ENOSPC);
+! max_bytes < 0 restores the limit the program started with.
+subroutine limit_file_size(max_bytes)
+      integer, intent(in) :: max_bytes
+      type(file_size_limits) :: limits
+      type(c_funptr) :: previous_handler
+      integer(c_int) :: rc
+
+      if (max_bytes >= 0) then
+         previous_handler = c_signal(sigxfsz, transfer(sig_ign, c_null_funptr))
+         rc = c_getrlimit(rlimit_fsize, starting_limits)
+         limits = starting_limits
+         limits%soft = max_bytes
+         rc = c_setrlimit(rlimit_fsize, limits)
+      else
+         rc = c_setrlimit(rlimit_fsize, starting_limits)
+      end if
+end subroutine limit_file_size
+
+! ---------------------------------------------------------------
+subroutine writes_check()
+      integer, parameter :: n_points = 20, limit_bytes = 2000
+      type(history_file) :: history
+      type(profile_selection) :: profiles
+      real(dp) :: pts(n_pulse_cols, n_points)
+      character(len=200) :: deck_lines(100)
+      integer :: u, ierr, i, j
+
+      call fill_mod_model(s)
+      do j = 1, n_points
+         do i = 1, n_pulse_cols
+            pts(i,j) = dble(i) + 1.0d-3*dble(j)
+         end do
+      end do
+      call write_text_file('readonly.txt', [character(len=8) :: 'locked'])
+      call write_text_file('not_a_dir', [character(len=8) :: 'a file'])
+
+! the files kept open for the run, on a unit open for reading only
+      open(newunit=u, file='readonly.txt', status='old', action='read')
+      ierr = 0
+      call write_mod_model(s, u, replace=.true., ierr=ierr)
+      call report("writes: a failed write of the .mod model is an error", ierr == 1 .and. &
+           captured(terminal_file, 'cannot write the model file'))
+      history%path = 'readonly.txt'
+      history%unit = u
+      history%is_open = .true.
+      history%nsel = 2
+      history%sel(1:2) = [1, 4]
+      ierr = 0
+      call write_history_row(s, history, 0, ierr)
+      call report("writes: a failed history row is an error", ierr == 1 .and. &
+           captured(terminal_file, 'cannot write readonly.txt'))
+      isochrone_unit = u
+      s%control%isochrone_output_active = .true.
+      s%current_card = 1
+      s%card_kind(1) = card_evolve
+      ierr = 0
+      call output_run_header(s, 1.0d0, ierr)
+      call report("writes: a failed write of the isochrone file is an error", ierr == 1 .and. &
+           captured(terminal_file, 'cannot write the isochrone file'))
+      close(u)
+      isochrone_unit = -1
+      s%control%isochrone_output_active = .false.
+
+! a file whose directory cannot be made (a file of that name is in the
+! way)
+      ierr = 0
+      call write_gyre_pulse(n_points, pts, 1.0d33, 7.0d10, 3.8d33, 'not_a_dir/x.GYRE', ierr)
+! (the open's own reason, the operating system's)
+      call report("writes: a file whose directory cannot be made is an error", ierr == 1 .and. &
+           captured(terminal_file, "not_a_dir/x.GYRE': Not a directory"))
+
+! a full disk, for the files io closes
+      ierr = 0
+      call limit_file_size(limit_bytes)
+      call write_gyre_pulse(n_points, pts, 1.0d33, 7.0d10, 3.8d33, 'full.GYRE', ierr)
+      call limit_file_size(-1)
+      call report("writes: a GYRE file cut short by a full disk is an error", ierr == 1 .and. &
+           captured(terminal_file, 'cannot write full.GYRE'))
+      ierr = 0
+      call limit_file_size(limit_bytes)
+      call write_fgong_pulse(s, n_points, pts, 1.0d33, 7.0d10, 3.8d33, 'full.FGONG', ierr)
+      call limit_file_size(-1)
+      call report("writes: an FGONG file cut short by a full disk is an error", ierr == 1 .and. &
+           captured(terminal_file, 'cannot write full.FGONG'))
+      allocate(s%stitched%prof(n_prof_cols, n_points))
+      s%stitched%prof = 1.0d0
+      s%stitched%n_ext = n_points
+      s%physics%profile_data_prefix = 'full_profile'
+      call profile_output_init(s, profiles, ierr)
+      call limit_file_size(limit_bytes)
+      call write_profile(s, profiles, '', 1, ierr)
+      call limit_file_size(-1)
+      call report("writes: a profile cut short by a full disk is an error", ierr == 1 .and. &
+           captured(terminal_file, 'cannot write full_profile1.data'))
+      deallocate(s%stitched%prof)
+      s%stitched%n_ext = 0
+      history = history_file()
+      call history_output_init(s, history, 'full_', ierr)
+      call limit_file_size(limit_bytes)
+      call write_history_row(s, history, 0, ierr)
+      call close_history(history, ierr)
+      call limit_file_size(-1)
+      call report("writes: a history file cut short is an error by its close", ierr == 1 .and. &
+           captured(terminal_file, 'cannot write full_history.data'))
+
+! the copy of the deck (an inlist: one file, copied once)
+      do i = 1, size(deck_lines)
+         write(deck_lines(i), '(a,i0,a)') ' line_', i, ' = 1  ! a line of a deck of some kilobytes'
+      end do
+      call write_text_file('big_deck.nml', deck_lines)
+      ierr = 0
+      call limit_file_size(limit_bytes)
+      call copy_inlists_used([character(len=12) :: 'big_deck.nml', 'big_deck.nml'], &
+           'full_inlist_used', ierr)
+      call limit_file_size(-1)
+      call report("writes: a copy of the deck cut short by a full disk is an error", ierr == 1 .and. &
+           captured(terminal_file, 'cannot write full_inlist_used'))
+end subroutine writes_check
 
 end program test_io

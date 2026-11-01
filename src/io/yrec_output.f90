@@ -20,7 +20,8 @@
 ! passes it to output_write_model every model, and output_close closes
 ! the history file at the end. The writers only read the star:
 ! compute_observables and the stitched model (core) compute every
-! quantity first.
+! quantity first. Every write is checked (output_files): a failed one
+! returns ierr = 1, which stops the run.
 module yrec_output
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use physical_constants, only: ln10, solar_bolometric_magnitude
@@ -74,7 +75,6 @@ subroutine output_open(s, output, ierr)
       integer, intent(out) :: ierr
 
       ierr = 0
-      call close_history(output%history)
       output%out_dir = output_directory()
       output%profile_counter = 0
       output%progress = progress_lines()
@@ -102,10 +102,12 @@ subroutine output_open(s, output, ierr)
 end subroutine output_open
 
 ! ---------------------------------------------------------------
-! The end of the job's output: the history file closed.
-subroutine output_close(output)
+! The end of the job's output: the history file closed, its size on
+! disk checked.
+subroutine output_close(output, ierr)
       type(output_state), intent(inout) :: output
-      call close_history(output%history)
+      integer, intent(inout) :: ierr
+      call close_history(output%history, ierr)
 end subroutine output_close
 
 ! ---------------------------------------------------------------
@@ -139,7 +141,8 @@ subroutine output_write_model(s, output, ierr)
       type(star_info), intent(in) :: s
       type(output_state), intent(inout) :: output
       integer, intent(inout) :: ierr
-      integer :: iprof
+      integer :: iprof, ios
+      character(len=256) :: msg
       real(dp) :: age_yr, luminosity_erg_s, radius_cm, teff_k, &
            gravity_cgs, ycenter_local, he_core_mass_grams
 
@@ -149,20 +152,22 @@ subroutine output_write_model(s, output, ierr)
 ! isochrone record: model no., age (yr), L (erg/s), R (cm), Teff (K),
 ! g (cm/s**2), Ycenter, He-core mass (g)
       if (s%control%isochrone_output_active) then
-        age_yr = s%age_gyr*1.0D9
-        luminosity_erg_s = exp10(s%log_L_lsun)*s%solar_luminosity_cgs
-        radius_cm = exp10(s%log_R_surface_rsun)*s%solar_radius_cgs
-        teff_k = exp10(s%log_Teff)
-        gravity_cgs = exp10(s%log_g_surface)
-        ycenter_local = s%xa(i_he4,1)
-        if (s%has_h_shell) then
-           he_core_mass_grams = s%m(s%h_shell_bot_index-1)
-        else
-           he_core_mass_grams = 0.0D0
-        end if
-        write(isochrone_unit,'(1X, I5, 1P7E17.8)') s%model_number, &
-             age_yr,luminosity_erg_s,radius_cm,teff_k,gravity_cgs, &
-             ycenter_local,he_core_mass_grams
+         age_yr = s%age_gyr*1.0D9
+         luminosity_erg_s = exp10(s%log_L_lsun)*s%solar_luminosity_cgs
+         radius_cm = exp10(s%log_R_surface_rsun)*s%solar_radius_cgs
+         teff_k = exp10(s%log_Teff)
+         gravity_cgs = exp10(s%log_g_surface)
+         ycenter_local = s%xa(i_he4,1)
+         if (s%has_h_shell) then
+            he_core_mass_grams = s%m(s%h_shell_bot_index-1)
+         else
+            he_core_mass_grams = 0.0D0
+         end if
+         write(isochrone_unit,'(1X, I5, 1P7E17.8)',iostat=ios,iomsg=msg) s%model_number, &
+              age_yr,luminosity_erg_s,radius_cm,teff_k,gravity_cgs, &
+              ycenter_local,he_core_mass_grams
+         call check_isochrone_write(ios, msg, ierr)
+         if (ierr /= 0) return
       end if
 
 ! Profiles and pulse files share the trigger and the number (MESA's
@@ -184,7 +189,8 @@ subroutine output_write_model(s, output, ierr)
       if (ierr /= 0) return
 ! the .mod model: the restart file, and the recovery source of a step
 ! that fails
-      call write_mod_model(s, last_model_unit, replace=.true.)
+      call write_mod_model(s, last_model_unit, replace=.true., ierr=ierr)
+      if (ierr /= 0) return
 
 ! the interval GYRE file (independent of write_pulse_flag)
       if (s%control%pulse_gyre_interval > 0 .and. &
@@ -277,13 +283,16 @@ end subroutine write_pulse
 ! ---------------------------------------------------------------
 ! At the start of each run card: the card's line on the terminal, and
 ! the isochrone file's header.
-subroutine output_run_header(s, total_mass_msun)
+subroutine output_run_header(s, total_mass_msun, ierr)
       use star_info_lib, only: star_info
       use io_units, only: terminal_unit, isochrone_unit
       use run_cards, only: card_evolve, card_rescale, card_rescale_and_evolve
       type(star_info), intent(in) :: s
       real(dp), intent(in) :: total_mass_msun
+      integer, intent(inout) :: ierr
       real(dp) :: total_mass_grams
+      integer :: ios
+      character(len=256) :: msg
 
 ! the card's line: its kind, the rescale targets, the mixing length and
 ! the number of models
@@ -310,10 +319,26 @@ subroutine output_run_header(s, total_mass_msun)
 ! length and the solar bolometric magnitude
       if (s%control%isochrone_output_active) then
          total_mass_grams = total_mass_msun*s%solar_mass_cgs
-         write(isochrone_unit, '(7X, 1P5E16.8)') total_mass_grams, &
+         write(isochrone_unit, '(7X, 1P5E16.8)', iostat=ios, iomsg=msg) total_mass_grams, &
               s%current_card_envelope_x, s%current_card_envelope_z, s%mixing_length_alpha, &
               solar_bolometric_magnitude
+         call check_isochrone_write(ios, msg, ierr)
       end if
 end subroutine output_run_header
+
+! ---------------------------------------------------------------
+! After a write to the isochrone file (open for the run) with
+! iostat=ios and iomsg=msg: a failure reported, ierr = 1.
+subroutine check_isochrone_write(ios, msg, ierr)
+      use io_units, only: isochrone_unit, check_io
+      integer, intent(in) :: ios
+      character(len=*), intent(in) :: msg
+      integer, intent(inout) :: ierr
+      character(len=256) :: path
+
+      if (ios == 0) return
+      inquire(unit=isochrone_unit, name=path)
+      call check_io(ios, msg, 'write the isochrone file', path, ierr)
+end subroutine check_isochrone_write
 
 end module yrec_output

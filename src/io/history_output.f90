@@ -82,7 +82,9 @@ subroutine history_output_init(s, history, out_dir, ierr)
       character(len=*), intent(in) :: out_dir
       integer, intent(out) :: ierr
 
-      call close_history(history)
+      ierr = 0
+      call close_history(history, ierr)
+      if (ierr /= 0) return
       history%path = trim(out_dir) // trim(s%physics%star_history_name)
       call parse_columns(s%control%history_columns_file, history_columns(), &
            hist_default_names, history%sel, history%nsel, 'history', ierr)
@@ -90,10 +92,13 @@ subroutine history_output_init(s, history, out_dir, ierr)
       call hoist_id_columns(history%sel, history%nsel)
 end subroutine history_output_init
 
-! The history file closed, if a row has opened it.
-subroutine close_history(history)
+! The history file closed, if a row has opened it, and its size on disk
+! checked (output_files' close_output_file).
+subroutine close_history(history, ierr)
+      use output_files, only: close_output_file
       type(history_file), intent(inout) :: history
-      if (history%is_open) close(history%unit)
+      integer, intent(inout) :: ierr
+      if (history%is_open) call close_output_file(history%unit, history%path, 0, ' ', ierr)
       history%is_open = .false.
 end subroutine close_history
 
@@ -303,9 +308,12 @@ end subroutine history_values
 
 ! This model's row; the first row opens the file and writes its header
 ! (MESA's layout: the global block, then the column numbers and names).
+! The file stays open for the run, each row's writes checked
+! (output_files' header).
 subroutine write_history_row(s, history, iprof, ierr)
       use star_info_lib, only: star_info
       use io_units, only: check_io
+      use output_files, only: open_output_file
       type(star_info), intent(in) :: s
       type(history_file), intent(inout) :: history
       integer, intent(in) :: iprof
@@ -317,10 +325,9 @@ subroutine write_history_row(s, history, iprof, ierr)
 
       call history_values(s, vals, iprof)
       cols = history_columns()
+      ios = 0
       if (.not. history%is_open) then
-         open(newunit=history%unit, file=history%path, status='REPLACE', &
-              action='WRITE', iostat=ios, iomsg=msg)
-         call check_io(ios, msg, 'write', history%path, ierr)
+         call open_output_file(history%path, history%unit, ierr)
          if (ierr /= 0) return
          history%is_open = .true.
          hist_unit = history%unit
@@ -328,35 +335,39 @@ subroutine write_history_row(s, history, iprof, ierr)
 ! carried (initial composition + mixing length). The initial_* values
 ! are the kind card's starting envelope composition (initial_y by
 ! closure), not the current surface values.
-         write(hist_unit, '(6(1x,i40))') 1, 2, 3, 4, 5, 6
-         write(hist_unit, '(6(1x,a40))') adjustr('version_number'), &
+         write(hist_unit, '(6(1x,i40))', iostat=ios, iomsg=msg) 1, 2, 3, 4, 5, 6
+         if (ios == 0) write(hist_unit, '(6(1x,a40))', iostat=ios, iomsg=msg) &
+              adjustr('version_number'), &
               adjustr('initial_mass'), adjustr('initial_x'), &
               adjustr('initial_y'), adjustr('initial_z'), &
               adjustr('mixing_length_alpha')
-         write(hist_unit, '(1x,a40,5(1x,es40.16e3))') &
+         if (ios == 0) write(hist_unit, '(1x,a40,5(1x,es40.16e3))', iostat=ios, iomsg=msg) &
               adjustr('"' // trim(yrec_version_string) // '"'), &
               s%star_mass, s%current_card_envelope_x, &
               1.0d0 - s%current_card_envelope_x - s%current_card_envelope_z, &
               s%current_card_envelope_z, s%mixing_length_alpha
-         write(hist_unit, '(a)') ''
-         write(hist_unit, '(999(1x,i40))') (k, k = 1, history%nsel)
-         write(hist_unit, '(999(1x,a40))') &
+         if (ios == 0) write(hist_unit, '(a)', iostat=ios, iomsg=msg) ''
+         if (ios == 0) write(hist_unit, '(999(1x,i40))', iostat=ios, iomsg=msg) &
+              (k, k = 1, history%nsel)
+         if (ios == 0) write(hist_unit, '(999(1x,a40))', iostat=ios, iomsg=msg) &
               (adjustr(trim(cols(history%sel(k))%name)), k = 1, history%nsel)
       end if
       hist_unit = history%unit
       do i = 1, history%nsel
+         if (ios /= 0) exit
          if (cols(history%sel(i))%kind == integer_column) then
-            write(hist_unit, '(1x,i40)', advance='no') &
+            write(hist_unit, '(1x,i40)', advance='no', iostat=ios, iomsg=msg) &
                  nint(vals(history%sel(i)))
          else
-            write(hist_unit, '(1x,es40.16e3)', advance='no') &
+            write(hist_unit, '(1x,es40.16e3)', advance='no', iostat=ios, iomsg=msg) &
                  vals(history%sel(i))
          end if
       end do
-      write(hist_unit, '(a)') ''
+      if (ios == 0) write(hist_unit, '(a)', iostat=ios, iomsg=msg) ''
 ! Flush so the file is live during the run (tail -f / editor view),
 ! matching MESA's behavior.
-      flush(hist_unit)
+      if (ios == 0) flush(hist_unit, iostat=ios, iomsg=msg)
+      call check_io(ios, msg, 'write', history%path, ierr)
 end subroutine write_history_row
 
 ! ---------------------------------------------------------------

@@ -63,3 +63,12 @@ tables: history default selection resolves, in order                   ok
 tables: profile names nonblank, short enough and unique                ok
 tables: profile kinds real_column or integer_column                    ok
 tables: profile default selection resolves, in order                   ok
+writes: a failed write of the .mod model is an error                   ok
+writes: a failed history row is an error                               ok
+writes: a failed write of the isochrone file is an error               ok
+writes: a file whose directory cannot be made is an error              ok
+writes: a GYRE file cut short by a full disk is an error               ok
+writes: an FGONG file cut short by a full disk is an error             ok
+writes: a profile cut short by a full disk is an error                 ok
+writes: a history file cut short is an error by its close              ok
+writes: a copy of the deck cut short by a full disk is an error        ok

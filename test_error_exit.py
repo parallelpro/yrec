@@ -336,3 +336,66 @@ def test_num_runs_out_of_range(tmp_path, value):
     assert result.returncode == 1, (
         f"NUMRUN = {value} must exit 1 (got {result.returncode}); stdout tail: {result.stdout[-300:]}")
     assert f"num_runs (NUMRUN) must be 0 to 50, not {value}" in result.stdout, result.stdout[-300:]
+
+
+def test_unwritable_output_directory_exits_nonzero(tmp_path):
+    """An output directory the run cannot write to (here one without
+    write permission) stops the run at its first file with exit 1 and a
+    message naming the directory, before any model is evolved."""
+    if not YREC.exists():
+        pytest.skip("src/yrec not built")
+    if os.geteuid() == 0:
+        pytest.skip("root writes into a read-only directory")
+    for name in (NML1, NML2):
+        shutil.copy(CASE_DIR / name, tmp_path / name)
+    locked = tmp_path / "locked"
+    locked.mkdir()
+    locked.chmod(0o555)
+    env = dict(os.environ, YREC_INPUT=str(REPO / "input"), YREC_START=str(REPO / "startmodels"),
+               YREC_OUTPUT=str(locked))
+    try:
+        result = subprocess.run([str(YREC), NML1, NML2], cwd=tmp_path,
+                                env=env, capture_output=True, text=True, timeout=120)
+    finally:
+        locked.chmod(0o755)
+    assert result.returncode == 1, (
+        f"an unwritable output directory must exit 1 (got {result.returncode}); "
+        f"stdout tail: {result.stdout[-300:]}")
+    # the operating system's reason: the open's failure is what is reported
+    assert "ERROR: cannot" in result.stdout and str(locked) in result.stdout, result.stdout[-300:]
+    assert "Permission denied" in result.stdout, result.stdout[-300:]
+    assert "run finished" not in result.stdout, result.stdout[-300:]
+    assert not list(locked.iterdir())
+
+
+
+def test_read_only_history_file_exits_nonzero(tmp_path):
+    """A history file the run cannot write (a read-only file already
+    there) stops the run at its first model with exit 1 and a message
+    naming the file. (A full disk cannot be stood in for here: under a
+    file-size limit gfortran's runtime, which installs its own SIGXFSZ
+    handler at startup, ends the run on the signal; test_io stands one in
+    for each writer.)"""
+    if not YREC.exists():
+        pytest.skip("src/yrec not built")
+    if os.geteuid() == 0:
+        pytest.skip("root writes into a read-only file")
+    inlist = tmp_path / "inlist"
+    conv = subprocess.run(
+        [sys.executable, str(CONVERTER), str(CASE_DIR / NML1), str(CASE_DIR / NML2),
+         "-o", str(inlist)], capture_output=True, text=True)
+    assert conv.returncode == 0, conv.stderr
+    inlist.write_text(inlist.read_text().replace(
+        "&physics", "&physics\n star_history_name = 'locked.data'\n", 1))
+    (tmp_path / "output").mkdir()
+    locked = tmp_path / "output" / "locked.data"
+    locked.write_text("")
+    locked.chmod(0o444)
+    env = dict(os.environ, YREC_INPUT=str(REPO / "input"), YREC_START=str(REPO / "startmodels"))
+    result = subprocess.run([str(YREC), "inlist"], cwd=tmp_path, env=env,
+                            capture_output=True, text=True, timeout=600)
+    assert result.returncode == 1, (
+        f"a read-only history file must exit 1 (got {result.returncode}); "
+        f"stdout tail: {result.stdout[-300:]}")
+    assert "ERROR: cannot write output/locked.data" in result.stdout, result.stdout[-300:]
+    assert "Permission denied" in result.stdout, result.stdout[-300:]

@@ -150,38 +150,49 @@ end subroutine read_model_format_tag
 ! from star%. With replace, the unit is rewound first, so the file holds
 ! one model, the latest (the final-model file); without it the model is
 ! appended after the ones already written (the Monte Carlo model file,
-! one model per run).
-subroutine write_mod_model(s, iwrite, replace)
+! one model per run). The unit stays open. A failed write is reported
+! ("cannot write the model file <path>: <reason>") and returns ierr = 1;
+! the writes after it are skipped.
+subroutine write_mod_model(s, iwrite, replace, ierr)
       use star_info_lib, only: star_info
-      use io_units, only: last_model_unit, run_log_unit
+      use io_units, only: last_model_unit, run_log_unit, check_io
       use run_log, only: solver_diagnostics
       type(star_info), intent(in) :: s
       integer, intent(in) :: iwrite
       logical, intent(in) :: replace
-      integer :: k
+      integer, intent(inout) :: ierr
+      character(len=256) :: msg, path
+      integer :: k, ios
 
-      if (replace) rewind iwrite
-      write(iwrite,'(a)') 'YMOD 1'
-      write(iwrite,mod_integer_format) 'model_number        ', s%model_number
-      write(iwrite,mod_integer_format) 'num_zones           ', s%nz
-      write(iwrite,mod_real_format)    'star_mass_msun      ', s%star_mass
-      write(iwrite,mod_real_format)    'log_total_mass      ', s%log_total_mass
-      write(iwrite,mod_real_format)    'star_age_gyr        ', s%age_gyr
-      write(iwrite,mod_real_format)    'timestep_yr         ', s%timestep_yr
-      write(iwrite,mod_real_format)    'log_L               ', s%log_L_lsun
-      write(iwrite,mod_real_format)    'log_Teff            ', s%log_Teff
-      write(iwrite,mod_real_format)    'mixing_length_alpha ', s%mixing_length_alpha
-      write(iwrite,mod_logical_format) 'extended_composition', s%physics%use_extended_composition
-      write(iwrite,mod_logical_format) 'rotation_active     ', s%physics%rotation_active
-      write(iwrite,'(a)') mod_columns
+      ios = 0
+      if (replace) rewind(iwrite, iostat=ios, iomsg=msg)
+      call put_line('YMOD 1')
+      call put_integer('model_number        ', s%model_number)
+      call put_integer('num_zones           ', s%nz)
+      call put_real(   'star_mass_msun      ', s%star_mass)
+      call put_real(   'log_total_mass      ', s%log_total_mass)
+      call put_real(   'star_age_gyr        ', s%age_gyr)
+      call put_real(   'timestep_yr         ', s%timestep_yr)
+      call put_real(   'log_L               ', s%log_L_lsun)
+      call put_real(   'log_Teff            ', s%log_Teff)
+      call put_real(   'mixing_length_alpha ', s%mixing_length_alpha)
+      call put_logical('extended_composition', s%physics%use_extended_composition)
+      call put_logical('rotation_active     ', s%physics%rotation_active)
+      call put_line(mod_columns)
       do k = 1, s%nz
-         write(iwrite,mod_row_format) k, &
+         if (ios /= 0) exit
+         write(iwrite,mod_row_format,iostat=ios,iomsg=msg) k, &
               s%log_mass(k), s%logR(k), s%luminosity_lsun(k), &
               s%logP(k), s%logT(k), s%logRho(k), &
               s%convective_flag(k), s%omega(k), &
               s%xa(mod_slots,k)
       end do
-      flush(iwrite)
+      if (ios == 0) flush(iwrite, iostat=ios, iomsg=msg)
+      if (ios /= 0) then
+         inquire(unit=iwrite, name=path)
+         call check_io(ios, msg, 'write the model file', path, ierr)
+         return
+      end if
 
 ! the solver forensics' record of the write
       if (solver_diagnostics()) then
@@ -193,6 +204,34 @@ subroutine write_mod_model(s, iwrite, replace)
                  ' AGE', s%age_gyr, '  FILE', iwrite
          end if
       end if
+
+contains
+
+! A line, a named integer, real or logical global: written unless an
+! earlier write failed.
+subroutine put_line(text)
+      character(len=*), intent(in) :: text
+      if (ios == 0) write(iwrite,'(a)',iostat=ios,iomsg=msg) text
+end subroutine put_line
+
+subroutine put_integer(name, value)
+      character(len=*), intent(in) :: name
+      integer, intent(in) :: value
+      if (ios == 0) write(iwrite,mod_integer_format,iostat=ios,iomsg=msg) name, value
+end subroutine put_integer
+
+subroutine put_real(name, value)
+      character(len=*), intent(in) :: name
+      real(dp), intent(in) :: value
+      if (ios == 0) write(iwrite,mod_real_format,iostat=ios,iomsg=msg) name, value
+end subroutine put_real
+
+subroutine put_logical(name, value)
+      character(len=*), intent(in) :: name
+      logical, intent(in) :: value
+      if (ios == 0) write(iwrite,mod_logical_format,iostat=ios,iomsg=msg) name, value
+end subroutine put_logical
+
 end subroutine write_mod_model
 
 ! ---------------------------------------------------------------
