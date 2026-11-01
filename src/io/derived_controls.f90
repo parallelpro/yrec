@@ -158,7 +158,7 @@ end subroutine select_eos_and_opacity_tables
 ! ---------------------------------------------------------------
 ! Rotating runs start with a fresh envelope-fit triangle. (The wind
 ! law's coefficients, the cz_rotation_law_exponent clamp and the solid-body flag are the
-! rotation settings builder's, setup/rotation_settings_setup.f90.)
+! rotation settings builder's, setup/rotation_settings_builder.f90.)
 subroutine derive_rotation_controls
       new_triangle_init_flag = .true.
 end subroutine derive_rotation_controls

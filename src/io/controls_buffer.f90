@@ -340,7 +340,7 @@ module controls_buffer
       real(dp) :: kurucz_table_z2 = 0
 
 ! ---- The table files, by the domain that reads them (the builders in
-!      setup/microphysics_settings.f90 copy them into each domain's paths
+!      setup/<domain>_settings_builder.f90 copy them into each domain's paths
 !      record); a path the deck leaves unset holds NUL bytes
 
 ! LAOL 1989 opacity table
@@ -886,7 +886,7 @@ module controls_buffer
 
 ! ---- Rotation and the transport of angular momentum (a rotating run's
 !      settings clamp cz_rotation_law_exponent to [-2, 0],
-!      setup/rotation_settings_setup.f90)
+!      setup/rotation_settings_builder.f90)
 
 ! Rotation: evolve the rotation curve and the angular momentum transport
       logical :: rotation_active = .false.
