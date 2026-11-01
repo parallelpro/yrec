@@ -72,6 +72,19 @@ module controls_buffer
 ! the copy of the deck; blank: inlist_used in the output directory
 ! (the run log's)
       character(len=256) :: inlist_used_file = ' '
+! The run's own files: the starting model, the final (restart) model,
+! the run log, whose directory is the output directory ({YREC_OUTPUT}
+! is $YREC_OUTPUT, or output when unset), the Monte Carlo samples and
+! the isochrone file. A path without a default holds NUL bytes.
+      character(len=256) :: first_model_file = repeat(achar(0), 256)
+      character(len=256) :: last_model_file = '{YREC_OUTPUT}/final.mod'
+      character(len=256) :: log_output_file = '{YREC_OUTPUT}/run.log'
+      character(len=256) :: dynamics_file = repeat(achar(0), 256)
+      character(len=256) :: isochrone_file = repeat(achar(0), 256)
+! a surface composition file the decks may name, which nothing reads
+      character(len=256) :: surface_composition_file = repeat(achar(0), 256)
+! the run's description, two lines of the run log's header
+      character(len=256) :: run_description(2) = repeat(achar(0), 256)
       character(len=8) :: pulse_format = 'GYRE'
 ! Independent toggles: profiles only, pulse only, both, or neither
 ! (cadence stays with profile_interval / pulse_gyre_interval):
@@ -145,13 +158,37 @@ module controls_buffer
       integer :: max_iter_level4 = 0
       logical :: improved_first_guess_flag = .false., calc_neutrinos = .false.
 
-! Light-element rate scales: the reader divides the decks' xsli6 etc by
-! their reference values (sli6 = xsli6/5.5d3).
+! Light-element rate scales, set directly or, with scale_li6_rate etc.,
+! from a cross section (keV b, li6_rate_value etc.) over its reference
+! value (derive_controls: li6_rate_scale = li6_rate_value/li6_reference_xs).
+! The reference cross sections, which are also the cross-section inputs'
+! defaults: Li6 5500 (Fowler et al. 1967), Li7 52 (Rolfs & Kavanagh
+! 1986), Be9(p,g) 1.1 (approximate, from Fowler 1988), Be9(p,d) and
+! Be9(p,a) 15000 (Fowler et al. 1967).
+      real(dp), parameter :: li6_reference_xs = 5.5d3, li7_reference_xs = 5.2d1, &
+           be9_pg_reference_xs = 1.1d0, be9_pd_reference_xs = 1.5d4, &
+           be9_palpha_reference_xs = 1.5d4
       real(dp) :: li6_rate_scale = 1.0d0
       real(dp) :: li7_rate_scale = 1.0d0
       real(dp) :: be9_pg_rate_scale = 1.0d0
       real(dp) :: be9_pd_rate_scale = 1.0d0
       real(dp) :: be9_palpha_rate_scale = 1.0d0
+      real(dp) :: li6_rate_value = li6_reference_xs
+      real(dp) :: li7_rate_value = li7_reference_xs
+      real(dp) :: be9_rate_value1 = be9_pg_reference_xs
+      real(dp) :: be9_rate_value2 = be9_pd_reference_xs
+      real(dp) :: be9_rate_value3 = be9_palpha_reference_xs
+      logical :: scale_li6_rate = .false.
+      logical :: scale_li7_rate = .false.
+      logical :: scale_be9_rate1 = .false.
+      logical :: scale_be9_rate2 = .false.
+      logical :: scale_be9_rate3 = .false.
+! The legacy decks' cross sections relative to Bahcall & Ulrich 1988
+! (sstandard), used when use_new_nuclear_rates is off; an inlist gets
+! these defaults.
+      real(dp) :: cross_section_ratios(17) = (/ 0.9828d0, 1.0485d0, 0.9815d0, &
+           0.9241d0, 1.3818d0, 1.0542d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, &
+           1.0d0, 1.0d0, 1.0d0, 1.0108d0, 0.7819d0, 0.2875d0 /)
 
 ! Itoh et al. 1996 neutrino losses (net_lib's compute_zone_energy).
       logical :: use_itoh_neutrino_loss = .false.
@@ -273,8 +310,13 @@ module controls_buffer
       logical :: change_envelope_mass_flag
 
 ! The run list: per-run model counts, first-call flags and rescaling
-! (rescale_params and rescale_kind are derived from rsclm/rsclx/rsclz/
-! rsclcm and kindrn by the reader).
+! (rescale_params and rescale_kind are derived from rescale_mass,
+! rescale_x, rescale_z, rescale_core_mass and run_kind by the reader).
+      integer :: run_kind(max_runs) = 1
+      real(dp) :: rescale_mass(max_runs) = 0.0d0
+      real(dp) :: rescale_x(max_runs) = 0.0d0
+      real(dp) :: rescale_z(max_runs) = 0.0d0
+      real(dp) :: rescale_core_mass(max_runs) = 0.0d0
       real(dp) :: rescale_params(4,max_runs)
       integer :: rescale_kind(max_runs)
       integer :: num_models(max_runs) = 0
@@ -297,14 +339,24 @@ module controls_buffer
       real(dp) :: initial_envelope_x = 0.7d0
       real(dp) :: initial_envelope_z = 0.02d0
 
-! Rescaling one species of the starting model.
+! Rescaling one species of the starting model: the species
+! (change_species_name, a composition name from He3 on) and how its new
+! value is given (new_species_value_mode 'ABS': absolute, otherwise
+! relative to hydrogen).
+      character(len=3) :: change_species_name = '   '
+      character(len=3) :: new_species_value_mode = repeat(achar(0), 3)
       real(dp) :: new_species_value = 1.3d1
       integer :: new_species_index
       logical :: rescale_species_active = .false.
       logical :: value_relative_to_h
 
 ! Changing the starting model's CNO mixture and isotope ratios. The two
-! flags are set by the reader's validation of these inputs.
+! flags are set by the reader's validation of these inputs. The mixture
+! names: cno_mixture_name 'GS98', 'AAG21', 'M22P', 'M22M', or 'CUS' for the
+! fractions as given; isotope_mixture_name 'L21' (Lodders et al. 2021) or
+! 'CUS'.
+      character(len=8) :: cno_mixture_name = 'GS98'
+      character(len=8) :: isotope_mixture_name = 'L21'
       integer :: mixture_change_mode = 0
       integer :: isotope_change_mode = 0
       logical :: change_cno_mixture_active, change_isotope_ratios_active
@@ -409,6 +461,10 @@ module controls_buffer
       real(dp) :: opal_table_z2 = 0
       real(dp) :: opal95_single_table_z = 0
       real(dp) :: alex_table_z1 = 0
+! second Zs of the OPAL 1995 and Alexander tables, which take one Z (a
+! deck that sets one is warned)
+      real(dp) :: opal95_z2 = 0
+      real(dp) :: alex_z2 = 0
       real(dp) :: kurucz_table_z1 = 0
       real(dp) :: kurucz_table_z2 = 0
       real(dp) :: molecular_opacity_logt_min = 4.0d0
@@ -510,6 +566,12 @@ module controls_buffer
       real(dp) :: pmm_solar_omega = 2.836d-6
       real(dp) :: pmm_solar_turnover_timescale = 9.4805d5
       logical :: use_pmm_wind_law = .false.
+! inert wind controls, warned about when set: the rotation-scaled solar
+! wind (commented out in core/step/mass_change.f90), an unused Matt-law
+! switch and saturation
+      logical :: use_rotation_scaled_solar_wind = .false.
+      logical :: use_pmm_wind = .false.
+      real(dp) :: pmm_omega_sat = 0
       logical :: scale_by_rossby_number = .true.
       logical :: scale_by_b_field = .false.
       character(len=3) :: wind_law_name = 'K97'

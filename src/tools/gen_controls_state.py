@@ -114,9 +114,17 @@ def split_entities(s):
     return ents
 
 
+# A real named constant of controls_buffer (a default other members take,
+# e.g. li6_reference_xs): an initializer that names one is written as its
+# value, since the records and controls_sync do not import it.
+REAL_PARAM_RE = re.compile(r"^\s*real\s*\(\s*dp\s*\)\s*,\s*parameter\s*(,\s*public)?\s*::\s*(.*)$",
+                           re.IGNORECASE)
+
+
 def parse():
     members = []  # (typespec, name, dims, init)
     params = {}   # name -> literal value
+    real_params = {}
     for line in joined_decl_lines(SLOTS.read_text()):
         pm = PARAM_RE.match(line)
         if pm:
@@ -125,6 +133,12 @@ def parse():
         pm = PARAM_RE.match(line)
         if pm:
             params[pm.group(2)] = pm.group(3)
+            continue
+        rm = REAL_PARAM_RE.match(line)
+        if rm:
+            for ent in split_entities(rm.group(2)):
+                name, value = (x.strip() for x in ent.split("=", 1))
+                real_params[name.lower()] = value
             continue
         m = TYPE_RE.match(line)
         if not m:
@@ -142,6 +156,7 @@ def parse():
             if init is None:
                 base = "character" if typespec.startswith("character") else typespec
                 init = ZERO[base]
+            init = real_params.get(init.strip().lower(), init)
             members.append((typespec, name, dims, init.strip()))
     if not members:
         raise SystemExit("no members parsed from controls_buffer.f90")

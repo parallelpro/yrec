@@ -190,10 +190,10 @@ subroutine adopt_canonical_names(s)
 ! Bahcall & Ulrich 1988, mapped onto the reaction and extra scales by
 ! net); map_user_inputs sets them from the s0_* inputs otherwise. An
 ! inlist gets the default ratios.
-      if (.not. lnewnuc) call cross_section_scales_from_sstandard(sstandard, &
-           s%cross_section_scale, s%extra_cross_section_scale)
+      if (.not. use_new_nuclear_rates) call cross_section_scales_from_sstandard( &
+           cross_section_ratios, s%cross_section_scale, s%extra_cross_section_scale)
 ! the atmosphere choice as read; the run may change star%atm_choice_in_use
-      s%atm_choice_initial = kttau
+      s%atm_choice_initial = atm_choice
       s%use_ttau_relation = .false.
 end subroutine adopt_canonical_names
 

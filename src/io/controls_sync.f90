@@ -21,7 +21,9 @@ module controls_sync
            log_g_upper_limit, log_g_lower_limit, nu_max_upper_limit, &
            nu_max_lower_limit, solar_mass_cgs, solar_luminosity_cgs, &
            solar_radius_cgs, G_cgs, nu_max_sun, delta_nu_sun, Teff_sun, &
-           profile_data_prefix, inlist_used_file, pulse_format, &
+           profile_data_prefix, inlist_used_file, first_model_file, &
+           last_model_file, log_output_file, dynamics_file, isochrone_file, &
+           surface_composition_file, run_description, pulse_format, &
            write_profile_flag, write_pulse_flag, terminal_interval, &
            set_initial_model_number, report_solver_diagnostics, &
            compute_neutrino_fluxes, timestep_factors, nuclear_logT_cutoffs, &
@@ -41,11 +43,14 @@ module controls_sync
            use_mass_accretion, max_iter_level4, improved_first_guess_flag, &
            calc_neutrinos, li6_rate_scale, li7_rate_scale, &
            be9_pg_rate_scale, be9_pd_rate_scale, be9_palpha_rate_scale, &
-           use_itoh_neutrino_loss, calc_envelope_flag, &
-           use_extended_composition, spot_filling_factor, &
-           spot_temp_contrast, spot_depth_varies, disk_locking_age_gyr, &
-           disk_omega_rad_s, disk_locking_active, target_end_age, &
-           timestep_override, central_deuterium_stop, &
+           li6_rate_value, li7_rate_value, be9_rate_value1, &
+           be9_rate_value2, be9_rate_value3, scale_li6_rate, &
+           scale_li7_rate, scale_be9_rate1, scale_be9_rate2, &
+           scale_be9_rate3, cross_section_ratios, use_itoh_neutrino_loss, &
+           calc_envelope_flag, use_extended_composition, &
+           spot_filling_factor, spot_temp_contrast, spot_depth_varies, &
+           disk_locking_age_gyr, disk_omega_rad_s, disk_locking_active, &
+           target_end_age, timestep_override, central_deuterium_stop, &
            central_hydrogen_stop, central_helium_stop, end_age_stop_active, &
            timestep_override_active, use_mhd_eos, &
            metal_fraction_match_tolerance, envelope_print_points, &
@@ -66,13 +71,15 @@ module controls_sync
            mixture_weights_seed, monte_carlo_file1_path, &
            monte_carlo_file2_path, pulse_gyre_interval, tri_delta_teffl, &
            tri_delta_logl, new_triangle_init_flag, requested_envelope_mass, &
-           change_envelope_mass_flag, rescale_params, rescale_kind, &
+           change_envelope_mass_flag, run_kind, rescale_mass, rescale_x, &
+           rescale_z, rescale_core_mass, rescale_params, rescale_kind, &
            num_models, num_runs, first_call_flag, max_domega_global, &
            use_structure_dt_limits, atm_step_size, envelope_step_size, &
            envelope_generation_flag, helium_flash_active, &
-           initial_envelope_x, initial_envelope_z, new_species_value, &
-           new_species_index, rescale_species_active, value_relative_to_h, &
-           mixture_change_mode, isotope_change_mode, &
+           initial_envelope_x, initial_envelope_z, change_species_name, &
+           new_species_value_mode, new_species_value, new_species_index, &
+           rescale_species_active, value_relative_to_h, cno_mixture_name, &
+           isotope_mixture_name, mixture_change_mode, isotope_change_mode, &
            change_cno_mixture_active, change_isotope_ratios_active, &
            target_carbon_cno_fraction, target_nitrogen_cno_fraction, &
            target_oxygen_cno_fraction, c12_to_c13_ratio, n14_to_n15_ratio, &
@@ -101,10 +108,11 @@ module controls_sync
            use_debye_huckel_correction, debye_huckel_eta_min, &
            debye_huckel_eta_max, laol_table_z1, laol_table_z2, &
            opal_table_z1, opal_table_z2, opal95_single_table_z, &
-           alex_table_z1, kurucz_table_z1, kurucz_table_z2, &
-           molecular_opacity_logt_min, molecular_opacity_logt_max, &
-           use_alex06_tables, use_laol89_tables, use_opal92_tables, &
-           use_opal95_tables, use_kurucz90_tables, use_alex95_tables, &
+           alex_table_z1, opal95_z2, alex_z2, kurucz_table_z1, &
+           kurucz_table_z2, molecular_opacity_logt_min, &
+           molecular_opacity_logt_max, use_alex06_tables, &
+           use_laol89_tables, use_opal92_tables, use_opal95_tables, &
+           use_kurucz90_tables, use_alex95_tables, &
            laol_extrapolation_tolerance, use_pure_z_table, laol_table_path, &
            laol_table2_path, opal95_table_path, opal92_table_path, &
            opal92_table2_path, pure_z_table_path, alex06_table_path, &
@@ -126,6 +134,7 @@ module controls_sync
            pmm_exponent_m, pmm_norm_jdot, pmm_norm_mdot, &
            pmm_solar_pressure, pmm_solar_omega, &
            pmm_solar_turnover_timescale, use_pmm_wind_law, &
+           use_rotation_scaled_solar_wind, use_pmm_wind, pmm_omega_sat, &
            scale_by_rossby_number, scale_by_b_field, wind_law_name, &
            wind_law_index, wind_law_constant, wind_saturation_omega, &
            solar_omega_sat, use_wind_torque, &
@@ -177,6 +186,13 @@ subroutine seed_controls_buffer(s)
       Teff_sun = s%physics%Teff_sun
       profile_data_prefix = s%physics%profile_data_prefix
       inlist_used_file = ' '
+      first_model_file = repeat(achar(0), 256)
+      last_model_file = '{YREC_OUTPUT}/final.mod'
+      log_output_file = '{YREC_OUTPUT}/run.log'
+      dynamics_file = repeat(achar(0), 256)
+      isochrone_file = repeat(achar(0), 256)
+      surface_composition_file = repeat(achar(0), 256)
+      run_description = repeat(achar(0), 256)
       pulse_format = s%physics%pulse_format
       write_profile_flag = s%physics%write_profile_flag
       write_pulse_flag = s%physics%write_pulse_flag
@@ -226,6 +242,17 @@ subroutine seed_controls_buffer(s)
       be9_pg_rate_scale = s%physics%be9_pg_rate_scale
       be9_pd_rate_scale = s%physics%be9_pd_rate_scale
       be9_palpha_rate_scale = s%physics%be9_palpha_rate_scale
+      li6_rate_value = 5.5d3
+      li7_rate_value = 5.2d1
+      be9_rate_value1 = 1.1d0
+      be9_rate_value2 = 1.5d4
+      be9_rate_value3 = 1.5d4
+      scale_li6_rate = .false.
+      scale_li7_rate = .false.
+      scale_be9_rate1 = .false.
+      scale_be9_rate2 = .false.
+      scale_be9_rate3 = .false.
+      cross_section_ratios = (/ 0.9828d0, 1.0485d0, 0.9815d0, 0.9241d0, 1.3818d0, 1.0542d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0108d0, 0.7819d0, 0.2875d0 /)
       use_itoh_neutrino_loss = s%physics%use_itoh_neutrino_loss
       calc_envelope_flag = s%physics%calc_envelope_flag
       use_extended_composition = s%physics%use_extended_composition
@@ -296,6 +323,11 @@ subroutine seed_controls_buffer(s)
       new_triangle_init_flag = s%physics%new_triangle_init_flag
       requested_envelope_mass = s%control%requested_envelope_mass
       change_envelope_mass_flag = s%control%change_envelope_mass_flag
+      run_kind = 1
+      rescale_mass = 0.0d0
+      rescale_x = 0.0d0
+      rescale_z = 0.0d0
+      rescale_core_mass = 0.0d0
       rescale_params = s%control%rescale_params
       rescale_kind = s%control%rescale_kind
       num_models = s%control%num_models
@@ -309,10 +341,14 @@ subroutine seed_controls_buffer(s)
       helium_flash_active = s%physics%helium_flash_active
       initial_envelope_x = s%control%initial_envelope_x
       initial_envelope_z = s%control%initial_envelope_z
+      change_species_name = '   '
+      new_species_value_mode = repeat(achar(0), 3)
       new_species_value = s%physics%new_species_value
       new_species_index = s%physics%new_species_index
       rescale_species_active = s%physics%rescale_species_active
       value_relative_to_h = s%physics%value_relative_to_h
+      cno_mixture_name = 'GS98'
+      isotope_mixture_name = 'L21'
       mixture_change_mode = 0
       isotope_change_mode = 0
       change_cno_mixture_active = s%control%change_cno_mixture_active
@@ -392,6 +428,8 @@ subroutine seed_controls_buffer(s)
       opal_table_z2 = s%control%opal_table_z2
       opal95_single_table_z = s%control%opal95_single_table_z
       alex_table_z1 = s%control%alex_table_z1
+      opal95_z2 = 0
+      alex_z2 = 0
       kurucz_table_z1 = s%control%kurucz_table_z1
       kurucz_table_z2 = s%control%kurucz_table_z2
       molecular_opacity_logt_min = s%physics%molecular_opacity_logt_min
@@ -457,6 +495,9 @@ subroutine seed_controls_buffer(s)
       pmm_solar_omega = s%physics%pmm_solar_omega
       pmm_solar_turnover_timescale = s%physics%pmm_solar_turnover_timescale
       use_pmm_wind_law = s%physics%use_pmm_wind_law
+      use_rotation_scaled_solar_wind = .false.
+      use_pmm_wind = .false.
+      pmm_omega_sat = 0
       scale_by_rossby_number = s%physics%scale_by_rossby_number
       scale_by_b_field = s%physics%scale_by_b_field
       wind_law_name = s%physics%wind_law_name

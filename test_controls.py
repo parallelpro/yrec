@@ -70,6 +70,14 @@ def run(files):
     return lines[marker:] + ([f"status = {result.returncode}"] if result.returncode else [])
 
 
+def dump_of(stdout, out):
+    """the dump in a test_controls run's standard output, from its marker
+    on, with the run's output directory (YREC_OUTPUT) written as
+    {YREC_OUTPUT}, so that runs into different directories compare"""
+    lines = stdout.decode("latin-1").replace(str(out), "{YREC_OUTPUT}").splitlines()
+    return lines[next(i for i, l in enumerate(lines) if l.startswith("# controls")):]
+
+
 def differing(dump, pristine):
     base = dict(l.split(" = ", 1) for l in pristine[1:] if " = " in l)
     return [l for l in dump if " = " not in l or base.get(l.split(" = ", 1)[0]) != l.split(" = ", 1)[1]]
@@ -191,7 +199,8 @@ def test_warnings_reach_the_terminal_and_the_run_log(tmp_path):
     for deck in (giant, base):
         env = dict(os.environ, YREC_OUTPUT=str(tmp_path / deck.stem))
         r = subprocess.run([str(BINARY), str(deck)], cwd=deck.parent, env=env, capture_output=True)
-        out[deck] = r.stdout.decode("latin-1")
+        # the messages, before the dump (which lists every control by name)
+        out[deck] = r.stdout.decode("latin-1").split("# controls")[0]
         log[deck] = "".join(f.read_text(errors="replace") for f in (tmp_path / deck.stem).rglob("*")
                             if f.is_file() and f.suffix in (".log", ".short"))
     wind = " WARNING: use_rotation_scaled_solar_wind (LSOLWIND) is on"
@@ -294,8 +303,7 @@ def test_a_second_read_starts_from_the_defaults(tmp_path):
         out.mkdir()
         r = subprocess.run([str(BINARY), str(deck)], cwd=deck.parent, capture_output=True,
                            env=dict(os.environ, YREC_OUTPUT=str(out), YREC_TEST_READ_TWICE=twice))
-        lines = r.stdout.decode("latin-1").splitlines()
-        dumps.append(lines[next(i for i, l in enumerate(lines) if l.startswith("# controls")):])
+        dumps.append(dump_of(r.stdout, out))
     assert "ierr = 0" in dumps[1]
     assert dumps[1] == dumps[0], [l for l in dumps[1] if l not in dumps[0]][:5]
 
@@ -334,8 +342,7 @@ def test_older_inlist_names_still_read(tmp_path):
         out.mkdir()
         r = subprocess.run([str(BINARY), str(d)], cwd=deck.parent, capture_output=True,
                            env=dict(os.environ, YREC_OUTPUT=str(out)))
-        lines = r.stdout.decode("latin-1").splitlines()
-        dumps[name] = lines[next(i for i, l in enumerate(lines) if l.startswith("# controls")):]
+        dumps[name] = dump_of(r.stdout, out)
         assert "ierr = 0" in dumps[name], name
     assert dumps["old"] == dumps["new"]
     assert dumps["both"] == dumps["new"]

@@ -115,21 +115,23 @@ end subroutine check_controls
 ! warn_inert_controls: legacy controls that a deck may set and that
 ! nothing uses (each warns only when set away from its default).
 subroutine warn_inert_controls
-      use legacy_controls, only: lsolwind, lpmm, pmmwmax, zopal952, zalex2
+      use controls_buffer, only: use_rotation_scaled_solar_wind, use_pmm_wind, &
+           pmm_omega_sat, opal95_z2, alex_z2
 ! core/step/mass_change.f90: the rotation-scaled solar wind is commented out
-      if (lsolwind) call warn('use_rotation_scaled_solar_wind (LSOLWIND) is on, but the' &
-           //' rotation-scaled solar wind is commented out: it does nothing')
-! the Matt law is use_pmm_wind_law (LMWIND); lpmm is read and used nowhere
-      if (lpmm) call warn('use_pmm_wind (LPMM) does nothing; the Matt wind law is' &
+      if (use_rotation_scaled_solar_wind) call warn('use_rotation_scaled_solar_wind' &
+           //' (LSOLWIND) is on, but the rotation-scaled solar wind is commented out:' &
+           //' it does nothing')
+! the Matt law is use_pmm_wind_law (LMWIND); use_pmm_wind is read and used nowhere
+      if (use_pmm_wind) call warn('use_pmm_wind (LPMM) does nothing; the Matt wind law is' &
            //' use_pmm_wind_law (LMWIND)')
 ! the saturation is wind_saturation_omega or solar_omega_sat
-      if (pmmwmax /= 0.0d0) call warn('pmm_omega_sat (PMMWMAX) does nothing; the wind''s' &
+      if (pmm_omega_sat /= 0.0d0) call warn('pmm_omega_sat (PMMWMAX) does nothing; the wind''s' &
            //' saturation is wind_saturation_omega or solar_omega_sat')
 ! the OPAL 1995 and the Alexander tables take one Z (opal95_single_table_z,
 ! alex_table_z1)
-      if (zopal952 /= 0.0d0) call warn('opal95_z2 (ZOPAL952) does nothing; the OPAL 1995' &
+      if (opal95_z2 /= 0.0d0) call warn('opal95_z2 (ZOPAL952) does nothing; the OPAL 1995' &
            //' table takes one Z, opal95_single_table_z')
-      if (zalex2 /= 0.0d0) call warn('alex_z2 (ZALEX2) does nothing; the Alexander tables' &
+      if (alex_z2 /= 0.0d0) call warn('alex_z2 (ZALEX2) does nothing; the Alexander tables' &
            //' take one Z, alex_table_z1')
 end subroutine warn_inert_controls
 

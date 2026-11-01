@@ -7,9 +7,10 @@
 module run_cards
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use io_units, only: terminal_unit, log_line
-      use legacy_controls, only: numrun, kindrn, nmodls, endage, &
-           setdt, end_dcen, end_xcen, end_ycen, rsclm, rsclx, rsclz, rsclcm
-      use controls_buffer, only: rescale_kind, rescale_params, first_call_flag, &
+      use controls_buffer, only: num_runs, run_kind, num_models, target_end_age, &
+           timestep_override, central_deuterium_stop, central_hydrogen_stop, &
+           central_helium_stop, rescale_mass, rescale_x, rescale_z, rescale_core_mass, &
+           rescale_kind, rescale_params, first_call_flag, &
            end_age_stop_active, timestep_override_active
       implicit none
       private
@@ -41,10 +42,11 @@ subroutine interpret_kind_cards(s)
 ! card 1 has no previous card's model: it starts from the starting
 ! model whatever the deck says (as the F77 PARMIN forced LFIRST(1))
       first_call_flag(1) = .true.
-      do n = 1, numrun
-         rescale_kind(n) = kindrn(n)
+      do n = 1, num_runs
+         rescale_kind(n) = run_kind(n)
          if (evolves(n)) call set_stop_flags(n)
-         if (rescales(n)) rescale_params(:,n) = [rsclm(n), rsclx(n), rsclz(n), rsclcm(n)]
+         if (rescales(n)) rescale_params(:,n) = [rescale_mass(n), rescale_x(n), &
+              rescale_z(n), rescale_core_mass(n)]
          call echo_card(n)
       end do
 end subroutine interpret_kind_cards
@@ -52,13 +54,13 @@ end subroutine interpret_kind_cards
 ! Does card n evolve the model (and so stop at its stops)?
 logical function evolves(n)
       integer, intent(in) :: n
-      evolves = kindrn(n) == card_evolve .or. kindrn(n) == card_rescale_and_evolve
+      evolves = run_kind(n) == card_evolve .or. run_kind(n) == card_rescale_and_evolve
 end function evolves
 
 ! Does card n rescale the model?
 logical function rescales(n)
       integer, intent(in) :: n
-      rescales = kindrn(n) == card_rescale .or. kindrn(n) == card_rescale_and_evolve
+      rescales = run_kind(n) == card_rescale .or. run_kind(n) == card_rescale_and_evolve
 end function rescales
 
 ! ---------------------------------------------------------------
@@ -66,9 +68,10 @@ end function rescales
 ! positive one arms them), and may fix the timestep.
 subroutine set_stop_flags(n)
       integer, intent(in) :: n
-      end_age_stop_active(n) = endage(n) > 0.0_dp .or. end_dcen(n) > 0.0_dp &
-           .or. end_xcen(n) > 0.0_dp .or. end_ycen(n) > 0.0_dp
-      timestep_override_active(n) = setdt(n) > 0.0_dp
+      end_age_stop_active(n) = target_end_age(n) > 0.0_dp .or. &
+           central_deuterium_stop(n) > 0.0_dp .or. central_hydrogen_stop(n) > 0.0_dp &
+           .or. central_helium_stop(n) > 0.0_dp
+      timestep_override_active(n) = timestep_override(n) > 0.0_dp
 end subroutine set_stop_flags
 
 ! ---------------------------------------------------------------
@@ -80,16 +83,16 @@ subroutine echo_card(n)
       character(len=200) :: line
       integer :: i
 
-      select case (kindrn(n))
+      select case (run_kind(n))
       case (card_evolve)
-         if (nmodls(n) <= 0) return
+         if (num_models(n) <= 0) return
          if (first_call_flag(n)) then
-            write(line,350) n, nmodls(n)
+            write(line,350) n, num_models(n)
          else
-            write(line,351) n, nmodls(n)
+            write(line,351) n, num_models(n)
          end if
       case (card_rescale)
-         if (nmodls(n) <= 0) return
+         if (num_models(n) <= 0) return
          if (first_call_flag(n)) then
             write(line,450) n
          else
@@ -106,11 +109,11 @@ subroutine echo_card(n)
       end select
       call echo(line)
       if (rescales(n)) then
-         write(line,452) nmodls(n), (rescale_params(i,n), i = 1,4)
+         write(line,452) num_models(n), (rescale_params(i,n), i = 1,4)
          call echo(line)
       end if
       if (evolves(n) .and. (end_age_stop_active(n) .or. timestep_override_active(n))) then
-         write(line,370) endage(n), setdt(n), end_dcen(n), end_xcen(n), end_ycen(n)
+         write(line,370) target_end_age(n), timestep_override(n), central_deuterium_stop(n), central_hydrogen_stop(n), central_helium_stop(n)
          call echo(line)
       end if
 

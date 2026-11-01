@@ -362,12 +362,53 @@
       write(u,'(a," = ",es25.17e3)') 'physics%constant_background_diffusion_coeff', star%physics%constant_background_diffusion_coeff
       write(u,'(a," = ",l1)') 'physics%use_constant_background_diffusion', star%physics%use_constant_background_diffusion
       write(u,'(a," = ",a)') 'buffer%inlist_used_file', '"'//trim(inlist_used_file)//'"'
+      write(u,'(a," = ",a)') 'buffer%first_model_file', '"'//trim(first_model_file)//'"'
+      write(u,'(a," = ",a)') 'buffer%last_model_file', '"'//trim(last_model_file)//'"'
+      write(u,'(a," = ",a)') 'buffer%log_output_file', '"'//trim(log_output_file)//'"'
+      write(u,'(a," = ",a)') 'buffer%dynamics_file', '"'//trim(dynamics_file)//'"'
+      write(u,'(a," = ",a)') 'buffer%isochrone_file', '"'//trim(isochrone_file)//'"'
+      write(u,'(a," = ",a)') 'buffer%surface_composition_file', '"'//trim(surface_composition_file)//'"'
+      do i1 = 1, 2
+      write(u,'(a," = ",a)') 'buffer%run_description('//itoa(i1)//')', '"'//trim(run_description(i1))//'"'
+      end do
       write(u,'(a," = ",l1)') 'buffer%report_solver_diagnostics', report_solver_diagnostics
       write(u,'(a," = ",l1)') 'buffer%use_new_nuclear_rates', use_new_nuclear_rates
+      write(u,'(a," = ",es25.17e3)') 'buffer%li6_rate_value', li6_rate_value
+      write(u,'(a," = ",es25.17e3)') 'buffer%li7_rate_value', li7_rate_value
+      write(u,'(a," = ",es25.17e3)') 'buffer%be9_rate_value1', be9_rate_value1
+      write(u,'(a," = ",es25.17e3)') 'buffer%be9_rate_value2', be9_rate_value2
+      write(u,'(a," = ",es25.17e3)') 'buffer%be9_rate_value3', be9_rate_value3
+      write(u,'(a," = ",l1)') 'buffer%scale_li6_rate', scale_li6_rate
+      write(u,'(a," = ",l1)') 'buffer%scale_li7_rate', scale_li7_rate
+      write(u,'(a," = ",l1)') 'buffer%scale_be9_rate1', scale_be9_rate1
+      write(u,'(a," = ",l1)') 'buffer%scale_be9_rate2', scale_be9_rate2
+      write(u,'(a," = ",l1)') 'buffer%scale_be9_rate3', scale_be9_rate3
+      do i1 = 1, 17
+      write(u,'(a," = ",es25.17e3)') 'buffer%cross_section_ratios('//itoa(i1)//')', cross_section_ratios(i1)
+      end do
       write(u,'(a," = ",i0)') 'buffer%envelope_print_points', envelope_print_points
       write(u,'(a," = ",a)') 'buffer%monte_carlo_file1_path', '"'//trim(monte_carlo_file1_path)//'"'
       write(u,'(a," = ",a)') 'buffer%monte_carlo_file2_path', '"'//trim(monte_carlo_file2_path)//'"'
+      do i1 = 1, 50
+      write(u,'(a," = ",i0)') 'buffer%run_kind('//itoa(i1)//')', run_kind(i1)
+      end do
+      do i1 = 1, 50
+      write(u,'(a," = ",es25.17e3)') 'buffer%rescale_mass('//itoa(i1)//')', rescale_mass(i1)
+      end do
+      do i1 = 1, 50
+      write(u,'(a," = ",es25.17e3)') 'buffer%rescale_x('//itoa(i1)//')', rescale_x(i1)
+      end do
+      do i1 = 1, 50
+      write(u,'(a," = ",es25.17e3)') 'buffer%rescale_z('//itoa(i1)//')', rescale_z(i1)
+      end do
+      do i1 = 1, 50
+      write(u,'(a," = ",es25.17e3)') 'buffer%rescale_core_mass('//itoa(i1)//')', rescale_core_mass(i1)
+      end do
       write(u,'(a," = ",l1)') 'buffer%envelope_generation_flag', envelope_generation_flag
+      write(u,'(a," = ",a)') 'buffer%change_species_name', '"'//trim(change_species_name)//'"'
+      write(u,'(a," = ",a)') 'buffer%new_species_value_mode', '"'//trim(new_species_value_mode)//'"'
+      write(u,'(a," = ",a)') 'buffer%cno_mixture_name', '"'//trim(cno_mixture_name)//'"'
+      write(u,'(a," = ",a)') 'buffer%isotope_mixture_name', '"'//trim(isotope_mixture_name)//'"'
       write(u,'(a," = ",i0)') 'buffer%mixture_change_mode', mixture_change_mode
       write(u,'(a," = ",i0)') 'buffer%isotope_change_mode', isotope_change_mode
       write(u,'(a," = ",es25.17e3)') 'buffer%n14_to_n15_ratio', n14_to_n15_ratio
@@ -381,10 +422,15 @@
       write(u,'(a," = ",l1)') 'buffer%use_opal95_eos', use_opal95_eos
       write(u,'(a," = ",l1)') 'buffer%use_opal2001_eos', use_opal2001_eos
       write(u,'(a," = ",l1)') 'buffer%use_opal2006_eos', use_opal2006_eos
+      write(u,'(a," = ",es25.17e3)') 'buffer%opal95_z2', opal95_z2
+      write(u,'(a," = ",es25.17e3)') 'buffer%alex_z2', alex_z2
       write(u,'(a," = ",a)') 'buffer%opal95_eos_table_path', '"'//trim(opal95_eos_table_path)//'"'
       write(u,'(a," = ",a)') 'buffer%opal2001_eos_table_path', '"'//trim(opal2001_eos_table_path)//'"'
       write(u,'(a," = ",a)') 'buffer%opal2006_eos_table_path', '"'//trim(opal2006_eos_table_path)//'"'
       write(u,'(a," = ",es25.17e3)') 'buffer%pmm_norm_mdot', pmm_norm_mdot
+      write(u,'(a," = ",l1)') 'buffer%use_rotation_scaled_solar_wind', use_rotation_scaled_solar_wind
+      write(u,'(a," = ",l1)') 'buffer%use_pmm_wind', use_pmm_wind
+      write(u,'(a," = ",es25.17e3)') 'buffer%pmm_omega_sat', pmm_omega_sat
       write(u,'(a," = ",es25.17e3)') 'buffer%flag_dx', flag_dx
       write(u,'(a," = ",es25.17e3)') 'buffer%flag_dw', flag_dw
       write(u,'(a," = ",es25.17e3)') 'buffer%flag_dz', flag_dz

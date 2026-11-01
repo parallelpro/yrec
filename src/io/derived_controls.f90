@@ -7,36 +7,37 @@
 ! changes, and the switches that diffusion options imply; and it writes
 ! the run log's header. Its messages go to the terminal and the run log
 ! through io_units (report_warning, report_note); the errors are
-! controls_check's. Everything here works on the canonical names, after
-! adopt_canonical_names; the legacy names it reads (amix, aiso,
-! anewcp, atmp, descrip, the Li/Be inputs) have no canonical home.
+! controls_check's. Everything here works on the controls' code names,
+! in the read's buffer (controls_buffer).
 module derived_controls
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use yrec_version, only: yrec_version_string, git_hash_string
       use io_units, only: report_warning, report_note, log_line
-      use legacy_controls, only: aiso, amix, anewcp, atm_choice, atmp, &
+      use controls_buffer, only: atm_choice, &
            be9_palpha_rate_scale, be9_palpha_reference_xs, be9_pd_rate_scale, &
            be9_pd_reference_xs, be9_pg_rate_scale, be9_pg_reference_xs, &
+           be9_rate_value1, be9_rate_value2, be9_rate_value3, &
            c12_to_c13_ratio, change_cno_mixture_active, &
-           change_isotope_ratios_active, coulomb_log_choice, descrip, &
-           diffuse_helium_active, diffuse_lithium, element_id, frac_c_table, &
-           frac_n_table, frac_o_table, initial_b10_fraction, initial_b11_fraction, &
+           change_isotope_ratios_active, change_species_name, cno_mixture_name, &
+           coulomb_log_choice, diffuse_helium_active, diffuse_lithium, &
+           envelope_print_points, initial_b10_fraction, initial_b11_fraction, &
            initial_be9_fraction, initial_h2_fraction, initial_he3_fraction, &
            initial_li6_fraction, initial_li7_fraction, isotope_change_mode, &
-           li6_rate_scale, li6_reference_xs, li7_rate_scale, li7_reference_xs, &
-           new_triangle_init_flag, lxbe91, lxbe92, lxbe93, lxli6, lxli7, mixture_change_mode, &
-           mixture_id_table, n14_to_n15_ratio, new_species_index, envelope_print_points, &
-           o16_to_o17_ratio, o16_to_o18_ratio, opal2001_eos_table_path, &
-           opal2006_eos_table_path, opal95_eos_table_path, opal_eos_table_path, &
-           opal_eos_vintage, pulse_gyre_interval, rescale_species_active, &
-           rotation_active, sbe91, sbe92, sbe93, sli6, sli7, &
+           isotope_mixture_name, li6_rate_scale, li6_rate_value, li6_reference_xs, &
+           li7_rate_scale, li7_rate_value, li7_reference_xs, mixture_change_mode, &
+           n14_to_n15_ratio, new_species_index, new_species_value_mode, &
+           new_triangle_init_flag, o16_to_o17_ratio, o16_to_o18_ratio, &
+           opal2001_eos_table_path, opal2006_eos_table_path, opal95_eos_table_path, &
+           opal_eos_table_path, opal_eos_vintage, pulse_gyre_interval, &
+           rescale_species_active, rezone_env_logt0, rezone_env_logt1, &
+           rotation_active, run_description, scale_be9_rate1, scale_be9_rate2, &
+           scale_be9_rate3, scale_li6_rate, scale_li7_rate, &
            target_carbon_cno_fraction, target_metal_fraction, &
-           target_nitrogen_cno_fraction, target_oxygen_cno_fraction, rezone_env_logt0, rezone_env_logt1, &
+           target_nitrogen_cno_fraction, target_oxygen_cno_fraction, &
            use_alex06_tables, use_alex95_tables, use_diffusion_z, &
            use_kurucz90_tables, use_new_diffusion_routines, use_opal2001_eos, &
            use_opal2006_eos, use_opal95_eos, use_pure_z_table, use_thoul_diffusion, &
-           use_thoul_fit, value_relative_to_h, xsbe91, xsbe92, xsbe93, xsli6, &
-           xsli7, zx_mix_table
+           use_thoul_fit, value_relative_to_h
       use eos_lib, only: opal_vintage_none, opal_vintage_1995, opal_vintage_2001, &
            opal_vintage_2006
       use star_info_lib, only: star_info
@@ -45,6 +46,20 @@ module derived_controls
       public :: derive_controls
 
       integer, parameter :: message_length = 512
+
+! The species change_species_name may name, from He3 on in
+! composition-slot order (He3 is slot i_he3).
+      character(len=3), parameter :: element_id(12) = (/ 'HE3', 'C12', 'C13', 'N14', &
+           'N15', 'O16', 'O17', 'O18', 'H2 ', 'LI6', 'LI7', 'BE9' /)
+! The CNO mixtures cno_mixture_name may name: Z/X and the C, N and O
+! fractions of Z of GS98 (Grevesse & Sauval 1998), AAG21 (Asplund et al.
+! 2021), M22P and M22M (Magg et al. 2022, photospheric and meteoritic).
+      character(len=8), parameter :: mixture_id_table(4) = &
+           (/ character(len=8) :: 'GS98', 'AAG21', 'M22P', 'M22M' /)
+      real(dp), parameter :: zx_mix_table(4) = (/ 0.02292d0, 0.0187d0, 0.0225d0, 0.0226d0 /)
+      real(dp), parameter :: frac_c_table(4) = (/ 0.172148d0, 0.184156d0, 0.19239d0, 0.191425d0 /)
+      real(dp), parameter :: frac_n_table(4) = (/ 0.050426d0, 0.050344d0, 0.059012d0, 0.058716d0 /)
+      real(dp), parameter :: frac_o_table(4) = (/ 0.468195d0, 0.416592d0, 0.415631d0, 0.413545d0 /)
 
 contains
 
@@ -70,20 +85,16 @@ subroutine derive_controls(s)
 end subroutine derive_controls
 
 ! ---------------------------------------------------------------
-! The light-element cross sections (keV b, the xs* controls) as scales
-! of their reference values (legacy_controls' *_reference_xs), which are
-! also their defaults.
+! A light-element rate scale given as a cross section (keV b,
+! li6_rate_value etc., with scale_li6_rate etc. on): the cross section
+! over its reference value (controls_buffer's *_reference_xs, which are
+! also the cross sections' defaults).
 subroutine derive_rate_scales
-      if (lxli6) sli6 = xsli6/li6_reference_xs
-      if (lxli7) sli7 = xsli7/li7_reference_xs
-      if (lxbe91) sbe91 = xsbe91/be9_pg_reference_xs
-      if (lxbe92) sbe92 = xsbe92/be9_pd_reference_xs
-      if (lxbe93) sbe93 = xsbe93/be9_palpha_reference_xs
-      li6_rate_scale = sli6
-      li7_rate_scale = sli7
-      be9_pg_rate_scale = sbe91
-      be9_pd_rate_scale = sbe92
-      be9_palpha_rate_scale = sbe93
+      if (scale_li6_rate) li6_rate_scale = li6_rate_value/li6_reference_xs
+      if (scale_li7_rate) li7_rate_scale = li7_rate_value/li7_reference_xs
+      if (scale_be9_rate1) be9_pg_rate_scale = be9_rate_value1/be9_pg_reference_xs
+      if (scale_be9_rate2) be9_pd_rate_scale = be9_rate_value2/be9_pd_reference_xs
+      if (scale_be9_rate3) be9_palpha_rate_scale = be9_rate_value3/be9_palpha_reference_xs
 end subroutine derive_rate_scales
 
 ! ---------------------------------------------------------------
@@ -137,26 +148,25 @@ subroutine derive_rotation_controls
 end subroutine derive_rotation_controls
 
 ! ---------------------------------------------------------------
-! The species anewcp names (an index into the composition array), and
-! whether its new value is relative to hydrogen (atmp /= 'ABS').
-! element_id lists the species from He3 on, in composition-slot order
-! (He3 is slot i_he3).
+! The species change_species_name names (an index into the composition
+! array), and whether its new value is relative to hydrogen
+! (new_species_value_mode /= 'ABS').
 subroutine find_rescaled_species
       use composition_layout, only: i_he3
       integer :: i
       character(len=message_length) :: line
 
       value_relative_to_h = .true.
-      if (atmp == 'ABS') value_relative_to_h = .false.
+      if (new_species_value_mode == 'ABS') value_relative_to_h = .false.
       do i = 1, size(element_id)
-         if (anewcp == element_id(i)) then
+         if (change_species_name == element_id(i)) then
             new_species_index = i_he3 - 1 + i
             exit
          end if
       end do
       if (i > size(element_id)) then
          rescale_species_active = .false.
-         write(line,20) anewcp
+         write(line,20) change_species_name
       20    format('change_species_name (ANEWCP) ',a3, &
            &    ' is not a species of the starting model; no species rescaled')
          call report_warning(line)
@@ -165,8 +175,8 @@ end subroutine find_rescaled_species
 
 ! ---------------------------------------------------------------
 ! mixture_change_mode = 1: the C, N and O fractions of Z and Z/X from
-! the amix table row, or as given for 'CUS' unless negative or summing
-! to 1 or more.
+! the cno_mixture_name table row, or as given for 'CUS' unless negative
+! or summing to 1 or more.
 subroutine select_cno_mixture
       real(dp) :: sum_frac
       integer :: i
@@ -174,7 +184,7 @@ subroutine select_cno_mixture
 
       change_cno_mixture_active = .false.
       if (mixture_change_mode == 1) then
-         if (amix == 'CUS') then
+         if (cno_mixture_name == 'CUS') then
             if (target_carbon_cno_fraction < 0.0d0 .or. target_nitrogen_cno_fraction < 0.0d0 &
                  .or. target_oxygen_cno_fraction < 0.0d0) then
                write(line,591) target_carbon_cno_fraction, target_nitrogen_cno_fraction, &
@@ -197,7 +207,7 @@ subroutine select_cno_mixture
             end if
          else
             do i = 1, 4
-               if (amix == mixture_id_table(i)) then
+               if (cno_mixture_name == mixture_id_table(i)) then
                   target_metal_fraction = zx_mix_table(i)
                   target_carbon_cno_fraction = frac_c_table(i)
                   target_nitrogen_cno_fraction = frac_n_table(i)
@@ -207,14 +217,14 @@ subroutine select_cno_mixture
                end if
             end do
             if (.not. change_cno_mixture_active) then
-               write(line,589) amix
+               write(line,589) cno_mixture_name
       589       format('CNO mixture ',a8,' not recognized; mixture not altered')
                call report_warning(line)
             end if
          end if
       end if
       if (change_cno_mixture_active) then
-         write(line,604) amix, target_carbon_cno_fraction, target_nitrogen_cno_fraction, &
+         write(line,604) cno_mixture_name, target_carbon_cno_fraction, target_nitrogen_cno_fraction, &
               target_oxygen_cno_fraction
       604    format('CNO mixture ',a8,': C =',es12.4,'  N =',es12.4, &
            &         '  O =',es12.4,' (fractions of Z); applied to the starting model')
@@ -224,15 +234,15 @@ end subroutine select_cno_mixture
 
 ! ---------------------------------------------------------------
 ! isotope_change_mode = 1: the CNO isotope ratios and light-element
-! abundances, the defaults for aiso 'L21' or as given for 'CUS' unless
-! negative or summing to 1 or more.
+! abundances, the defaults for isotope_mixture_name 'L21' or as given for
+! 'CUS' unless negative or summing to 1 or more.
 subroutine select_isotope_mixture
       real(dp) :: sum_frac
       character(len=message_length) :: line
 
       change_isotope_ratios_active = .false.
       if (isotope_change_mode == 1) then
-         if (aiso == 'CUS') then
+         if (isotope_mixture_name == 'CUS') then
             if (c12_to_c13_ratio < 0.0d0 .or. n14_to_n15_ratio < 0.0d0 &
                  .or. o16_to_o17_ratio < 0.0d0 .or. o16_to_o18_ratio < 0.0d0 &
                  .or. initial_h2_fraction < 0.0d0 .or. initial_he3_fraction < 0.0d0 &
@@ -261,16 +271,16 @@ subroutine select_isotope_mixture
                   change_isotope_ratios_active = .true.
                end if
             end if
-         else if (aiso == 'L21') then
+         else if (isotope_mixture_name == 'L21') then
             change_isotope_ratios_active = .true.
          else
-            write(line,597) aiso
+            write(line,597) isotope_mixture_name
       597    format('isotope mixture ',a8,' not recognized; mixture not altered')
             call report_warning(line)
          end if
       end if
       if (change_isotope_ratios_active) then
-         write(line,605) aiso, c12_to_c13_ratio, o16_to_o18_ratio, initial_h2_fraction, &
+         write(line,605) isotope_mixture_name, c12_to_c13_ratio, o16_to_o18_ratio, initial_h2_fraction, &
               initial_he3_fraction, initial_li6_fraction, initial_li7_fraction, &
               initial_be9_fraction
       605    format('isotope/light-element mixture ',a8,': C12/C13 =', &
@@ -331,8 +341,8 @@ subroutine write_run_log_header
       call log_line(' ' // repeat('=', 100))
       write(line, version_fmt) yrec_version_string, git_hash_string
       call log_line(trim(line))
-      call log_line(' description: ' // trim(descrip(1)))
-      if (len_trim(descrip(2)) > 0) call log_line(repeat(' ', 14) // trim(descrip(2)))
+      call log_line(' description: ' // trim(run_description(1)))
+      if (len_trim(run_description(2)) > 0) call log_line(repeat(' ', 14) // trim(run_description(2)))
       call log_line(' ' // repeat('=', 100))
 end subroutine write_run_log_header
 

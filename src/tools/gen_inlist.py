@@ -84,14 +84,17 @@ def reader_defaults(joined, rows=()):
     lc = (SRC / "io" / "legacy_controls.f90").read_text()
     body = lc[lc.index("subroutine set_legacy_defaults"):
               lc.index("end subroutine set_legacy_defaults")]
-    buffer = {}
+    buffer, params = {}, {}
     for c in joined((SRC / "io" / "controls_buffer.f90").read_text()):
-        if "::" not in c or "parameter" in c.split("::")[0].lower():
+        if "::" not in c:
             continue
+        into = params if "parameter" in c.split("::")[0].lower() else buffer
         for g in re.split(r",(?![^()]*\))", c.split("::", 1)[1]):
             m = re.match(r"\s*([a-z]\w*)(\([^)]*\))?\s*=\s*(.+?)\s*$", g, re.I)
             if m:
-                buffer[m.group(1).lower()] = m.group(3)
+                into[m.group(1).lower()] = m.group(3)
+    # an initializer that names a parameter (li6_reference_xs) is its value
+    buffer = {k: params.get(v.lower(), v) for k, v in buffer.items()}
     vals = {}
     for c in joined(body):
         m = re.match(r"\s*([a-z]\w*)\s*=\s*(.+?)\s*$", c, re.I)

@@ -5,20 +5,14 @@
 ! legacy_controls' groups of the same names in read_inlist). See
 ! defaults/*.defaults for docs.
       real(dp) :: mixing_length_alpha(max_runs)
-      character(len=256) :: run_description(2)
       real(dp) :: max_age(max_runs)
       character(len=256) :: laol_opacity_table_file
       character(len=256) :: pure_z_opacity_table_file
       character(len=256) :: laol_opacity_table2_file
       character(len=256) :: opal92_opacity_table2_file
-      character(len=256) :: last_model_file
-      character(len=256) :: first_model_file
       character(len=256) :: fermi_table_file
-      character(len=256) :: log_output_file
-      character(len=256) :: dynamics_file
       character(len=256) :: opal92_opacity_table_file
       character(len=256) :: ll_data_file
-      character(len=256) :: surface_composition_file
       character(len=256) :: kurucz_opacity_table_file
       character(len=256) :: kurucz_atm_table_file
       character(len=256) :: mhd_table_file_1
@@ -29,7 +23,6 @@
       character(len=256) :: mhd_table_file_6
       character(len=256) :: mhd_table_file_7
       character(len=256) :: mhd_table_file_8
-      character(len=256) :: isochrone_file
       character(len=256) :: atm_table_file
       character(len=256) :: kurucz_opacity_table2_file
       character(len=256) :: kurucz_castelli_atm_table_file
@@ -40,24 +33,13 @@
       character(len=256) :: opal95_eos_table_file
       character(len=256) :: opal_eos_table_file
       character(len=256) :: opal95_opacity_table_file
-      integer :: run_kind(max_runs)
       integer :: max_model_number(max_runs)
       character(len=256) :: alex95_opacity_table_files(7)
       character(len=256) :: alex95_table_z_list(7)
-      real(dp) :: rescale_mass(max_runs)
-      real(dp) :: rescale_x(max_runs)
-      real(dp) :: rescale_z(max_runs)
-      real(dp) :: rescale_core_mass(max_runs)
-      real(dp) :: opal95_z2
-      real(dp) :: alex_z2
       character(len=256) :: opal01_eos_table_file
       character(len=256) :: conductive_opacity_table_file
       character(len=256) :: opal06_eos_table_file
       character(len=256) :: alex06_opacity_table_file
-      character(len=8) :: cno_mixture_name
-      character(len=8) :: isotope_mixture_name
-      character(len=3) :: change_species_name
-      character(len=3) :: new_species_value_mode
       real(dp) :: zoning_tolerances(12)
       logical :: rotation_flag
       real(dp) :: laol_z_tolerance
@@ -65,19 +47,6 @@
       real(dp) :: change_species_value
       real(dp) :: mass_change
       logical :: use_mass_change
-      logical :: use_rotation_scaled_solar_wind
-      logical :: use_pmm_wind
-      real(dp) :: pmm_omega_sat
-      real(dp) :: li6_rate_value
-      real(dp) :: li7_rate_value
-      real(dp) :: be9_rate_value1
-      real(dp) :: be9_rate_value2
-      real(dp) :: be9_rate_value3
-      logical :: scale_li6_rate
-      logical :: scale_li7_rate
-      logical :: scale_be9_rate1
-      logical :: scale_be9_rate2
-      logical :: scale_be9_rate3
       namelist /control/ &
            & mixing_length_alpha, target_solar_age, target_solar_zx, &
            & run_description, max_age, laol_opacity_table_file, &

@@ -31,19 +31,19 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `mixing_length_alpha` | `cmixla` | `mixing_length_array` | control | `card_mixing_length_alpha` | run | real(50) | `0` | live | Per run: the mixing-length parameter alpha (the solar calibration rewrites the later runs' entries) |
 | `target_solar_age` | `calsolage` | `target_solar_age` | control | - | run | real | `4.57d9` | live | Solar calibration: the target age of the Sun (yr) |
 | `target_solar_zx` | `calsolzx` | `target_solar_zx` | control | - | run | real | `0.02292d0` | live | Solar calibration: the target surface Z/X (with calibrate_solar_zx) |
-| `run_description` | `descrip` | `-` | - | - | - | string(2) | `''` | live | Per-run description strings echoed in output headers |
+| `run_description` | `descrip` | `run_description` | buffer | - | read | string(2) | `''` | live | Per-run description strings echoed in output headers |
 | `max_age` | `endage` | `target_end_age` | control | `card_max_age_yr` | run | real(50) | `0.0d0` | live | Stop the run card at this age (yr); 0 = no age limit |
 | `laol_opacity_table_file` | `flaol` | `laol_table_path` | control | - | run | string | `''` | live | LAOL 1989 opacity table |
 | `pure_z_opacity_table_file` | `fpurez` | `pure_z_table_path` | control | - | run | string | `''` | live | Pure-Z opacity table (metal diffusion support) |
 | `laol_opacity_table2_file` | `flaol2` | `laol_table2_path` | control | - | run | string | `''` | live | LAOL 1989 opacity table, second Z |
 | `opal92_opacity_table2_file` | `fopal2` | `opal92_table2_path` | control | - | run | string | `''` | live | OPAL 1992 opacity table, second Z |
-| `last_model_file` | `flast` | `-` | - | - | - | string | `'{YREC_OUTPUT}/final.mod'` | live | Path for the final model (.mod) written every model; reloadable |
-| `first_model_file` | `ffirst` | `-` | - | - | - | string | `''` | live | Starting model read when read_first_model is set for a run |
+| `last_model_file` | `flast` | `last_model_file` | buffer | - | read | string | `'{YREC_OUTPUT}/final.mod'` | live | Path for the final model (.mod) written every model; reloadable |
+| `first_model_file` | `ffirst` | `first_model_file` | buffer | - | read | string | `''` | live | Starting model read when read_first_model is set for a run |
 | `fermi_table_file` | `ffermi` | `fermi_table_path` | control | - | run | string | `''` | live | Fermi-Dirac integral table (Yale/Prather degenerate-electron EOS) |
 | `(legacy only)` | `fstch` | `-` | - | - | - | string | `''` | unused | Unused: read by the legacy reader and ignored |
-| `dynamics_file` | `fdyn` | `-` | - | - | - | string | `''` | live | Opened on the dynamics unit (formatted, STATUS=OLD) |
+| `dynamics_file` | `fdyn` | `dynamics_file` | buffer | - | read | string | `''` | live | Opened on the dynamics unit (formatted, STATUS=OLD) |
 | `opal92_opacity_table_file` (`ll_data_file`) | `flldat` | `opal92_table_path` | control | - | run | string | `''` | live | OPAL 1992 opacity table (use_opal92_tables) |
-| `surface_composition_file` | `fscomp` | `-` | - | - | - | string | `''` | live | Accepted and ignored: no surface-composition file is written any more (the light elements are history columns); kept so that decks setting it still read |
+| `surface_composition_file` | `fscomp` | `surface_composition_file` | buffer | - | none | string | `''` | live | Accepted and ignored: no surface-composition file is written any more (the light elements are history columns); kept so that decks setting it still read |
 | `kurucz_opacity_table_file` (`kurucz_atm_table_file`) | `fkur` | `kurucz_table_path` | control | - | run | string | `''` | live | Kurucz 1990 low-temperature opacity table (use_kurucz90_tables) |
 | `mhd_table_file_1` | `fmhd1` | `zams_a_table_path` | control | - | run | string | `''` | live | MHD EOS table 1 of 8: the first ZAMS-type composition |
 | `mhd_table_file_2` | `fmhd2` | `zams_b_table_path` | control | - | run | string | `''` | live | MHD EOS table 2 of 8: the second ZAMS-type composition |
@@ -53,7 +53,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `mhd_table_file_6` | `fmhd6` | `centre3_table_path` | control | - | run | string | `''` | live | MHD EOS table 6 of 8: the third centre-type composition |
 | `mhd_table_file_7` | `fmhd7` | `centre4_table_path` | control | - | run | string | `''` | live | MHD EOS table 7 of 8: the fourth centre-type composition |
 | `mhd_table_file_8` | `fmhd8` | `centre5_table_path` | control | - | run | string | `''` | live | MHD EOS table 8 of 8: the fifth centre-type composition |
-| `isochrone_file` | `fiso` | `-` | - | - | - | string | `''` | live | Isochrone output file |
+| `isochrone_file` | `fiso` | `isochrone_file` | buffer | - | read | string | `''` | live | Isochrone output file |
 | `atm_table_file` | `fatm` | `atm_table_path` | control | - | run | string | `''` | live | Kurucz (atm_choice 3 and 4) or Castelli/Kurucz (5) surface-pressure table |
 | `kurucz_opacity_table2_file` (`kurucz_castelli_atm_table_file`) | `fkur2` | `kurucz_table2_path` | control | - | run | string | `''` | live | Kurucz 1990 low-temperature opacity table, second Z |
 | `allard_atm_table_file` | `fallard` | `allard_table_path` | control | - | run | string | `''` | live | Allard NextGen model-atmosphere table |
@@ -64,7 +64,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `opal95_opacity_table_file` | `fliv95` | `opal95_table_path` | control | - | run | string | `''` | live | OPAL 1995-format opacity table (use_opal95_tables) |
 | `monte_carlo_file1_path` | `fmonte1` | `monte_carlo_file1_path` | buffer | - | read | string | `''` | live | Monte Carlo runs: the file for each run's summary |
 | `monte_carlo_file2_path` | `fmonte2` | `monte_carlo_file2_path` | buffer | - | read | string | `''` | live | Monte Carlo runs: the file for each run's final model |
-| `run_kind` | `kindrn` | `-` | - | - | - | integer(50) | `1` | live | Per-run kind card: 1 = evolve, 2 = rescale (zero timestep, MS/CHeB), 3 = rescale and evolve (pre-MS) |
+| `run_kind` | `kindrn` | `run_kind` | buffer | - | read | integer(50) | `1` | live | Per-run kind card: 1 = evolve, 2 = rescale (zero timestep, MS/CHeB), 3 = rescale and evolve (pre-MS) |
 | `first_call_flag` | `lfirst` | `first_call_flag` | control | `card_from_starting_model` | run | logical(50) | `.true.` | live | DEFAULT IS .TRUE. for every card (read_controls DATA lfirst/50*.true./): an omitted first_call_flag(n) restarts card n from first_model_file, so continuation cards must set it .false. explicitly. |
 | `set_initial_model_number` | `set_initial_model_number` | `set_initial_model_number` | control | - | run | integer | `1` | live | Model number given to the first converged model after a fresh start-model load (first_call_flag card). <= 0 keeps the counter stored in the model file (restart continuation, the pre-2026 behavior). |
 | `use_z_ramp` | `lzramp` | `use_z_ramp` | control | - | run | logical | `.false.` | live | On a rescaling run with rescale_core_z, rescale_z_mix1 and rescale_z_mix2 positive: Z = rescale_core_z inside the mass fraction rescale_z_mix1, then linear to the surface Z at rescale_z_mix2 |
@@ -85,10 +85,10 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `num_runs` | `numrun` | `num_runs` | control | `num_cards` | run | integer | `1` | live | The number of runs (kind cards): each rescales a model, evolves it, or both |
 | `max_model_number` | `nmodls` | `num_models` | control | `card_num_models` | run | integer(50) | `0` | live | Per run: the number of models to compute (the run stops earlier if a stop condition is met) |
 | `alex95_opacity_table_files` (`alex95_table_z_list`) | `opecalex` | `alex95_table_paths` | control | - | run | string(7) | `''` | live | The seven Alexander & Ferguson 1994 low-temperature opacity table files |
-| `rescale_mass` | `rsclm` | `-` | - | - | - | real(50) | `0.0d0` | live | Per-run target mass (Msun) for rescale runs |
-| `rescale_x` | `rsclx` | `-` | - | - | - | real(50) | `0.0d0` | live | Per-run target hydrogen fraction for rescale runs |
-| `rescale_z` | `rsclz` | `-` | - | - | - | real(50) | `0.0d0` | live | Per-run target metallicity for rescale runs |
-| `rescale_core_mass` | `rsclcm` | `-` | - | - | - | real(50) | `0.0d0` | live | Per-run rescale: core mass bound |
+| `rescale_mass` | `rsclm` | `rescale_mass` | buffer | - | read | real(50) | `0.0d0` | live | Per-run target mass (Msun) for rescale runs |
+| `rescale_x` | `rsclx` | `rescale_x` | buffer | - | read | real(50) | `0.0d0` | live | Per-run target hydrogen fraction for rescale runs |
+| `rescale_z` | `rsclz` | `rescale_z` | buffer | - | read | real(50) | `0.0d0` | live | Per-run target metallicity for rescale runs |
+| `rescale_core_mass` | `rsclcm` | `rescale_core_mass` | buffer | - | read | real(50) | `0.0d0` | live | Per-run rescale: core mass bound |
 | `rescale_core_z` | `rsclzc` | `rescale_core_z` | control | `card_z_ramp_core_z` | run | real(50) | `-1.0d0` | live | rscale/setcal: core-Z rescale target |
 | `rescale_z_mix1` | `rsclzm1` | `rescale_z_mix1` | control | `card_z_ramp_inner_mass_fraction` | run | real(50) | `-1.0d0` | live | rscale/setcal: Z-mix rescale parameter 1 |
 | `rescale_z_mix2` | `rsclzm2` | `rescale_z_mix2` | control | `card_z_ramp_outer_mass_fraction` | run | real(50) | `-1.0d0` | live | rscale/setcal: Z-mix rescale parameter 2 |
@@ -108,9 +108,9 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `opal_table_z1` | `zopal1` | `opal_table_z1` | control | - | run | real | `0` | live | Metallicity of the first OPAL92 opacity table |
 | `opal_table_z2` | `zopal2` | `opal_table_z2` | control | - | run | real | `0` | live | Z of the second OPAL 1992 opacity table |
 | `opal95_single_table_z` | `zopal951` | `opal95_single_table_z` | control | - | run | real | `0` | live | Z of the surface-mixture OPAL 1995 / OP table generated at the start |
-| `opal95_z2` | `zopal952` | `-` | - | - | - | real | `0` | live | Inert: read and used nowhere (the OPAL 1995 tables take one Z, opal95_single_table_z); the controls read warns when it is set |
+| `opal95_z2` | `zopal952` | `opal95_z2` | buffer | - | none | real | `0` | live | Inert: read and used nowhere (the OPAL 1995 tables take one Z, opal95_single_table_z); the controls read warns when it is set |
 | `alex_table_z1` | `zalex1` | `alex_table_z1` | control | - | run | real | `0` | live | Z of the Alexander & Ferguson 1994 low-temperature table |
-| `alex_z2` | `zalex2` | `-` | - | - | - | real | `0` | live | Inert: read and used nowhere (the Alexander tables take one Z, alex_table_z1); the controls read warns when it is set |
+| `alex_z2` | `zalex2` | `alex_z2` | buffer | - | none | real | `0` | live | Inert: read and used nowhere (the Alexander tables take one Z, alex_table_z1); the controls read warns when it is set |
 | `kurucz_table_z1` | `zkur1` | `kurucz_table_z1` | control | - | run | real | `0` | live | Z of the first Kurucz 1990 opacity table |
 | `kurucz_table_z2` | `zkur2` | `kurucz_table_z2` | control | - | run | real | `0` | live | Z of the second Kurucz 1990 opacity table |
 | `opal01_eos_table_file` | `fopale01` | `opal2001_eos_table_path` | buffer | - | read | string | `''` | live | OPAL 2001 EOS table (use_opal2001_eos) |
@@ -123,8 +123,8 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `central_helium_stop` | `end_ycen` | `central_helium_stop` | control | `card_central_helium_stop` | run | real(50) | `0.0d0` | live | Per run: stop when the central helium mass fraction falls below this (0: off) |
 | `mixture_change_mode` | `isetmix` | `mixture_change_mode` | buffer | - | read | integer | `0` | live | 1: set the starting model's C, N and O fractions of Z from cno_mixture_name |
 | `isotope_change_mode` | `isetiso` | `isotope_change_mode` | buffer | - | read | integer | `0` | live | 1: set the starting model's CNO isotope ratios and light-element abundances from isotope_mixture_name |
-| `cno_mixture_name` | `amix` | `-` | - | - | - | string | `'GS98'` | live | Heavy-element mixture selector (GS98/CUS/...) applied to the start model |
-| `isotope_mixture_name` | `aiso` | `-` | - | - | - | string | `'L21'` | live | Isotope-ratio set selector (L21 default or CUS custom) |
+| `cno_mixture_name` | `amix` | `cno_mixture_name` | buffer | - | read | string | `'GS98'` | live | Heavy-element mixture selector (GS98/CUS/...) applied to the start model |
+| `isotope_mixture_name` | `aiso` | `isotope_mixture_name` | buffer | - | read | string | `'L21'` | live | Isotope-ratio set selector (L21 default or CUS custom) |
 | `target_carbon_cno_fraction` | `frac_c` | `target_carbon_cno_fraction` | control | - | run | real | `0.172148d0` | live | Carbon fraction of the CNO metals for cno_mixture_name 'CUS' (with cno_mixture_mode = 1) |
 | `target_nitrogen_cno_fraction` | `frac_n` | `target_nitrogen_cno_fraction` | control | - | run | real | `0.050426d0` | live | Nitrogen fraction of the CNO metals for cno_mixture_name 'CUS' |
 | `target_oxygen_cno_fraction` | `frac_o` | `target_oxygen_cno_fraction` | control | - | run | real | `0.468195d0` | live | Oxygen fraction of the CNO metals for cno_mixture_name 'CUS' |
@@ -157,14 +157,14 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 
 | inlist name | legacy name | code name | home | run copy | used | type | default | status | description |
 |---|---|---|---|---|---|---|---|---|---|
-| `log_output_file` | `fshort` | `-` | - | - | - | string | `'{YREC_OUTPUT}/run.log'` | live | Run log path; its directory part defines the output directory (legacy FSHORT) |
+| `log_output_file` | `fshort` | `log_output_file` | buffer | - | read | string | `'{YREC_OUTPUT}/run.log'` | live | Run log path; its directory part defines the output directory (legacy FSHORT) |
 | `atm_step_min` | `atmmin` | `atm_step_min` | physics | - | run | real | `1.0d-1` | live | The atmosphere integration's smallest step (in log tau) |
 | `atm_step_begin` | `atmbeg` | `atm_step_begin` | physics | - | run | real | `1.0d-1` | live | Atmosphere integration: the first step |
 | `atm_error_tol` | `atmerr` | `atm_error_tol` | physics | - | run | real | `3.0d-4` | live | Atmosphere integration: error tolerance |
 | `atm_step_max` | `atmmax` | `atm_step_max` | physics | - | run | real | `5.0d-1` | live | The atmosphere integration's largest step (in log tau) |
 | `atm_step_initial` | `atmd0` | `atm_step_initial` | physics | - | run | real | `1.0d-10` | live | Atmosphere integration: the starting density (g/cm^3) at optical depth near zero; divided by 10 on each retry |
-| `change_species_name` | `anewcp` | `-` | - | - | - | string | `'   '` | live | Element id whose abundance to override in the start model (with change_species_value) |
-| `new_species_value_mode` | `atmp` | `-` | - | - | - | string | `''` | live | With rescale_species_active: 'ABS' makes new_species_value an absolute mass fraction; anything else, relative to hydrogen |
+| `change_species_name` | `anewcp` | `change_species_name` | buffer | - | read | string | `'   '` | live | Element id whose abundance to override in the start model (with change_species_value) |
+| `new_species_value_mode` | `atmp` | `new_species_value_mode` | buffer | - | read | string | `''` | live | With rescale_species_active: 'ABS' makes new_species_value an absolute mass fraction; anything else, relative to hydrogen |
 | `fpft_average_weight` | `acfpft` | `fpft_average_weight` | physics | - | run | real | `1.0d-36` | live | Averaging weight in the fp/ft update (shape, checkj) |
 | `timestep_factors` | `atime` | `timestep_factors` | physics | - | run | real(14) | `1.0d-3, 2.0d-2, 5.0d-1, 2.0d-2, 3.0d-1, 1.5d-3, 1.0d-1, 2.0d-2, 4.0d-2, 2.0d-2, 2.0d-2, 0.25d0, 1.5d0, 0.25d0` | live | Per-phase timestep-control factor array (wtime/ytime governors) |
 | `overshoot_alpha_core` | `alphac` | `overshoot_alpha_core` | physics | - | run | real | `0.0d0` | live | Core overshoot extent in pressure scale heights |
@@ -287,7 +287,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `monte_carlo_active` | `lmonte` | `monte_carlo_active` | physics | - | run | logical | `.false.` | live | Monte-Carlo multi-realization mode |
 | `mc_run_start` | `imbeg` | `mc_run_start` | physics | `first_mc_run` | run | integer | `1` | live | First Monte-Carlo realization index |
 | `mc_run_end` | `imend` | `mc_run_end` | physics | `last_mc_run` | run | integer | `1` | live | Last Monte-Carlo realization index |
-| `(legacy only)` | `sstandard` | `-` | - | - | - | real(17) | `0.9828d0, 1.0485d0, 0.9815d0, 0.9241d0, 1.3818d0, 1.0542d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0108d0, 0.7819d0, 0.2875d0` | legacy | cross-section ratios used when use_new_nuclear_rates = .false. |
+| `(legacy only)` | `sstandard` | `cross_section_ratios` | buffer | - | read | real(17) | `0.9828d0, 1.0485d0, 0.9815d0, 0.9241d0, 1.3818d0, 1.0542d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0108d0, 0.7819d0, 0.2875d0` | legacy | cross-section ratios used when use_new_nuclear_rates = .false. |
 | `use_scv_eos` | `lscv` | `use_scv_eos` | physics | - | run | logical | `.false.` | live | Use the SCV EOS where it is valid and the OPAL EOS is not |
 | `disk_locking_active` | `ldisk` | `disk_locking_active` | physics | - | run | logical | `.false.` | live | Disk locking: hold the surface rotation at disk_omega_rad_s until disk_locking_age_gyr |
 | `disk_locking_age_gyr` | `tdisk` | `disk_locking_age_gyr` | physics | - | run | real | `0.0d0` | live | Disk locking is enforced while star_age <= this value. UNITS: Gyr (historic deck comments wrongly said yr). |
@@ -311,10 +311,10 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `allard_use_tau100` | `laltptau100` | `allard_use_tau100` | physics | - | run | logical | `.false.` | live | Allard atmosphere tables: the boundary at tau = 100 instead of the photosphere |
 | `constant_mixing_coeff` | `cstmixing` | `constant_mixing_coeff` | physics | - | run | real | `1.0d0` | live | Constant added diffusion coefficient (mixing) |
 | `constant_settling_reduction` | `cstdiffmix` | `constant_settling_reduction` | physics | - | run | real | `1.0d0` | live | Constant coefficient mimicking mixing to reduce settling |
-| `use_rotation_scaled_solar_wind` | `lsolwind` | `-` | - | - | - | logical | `.false.` | live | Inert: the rotation-scaled solar wind is commented out (core/step/mass_change.f90); the controls read warns when it is set |
+| `use_rotation_scaled_solar_wind` | `lsolwind` | `use_rotation_scaled_solar_wind` | buffer | - | none | logical | `.false.` | live | Inert: the rotation-scaled solar wind is commented out (core/step/mass_change.f90); the controls read warns when it is set |
 | `use_pmm_wind_law` | `lmwind` | `use_pmm_wind_law` | physics | - | run | logical | `.false.` | live | Use the Matt et al. (2012) magnetized wind law (wind_law_name) instead of the Kawaler law |
 | `scale_by_rossby_number` | `lrossby` | `scale_by_rossby_number` | physics | - | run | logical | `.true.` | live | Matt wind law: scale the loss rate with the Rossby number (use with a saturation threshold) |
-| `use_pmm_wind` | `lpmm` | `-` | - | - | - | logical | `.false.` | live | Inert: read and used nowhere (the Matt law is use_pmm_wind_law); the controls read warns when it is set |
+| `use_pmm_wind` | `lpmm` | `use_pmm_wind` | buffer | - | none | logical | `.false.` | live | Inert: read and used nowhere (the Matt law is use_pmm_wind_law); the controls read warns when it is set |
 | `scale_by_b_field` | `lbscale` | `scale_by_b_field` | physics | - | run | logical | `.false.` | live | Matt wind law: scale the field with the equipartition B (set by wind_law_name for K97 and V13) |
 | `wind_law_name` | `awind` | `wind_law_name` | physics | - | run | string | `'K97'` | live | Matt wind law: V13 (van Saders & Pinsonneault 2013), K97 (Krishnamurthi et al. 1997), or CUS (the pmm_exponent_* as given) |
 | `pmm_exponent_a` | `pmma` | `pmm_exponent_a` | physics | - | run | real | `2.0d0` | live | PMM wind law: exponent a (Lx/Lbol ~ omega**a); K97 and V13 set it |
@@ -324,23 +324,23 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `pmm_exponent_m` | `pmmm` | `pmm_exponent_m` | physics | - | run | real | `0.5d0` | live | Matt wind law: exponent m of the torque (CUS only; K97 and V13 set it) |
 | `pmm_norm_jdot` | `pmmjd` | `pmm_norm_jdot` | physics | - | run | real | `1.32d30` | live | Matt wind law: the solar wind torque (cgs), the zero point of the loss rate (adjust with wind_law_constant) |
 | `pmm_norm_mdot` | `pmmmd` | `pmm_norm_mdot` | buffer | - | none | real | `1.27d12` | live | Matt wind law: the solar mass-loss rate (g/s), its zero point |
-| `pmm_omega_sat` | `pmmwmax` | `-` | - | - | - | real | `0` | live | Inert: read and used nowhere (the saturation is wind_saturation_omega or solar_omega_sat); the controls read warns when it is set |
+| `pmm_omega_sat` | `pmmwmax` | `pmm_omega_sat` | buffer | - | none | real | `0` | live | Inert: read and used nowhere (the saturation is wind_saturation_omega or solar_omega_sat); the controls read warns when it is set |
 | `pmm_solar_pressure` | `pmmsolp` | `pmm_solar_pressure` | physics | - | run | real | `4.9304d0` | live | Matt wind law: log10 of the solar photospheric pressure (dyn/cm^2), the zero point of the field strength |
 | `pmm_solar_omega` | `pmmsolw` | `pmm_solar_omega` | physics | - | run | real | `2.836d-6` | live | Matt wind law: the solar angular velocity (rad/s), the zero point of the torque |
 | `pmm_solar_turnover_timescale` | `pmmsoltau` | `pmm_solar_turnover_timescale` | physics | - | run | real | `9.4805d5` | live | Matt wind law: the solar convective turnover time (s), the zero point of the Rossby number |
 | `use_constant_background_diffusion` | `lcodm` | `use_constant_background_diffusion` | physics | - | run | logical | `.false.` | live | Add a constant background diffusion (constant_background_diffusion_coeff) to the angular momentum transport |
 | `constant_background_diffusion_coeff` | `codm` | `constant_background_diffusion_coeff` | physics | - | run | real | `2.5d4` | live | Constant background diffusion coefficient for angular momentum (cm^2/s) |
 | `solar_omega_sat` | `wmax_sun` | `solar_omega_sat` | physics | - | run | real | `1000.0d0` | live | The wind's saturation omega in units of the solar omega (pmm_solar_omega); below 1000 it overrides wind_saturation_omega |
-| `li6_rate_value` | `xsli6` | `-` | - | - | - | real | `li6_reference_xs` | live | Li6 burning cross-section override (sets sli6 = value/5.5e3 when scale_li6_rate) |
-| `li7_rate_value` | `xsli7` | `-` | - | - | - | real | `li7_reference_xs` | live | Li7 burning cross-section override (value/5.2e1) |
-| `be9_rate_value1` | `xsbe91` | `-` | - | - | - | real | `be9_pg_reference_xs` | live | Be9 cross-section override 1 (value/1.1) |
-| `be9_rate_value2` | `xsbe92` | `-` | - | - | - | real | `be9_pd_reference_xs` | live | Be9 cross-section override 2 (value/1.5e4) |
-| `be9_rate_value3` | `xsbe93` | `-` | - | - | - | real | `be9_palpha_reference_xs` | live | Be9 cross-section override 3 (value/1.5e4) |
-| `scale_li6_rate` | `lxli6` | `-` | - | - | - | logical | `.false.` | live | Apply li6_rate_value |
-| `scale_li7_rate` | `lxli7` | `-` | - | - | - | logical | `.false.` | live | Apply li7_rate_value |
-| `scale_be9_rate1` | `lxbe91` | `-` | - | - | - | logical | `.false.` | live | Apply be9_rate_value1 |
-| `scale_be9_rate2` | `lxbe92` | `-` | - | - | - | logical | `.false.` | live | Apply be9_rate_value2 |
-| `scale_be9_rate3` | `lxbe93` | `-` | - | - | - | logical | `.false.` | live | Apply be9_rate_value3 |
+| `li6_rate_value` | `xsli6` | `li6_rate_value` | buffer | - | read | real | `5.5d3` | live | Li6 burning cross-section override (sets sli6 = value/5.5e3 when scale_li6_rate) |
+| `li7_rate_value` | `xsli7` | `li7_rate_value` | buffer | - | read | real | `5.2d1` | live | Li7 burning cross-section override (value/5.2e1) |
+| `be9_rate_value1` | `xsbe91` | `be9_rate_value1` | buffer | - | read | real | `1.1d0` | live | Be9 cross-section override 1 (value/1.1) |
+| `be9_rate_value2` | `xsbe92` | `be9_rate_value2` | buffer | - | read | real | `1.5d4` | live | Be9 cross-section override 2 (value/1.5e4) |
+| `be9_rate_value3` | `xsbe93` | `be9_rate_value3` | buffer | - | read | real | `1.5d4` | live | Be9 cross-section override 3 (value/1.5e4) |
+| `scale_li6_rate` | `lxli6` | `scale_li6_rate` | buffer | - | read | logical | `.false.` | live | Apply li6_rate_value |
+| `scale_li7_rate` | `lxli7` | `scale_li7_rate` | buffer | - | read | logical | `.false.` | live | Apply li7_rate_value |
+| `scale_be9_rate1` | `lxbe91` | `scale_be9_rate1` | buffer | - | read | logical | `.false.` | live | Apply be9_rate_value1 |
+| `scale_be9_rate2` | `lxbe92` | `scale_be9_rate2` | buffer | - | read | logical | `.false.` | live | Apply be9_rate_value2 |
+| `scale_be9_rate3` | `lxbe93` | `scale_be9_rate3` | buffer | - | read | logical | `.false.` | live | Apply be9_rate_value3 |
 | `li6_rate_scale` | `sli6` | `li6_rate_scale` | physics | - | run | real | `1.0d0` | live | Li6 burning rate scale (scale_li6_rate with li6_rate_value overrides it) |
 | `li7_rate_scale` | `sli7` | `li7_rate_scale` | physics | - | run | real | `1.0d0` | live | Li7 burning rate scale (scale_li7_rate with li7_rate_value overrides it) |
 | `be9_pg_rate_scale` | `sbe91` | `be9_pg_rate_scale` | physics | - | run | real | `1.0d0` | live | Scale of the Be9(p,g) rate (overridden by xsbe91 with lxbe91) |

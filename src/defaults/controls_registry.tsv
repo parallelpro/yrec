@@ -2,20 +2,20 @@ group	legacy	type	proposed_name	status	mesa_note	doc	canonical	home	run_copy	use
 control	cmixla	real(50)	mixing_length_alpha	live	mesa: mixing_length_alpha	Per run: the mixing-length parameter alpha (the solar calibration rewrites the later runs' entries)	mixing_length_array	control	card_mixing_length_alpha	run	
 control	calsolage	real	target_solar_age	live		Solar calibration: the target age of the Sun (yr)	target_solar_age	control		run	
 control	calsolzx	real	target_solar_zx	live		Solar calibration: the target surface Z/X (with calibrate_solar_zx)	target_solar_zx	control		run	
-control	descrip	string(2)	run_description	live		Per-run description strings echoed in output headers					
+control	descrip	string(2)	run_description	live		Per-run description strings echoed in output headers	run_description	buffer		read	
 control	endage	real(50)	max_age	live	mesa: max_age	Stop the run card at this age (yr); 0 = no age limit	target_end_age	control	card_max_age_yr	run	
 control	flaol	string	laol_opacity_table_file	live		LAOL 1989 opacity table	laol_table_path	control		run	
 control	fpurez	string	pure_z_opacity_table_file	live		Pure-Z opacity table (metal diffusion support)	pure_z_table_path	control		run	
 control	flaol2	string	laol_opacity_table2_file	live		LAOL 1989 opacity table, second Z	laol_table2_path	control		run	
 control	fopal2	string	opal92_opacity_table2_file	live		OPAL 1992 opacity table, second Z	opal92_table2_path	control		run	
-control	flast	string	last_model_file	live		Path for the final model (.mod) written every model; reloadable					
-control	ffirst	string	first_model_file	live		Starting model read when read_first_model is set for a run					
+control	flast	string	last_model_file	live		Path for the final model (.mod) written every model; reloadable	last_model_file	buffer		read	
+control	ffirst	string	first_model_file	live		Starting model read when read_first_model is set for a run	first_model_file	buffer		read	
 control	ffermi	string	fermi_table_file	live		Fermi-Dirac integral table (Yale/Prather degenerate-electron EOS)	fermi_table_path	control		run	
-physics	fshort	string	log_output_file	live		Run log path; its directory part defines the output directory (legacy FSHORT)					
+physics	fshort	string	log_output_file	live		Run log path; its directory part defines the output directory (legacy FSHORT)	log_output_file	buffer		read	
 control	fstch	string	stored_change_file	unused		Unused: read by the legacy reader and ignored					
-control	fdyn	string	dynamics_file	live		Opened on the dynamics unit (formatted, STATUS=OLD)					
+control	fdyn	string	dynamics_file	live		Opened on the dynamics unit (formatted, STATUS=OLD)	dynamics_file	buffer		read	
 control	flldat	string	opal92_opacity_table_file	live		OPAL 1992 opacity table (use_opal92_tables)	opal92_table_path	control		run	ll_data_file
-control	fscomp	string	surface_composition_file	live		Accepted and ignored: no surface-composition file is written any more (the light elements are history columns); kept so that decks setting it still read					
+control	fscomp	string	surface_composition_file	live		Accepted and ignored: no surface-composition file is written any more (the light elements are history columns); kept so that decks setting it still read	surface_composition_file	buffer		none	
 control	fkur	string	kurucz_opacity_table_file	live		Kurucz 1990 low-temperature opacity table (use_kurucz90_tables)	kurucz_table_path	control		run	kurucz_atm_table_file
 control	fmhd1	string	mhd_table_file_1	live		MHD EOS table 1 of 8: the first ZAMS-type composition	zams_a_table_path	control		run	
 control	fmhd2	string	mhd_table_file_2	live		MHD EOS table 2 of 8: the second ZAMS-type composition	zams_b_table_path	control		run	
@@ -25,7 +25,7 @@ control	fmhd5	string	mhd_table_file_5	live		MHD EOS table 5 of 8: the second cen
 control	fmhd6	string	mhd_table_file_6	live		MHD EOS table 6 of 8: the third centre-type composition	centre3_table_path	control		run	
 control	fmhd7	string	mhd_table_file_7	live		MHD EOS table 7 of 8: the fourth centre-type composition	centre4_table_path	control		run	
 control	fmhd8	string	mhd_table_file_8	live		MHD EOS table 8 of 8: the fifth centre-type composition	centre5_table_path	control		run	
-control	fiso	string	isochrone_file	live		Isochrone output file					
+control	fiso	string	isochrone_file	live		Isochrone output file	isochrone_file	buffer		read	
 control	fatm	string	atm_table_file	live		Kurucz (atm_choice 3 and 4) or Castelli/Kurucz (5) surface-pressure table	atm_table_path	control		run	
 control	fkur2	string	kurucz_opacity_table2_file	live		Kurucz 1990 low-temperature opacity table, second Z	kurucz_table2_path	control		run	kurucz_castelli_atm_table_file
 control	fallard	string	allard_atm_table_file	live		Allard NextGen model-atmosphere table	allard_table_path	control		run	
@@ -36,7 +36,7 @@ control	fopale	string	opal95_eos_table_file	live		OPAL 1995 EOS table (use_opal9
 control	fliv95	string	opal95_opacity_table_file	live		OPAL 1995-format opacity table (use_opal95_tables)	opal95_table_path	control		run	
 control	fmonte1	string	monte_carlo_file1_path	live		Monte Carlo runs: the file for each run's summary	monte_carlo_file1_path	buffer		read	
 control	fmonte2	string	monte_carlo_file2_path	live		Monte Carlo runs: the file for each run's final model	monte_carlo_file2_path	buffer		read	
-control	kindrn	integer(50)	run_kind	live		Per-run kind card: 1 = evolve, 2 = rescale (zero timestep, MS/CHeB), 3 = rescale and evolve (pre-MS)					
+control	kindrn	integer(50)	run_kind	live		Per-run kind card: 1 = evolve, 2 = rescale (zero timestep, MS/CHeB), 3 = rescale and evolve (pre-MS)	run_kind	buffer		read	
 control	lfirst	logical(50)	first_call_flag	live		DEFAULT IS .TRUE. for every card (read_controls DATA lfirst/50*.true./): an omitted first_call_flag(n) restarts card n from first_model_file, so continuation cards must set it .false. explicitly.	first_call_flag	control	card_from_starting_model	run	
 control	set_initial_model_number	integer	set_initial_model_number	live		Model number given to the first converged model after a fresh start-model load (first_call_flag card). <= 0 keeps the counter stored in the model file (restart continuation, the pre-2026 behavior).	set_initial_model_number	control		run	
 control	lzramp	logical	use_z_ramp	live		On a rescaling run with rescale_core_z, rescale_z_mix1 and rescale_z_mix2 positive: Z = rescale_core_z inside the mass fraction rescale_z_mix1, then linear to the surface Z at rescale_z_mix2	use_z_ramp	control		run	
@@ -57,10 +57,10 @@ control	npenv	integer	envelope_print_points	live		Envelope profile print count (
 control	numrun	integer	num_runs	live		The number of runs (kind cards): each rescales a model, evolves it, or both	num_runs	control	num_cards	run	
 control	nmodls	integer(50)	max_model_number	live	mesa: max_model_number	Per run: the number of models to compute (the run stops earlier if a stop condition is met)	num_models	control	card_num_models	run	
 control	opecalex	string(7)	alex95_opacity_table_files	live		The seven Alexander & Ferguson 1994 low-temperature opacity table files	alex95_table_paths	control		run	alex95_table_z_list
-control	rsclm	real(50)	rescale_mass	live	mesa: new_mass	Per-run target mass (Msun) for rescale runs					
-control	rsclx	real(50)	rescale_x	live		Per-run target hydrogen fraction for rescale runs					
-control	rsclz	real(50)	rescale_z	live	mesa: new_Z	Per-run target metallicity for rescale runs					
-control	rsclcm	real(50)	rescale_core_mass	live		Per-run rescale: core mass bound					
+control	rsclm	real(50)	rescale_mass	live	mesa: new_mass	Per-run target mass (Msun) for rescale runs	rescale_mass	buffer		read	
+control	rsclx	real(50)	rescale_x	live		Per-run target hydrogen fraction for rescale runs	rescale_x	buffer		read	
+control	rsclz	real(50)	rescale_z	live	mesa: new_Z	Per-run target metallicity for rescale runs	rescale_z	buffer		read	
+control	rsclcm	real(50)	rescale_core_mass	live		Per-run rescale: core mass bound	rescale_core_mass	buffer		read	
 control	rsclzc	real(50)	rescale_core_z	live		rscale/setcal: core-Z rescale target	rescale_core_z	control	card_z_ramp_core_z	run	
 control	rsclzm1	real(50)	rescale_z_mix1	live		rscale/setcal: Z-mix rescale parameter 1	rescale_z_mix1	control	card_z_ramp_inner_mass_fraction	run	
 control	rsclzm2	real(50)	rescale_z_mix2	live		rscale/setcal: Z-mix rescale parameter 2	rescale_z_mix2	control	card_z_ramp_outer_mass_fraction	run	
@@ -80,9 +80,9 @@ control	zlaol2	real	laol_table_z2	live		Metallicity of the second LAOL89 opacity
 control	zopal1	real	opal_table_z1	live		Metallicity of the first OPAL92 opacity table	opal_table_z1	control		run	
 control	zopal2	real	opal_table_z2	live		Z of the second OPAL 1992 opacity table	opal_table_z2	control		run	
 control	zopal951	real	opal95_single_table_z	live		Z of the surface-mixture OPAL 1995 / OP table generated at the start	opal95_single_table_z	control		run	
-control	zopal952	real	opal95_z2	live		Inert: read and used nowhere (the OPAL 1995 tables take one Z, opal95_single_table_z); the controls read warns when it is set					
+control	zopal952	real	opal95_z2	live		Inert: read and used nowhere (the OPAL 1995 tables take one Z, opal95_single_table_z); the controls read warns when it is set	opal95_z2	buffer		none	
 control	zalex1	real	alex_table_z1	live		Z of the Alexander & Ferguson 1994 low-temperature table	alex_table_z1	control		run	
-control	zalex2	real	alex_z2	live		Inert: read and used nowhere (the Alexander tables take one Z, alex_table_z1); the controls read warns when it is set					
+control	zalex2	real	alex_z2	live		Inert: read and used nowhere (the Alexander tables take one Z, alex_table_z1); the controls read warns when it is set	alex_z2	buffer		none	
 control	zkur1	real	kurucz_table_z1	live		Z of the first Kurucz 1990 opacity table	kurucz_table_z1	control		run	
 control	zkur2	real	kurucz_table_z2	live		Z of the second Kurucz 1990 opacity table	kurucz_table_z2	control		run	
 control	fopale01	string	opal01_eos_table_file	live		OPAL 2001 EOS table (use_opal2001_eos)	opal2001_eos_table_path	buffer		read	
@@ -97,8 +97,8 @@ control	end_xcen	real(50)	central_hydrogen_stop	live	mesa: xa_central_lower_limi
 control	end_ycen	real(50)	central_helium_stop	live	mesa: xa_central_lower_limit (He)	Per run: stop when the central helium mass fraction falls below this (0: off)	central_helium_stop	control	card_central_helium_stop	run	
 control	isetmix	integer	mixture_change_mode	live		1: set the starting model's C, N and O fractions of Z from cno_mixture_name	mixture_change_mode	buffer		read	
 control	isetiso	integer	isotope_change_mode	live		1: set the starting model's CNO isotope ratios and light-element abundances from isotope_mixture_name	isotope_change_mode	buffer		read	
-control	amix	string	cno_mixture_name	live		Heavy-element mixture selector (GS98/CUS/...) applied to the start model					
-control	aiso	string	isotope_mixture_name	live		Isotope-ratio set selector (L21 default or CUS custom)					
+control	amix	string	cno_mixture_name	live		Heavy-element mixture selector (GS98/CUS/...) applied to the start model	cno_mixture_name	buffer		read	
+control	aiso	string	isotope_mixture_name	live		Isotope-ratio set selector (L21 default or CUS custom)	isotope_mixture_name	buffer		read	
 control	frac_c	real	target_carbon_cno_fraction	live		Carbon fraction of the CNO metals for cno_mixture_name 'CUS' (with cno_mixture_mode = 1)	target_carbon_cno_fraction	control		run	
 control	frac_n	real	target_nitrogen_cno_fraction	live		Nitrogen fraction of the CNO metals for cno_mixture_name 'CUS'	target_nitrogen_cno_fraction	control		run	
 control	frac_o	real	target_oxygen_cno_fraction	live		Oxygen fraction of the CNO metals for cno_mixture_name 'CUS'	target_oxygen_cno_fraction	control		run	
@@ -120,8 +120,8 @@ physics	atmbeg	real	atm_step_begin	live		Atmosphere integration: the first step	
 physics	atmerr	real	atm_error_tol	live		Atmosphere integration: error tolerance	atm_error_tol	physics		run	
 physics	atmmax	real	atm_step_max	live		The atmosphere integration's largest step (in log tau)	atm_step_max	physics		run	
 physics	atmd0	real	atm_step_initial	live		Atmosphere integration: the starting density (g/cm^3) at optical depth near zero; divided by 10 on each retry	atm_step_initial	physics		run	
-physics	anewcp	string	change_species_name	live		Element id whose abundance to override in the start model (with change_species_value)					
-physics	atmp	string	new_species_value_mode	live		With rescale_species_active: 'ABS' makes new_species_value an absolute mass fraction; anything else, relative to hydrogen					
+physics	anewcp	string	change_species_name	live		Element id whose abundance to override in the start model (with change_species_value)	change_species_name	buffer		read	
+physics	atmp	string	new_species_value_mode	live		With rescale_species_active: 'ABS' makes new_species_value an absolute mass fraction; anything else, relative to hydrogen	new_species_value_mode	buffer		read	
 physics	acfpft	real	fpft_average_weight	live		Averaging weight in the fp/ft update (shape, checkj)	fpft_average_weight	physics		run	
 physics	atime	real(14)	timestep_factors	live		Per-phase timestep-control factor array (wtime/ytime governors)	timestep_factors	physics		run	
 physics	alphac	real	overshoot_alpha_core	live	~ MESA overshoot f	Core overshoot extent in pressure scale heights	overshoot_alpha_core	physics		run	
@@ -244,7 +244,7 @@ physics	tmolmax	real	molecular_opacity_logt_max	live		log10 T above which only t
 physics	lmonte	logical	monte_carlo_active	live		Monte-Carlo multi-realization mode	monte_carlo_active	physics		run	
 physics	imbeg	integer	mc_run_start	live		First Monte-Carlo realization index	mc_run_start	physics	first_mc_run	run	
 physics	imend	integer	mc_run_end	live		Last Monte-Carlo realization index	mc_run_end	physics	last_mc_run	run	
-physics	sstandard	real(17)	cross_section_ratios	legacy		cross-section ratios used when use_new_nuclear_rates = .false.					
+physics	sstandard	real(17)	cross_section_ratios	legacy		cross-section ratios used when use_new_nuclear_rates = .false.	cross_section_ratios	buffer		read	
 physics	lscv	logical	use_scv_eos	live		Use the SCV EOS where it is valid and the OPAL EOS is not	use_scv_eos	physics		run	
 physics	ldisk	logical	disk_locking_active	live		Disk locking: hold the surface rotation at disk_omega_rad_s until disk_locking_age_gyr	disk_locking_active	physics		run	
 physics	tdisk	real	disk_locking_age_gyr	live		Disk locking is enforced while star_age <= this value. UNITS: Gyr (historic deck comments wrongly said yr).	disk_locking_age_gyr	physics		run	
@@ -268,10 +268,10 @@ physics	alatm_alpha	real	allard_target_alpha	live		Allard atmosphere tables: [al
 physics	laltptau100	logical	allard_use_tau100	live		Allard atmosphere tables: the boundary at tau = 100 instead of the photosphere	allard_use_tau100	physics		run	
 physics	cstmixing	real	constant_mixing_coeff	live		Constant added diffusion coefficient (mixing)	constant_mixing_coeff	physics		run	
 physics	cstdiffmix	real	constant_settling_reduction	live		Constant coefficient mimicking mixing to reduce settling	constant_settling_reduction	physics		run	
-physics	lsolwind	logical	use_rotation_scaled_solar_wind	live		Inert: the rotation-scaled solar wind is commented out (core/step/mass_change.f90); the controls read warns when it is set					
+physics	lsolwind	logical	use_rotation_scaled_solar_wind	live		Inert: the rotation-scaled solar wind is commented out (core/step/mass_change.f90); the controls read warns when it is set	use_rotation_scaled_solar_wind	buffer		none	
 physics	lmwind	logical	use_pmm_wind_law	live		Use the Matt et al. (2012) magnetized wind law (wind_law_name) instead of the Kawaler law	use_pmm_wind_law	physics		run	
 physics	lrossby	logical	scale_by_rossby_number	live		Matt wind law: scale the loss rate with the Rossby number (use with a saturation threshold)	scale_by_rossby_number	physics		run	
-physics	lpmm	logical	use_pmm_wind	live		Inert: read and used nowhere (the Matt law is use_pmm_wind_law); the controls read warns when it is set					
+physics	lpmm	logical	use_pmm_wind	live		Inert: read and used nowhere (the Matt law is use_pmm_wind_law); the controls read warns when it is set	use_pmm_wind	buffer		none	
 physics	lbscale	logical	scale_by_b_field	live		Matt wind law: scale the field with the equipartition B (set by wind_law_name for K97 and V13)	scale_by_b_field	physics		run	
 physics	awind	string	wind_law_name	live		Matt wind law: V13 (van Saders & Pinsonneault 2013), K97 (Krishnamurthi et al. 1997), or CUS (the pmm_exponent_* as given)	wind_law_name	physics		run	
 physics	pmma	real	pmm_exponent_a	live		PMM wind law: exponent a (Lx/Lbol ~ omega**a); K97 and V13 set it	pmm_exponent_a	physics		run	
@@ -281,23 +281,23 @@ physics	pmmd	real	pmm_exponent_d	live		Matt wind law: exponent d of the convecti
 physics	pmmm	real	pmm_exponent_m	live		Matt wind law: exponent m of the torque (CUS only; K97 and V13 set it)	pmm_exponent_m	physics		run	
 physics	pmmjd	real	pmm_norm_jdot	live		Matt wind law: the solar wind torque (cgs), the zero point of the loss rate (adjust with wind_law_constant)	pmm_norm_jdot	physics		run	
 physics	pmmmd	real	pmm_norm_mdot	live		Matt wind law: the solar mass-loss rate (g/s), its zero point	pmm_norm_mdot	buffer		none	
-physics	pmmwmax	real	pmm_omega_sat	live		Inert: read and used nowhere (the saturation is wind_saturation_omega or solar_omega_sat); the controls read warns when it is set					
+physics	pmmwmax	real	pmm_omega_sat	live		Inert: read and used nowhere (the saturation is wind_saturation_omega or solar_omega_sat); the controls read warns when it is set	pmm_omega_sat	buffer		none	
 physics	pmmsolp	real	pmm_solar_pressure	live		Matt wind law: log10 of the solar photospheric pressure (dyn/cm^2), the zero point of the field strength	pmm_solar_pressure	physics		run	
 physics	pmmsolw	real	pmm_solar_omega	live		Matt wind law: the solar angular velocity (rad/s), the zero point of the torque	pmm_solar_omega	physics		run	
 physics	pmmsoltau	real	pmm_solar_turnover_timescale	live		Matt wind law: the solar convective turnover time (s), the zero point of the Rossby number	pmm_solar_turnover_timescale	physics		run	
 physics	lcodm	logical	use_constant_background_diffusion	live		Add a constant background diffusion (constant_background_diffusion_coeff) to the angular momentum transport	use_constant_background_diffusion	physics		run	
 physics	codm	real	constant_background_diffusion_coeff	live		Constant background diffusion coefficient for angular momentum (cm^2/s)	constant_background_diffusion_coeff	physics		run	
 physics	wmax_sun	real	solar_omega_sat	live		The wind's saturation omega in units of the solar omega (pmm_solar_omega); below 1000 it overrides wind_saturation_omega	solar_omega_sat	physics		run	
-physics	xsli6	real	li6_rate_value	live		Li6 burning cross-section override (sets sli6 = value/5.5e3 when scale_li6_rate)					
-physics	xsli7	real	li7_rate_value	live		Li7 burning cross-section override (value/5.2e1)					
-physics	xsbe91	real	be9_rate_value1	live		Be9 cross-section override 1 (value/1.1)					
-physics	xsbe92	real	be9_rate_value2	live		Be9 cross-section override 2 (value/1.5e4)					
-physics	xsbe93	real	be9_rate_value3	live		Be9 cross-section override 3 (value/1.5e4)					
-physics	lxli6	logical	scale_li6_rate	live		Apply li6_rate_value					
-physics	lxli7	logical	scale_li7_rate	live		Apply li7_rate_value					
-physics	lxbe91	logical	scale_be9_rate1	live		Apply be9_rate_value1					
-physics	lxbe92	logical	scale_be9_rate2	live		Apply be9_rate_value2					
-physics	lxbe93	logical	scale_be9_rate3	live		Apply be9_rate_value3					
+physics	xsli6	real	li6_rate_value	live		Li6 burning cross-section override (sets sli6 = value/5.5e3 when scale_li6_rate)	li6_rate_value	buffer		read	
+physics	xsli7	real	li7_rate_value	live		Li7 burning cross-section override (value/5.2e1)	li7_rate_value	buffer		read	
+physics	xsbe91	real	be9_rate_value1	live		Be9 cross-section override 1 (value/1.1)	be9_rate_value1	buffer		read	
+physics	xsbe92	real	be9_rate_value2	live		Be9 cross-section override 2 (value/1.5e4)	be9_rate_value2	buffer		read	
+physics	xsbe93	real	be9_rate_value3	live		Be9 cross-section override 3 (value/1.5e4)	be9_rate_value3	buffer		read	
+physics	lxli6	logical	scale_li6_rate	live		Apply li6_rate_value	scale_li6_rate	buffer		read	
+physics	lxli7	logical	scale_li7_rate	live		Apply li7_rate_value	scale_li7_rate	buffer		read	
+physics	lxbe91	logical	scale_be9_rate1	live		Apply be9_rate_value1	scale_be9_rate1	buffer		read	
+physics	lxbe92	logical	scale_be9_rate2	live		Apply be9_rate_value2	scale_be9_rate2	buffer		read	
+physics	lxbe93	logical	scale_be9_rate3	live		Apply be9_rate_value3	scale_be9_rate3	buffer		read	
 physics	sli6	real	li6_rate_scale	live		Li6 burning rate scale (scale_li6_rate with li6_rate_value overrides it)	li6_rate_scale	physics		run	
 physics	sli7	real	li7_rate_scale	live		Li7 burning rate scale (scale_li7_rate with li7_rate_value overrides it)	li7_rate_scale	physics		run	
 physics	sbe91	real	be9_pg_rate_scale	live		Scale of the Be9(p,g) rate (overridden by xsbe91 with lxbe91)	be9_pg_rate_scale	physics		run	

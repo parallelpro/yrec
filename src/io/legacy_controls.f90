@@ -27,9 +27,8 @@ module legacy_controls
 ! home (a controls_buffer variable or a star member); a control spelled the
 ! same in both reads straight into controls_buffer and needs no copy.
 ! defaults/controls_registry.tsv maps every legacy name to its
-! canonical and new-inlist names. ies and imu are read and then
-! unused. element_id, the mixture tables, the inlist file
-! names are the reader's own working variables.
+! canonical and new-inlist names. fstch and fmu are read and then
+! unused. The inlist file names are the reader's own working variables.
       character(len=256) :: flaol, fpurez
       character(len=256) :: flaol2, fopal2, fkur2
       character(len=3) :: anewcp, atmp
@@ -53,10 +52,6 @@ module legacy_controls
       real(dp) :: alfa, fk, wmax_sun, pmmwmax, zalex2, zopal952
       logical :: lpmm, lsolwind
 
-      character(len=3) :: element_id(12)
-      character(len=8) :: mixture_id_table(4)
-      real(dp) :: zx_mix_table(4), frac_c_table(4), &
-           frac_n_table(4), frac_o_table(4)
       character(len=256) :: control_nml_file, physics_nml_file
 
       character(len=256) :: fmonte1, fmonte2
@@ -219,13 +214,6 @@ module legacy_controls
       real(dp) :: codm
       logical :: lcodm
 
-! The light-element cross sections (keV b) the rate scales are relative
-! to, which are also the xs* inputs' defaults: Li6 5500 (Fowler et al.
-! 1967), Li7 52 (Rolfs & Kavanagh 1986), Be9(p,g) 1.1 (approximate, from
-! Fowler 1988), Be9(p,d) and Be9(p,a) 15000 (Fowler et al. 1967).
-      real(dp), parameter :: li6_reference_xs = 5.5d3, li7_reference_xs = 5.2d1, &
-           be9_pg_reference_xs = 1.1d0, be9_pd_reference_xs = 1.5d4, &
-           be9_palpha_reference_xs = 1.5d4
       real(dp) :: xsli6, xsli7, xsbe91, xsbe92, xsbe93
       logical :: lxli6, lxli7, lxbe91, lxbe92, lxbe93
 
@@ -388,64 +376,12 @@ contains
 ! when these were the reader's locals under -finit-local-zero.
 subroutine set_legacy_defaults
       include 'legacy_mirror.inc'
-! The legacy names without a canonical home, and their defaults.
-! sstandard: the cross sections relative to Bahcall & Ulrich 1988, used
-! when lnewnuc is .false.
-      sstandard = (/ 0.9828d0, 1.0485d0, 0.9815d0, 0.9241d0, 1.3818d0, 1.0542d0, 1.0d0, &
-           1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0108d0, 0.7819d0, 0.2875d0 /)
-      kindrn = 1
-      rsclm = 0.0d0
-      rsclx = 0.0d0
-      rsclz = 0.0d0
-      rsclcm = 0.0d0
-      element_id = (/ 'HE3', 'C12', 'C13', 'N14', 'N15', 'O16', 'O17', 'O18', 'H2 ', 'LI6', 'LI7', 'BE9' /)
-! Rescaling one species of the starting model (anewcp names it)
-      anewcp = '   '
-! The starting model's mixture: isetmix = 1 sets the C, N and O fractions
-! of Z from amix ('GS98', 'AAG21', 'M22P', 'M22M', or 'CUS' for frac_c/n/o
-! and zxmix as given); isetiso = 1 sets the CNO isotope ratios and the
-! light-element abundances from aiso ('L21', Lodders et al. 2021, or
-! 'CUS'). The table rows: GS98 (Grevesse & Sauval 1998), AAG21 (Asplund
-! et al. 2021), M22P and M22M (Magg et al. 2022, photospheric and
-! meteoritic).
-      amix = 'GS98'
-      aiso = 'L21'
-      mixture_id_table = (/ character(len=8) :: 'GS98', 'AAG21', 'M22P', 'M22M' /)
-      zx_mix_table = (/ 0.02292d0, 0.0187d0, 0.0225d0, 0.0226d0 /)
-      frac_c_table = (/ 0.172148d0, 0.184156d0, 0.19239d0, 0.191425d0 /)
-      frac_n_table = (/ 0.050426d0, 0.050344d0, 0.059012d0, 0.058716d0 /)
-      frac_o_table = (/ 0.468195d0, 0.416592d0, 0.415631d0, 0.413545d0 /)
+! The legacy names without a canonical home (read and unused), and the
+! deck's file names, which read_input sets.
       fmu = 1.0d0
-      lsolwind = .false.
-! the light-element cross sections (used when lxli6 etc are set)
-      xsli6 = li6_reference_xs
-      xsli7 = li7_reference_xs
-      xsbe91 = be9_pg_reference_xs
-      xsbe92 = be9_pd_reference_xs
-      xsbe93 = be9_palpha_reference_xs
-      lxli6 = .false.
-      lxli7 = .false.
-      lxbe91 = .false.
-      lxbe92 = .false.
-      lxbe93 = .false.
-! the final model and the run log, whose directory is the output
-! directory ({YREC_OUTPUT} is $YREC_OUTPUT, or output when unset)
-      flast = '{YREC_OUTPUT}/final.mod'
-      fshort = '{YREC_OUTPUT}/run.log'
-! no default
-      atmp = repeat(achar(0), len(atmp))
-      fiso = repeat(achar(0), len(fiso))
       fstch = repeat(achar(0), len(fstch))
-      ffirst = repeat(achar(0), len(ffirst))
-      fdyn = repeat(achar(0), len(fdyn))
-      fscomp = repeat(achar(0), len(fscomp))
-      pmmwmax = 0
-      zalex2 = 0
-      zopal952 = 0
-      lpmm = .false.
       control_nml_file = repeat(achar(0), len(control_nml_file))
       physics_nml_file = repeat(achar(0), len(physics_nml_file))
-      descrip = repeat(achar(0), len(descrip))
 end subroutine set_legacy_defaults
 
 end module legacy_controls

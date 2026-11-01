@@ -9,17 +9,19 @@ module run_files
       use io_units, only: terminal_unit, last_model_unit, run_log_unit, check_io, &
            starting_model_unit, dynamics_unit, mc_summary_unit, mc_model_unit, &
            isochrone_unit, flush_pending_log
-      use legacy_controls, only: alex06_table_path, alex95_table_paths, &
+      use legacy_controls, only: control_nml_file, physics_nml_file
+      use controls_buffer, only: alex06_table_path, alex95_table_paths, &
            allard_table_path, atm_table_path, centre1_table_path, &
            centre2_table_path, centre3_table_path, centre4_table_path, &
-           centre5_table_path, conductive_table_path, control_nml_file, fdyn, &
-           fermi_table_path, ffirst, fiso, flast, fshort, history_columns_file, &
+           centre5_table_path, conductive_table_path, dynamics_file, &
+           fermi_table_path, first_model_file, isochrone_file, last_model_file, &
+           log_output_file, history_columns_file, &
            inlist_used_file, isochrone_output_active, kurucz_table2_path, &
            kurucz_table_path, laol_table2_path, laol_table_path, &
            monte_carlo_active, monte_carlo_file1_path, monte_carlo_file2_path, &
            opal2001_eos_table_path, opal2006_eos_table_path, opal92_table2_path, &
            opal92_table_path, opal95_eos_table_path, opal95_table_path, &
-           physics_nml_file, profile_columns_file, pure_z_table_path, &
+           profile_columns_file, pure_z_table_path, &
            scv_h_table_path, scv_he_table_path, scv_z_table_path, &
            zams_a_table_path, zams_b_table_path, zams_c_table_path
       implicit none
@@ -61,15 +63,15 @@ subroutine expand_paths
       call expand_value(allard_table_path)
       call expand_value(atm_table_path)
       call expand_value(conductive_table_path)
-      call expand_value(fdyn)
+      call expand_value(dynamics_file)
       call expand_value(fermi_table_path)
-      call expand_value(ffirst)
-      call expand_value(fiso)
+      call expand_value(first_model_file)
+      call expand_value(isochrone_file)
       call expand_value(kurucz_table_path)
       call expand_value(kurucz_table2_path)
       call expand_value(laol_table_path)
       call expand_value(laol_table2_path)
-      call expand_value(flast)
+      call expand_value(last_model_file)
       call expand_value(opal95_table_path)
       call expand_value(opal92_table_path)
       call expand_value(zams_a_table_path)
@@ -90,7 +92,7 @@ subroutine expand_paths
       call expand_value(scv_h_table_path)
       call expand_value(scv_he_table_path)
       call expand_value(scv_z_table_path)
-      call expand_value(fshort)
+      call expand_value(log_output_file)
       call expand_value(history_columns_file)
       call expand_value(inlist_used_file)
       call expand_value(profile_columns_file)
@@ -125,17 +127,17 @@ subroutine open_run_files(ierr)
       if (ierr /= 0) return
 
       call close_run_files
-      open(newunit=starting_model_unit, file=ffirst, form='FORMATTED', status='OLD', &
+      open(newunit=starting_model_unit, file=first_model_file, form='FORMATTED', status='OLD', &
            iostat=ios, iomsg=msg)
-      call check_io(ios, msg, 'open the starting model', ffirst, ierr)
+      call check_io(ios, msg, 'open the starting model', first_model_file, ierr)
       if (ierr /= 0) return
-      open(unit=last_model_unit,file=flast,form='FORMATTED',status='UNKNOWN', iostat=ios, iomsg=msg)
-      call check_io(ios, msg, 'open the final model file', flast, ierr)
+      open(unit=last_model_unit,file=last_model_file,form='FORMATTED',status='UNKNOWN', iostat=ios, iomsg=msg)
+      call check_io(ios, msg, 'open the final model file', last_model_file, ierr)
       if (ierr /= 0) return
       if (monte_carlo_active) then
-         open(newunit=dynamics_unit, file=fdyn, form='FORMATTED', status='OLD', &
+         open(newunit=dynamics_unit, file=dynamics_file, form='FORMATTED', status='OLD', &
               iostat=ios, iomsg=msg)
-         call check_io(ios, msg, 'open the Monte Carlo dynamics file', fdyn, ierr)
+         call check_io(ios, msg, 'open the Monte Carlo dynamics file', dynamics_file, ierr)
          if (ierr /= 0) return
          open(newunit=mc_summary_unit, file=monte_carlo_file1_path, status='UNKNOWN', form='FORMATTED', &
               iostat=ios, iomsg=msg)
@@ -147,9 +149,9 @@ subroutine open_run_files(ierr)
          if (ierr /= 0) return
       endif
       if (isochrone_output_active) then
-         open(newunit=isochrone_unit, file=fiso, status='UNKNOWN', form='FORMATTED', &
+         open(newunit=isochrone_unit, file=isochrone_file, status='UNKNOWN', form='FORMATTED', &
               iostat=ios, iomsg=msg)
-         call check_io(ios, msg, 'open the isochrone file', fiso, ierr)
+         call check_io(ios, msg, 'open the isochrone file', isochrone_file, ierr)
          if (ierr /= 0) return
       endif
 end subroutine open_run_files
@@ -174,9 +176,9 @@ end subroutine open_run_log_after_error
 subroutine start_run_log(ierr)
       integer, intent(inout) :: ierr
 
-      output_dir = directory_of(fshort)
+      output_dir = directory_of(log_output_file)
       call make_directory(output_dir)
-      call open_run_log(fshort, ierr)
+      call open_run_log(log_output_file, ierr)
 end subroutine start_run_log
 
 ! ---------------------------------------------------------------

@@ -416,10 +416,10 @@ eos/test/test_eos.o: blended_eos.mod eos_configuration.mod eos_lib.mod eos_mixtu
 eos/yale/yale_eos.o: eos_configuration.mod eos_messages.mod eos_mixture.mod eos_results.mod math_lib.mod physical_constants.mod yale_eos_tables.mod
 eos/yale_eos_tables.o: physical_constants.mod
 io/controls_buffer.o: control_slots.mod
-io/controls_check.o: controls_buffer.mod io_units.mod legacy_controls.mod numerics_lib.mod rotation_configuration.mod star_info_lib.mod
+io/controls_check.o: controls_buffer.mod io_units.mod numerics_lib.mod rotation_configuration.mod star_info_lib.mod
 io/controls_reader.o: controls_check.mod controls_sync.mod derived_controls.mod io_units.mod legacy_controls.mod net_lib.mod run_cards.mod run_files.mod run_log.mod star_info_lib.mod user_inputs.mod yrec_version.mod
 io/controls_sync.o: controls_buffer.mod star_info_lib.mod
-io/derived_controls.o: composition_layout.mod eos_lib.mod io_units.mod legacy_controls.mod star_info_lib.mod yrec_version.mod
+io/derived_controls.o: composition_layout.mod controls_buffer.mod eos_lib.mod io_units.mod star_info_lib.mod yrec_version.mod
 io/history_output.o: io_units.mod neutrino_flux_layout.mod output_columns.mod output_files.mod star_info_lib.mod yrec_version.mod
 io/legacy_controls.o: controls_buffer.mod
 io/model_files.o: io_units.mod math_lib.mod run_log.mod star_info_lib.mod
@@ -427,8 +427,8 @@ io/output_columns.o: io_units.mod
 io/output_files.o: io_units.mod
 io/profile_output.o: output_columns.mod output_files.mod star_info_lib.mod stitched_model.mod
 io/pulsation_output.o: io_units.mod math_lib.mod output_files.mod physical_constants.mod star_info_lib.mod stitched_model.mod
-io/run_cards.o: controls_buffer.mod io_units.mod legacy_controls.mod star_info_lib.mod
-io/run_files.o: io_units.mod legacy_controls.mod output_files.mod
+io/run_cards.o: controls_buffer.mod io_units.mod star_info_lib.mod
+io/run_files.o: controls_buffer.mod io_units.mod legacy_controls.mod output_files.mod
 io/run_log.o: io_units.mod star_info_lib.mod
 io/test/test_controls.o: controls_buffer.mod controls_reader.mod io_units.mod run_files.mod star_info_lib.mod
 io/test/test_io.o: controls_reader.mod history_output.mod io_units.mod model_files.mod output_columns.mod profile_output.mod pulsation_output.mod run_cards.mod run_files.mod star_info_lib.mod stitched_model.mod yrec_output.mod
