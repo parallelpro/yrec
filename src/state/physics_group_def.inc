@@ -24,6 +24,7 @@
             double precision :: rezone_env_logt0 = 3.0d0
             double precision :: rezone_env_logt1 = 9.0d0
             double precision :: gradient_logt_cutoff = 6.9d0
+            double precision :: envelope_store_log_temperature = 0.0d0
             double precision :: weak_screening_threshold = 0.03d0
             double precision :: envelope_logp_step = 1.0d0
             logical :: core_overshoot_active = .false.
@@ -59,6 +60,14 @@
             double precision :: be9_pg_rate_scale = 1.0d0
             double precision :: be9_pd_rate_scale = 1.0d0
             double precision :: be9_palpha_rate_scale = 1.0d0
+            double precision :: cross_section_scale(num_reactions) = 1.0d0
+            double precision :: extra_cross_section_scale(num_extra_scales) = 1.0d0
+            double precision :: s_prime_scale(num_reactions) = 1.0d0
+            double precision :: s_double_prime_scale(num_reactions) = 1.0d0
+            double precision :: be7p_s_prime_scale = 1.0d0
+            double precision :: be7p_s_double_prime_scale = 1.0d0
+            double precision :: n15_pg_scale = 1.0d0
+            double precision :: n15_pa_scale = 1.0d0
             logical :: use_itoh_neutrino_loss = .false.
             logical :: calc_envelope_flag = .true.
             logical :: use_extended_composition = .false.

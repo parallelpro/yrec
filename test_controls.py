@@ -158,29 +158,37 @@ def test_zoning_tolerances_without_new_rate_variables():
 
 
 def test_pristine_controls_are_the_defaults(tmp_path):
-    """The pristine star%control and star%physics are what a deck
-    that sets nothing reads: each default is written once, as its
-    controls_buffer initializer, and the legacy names take theirs from it
-    (defaults/*.defaults document the same initializers). The exceptions are
-    not defaults: what the read derives (npenv's 0 meaning every point, the
-    run kinds, the OPAL EOS table path)."""
+    """The pristine star%control, star%physics and buffer-only members are
+    what a deck that sets nothing reads: each default is written once, as
+    its controls_buffer initializer, and both readers start from it
+    (defaults/*.defaults document the same initializers). The exceptions
+    are not defaults: the members the read derives (the registry's status
+    derived), envelope_print_points (the read makes 0 into 9999), and the
+    starting model the test deck names."""
     if not BINARY.exists():
         pytest.skip("src/test_controls not built (run `make tests` in src/)")
-    derived = re.compile(r"^(physics%(npenv|opal_eos_table_path)|control%rescale_kind)(\(|$)")
+    rows = [l.split("\t") for l in (REPO / "src" / "defaults" / "controls_registry.tsv")
+            .read_text().splitlines()]
+    cols = rows[0]
+    derived = {dict(zip(cols, r))["canonical"].lower() for r in rows[1:]
+               if dict(zip(cols, r))["status"] == "derived"}
+    derived |= {"envelope_print_points", "first_model_file"}
     deck = tmp_path / "empty.inlist"
     deck.write_text("&control\n first_model_file = 'empty.inlist'\n/\n&physics\n/\n")
     env = dict(os.environ, YREC_OUTPUT=str(tmp_path))
 
     def dump(args):
-        out = subprocess.run([str(BINARY)] + args, cwd=tmp_path, env=env,
-                             capture_output=True).stdout.decode("latin-1").splitlines()
-        k = next(i for i, l in enumerate(out) if l.startswith("# controls"))
-        return dict(l.split(" = ", 1) for l in out[k + 1:] if " = " in l)
+        out = subprocess.run([str(BINARY)] + args, cwd=tmp_path, env=env, capture_output=True).stdout
+        return dict(l.split(" = ", 1) for l in dump_of(out, tmp_path)[1:] if " = " in l)
+
+    def member(key):
+        return key.split("%", 1)[1].split("(")[0].lower()
 
     pristine, empty = dump([]), dump([str(deck)])
     assert empty.get("ierr") == "0"
-    diff = [k for k in pristine if k.startswith(("control%", "physics%"))
-            and pristine[k] != empty.get(k) and not derived.match(k)]
+    keys = [k for k in pristine if k.startswith(("control%", "physics%", "buffer%"))]
+    assert any(k.startswith("buffer%") for k in keys)
+    diff = [k for k in keys if pristine[k] != empty.get(k) and member(k) not in derived]
     assert not diff, [(k, pristine[k], empty.get(k)) for k in diff[:10]]
 
 

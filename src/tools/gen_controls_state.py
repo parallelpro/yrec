@@ -45,7 +45,6 @@ import controls_registry
 
 SRC = pathlib.Path(__file__).resolve().parent.parent
 LIB = SRC / "io" / "controls_buffer.f90"
-SLOTS = SRC / "state" / "control_slots.f90"
 # the star's records, by registry home: the namelist group's record and its
 # generated component list
 RECORDS = {"control": SRC / "state" / "control_group_def.inc",
@@ -62,10 +61,10 @@ TYPE_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Named integer constants declared in controls_buffer or control_slots
-# (max_runs) that the buffer's array dims use. star_info_lib includes the generated type
-# bodies without `use controls_buffer`, so the emitted dims carry the
-# literal value instead of the name.
+# An integer constant of controls_buffer, not a member. The arrays' sizes
+# are named constants of the layout modules (max_runs, num_reactions), which
+# star_info_lib, where the records' types are defined, imports; the records
+# keep the names.
 PARAM_RE = re.compile(
     r"^\s*integer\s*,\s*parameter\s*(,\s*public)?\s*::\s*(\w+)\s*=\s*(\d+)\s*$",
     re.IGNORECASE,
@@ -122,17 +121,10 @@ REAL_PARAM_RE = re.compile(r"^\s*real\s*\(\s*dp\s*\)\s*,\s*parameter\s*(,\s*publ
 
 
 def parse():
-    members = []  # (typespec, name, dims, init)
-    params = {}   # name -> literal value
+    members = []  # (typespec, name, dims as written, init)
     real_params = {}
-    for line in joined_decl_lines(SLOTS.read_text()):
-        pm = PARAM_RE.match(line)
-        if pm:
-            params[pm.group(2)] = pm.group(3)
     for line in joined_decl_lines(LIB.read_text()):
-        pm = PARAM_RE.match(line)
-        if pm:
-            params[pm.group(2)] = pm.group(3)
+        if PARAM_RE.match(line):
             continue
         rm = REAL_PARAM_RE.match(line)
         if rm:
@@ -151,8 +143,6 @@ def parse():
             if not em:
                 raise SystemExit(f"cannot parse entity: {ent!r}")
             name, dims, init = em.group(1), em.group(2) or "", em.group(4)
-            for pname, pval in params.items():
-                dims = re.sub(r"\b" + pname + r"\b", pval, dims)
             if init is None:
                 base = "character" if typespec.startswith("character") else typespec
                 init = ZERO[base]

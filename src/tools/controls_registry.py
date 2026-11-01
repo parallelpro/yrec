@@ -129,19 +129,55 @@ def live(rs):
     return [r for r in rs if r["status"] not in DEAD and r["status"] != "derived"]
 
 
-# controls_buffer's named dimension
-MAX_RUNS = 50
+# The layout modules whose named sizes the controls' arrays use (max_runs,
+# num_reactions, ...): each integer constant given by a literal.
+LAYOUTS = [SRC / "state" / "control_slots.f90", SRC / "state" / "reaction_layout.f90"]
+
+
+def named_sizes():
+    """{name: value} of the layout modules' literal integer constants"""
+    sizes = {}
+    for f in LAYOUTS:
+        for line in _joined(f.read_text()):
+            m = re.match(r"(?i)^\s*integer\s*,\s*parameter\b[^:]*::\s*(.*)$", line)
+            if m:
+                for ent in _entities(m.group(1)):
+                    em = re.match(r"^(\w+)\s*=\s*(\d+)$", ent.strip())
+                    if em:
+                        sizes[em.group(1).lower()] = em.group(2)
+    return sizes
+
+
+def size_imports(dims_list):
+    """the use statements that bring the named sizes in dims_list (max_runs,
+    num_sstandard, ...) into scope: ['use control_slots, only: max_runs', ...]"""
+    wanted = {w.lower() for d in dims_list for w in re.findall(r"[a-z]\w*", d, re.I)}
+    out = []
+    for f in LAYOUTS:
+        module = re.search(r"(?im)^\s*module\s+(\w+)", f.read_text()).group(1)
+        names = []
+        for line in _joined(f.read_text()):
+            m = re.match(r"(?i)^\s*integer\s*,\s*parameter\b[^:]*::\s*(.*)$", line)
+            if m:
+                names += [e.split("=")[0].strip().lower() for e in _entities(m.group(1))]
+        mine = [n for n in names if n in wanted]
+        if mine:
+            out.append(f"      use {module}, only: {', '.join(mine)}")
+    return out
 
 
 def type_of(typespec, dims):
     """a declaration's type in the registry's spelling: real(50), string, ...
-    (typespec as declared, attributes after a comma ignored)"""
+    (typespec as declared, attributes after a comma ignored; a named size,
+    max_runs or num_reactions, written as its value)"""
     base = re.sub(r"\s+", " ", typespec.lower().split(",")[0].strip())
     if base.startswith("character"):
         base = "character"
     kind = ("real" if base in ("double precision", "real(dp)") else
             "string" if base.startswith("character") else base)
-    dims = dims.strip("()").replace(" ", "").replace("max_runs", str(MAX_RUNS))
+    sizes = named_sizes()
+    dims = re.sub(r"\w+", lambda m: sizes.get(m.group(0).lower(), m.group(0)),
+                  dims.strip("()").replace(" ", ""))
     return kind + (f"({dims})" if dims else "")
 
 
@@ -231,3 +267,8 @@ def check_rows_against_buffer(rs, members):
     problems += [f"{m['name']}: a controls_buffer member without a registry row"
                  for m in members if m["name"] not in named]
     return problems
+
+
+# the run cards' capacity, state/control_slots.f90's max_runs (its one
+# source; check_boundaries' check_max_runs compares the two)
+MAX_RUNS = int(named_sizes()["max_runs"])

@@ -28,11 +28,7 @@ contains
 ! ---------------------------------------------------------------
 ! Every card's stop flags and rescale targets, and its line of the run
 ! plan. (The envelope Z a rescale card asks for is prepare_run's.)
-!   star reads: none
-!   star writes: none
-subroutine interpret_kind_cards(s)
-      use star_info_lib, only: star_info
-      type(star_info), intent(inout) :: s
+subroutine interpret_kind_cards
       integer :: n
 
       call log_line('')

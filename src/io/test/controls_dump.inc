@@ -189,6 +189,7 @@
       write(u,'(a," = ",es25.17e3)') 'physics%rezone_env_logt0', star%physics%rezone_env_logt0
       write(u,'(a," = ",es25.17e3)') 'physics%rezone_env_logt1', star%physics%rezone_env_logt1
       write(u,'(a," = ",es25.17e3)') 'physics%gradient_logt_cutoff', star%physics%gradient_logt_cutoff
+      write(u,'(a," = ",es25.17e3)') 'physics%envelope_store_log_temperature', star%physics%envelope_store_log_temperature
       write(u,'(a," = ",es25.17e3)') 'physics%weak_screening_threshold', star%physics%weak_screening_threshold
       write(u,'(a," = ",es25.17e3)') 'physics%envelope_logp_step', star%physics%envelope_logp_step
       write(u,'(a," = ",l1)') 'physics%core_overshoot_active', star%physics%core_overshoot_active
@@ -226,6 +227,22 @@
       write(u,'(a," = ",es25.17e3)') 'physics%be9_pg_rate_scale', star%physics%be9_pg_rate_scale
       write(u,'(a," = ",es25.17e3)') 'physics%be9_pd_rate_scale', star%physics%be9_pd_rate_scale
       write(u,'(a," = ",es25.17e3)') 'physics%be9_palpha_rate_scale', star%physics%be9_palpha_rate_scale
+      do i1 = 1, 11
+      write(u,'(a," = ",es25.17e3)') 'physics%cross_section_scale('//itoa(i1)//')', star%physics%cross_section_scale(i1)
+      end do
+      do i1 = 1, 4
+      write(u,'(a," = ",es25.17e3)') 'physics%extra_cross_section_scale('//itoa(i1)//')', star%physics%extra_cross_section_scale(i1)
+      end do
+      do i1 = 1, 11
+      write(u,'(a," = ",es25.17e3)') 'physics%s_prime_scale('//itoa(i1)//')', star%physics%s_prime_scale(i1)
+      end do
+      do i1 = 1, 11
+      write(u,'(a," = ",es25.17e3)') 'physics%s_double_prime_scale('//itoa(i1)//')', star%physics%s_double_prime_scale(i1)
+      end do
+      write(u,'(a," = ",es25.17e3)') 'physics%be7p_s_prime_scale', star%physics%be7p_s_prime_scale
+      write(u,'(a," = ",es25.17e3)') 'physics%be7p_s_double_prime_scale', star%physics%be7p_s_double_prime_scale
+      write(u,'(a," = ",es25.17e3)') 'physics%n15_pg_scale', star%physics%n15_pg_scale
+      write(u,'(a," = ",es25.17e3)') 'physics%n15_pa_scale', star%physics%n15_pa_scale
       write(u,'(a," = ",l1)') 'physics%use_itoh_neutrino_loss', star%physics%use_itoh_neutrino_loss
       write(u,'(a," = ",l1)') 'physics%calc_envelope_flag', star%physics%calc_envelope_flag
       write(u,'(a," = ",l1)') 'physics%use_extended_composition', star%physics%use_extended_composition

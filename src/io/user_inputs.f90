@@ -6,11 +6,15 @@
 ! the arrays the code uses.
 !  - With use_new_nuclear_rates (legacy LNEWNUC), the per-reaction S0
 !    values and their first and second derivatives (s0_*, s0p_*,
-!    s0pp_*) become the cross-section scales s%cross_section_scale
-!    (legacy SSTANDARD), the extra scales s%extra_cross_section_scale,
-!    the derivative scales s%s_prime_scale and s%s_double_prime_scale (legacy QS0E,
-!    QQS0EE; Be7 + p's are s%be7p_s_prime_scale and s%be7p_s_double_prime_scale)
-!    and the two N15 + p branch scales.
+!    s0pp_*) become the cross-section scales cross_section_scale (legacy
+!    SSTANDARD), the extra scales extra_cross_section_scale, the
+!    derivative scales s_prime_scale and s_double_prime_scale (legacy
+!    QS0E, QQS0EE; Be7 + p's are be7p_s_prime_scale and
+!    be7p_s_double_prime_scale) and the two N15 + p branch scales;
+!    without it, the cross-section and extra scales come from the legacy
+!    decks' ratios cross_section_ratios (net's
+!    cross_section_scales_from_sstandard; an inlist gets their defaults).
+!    The scales are derived controls in star%physics.
 !  - With use_new_rate_variables (use_new_rate_variables, which despite its name has
 !    nothing to do with reaction rates), the tol_*, flag_* and time_*
 !    controls overwrite the rezoning tolerances chi_grid_scale (legacy
@@ -32,8 +36,10 @@
 ! functional forms, e.g. NACRE II).
 module user_inputs
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use star_info_lib, only: star_info
       use controls_buffer, only: use_new_nuclear_rates, use_new_rate_variables, &
+           cross_section_ratios, cross_section_scale, extra_cross_section_scale, &
+           s_prime_scale, s_double_prime_scale, be7p_s_prime_scale, &
+           be7p_s_double_prime_scale, n15_pa_scale, n15_pg_scale, &
            s0_pp, s0_he3he3, s0_he3he4, s0_p_c12, s0_p_c13, s0_p_n14, s0_p_o16, &
            s0_pep, s0_be7_electron, s0_be7_p, s0_hep, s0_n15_p_c12_branch, &
            s0_n15_p_o16_branch, s0p_pp, s0p_he3he3, s0p_he3he4, s0p_p_c12, &
@@ -57,7 +63,7 @@ module user_inputs
       use net_lib, only: r_pp, r_he3he3, r_he3he4, r_pc12, r_pc13, r_pn14, r_po16, &
            xs_pep, xs_be7e, xs_be7p, xs_hep, reference_s0, pep_coefficient, &
            be7_ecapture_coefficient, s0_be7p_kevb, s0_hep_kevb, s0_n15pa_kevb, &
-           s0_n15pg_kevb
+           s0_n15pg_kevb, cross_section_scales_from_sstandard
       implicit none
       private
       public :: map_user_inputs
@@ -96,16 +102,15 @@ module user_inputs
 
 contains
 
-!   star reads: none
-!   star writes: none
-subroutine map_user_inputs(s)
-      type(star_info), intent(inout) :: s
-
-      call reset_rate_scale_defaults(s)
+subroutine map_user_inputs
+      call reset_rate_scale_defaults
       if (use_new_nuclear_rates) then
-         call set_cross_section_scales(s)
-         call set_first_derivative_scales(s)
-         call set_second_derivative_scales(s)
+         call set_cross_section_scales
+         call set_first_derivative_scales
+         call set_second_derivative_scales
+      else
+         call cross_section_scales_from_sstandard(cross_section_ratios, &
+              cross_section_scale, extra_cross_section_scale)
       end if
       if (use_new_rate_variables) then
          call map_zoning_tolerances
@@ -115,17 +120,13 @@ end subroutine map_user_inputs
 
 ! ---------------------------------------------------------------
 ! The rate-derivative scales and the N15 + p branch scales, at unity.
-!   star reads: none
-!   star writes: be7p_s_double_prime_scale, be7p_s_prime_scale,
-!     n15_pa_scale, n15_pg_scale, s_double_prime_scale, s_prime_scale
-subroutine reset_rate_scale_defaults(s)
-      type(star_info), intent(inout) :: s
-      s%s_prime_scale = 1.0d0
-      s%s_double_prime_scale = 1.0d0
-      s%be7p_s_prime_scale = 1.0d0
-      s%be7p_s_double_prime_scale = 1.0d0
-      s%n15_pa_scale = 1.0d0
-      s%n15_pg_scale = 1.0d0
+subroutine reset_rate_scale_defaults
+      s_prime_scale = 1.0d0
+      s_double_prime_scale = 1.0d0
+      be7p_s_prime_scale = 1.0d0
+      be7p_s_double_prime_scale = 1.0d0
+      n15_pa_scale = 1.0d0
+      n15_pg_scale = 1.0d0
 end subroutine reset_rate_scale_defaults
 
 ! ---------------------------------------------------------------
@@ -136,27 +137,23 @@ end subroutine reset_rate_scale_defaults
 ! to that of Bahcall & Ulrich (1988); here the scales come from explicit
 ! S0 values for the individual reactions. The helium-burning reactions
 ! keep unit scale.
-!   star reads: none
-!   star writes: cross_section_scale, extra_cross_section_scale,
-!     n15_pa_scale, n15_pg_scale
-subroutine set_cross_section_scales(s)
-      type(star_info), intent(inout) :: s
-      s%cross_section_scale = 1.0d0
-      s%extra_cross_section_scale = 1.0d0
-      s%cross_section_scale(r_pp) = s0_pp/reference_s0(r_pp)
-      s%cross_section_scale(r_he3he3) = s0_he3he3/reference_s0(r_he3he3)
-      s%cross_section_scale(r_he3he4) = s0_he3he4/reference_s0(r_he3he4)
-      s%cross_section_scale(r_pc12) = s0_p_c12/reference_s0(r_pc12)
-      s%cross_section_scale(r_pc13) = s0_p_c13/reference_s0(r_pc13)
-      s%cross_section_scale(r_pn14) = s0_p_n14/reference_s0(r_pn14)
-      s%cross_section_scale(r_po16) = s0_p_o16/reference_s0(r_po16)
-      s%extra_cross_section_scale(xs_pep) = s0_pep/pep_coefficient
-      s%extra_cross_section_scale(xs_be7e) = s0_be7_electron/be7_ecapture_coefficient
-      s%extra_cross_section_scale(xs_be7p) = s0_be7_p/s0_be7p_kevb
-      s%extra_cross_section_scale(xs_hep) = s0_hep/s0_hep_kevb
+subroutine set_cross_section_scales
+      cross_section_scale = 1.0d0
+      extra_cross_section_scale = 1.0d0
+      cross_section_scale(r_pp) = s0_pp/reference_s0(r_pp)
+      cross_section_scale(r_he3he3) = s0_he3he3/reference_s0(r_he3he3)
+      cross_section_scale(r_he3he4) = s0_he3he4/reference_s0(r_he3he4)
+      cross_section_scale(r_pc12) = s0_p_c12/reference_s0(r_pc12)
+      cross_section_scale(r_pc13) = s0_p_c13/reference_s0(r_pc13)
+      cross_section_scale(r_pn14) = s0_p_n14/reference_s0(r_pn14)
+      cross_section_scale(r_po16) = s0_p_o16/reference_s0(r_po16)
+      extra_cross_section_scale(xs_pep) = s0_pep/pep_coefficient
+      extra_cross_section_scale(xs_be7e) = s0_be7_electron/be7_ecapture_coefficient
+      extra_cross_section_scale(xs_be7p) = s0_be7_p/s0_be7p_kevb
+      extra_cross_section_scale(xs_hep) = s0_hep/s0_hep_kevb
 ! N15(p,alpha)C12 and N15(p,gamma)O16
-      s%n15_pa_scale = s0_n15_p_c12_branch/s0_n15pa_kevb
-      s%n15_pg_scale = s0_n15_p_o16_branch/s0_n15pg_kevb
+      n15_pa_scale = s0_n15_p_c12_branch/s0_n15pa_kevb
+      n15_pg_scale = s0_n15_p_o16_branch/s0_n15pg_kevb
 end subroutine set_cross_section_scales
 
 ! ---------------------------------------------------------------
@@ -165,37 +162,31 @@ end subroutine set_cross_section_scales
 ! terms: q2 and q3 are proportional to S'/S and q4 and q5 to S''/S, both
 ! from Solar Fusion I; s_prime_scale multiplies the q2 and q3 terms. Be7 + p,
 ! outside the reaction table, has its own.
-!   star reads: none
-!   star writes: be7p_s_prime_scale, s_prime_scale
-subroutine set_first_derivative_scales(s)
-      type(star_info), intent(inout) :: s
-      s%s_prime_scale(r_pp) = derivative_scale(s0p_pp, s0_pp, s_prime_pp_a98, s0_pp_a98)
-      s%s_prime_scale(r_he3he3) = derivative_scale(s0p_he3he3, s0_he3he3, &
+subroutine set_first_derivative_scales
+      s_prime_scale(r_pp) = derivative_scale(s0p_pp, s0_pp, s_prime_pp_a98, s0_pp_a98)
+      s_prime_scale(r_he3he3) = derivative_scale(s0p_he3he3, s0_he3he3, &
            s_prime_he3he3_a98, s0_he3he3_a98)
-      s%s_prime_scale(r_he3he4) = derivative_scale(s0p_he3he4, s0_he3he4, &
+      s_prime_scale(r_he3he4) = derivative_scale(s0p_he3he4, s0_he3he4, &
            s_prime_he3he4_a98, s0_he3he4_a98)
-      s%s_prime_scale(r_pc12) = derivative_scale(s0p_p_c12, s0_p_c12, s_prime_p_c12_a98, s0_p_c12_a98)
-      s%s_prime_scale(r_pc13) = derivative_scale(s0p_p_c13, s0_p_c13, s_prime_p_c13_a98, s0_p_c13_a98)
-      s%s_prime_scale(r_pn14) = derivative_scale(s0p_p_n14, s0_p_n14, s_prime_p_n14_a98, s0_p_n14_a98)
-      s%s_prime_scale(r_po16) = derivative_scale(s0p_p_o16, s0_p_o16, s_prime_p_o16_a98, s0_p_o16_a98)
-      s%be7p_s_prime_scale = derivative_scale(s0p_be7_p, s0_be7_p, s_prime_be7_p_a98, s0_be7_p_a98)
+      s_prime_scale(r_pc12) = derivative_scale(s0p_p_c12, s0_p_c12, s_prime_p_c12_a98, s0_p_c12_a98)
+      s_prime_scale(r_pc13) = derivative_scale(s0p_p_c13, s0_p_c13, s_prime_p_c13_a98, s0_p_c13_a98)
+      s_prime_scale(r_pn14) = derivative_scale(s0p_p_n14, s0_p_n14, s_prime_p_n14_a98, s0_p_n14_a98)
+      s_prime_scale(r_po16) = derivative_scale(s0p_p_o16, s0_p_o16, s_prime_p_o16_a98, s0_p_o16_a98)
+      be7p_s_prime_scale = derivative_scale(s0p_be7_p, s0_be7_p, s_prime_be7_p_a98, s0_be7_p_a98)
 end subroutine set_first_derivative_scales
 
 ! ---------------------------------------------------------------
 ! The second-derivative scales: s_double_prime_scale multiplies the q4 and q5
 ! terms of the rate fits. None are set for pp, He3 + He3, He3 + He4 or
 ! N14 + p (dropped in the 2003 version); theirs stay at unity.
-!   star reads: none
-!   star writes: be7p_s_double_prime_scale, s_double_prime_scale
-subroutine set_second_derivative_scales(s)
-      type(star_info), intent(inout) :: s
-      s%s_double_prime_scale(r_pc12) = derivative_scale(s0pp_p_c12, s0_p_c12, &
+subroutine set_second_derivative_scales
+      s_double_prime_scale(r_pc12) = derivative_scale(s0pp_p_c12, s0_p_c12, &
            s_double_prime_p_c12_a98, s0_p_c12_a98)
-      s%s_double_prime_scale(r_pc13) = derivative_scale(s0pp_p_c13, s0_p_c13, &
+      s_double_prime_scale(r_pc13) = derivative_scale(s0pp_p_c13, s0_p_c13, &
            s_double_prime_p_c13_a98, s0_p_c13_a98)
-      s%s_double_prime_scale(r_po16) = derivative_scale(s0pp_p_o16, s0_p_o16, &
+      s_double_prime_scale(r_po16) = derivative_scale(s0pp_p_o16, s0_p_o16, &
            s_double_prime_p_o16_a98, s0_p_o16_a98)
-      s%be7p_s_double_prime_scale = derivative_scale(s0pp_be7_p, s0_be7_p, &
+      be7p_s_double_prime_scale = derivative_scale(s0pp_be7_p, s0_be7_p, &
            s_double_prime_be7_p_a98, s0_be7_p_a98)
 end subroutine set_second_derivative_scales
 

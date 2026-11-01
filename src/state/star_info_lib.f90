@@ -184,9 +184,11 @@ module star_info_lib
             type(physics_group_controls) :: physics
 
 ! ==== Constants set at setup ===========================================
-! Values fixed for the whole run by the controls read, the controls'
-! derivation or the setup before the first card: the solar units, the
-! nuclear rate scales, an envelope and an atmosphere setting.
+! Values fixed for the whole run by the controls read or the setup before
+! the first card: the solar units, and the cross-section scales the run
+! uses (the run copies of physics%cross_section_scale and
+! physics%extra_cross_section_scale; the other rate scales are read from
+! star%physics).
 ! Valid: after read_controls and prepare_run; each Monte-Carlo run
 ! rescales the solar luminosity and the first rate scales
 ! (begin_monte_carlo_run).
@@ -205,37 +207,16 @@ module star_info_lib
             real(dp) :: solar_radius_cgs
 ! log10 Rsun [log10 cm]; run_setup
             real(dp) :: log10_solar_radius
-! per-reaction scale of the cross section S0 against Bahcall & Ulrich
-! (1988), by reaction_layout's slot r_* [-]; user_inputs,
-! controls_reader, monte_carlo. Those of pp, He3 + He3 and He3 + He4 are
-! rescaled per Monte-Carlo run.
-            real(dp) :: cross_section_scale(num_reactions)
-! scale of each reaction's S'/S against Solar Fusion I, by reaction slot
-! r_* [-]; user_inputs
-            real(dp) :: s_prime_scale(num_reactions)
-! scale of each reaction's S''/S against Solar Fusion I, by reaction slot
-! r_* [-]; user_inputs
-            real(dp) :: s_double_prime_scale(num_reactions)
-! scale of the rates outside the reaction table, by reaction_layout's
-! extra slot xs_* (pep, Be7 + e, Be7 + p, hep) [-]; user_inputs,
-! controls_reader, monte_carlo. Be7 + p's is rescaled per Monte-Carlo run.
-            real(dp) :: extra_cross_section_scale(num_extra_scales)
-! scale of Be7 + p's S'/S against Solar Fusion I [-]; user_inputs
-            real(dp) :: be7p_s_prime_scale
-! scale of Be7 + p's S''/S against Solar Fusion I [-]; user_inputs
-            real(dp) :: be7p_s_double_prime_scale
-! scale of the N15(p,gamma)O16 branch [-]; user_inputs
-            real(dp) :: n15_pg_scale
-! scale of the N15(p,alpha)C12 branch [-]; user_inputs
-            real(dp) :: n15_pa_scale
-! log T at which an envelope integration stores its state for the surface
-! boundary (stored_envelope_state): the mean of physics%rezone_env_logt0 and
-! physics%rezone_env_logt1 [log10 K]; derived_controls
-            real(dp) :: envelope_store_log_temperature
-! physics%atm_choice as read from the deck (legacy kttau) [-];
-! controls_reader. The run may change atm_choice_in_use (see
-! use_ttau_relation); this keeps the original.
-            integer :: atm_choice_initial
+! the per-reaction scales of the cross section S0 the run uses, by
+! reaction_layout's slot r_* [-]; controls_sync, monte_carlo. From
+! physics%cross_section_scale; each Monte-Carlo run rescales those of pp,
+! He3 + He3 and He3 + He4.
+            real(dp) :: cross_section_scale_in_use(num_reactions)
+! the scales of the rates outside the reaction table the run uses, by
+! extra slot xs_* (pep, Be7 + e, Be7 + p, hep) [-]; controls_sync,
+! monte_carlo. From physics%extra_cross_section_scale; each Monte-Carlo
+! run rescales Be7 + p's.
+            real(dp) :: extra_cross_section_scale_in_use(num_extra_scales)
 
 ! ==== Monte-Carlo runs =================================================
 ! The Monte-Carlo runs of one run_yrec call: their range (first_mc_run
@@ -401,9 +382,10 @@ module star_info_lib
 ! atm_choice code [-]; surface_boundary, envelope_integration,
 ! run_driver, controls_sync. From physics%atm_choice. The surface boundary
 ! switches to the gray T(tau) relation (0) while Teff is outside the
-! Kurucz or Allard table, the envelope integration when a table lookup
-! fails, and each solar-calibration cycle restores the value its
-! Monte-Carlo run started with.
+! Kurucz or Allard table, and back to physics%atm_choice when it returns;
+! the envelope integration switches to it when a table lookup fails, and
+! each solar-calibration cycle restores the value its Monte-Carlo run
+! started with.
             integer :: atm_choice_in_use
 ! the structure-based timestep limits are on [logical]; run_driver,
 ! step_driver, controls_sync. From physics%use_structure_dt_limits;
@@ -443,7 +425,8 @@ module star_info_lib
             real(dp) :: pulsation_mass_msun
 ! the run has switched atm_choice to the gray atmosphere because Teff left
 ! the Kurucz or Allard table [logical]; surface_boundary,
-! envelope_integration, controls_reader. Switches back when Teff returns.
+! envelope_integration. Switches back (to physics%atm_choice) when Teff
+! returns.
             logical :: use_ttau_relation
 ! why the last run card ended, for the run summary [text];
 ! stop_conditions, run_driver. Set to the default per card by

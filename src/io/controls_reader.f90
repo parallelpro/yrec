@@ -22,14 +22,12 @@ module controls_reader
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use run_log, only: set_solver_diagnostics
       use user_inputs, only: map_user_inputs
-      use net_lib, only: cross_section_scales_from_sstandard
       use star_info_lib, only: star_info, control_nml_override, physics_nml_override
       use controls_sync, only: seed_controls_buffer, store_controls_to_star, &
            arm_run_copies
       use yrec_version, only: yrec_version_string, git_hash_string
       use io_units, only: check_io, discard_pending_log, report_warning
-      use controls_buffer, only: atm_choice, control_nml_file, cross_section_ratios, &
-           physics_nml_file, report_solver_diagnostics, use_new_nuclear_rates
+      use controls_buffer, only: control_nml_file, physics_nml_file, report_solver_diagnostics
       use legacy_controls, only: read_legacy_deck
       use run_files, only: assign_unit_numbers, expand_paths
       use derived_controls, only: derive_controls
@@ -62,16 +60,15 @@ subroutine read_controls(s, ierr)
 ! the deck, under the code names, and the readable inputs mapped
       call read_input(ierr)
       if (ierr /= 0) return
-      call adopt_canonical_names(s)
-      call map_user_inputs(s)
+      call map_user_inputs
       call expand_paths
 ! the errors, the inert legacy controls, the derived controls, the run
 ! plan
       call check_controls(ierr)
       if (ierr /= 0) return
       call warn_inert_controls
-      call derive_controls(s)
-      call interpret_kind_cards(s)
+      call derive_controls
+      call interpret_kind_cards
       call store_controls_to_star(s)
       call arm_run_copies(s)
       call set_solver_diagnostics(report_solver_diagnostics)
@@ -162,24 +159,6 @@ subroutine read_inlist(inlist_file, ierr)
 
       include 'inlist_read.inc'
 end subroutine read_inlist
-
-! ---------------------------------------------------------------
-! What the deck's controls put on the star directly. lnewnuc = .false.
-! takes the cross sections from cross_section_ratios (legacy sstandard,
-! ratios to Bahcall & Ulrich 1988, mapped onto the reaction and extra
-! scales by net); map_user_inputs sets them from the s0_* inputs
-! otherwise. An inlist gets the default ratios.
-!   star reads: none
-!   star writes: atm_choice_initial, cross_section_scale,
-!     extra_cross_section_scale, use_ttau_relation
-subroutine adopt_canonical_names(s)
-      type(star_info), intent(inout) :: s
-      if (.not. use_new_nuclear_rates) call cross_section_scales_from_sstandard( &
-           cross_section_ratios, s%cross_section_scale, s%extra_cross_section_scale)
-! the atmosphere choice as read; the run may change star%atm_choice_in_use
-      s%atm_choice_initial = atm_choice
-      s%use_ttau_relation = .false.
-end subroutine adopt_canonical_names
 
 ! ---------------------------------------------------------------
 ! A value other than x, of its type, element by element: read_inlist

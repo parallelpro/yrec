@@ -24,6 +24,7 @@
 module controls_buffer
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use control_slots
+      use reaction_layout, only: num_reactions, num_extra_scales, num_sstandard
       implicit none
 ! Everything here is public: the buffer is the controls read's shared
 ! state (tools/check_boundaries.py's CONTROLS_BUFFER_IMPORTERS lists the
@@ -110,15 +111,19 @@ module controls_buffer
 ! shell) written to the short/log stream at the start of each run
       logical :: compute_neutrino_fluxes = .false.
 
-! Timestep factors (timestep_factors) and log T cutoffs: nuclear burning, Saha
-! ionization, the envelope's temperature window (rezone_env_logt0, rezone_env_logt1; star%envelope_store_log_temperature
-! is their mean) and the simplified temperature gradient (gradient_logt_cutoff).
+! Timestep factors (timestep_factors) and log T cutoffs: nuclear burning,
+! Saha ionization, the envelope's temperature window (rezone_env_logt0,
+! rezone_env_logt1; envelope_store_log_temperature, their mean, is where an
+! envelope integration stores its state for the surface boundary,
+! derive_controls) and the simplified temperature gradient
+! (gradient_logt_cutoff).
       real(dp) :: timestep_factors(14) = (/1.0d-3,2.0d-2,5.0d-1,2.0d-2, &
            3.0d-1,1.5d-3,1.0d-1,2.0d-2,4.0d-2,2.0d-2,2.0d-2,0.25d0, &
            1.5d0,0.25d0/)
       real(dp) :: nuclear_logT_cutoffs(5) = (/6.5d0,6.5d0,6.82d0,7.7d0,7.5d0/)
       real(dp) :: saha_log10t_cutoff = 6.0d0
       real(dp) :: rezone_env_logt0 = 3.0d0, rezone_env_logt1 = 9.0d0, gradient_logt_cutoff = 6.9d0
+      real(dp) :: envelope_store_log_temperature
 
 ! Nuclear rate selection and weak screening.
       logical :: use_new_nuclear_rates = .false.
@@ -190,9 +195,25 @@ module controls_buffer
 ! The legacy decks' cross sections relative to Bahcall & Ulrich 1988
 ! (sstandard), used when use_new_nuclear_rates is off; an inlist gets
 ! these defaults.
-      real(dp) :: cross_section_ratios(17) = (/ 0.9828d0, 1.0485d0, 0.9815d0, &
+      real(dp) :: cross_section_ratios(num_sstandard) = (/ 0.9828d0, 1.0485d0, 0.9815d0, &
            0.9241d0, 1.3818d0, 1.0542d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, &
            1.0d0, 1.0d0, 1.0d0, 1.0108d0, 0.7819d0, 0.2875d0 /)
+! The reaction-rate scales map_user_inputs derives: from the S-factor
+! inputs with use_new_nuclear_rates, else from cross_section_ratios. Each
+! reaction's S0 against Bahcall & Ulrich (1988), by reaction_layout's
+! slot r_*; the rates outside the reaction table (extra slot xs_*: pep,
+! Be7 + e, Be7 + p, hep); each reaction's S'/S and S''/S against Solar
+! Fusion I, and Be7 + p's; and the two N15 + p branches.
+! star%cross_section_scale_in_use and star%extra_cross_section_scale_in_use
+! are the run's copies of the first two (a Monte-Carlo run rescales four).
+      real(dp) :: cross_section_scale(num_reactions) = 1.0d0
+      real(dp) :: extra_cross_section_scale(num_extra_scales) = 1.0d0
+      real(dp) :: s_prime_scale(num_reactions) = 1.0d0
+      real(dp) :: s_double_prime_scale(num_reactions) = 1.0d0
+      real(dp) :: be7p_s_prime_scale = 1.0d0
+      real(dp) :: be7p_s_double_prime_scale = 1.0d0
+      real(dp) :: n15_pg_scale = 1.0d0
+      real(dp) :: n15_pa_scale = 1.0d0
 
 ! Itoh et al. 1996 neutrino losses (net_lib's compute_zone_energy).
       logical :: use_itoh_neutrino_loss = .false.
@@ -287,9 +308,10 @@ module controls_buffer
       integer :: max_stage_index = 11
       integer :: extrap_order = 7
 
-! The atmosphere choice as read. The run's working copy is
-! star%atm_choice_in_use (the surface boundary condition and the
-! calibration cycles change it); star%atm_choice_initial keeps this value.
+! The atmosphere (the surface boundary condition) the deck chooses. The
+! run's working copy is star%atm_choice_in_use (the surface boundary and
+! the envelope integration switch it to the gray T(tau) relation and back
+! to this choice; the calibration cycles restore it).
       integer :: atm_choice = 0
 
 ! Initial abundances of a 12-species set (Na/Al/Mg/Fe/Si/C/H/O/N/Ar/Ne/He,

@@ -2,6 +2,8 @@
 ! and io/controls_buffer.f90 -- do not edit; regenerate instead.
 ! legacy_controls' code names: those the legacy groups bind (spelled
 ! as their legacy names), and those a legacy variable is copied into.
+      use control_slots, only: max_runs
+      use reaction_layout, only: num_sstandard
       use controls_buffer, only: absolute_tolerance, accreted_composition, &
            accretion_cz_fraction, accretion_total_fraction, &
            adiabatic_overshoot_active, alex06_table_path, alex95_table_paths, &

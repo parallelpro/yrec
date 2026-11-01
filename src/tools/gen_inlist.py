@@ -169,7 +169,7 @@ def main():
         "! elements the deck sets (inlist_read.inc); the &control and &physics",
         "! groups.",
     ]
-    decl += ["      use control_slots, only: max_runs"]
+    decl += controls_registry.size_imports([by_name[r["code"]]["dims"] for r in local + aliased])
     decl += wrapped("      use controls_buffer, only: ", bound, cont="           ")
     decl += ["! the inlist names that differ from their code names"]
     decl += [declaration(by_name[r["code"]], r["inlist"]) for r in local]
@@ -250,6 +250,7 @@ def main():
     renamed = [r for r in with_legacy if r["legacy"].lower() != r["code"]]
     use = HEAD + ["! legacy_controls' code names: those the legacy groups bind (spelled",
                   "! as their legacy names), and those a legacy variable is copied into."]
+    use += controls_registry.size_imports([by_name[r["code"]]["dims"] for r in renamed])
     use += wrapped("      use controls_buffer, only: ",
                    sorted(set(same) | {r["code"] for r in renamed}), cont="           ")
     emit(SRC / "io" / "legacy_use.inc", "\n".join(use) + "\n")

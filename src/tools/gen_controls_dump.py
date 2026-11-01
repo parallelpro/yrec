@@ -33,10 +33,14 @@ FMT = {"double precision": "es25.17e3", "integer": "i0", "logical": "l1"}
 NOT_DUMPED = {"control_nml_file", "physics_nml_file"}
 
 
+SIZES = controls_registry.named_sizes()
+
+
 def dims_of(spec):
+    """the extents of a dims spec, a named size (max_runs) as its value"""
     if not spec:
         return []
-    return [d.strip() for d in spec.split(",")]
+    return [SIZES.get(d.strip().lower(), d.strip()) for d in spec.split(",")]
 
 
 def writes_for(group, name, kind, dims):

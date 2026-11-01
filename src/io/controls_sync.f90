@@ -29,9 +29,9 @@ module controls_sync
            set_initial_model_number, report_solver_diagnostics, &
            compute_neutrino_fluxes, timestep_factors, nuclear_logT_cutoffs, &
            saha_log10t_cutoff, rezone_env_logt0, rezone_env_logt1, &
-           gradient_logt_cutoff, use_new_nuclear_rates, &
-           weak_screening_threshold, envelope_logp_step, &
-           core_overshoot_active, overshoot_alpha_core, &
+           gradient_logt_cutoff, envelope_store_log_temperature, &
+           use_new_nuclear_rates, weak_screening_threshold, &
+           envelope_logp_step, core_overshoot_active, overshoot_alpha_core, &
            envelope_overshoot_active, overshoot_alpha_envelope, &
            intermediate_overshoot_active, overshoot_alpha_min, &
            adiabatic_overshoot_active, overshoot_max_extent_flag, &
@@ -47,11 +47,14 @@ module controls_sync
            li6_rate_value, li7_rate_value, be9_rate_value1, &
            be9_rate_value2, be9_rate_value3, scale_li6_rate, &
            scale_li7_rate, scale_be9_rate1, scale_be9_rate2, &
-           scale_be9_rate3, cross_section_ratios, use_itoh_neutrino_loss, &
-           calc_envelope_flag, use_extended_composition, &
-           spot_filling_factor, spot_temp_contrast, spot_depth_varies, &
-           disk_locking_age_gyr, disk_omega_rad_s, disk_locking_active, &
-           target_end_age, timestep_override, central_deuterium_stop, &
+           scale_be9_rate3, cross_section_ratios, cross_section_scale, &
+           extra_cross_section_scale, s_prime_scale, s_double_prime_scale, &
+           be7p_s_prime_scale, be7p_s_double_prime_scale, n15_pg_scale, &
+           n15_pa_scale, use_itoh_neutrino_loss, calc_envelope_flag, &
+           use_extended_composition, spot_filling_factor, &
+           spot_temp_contrast, spot_depth_varies, disk_locking_age_gyr, &
+           disk_omega_rad_s, disk_locking_active, target_end_age, &
+           timestep_override, central_deuterium_stop, &
            central_hydrogen_stop, central_helium_stop, end_age_stop_active, &
            timestep_override_active, use_mhd_eos, &
            metal_fraction_match_tolerance, envelope_print_points, &
@@ -211,6 +214,7 @@ subroutine seed_controls_buffer(s)
       rezone_env_logt0 = s%physics%rezone_env_logt0
       rezone_env_logt1 = s%physics%rezone_env_logt1
       gradient_logt_cutoff = s%physics%gradient_logt_cutoff
+      envelope_store_log_temperature = s%physics%envelope_store_log_temperature
       use_new_nuclear_rates = .false.
       weak_screening_threshold = s%physics%weak_screening_threshold
       envelope_logp_step = s%physics%envelope_logp_step
@@ -258,6 +262,14 @@ subroutine seed_controls_buffer(s)
       scale_be9_rate2 = .false.
       scale_be9_rate3 = .false.
       cross_section_ratios = (/ 0.9828d0, 1.0485d0, 0.9815d0, 0.9241d0, 1.3818d0, 1.0542d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0108d0, 0.7819d0, 0.2875d0 /)
+      cross_section_scale = s%physics%cross_section_scale
+      extra_cross_section_scale = s%physics%extra_cross_section_scale
+      s_prime_scale = s%physics%s_prime_scale
+      s_double_prime_scale = s%physics%s_double_prime_scale
+      be7p_s_prime_scale = s%physics%be7p_s_prime_scale
+      be7p_s_double_prime_scale = s%physics%be7p_s_double_prime_scale
+      n15_pg_scale = s%physics%n15_pg_scale
+      n15_pa_scale = s%physics%n15_pa_scale
       use_itoh_neutrino_loss = s%physics%use_itoh_neutrino_loss
       calc_envelope_flag = s%physics%calc_envelope_flag
       use_extended_composition = s%physics%use_extended_composition
@@ -605,6 +617,7 @@ subroutine store_controls_to_star(s)
       s%physics%rezone_env_logt0 = rezone_env_logt0
       s%physics%rezone_env_logt1 = rezone_env_logt1
       s%physics%gradient_logt_cutoff = gradient_logt_cutoff
+      s%physics%envelope_store_log_temperature = envelope_store_log_temperature
       s%physics%weak_screening_threshold = weak_screening_threshold
       s%physics%envelope_logp_step = envelope_logp_step
       s%physics%core_overshoot_active = core_overshoot_active
@@ -640,6 +653,14 @@ subroutine store_controls_to_star(s)
       s%physics%be9_pg_rate_scale = be9_pg_rate_scale
       s%physics%be9_pd_rate_scale = be9_pd_rate_scale
       s%physics%be9_palpha_rate_scale = be9_palpha_rate_scale
+      s%physics%cross_section_scale = cross_section_scale
+      s%physics%extra_cross_section_scale = extra_cross_section_scale
+      s%physics%s_prime_scale = s_prime_scale
+      s%physics%s_double_prime_scale = s_double_prime_scale
+      s%physics%be7p_s_prime_scale = be7p_s_prime_scale
+      s%physics%be7p_s_double_prime_scale = be7p_s_double_prime_scale
+      s%physics%n15_pg_scale = n15_pg_scale
+      s%physics%n15_pa_scale = n15_pa_scale
       s%physics%use_itoh_neutrino_loss = use_itoh_neutrino_loss
       s%physics%calc_envelope_flag = calc_envelope_flag
       s%physics%use_extended_composition = use_extended_composition
@@ -868,6 +889,8 @@ end subroutine store_controls_to_star
 subroutine arm_run_copies(s)
       type(star_info), intent(inout) :: s
       s%mass_change_active = s%physics%use_mass_accretion
+      s%cross_section_scale_in_use = s%physics%cross_section_scale
+      s%extra_cross_section_scale_in_use = s%physics%extra_cross_section_scale
       s%card_max_age_yr = s%control%target_end_age
       s%card_fixed_timestep_yr = s%control%timestep_override
       s%card_central_deuterium_stop = s%control%central_deuterium_stop

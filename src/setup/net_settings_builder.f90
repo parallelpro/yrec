@@ -20,14 +20,16 @@ contains
 ! net_settings_from_star: the network's settings from the controls and
 ! the star's cross-section scales (io/user_inputs.f90 builds those
 ! from the s0_* inputs; the Monte-Carlo runs rescale four of them).
-!   star reads: be7p_s_double_prime_scale, be7p_s_prime_scale,
-!     cross_section_scale, extra_cross_section_scale, n15_pa_scale,
-!     n15_pg_scale, physics%be9_palpha_rate_scale,
-!     physics%be9_pd_rate_scale, physics%be9_pg_rate_scale,
-!     physics%calc_neutrinos, physics%li6_rate_scale,
-!     physics%li7_rate_scale, physics%nuclear_logT_cutoffs,
-!     physics%use_itoh_neutrino_loss, physics%weak_screening_threshold,
-!     s_double_prime_scale, s_prime_scale
+!   star reads: cross_section_scale_in_use,
+!     extra_cross_section_scale_in_use,
+!     physics%be7p_s_double_prime_scale, physics%be7p_s_prime_scale,
+!     physics%be9_palpha_rate_scale, physics%be9_pd_rate_scale,
+!     physics%be9_pg_rate_scale, physics%calc_neutrinos,
+!     physics%li6_rate_scale, physics%li7_rate_scale,
+!     physics%n15_pa_scale, physics%n15_pg_scale,
+!     physics%nuclear_logT_cutoffs, physics%s_double_prime_scale,
+!     physics%s_prime_scale, physics%use_itoh_neutrino_loss,
+!     physics%weak_screening_threshold
 !   star writes: none
 pure function net_settings_from_star(s) result(settings)
       use star_info_lib, only: star_info
@@ -36,14 +38,14 @@ pure function net_settings_from_star(s) result(settings)
 
       settings%logT_cutoffs = s%physics%nuclear_logT_cutoffs
       settings%weak_screening_threshold = s%physics%weak_screening_threshold
-      settings%cross_section_scale = s%cross_section_scale
-      settings%s_prime_scale = s%s_prime_scale
-      settings%s_double_prime_scale = s%s_double_prime_scale
-      settings%extra_cross_section_scale = s%extra_cross_section_scale
-      settings%be7p_s_prime_scale = s%be7p_s_prime_scale
-      settings%be7p_s_double_prime_scale = s%be7p_s_double_prime_scale
-      settings%n15_pg_scale = s%n15_pg_scale
-      settings%n15_pa_scale = s%n15_pa_scale
+      settings%cross_section_scale = s%cross_section_scale_in_use
+      settings%s_prime_scale = s%physics%s_prime_scale
+      settings%s_double_prime_scale = s%physics%s_double_prime_scale
+      settings%extra_cross_section_scale = s%extra_cross_section_scale_in_use
+      settings%be7p_s_prime_scale = s%physics%be7p_s_prime_scale
+      settings%be7p_s_double_prime_scale = s%physics%be7p_s_double_prime_scale
+      settings%n15_pg_scale = s%physics%n15_pg_scale
+      settings%n15_pa_scale = s%physics%n15_pa_scale
       settings%li6_rate_scale = s%physics%li6_rate_scale
       settings%li7_rate_scale = s%physics%li7_rate_scale
       settings%be9_pg_rate_scale = s%physics%be9_pg_rate_scale

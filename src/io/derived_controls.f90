@@ -4,8 +4,8 @@
 ! The controls computed from the ones read: the light-element rate
 ! scales, one OPAL EOS and one low-temperature opacity source, a fresh
 ! envelope triangle for rotating runs, the starting model's mixture
-! changes, and the switches that diffusion options imply; and it writes
-! the run log's header. Its messages go to the terminal and the run log
+! changes, the switches that diffusion options imply and the envelope's
+! storage temperature; and it writes the run log's header. Its messages go to the terminal and the run log
 ! through io_units (report_warning, report_note); the errors are
 ! controls_check's. Everything here works on the controls' code names,
 ! in the read's buffer (controls_buffer).
@@ -13,7 +13,7 @@ module derived_controls
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use yrec_version, only: yrec_version_string, git_hash_string
       use io_units, only: report_warning, report_note, log_line
-      use controls_buffer, only: atm_choice, &
+      use controls_buffer, only: atm_choice, envelope_store_log_temperature, &
            be9_palpha_rate_scale, be9_palpha_reference_xs, be9_pd_rate_scale, &
            be9_pd_reference_xs, be9_pg_rate_scale, be9_pg_reference_xs, &
            be9_rate_value1, be9_rate_value2, be9_rate_value3, &
@@ -40,7 +40,6 @@ module derived_controls
            use_thoul_fit, value_relative_to_h
       use eos_lib, only: opal_vintage_none, opal_vintage_1995, opal_vintage_2001, &
            opal_vintage_2006
-      use star_info_lib, only: star_info
       implicit none
       private
       public :: derive_controls
@@ -66,14 +65,10 @@ contains
 ! ---------------------------------------------------------------
 ! The derivations, in order, and the run log's header. (controls_check's
 ! check_controls has rejected the controls the run cannot use.)
-!   star reads: none
-!   star writes: envelope_store_log_temperature
-subroutine derive_controls(s)
-      type(star_info), intent(inout) :: s
-
+subroutine derive_controls
       call derive_rate_scales
       call select_eos_and_opacity_tables
-      s%envelope_store_log_temperature = 0.5d0*(rezone_env_logt0 + rezone_env_logt1)
+      envelope_store_log_temperature = 0.5d0*(rezone_env_logt0 + rezone_env_logt1)
       if (rotation_active) call derive_rotation_controls
       if (rescale_species_active) call find_rescaled_species
       call select_cno_mixture

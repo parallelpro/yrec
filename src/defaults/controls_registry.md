@@ -440,6 +440,15 @@ file names, from the command line). Each is in the group of its topic.
 | `initial_envelope_z` | control | control | `current_card_envelope_z` | run | real | `0.02d0` | The current card's envelope Z (from initial_z_array; a rescale changes it) |
 | `new_species_index` | physics | physics | - | run | integer | `0` | With rescale_species_active: the composition slot of change_species_name (set by the reader) |
 | `value_relative_to_h` | physics | physics | - | run | logical | `0` | With rescale_species_active: new_species_value is relative to hydrogen (from new_species_value_mode) |
+| `cross_section_scale` | physics | physics | `cross_section_scale_in_use` | run | real(11) | `1.0d0` | Each reaction's cross-section (S0) scale against Bahcall & Ulrich (1988), by reaction slot r_*: from the S-factor inputs (use_new_nuclear_rates) or from cross_section_ratios |
+| `extra_cross_section_scale` | physics | physics | `extra_cross_section_scale_in_use` | run | real(4) | `1.0d0` | The scales of the rates outside the reaction table, by extra slot xs_* (pep, Be7 + e, Be7 + p, hep): from the S-factor inputs (use_new_nuclear_rates) or from cross_section_ratios |
+| `s_prime_scale` | physics | physics | - | run | real(11) | `1.0d0` | Each reaction's S'/S scale against Solar Fusion I, by reaction slot (1 without use_new_nuclear_rates) |
+| `s_double_prime_scale` | physics | physics | - | run | real(11) | `1.0d0` | Each reaction's S''/S scale against Solar Fusion I, by reaction slot (1 without use_new_nuclear_rates) |
+| `be7p_s_prime_scale` | physics | physics | - | run | real | `1.0d0` | Be7 + p's S'/S scale against Solar Fusion I |
+| `be7p_s_double_prime_scale` | physics | physics | - | run | real | `1.0d0` | Be7 + p's S''/S scale against Solar Fusion I |
+| `n15_pg_scale` | physics | physics | - | run | real | `1.0d0` | The N15(p,gamma)O16 branch's scale (s0_n15_p_o16_branch over net's reference) |
+| `n15_pa_scale` | physics | physics | - | run | real | `1.0d0` | The N15(p,alpha)C12 branch's scale (s0_n15_p_c12_branch over net's reference) |
+| `envelope_store_log_temperature` | physics | physics | - | run | real | `0` | The log T at which an envelope integration stores its state for the surface boundary: the mean of rezone_env_logT0 and rezone_env_logT1 |
 | `change_cno_mixture_active` | control | control | - | run | logical | `0` | The starting model's CNO mixture is changed (cno_mixture_mode = 1 and a valid mixture) |
 | `change_isotope_ratios_active` | control | control | - | run | logical | `0` | The starting model's isotope ratios are changed (isotope_mixture_mode = 1 and a valid mixture) |
 | `control_nml_file` | control | buffer | - | read | string | `''` | The deck's file: the single-file inlist, or the legacy pair's CONTROL namelist (.nml1); read_input finds it (the first command-line argument, default yrec8.nml1, or an embedding host's override) |

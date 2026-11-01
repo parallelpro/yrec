@@ -397,6 +397,15 @@ control	-	real	initial_envelope_x	derived		The current card's envelope X (from i
 control	-	real	initial_envelope_z	derived		The current card's envelope Z (from initial_z_array; a rescale changes it)	initial_envelope_z	control	current_card_envelope_z	run	
 physics	-	integer	new_species_index	derived		With rescale_species_active: the composition slot of change_species_name (set by the reader)	new_species_index	physics		run	
 physics	-	logical	value_relative_to_h	derived		With rescale_species_active: new_species_value is relative to hydrogen (from new_species_value_mode)	value_relative_to_h	physics		run	
+physics	-	real(11)	cross_section_scale	derived		Each reaction's cross-section (S0) scale against Bahcall & Ulrich (1988), by reaction slot r_*: from the S-factor inputs (use_new_nuclear_rates) or from cross_section_ratios	cross_section_scale	physics	cross_section_scale_in_use	run	
+physics	-	real(4)	extra_cross_section_scale	derived		The scales of the rates outside the reaction table, by extra slot xs_* (pep, Be7 + e, Be7 + p, hep): from the S-factor inputs (use_new_nuclear_rates) or from cross_section_ratios	extra_cross_section_scale	physics	extra_cross_section_scale_in_use	run	
+physics	-	real(11)	s_prime_scale	derived		Each reaction's S'/S scale against Solar Fusion I, by reaction slot (1 without use_new_nuclear_rates)	s_prime_scale	physics		run	
+physics	-	real(11)	s_double_prime_scale	derived		Each reaction's S''/S scale against Solar Fusion I, by reaction slot (1 without use_new_nuclear_rates)	s_double_prime_scale	physics		run	
+physics	-	real	be7p_s_prime_scale	derived		Be7 + p's S'/S scale against Solar Fusion I	be7p_s_prime_scale	physics		run	
+physics	-	real	be7p_s_double_prime_scale	derived		Be7 + p's S''/S scale against Solar Fusion I	be7p_s_double_prime_scale	physics		run	
+physics	-	real	n15_pg_scale	derived		The N15(p,gamma)O16 branch's scale (s0_n15_p_o16_branch over net's reference)	n15_pg_scale	physics		run	
+physics	-	real	n15_pa_scale	derived		The N15(p,alpha)C12 branch's scale (s0_n15_p_c12_branch over net's reference)	n15_pa_scale	physics		run	
+physics	-	real	envelope_store_log_temperature	derived		The log T at which an envelope integration stores its state for the surface boundary: the mean of rezone_env_logT0 and rezone_env_logT1	envelope_store_log_temperature	physics		run	
 control	-	logical	change_cno_mixture_active	derived		The starting model's CNO mixture is changed (cno_mixture_mode = 1 and a valid mixture)	change_cno_mixture_active	control		run	
 control	-	logical	change_isotope_ratios_active	derived		The starting model's isotope ratios are changed (isotope_mixture_mode = 1 and a valid mixture)	change_isotope_ratios_active	control		run	
 control	-	string	control_nml_file	derived		The deck's file: the single-file inlist, or the legacy pair's CONTROL namelist (.nml1); read_input finds it (the first command-line argument, default yrec8.nml1, or an embedding host's override)	control_nml_file	buffer		read	

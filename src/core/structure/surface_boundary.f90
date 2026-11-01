@@ -46,7 +46,7 @@ contains
 ! hydrogen_fraction, metal_fraction and the two rotation factors are
 ! intent(inout) only because atm_get's dummies are (they pass through to
 ! the Bulirsch-Stoer integrator's callbacks); the caller passes locals.
-!   star reads: atm_choice_initial, nz, physics%spot_filling_factor,
+!   star reads: nz, physics%atm_choice, physics%spot_filling_factor,
 !     physics%spot_temp_contrast, physics%tri_delta_logl,
 !     physics%tri_delta_teffl, xa
 !   star writes: atm_choice_in_use, use_ttau_relation
@@ -148,15 +148,15 @@ subroutine switch_atmosphere_choice()
          endif
       endif
       if (s%use_ttau_relation) then
-         if (s%atm_choice_initial.eq.3.and.log10_teff.lt.3.95d0) then
-            s%atm_choice_in_use = s%atm_choice_initial
+         if (s%physics%atm_choice.eq.3.and.log10_teff.lt.3.95d0) then
+            s%atm_choice_in_use = s%physics%atm_choice
             start_new_triangle = .true.
             s%use_ttau_relation = .false.
             write(*,9) log10_teff
  9          format('LOG TEFF OF ',F7.3,' BELOW 3.95 - SWITCH' &
            ,' BACK TO KURUCZ ATMOSPHERE BOUNDARY CONDITION')
-         else if (s%atm_choice_initial.eq.4.and.log10_teff.lt.atm_allard_teff_max()) then
-            s%atm_choice_in_use = s%atm_choice_initial
+         else if (s%physics%atm_choice.eq.4.and.log10_teff.lt.atm_allard_teff_max()) then
+            s%atm_choice_in_use = s%physics%atm_choice
             start_new_triangle = .true.
             s%use_ttau_relation = .false.
             write(*,11) log10_teff, atm_allard_teff_max()

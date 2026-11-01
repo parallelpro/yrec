@@ -71,16 +71,13 @@ program test_controls
          write(u,'(a)') "# controls (pristine defaults)"
       end if
       include 'controls_dump.inc'
-      write(u,'(a," = ",i0)') 'star%atm_choice_initial', star%atm_choice_initial
-      write(u,'(a," = ",l1)') 'star%use_ttau_relation', star%use_ttau_relation
-      write(u,'(a," = ",es25.17e3)') 'star%envelope_store_log_temperature', star%envelope_store_log_temperature
-      do i1 = 1, size(star%cross_section_scale)
-         write(u,'(a," = ",es25.17e3)') 'star%cross_section_scale('//itoa(i1)//')', &
-              star%cross_section_scale(i1)
+      do i1 = 1, size(star%cross_section_scale_in_use)
+         write(u,'(a," = ",es25.17e3)') 'star%cross_section_scale_in_use('//itoa(i1)//')', &
+              star%cross_section_scale_in_use(i1)
       end do
-      do i1 = 1, size(star%extra_cross_section_scale)
-         write(u,'(a," = ",es25.17e3)') 'star%extra_cross_section_scale('//itoa(i1)//')', &
-              star%extra_cross_section_scale(i1)
+      do i1 = 1, size(star%extra_cross_section_scale_in_use)
+         write(u,'(a," = ",es25.17e3)') 'star%extra_cross_section_scale_in_use('//itoa(i1)//')', &
+              star%extra_cross_section_scale_in_use(i1)
       end do
       write(u,'(a," = ",es25.17e3)') 'star%envelope_hydrogen_fraction', star%envelope_hydrogen_fraction
       write(u,'(a," = ",es25.17e3)') 'star%envelope_metal_fraction', star%envelope_metal_fraction

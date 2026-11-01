@@ -17,7 +17,6 @@
 ! from the registry.
 module legacy_controls
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use control_slots, only: max_runs
       use io_units, only: check_io
       include 'legacy_use.inc'
       implicit none

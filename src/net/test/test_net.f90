@@ -46,6 +46,7 @@
 program test_net
       use run_setup, only: set_up_constants_and_tables
       use user_inputs, only: map_user_inputs
+      use controls_sync, only: store_controls_to_star, arm_run_copies
       use controls_buffer
       use io_units
       use star_info_lib, only: star_info, i_h1, i_h2, i_he3, i_he4, i_metals, &
@@ -197,16 +198,20 @@ program test_net
       s0pp_p_o16 = 0.0d0
       s0pp_be7_p = -2.288d-7
 
-! cross-section scales via the real remap, then the network's settings
-      call map_user_inputs(star)
+! cross-section scales via the real remap (into the buffer), stored on the
+! star with its run copies as the read stores them, then the network's
+! settings
+      call map_user_inputs
+      call store_controls_to_star(star)
+      call arm_run_copies(star)
       call set_net_settings(net_settings_from_star(star), setups_ierr)
       call report("set_net_settings: the table checks out, the settings installed", &
            setups_ierr == 0)
       write(*,'(a)') "# test_net: cross_section_scale (reaction slots), then " // &
            "extra_cross_section_scale (pep, Be7+e, Be7+p, hep), from map_user_inputs " // &
            "(newcross defaults)"
-      write(*,'(4(1pe20.12))') (star%cross_section_scale(i), i = 1, num_reactions)
-      write(*,'(4(1pe20.12))') (star%extra_cross_section_scale(i), i = 1, num_extra_scales)
+      write(*,'(4(1pe20.12))') (star%cross_section_scale_in_use(i), i = 1, num_reactions)
+      write(*,'(4(1pe20.12))') (star%extra_cross_section_scale_in_use(i), i = 1, num_extra_scales)
 
 ! reaction rates over a (logT, logRho) grid at a solar-ish mixture
       write(*,'(a)') "# test_net: rates, X=0.70 Y3=3e-5 C12=3.5e-3 " // &
@@ -891,19 +896,19 @@ contains
          do flags = 1, 2
             probe%physics%nuclear_logT_cutoffs = [6.6d0, 6.7d0, 6.9d0, 7.8d0, 7.6d0]
             probe%physics%weak_screening_threshold = 0.04d0
-            probe%cross_section_scale = [(1.0d0 + 0.01d0*i, i = 1, num_reactions)]
-            probe%s_prime_scale = [(1.0d0 + 0.02d0*i, i = 1, num_reactions)]
-            probe%s_double_prime_scale = [(1.0d0 + 0.03d0*i, i = 1, num_reactions)]
+            probe%cross_section_scale_in_use = [(1.0d0 + 0.01d0*i, i = 1, num_reactions)]
+            probe%physics%s_prime_scale = [(1.0d0 + 0.02d0*i, i = 1, num_reactions)]
+            probe%physics%s_double_prime_scale = [(1.0d0 + 0.03d0*i, i = 1, num_reactions)]
             where (.not. s_factor_slots())
-               probe%cross_section_scale = 1.0d0
-               probe%s_prime_scale = 1.0d0
-               probe%s_double_prime_scale = 1.0d0
+               probe%cross_section_scale_in_use = 1.0d0
+               probe%physics%s_prime_scale = 1.0d0
+               probe%physics%s_double_prime_scale = 1.0d0
             end where
-            probe%extra_cross_section_scale = [(1.0d0 + 0.05d0*i, i = 1, num_extra_scales)]
-            probe%be7p_s_prime_scale = 1.41d0
-            probe%be7p_s_double_prime_scale = 1.42d0
-            probe%n15_pg_scale = 1.43d0
-            probe%n15_pa_scale = 1.44d0
+            probe%extra_cross_section_scale_in_use = [(1.0d0 + 0.05d0*i, i = 1, num_extra_scales)]
+            probe%physics%be7p_s_prime_scale = 1.41d0
+            probe%physics%be7p_s_double_prime_scale = 1.42d0
+            probe%physics%n15_pg_scale = 1.43d0
+            probe%physics%n15_pa_scale = 1.44d0
             probe%physics%li6_rate_scale = 1.45d0
             probe%physics%li7_rate_scale = 1.46d0
             probe%physics%be9_pg_rate_scale = 1.47d0
@@ -929,14 +934,14 @@ contains
          type(star_info), intent(in) :: probe
          carries_probe = all(r%logT_cutoffs == probe%physics%nuclear_logT_cutoffs) .and. &
               r%weak_screening_threshold == probe%physics%weak_screening_threshold .and. &
-              all(r%cross_section_scale == probe%cross_section_scale) .and. &
-              all(r%s_prime_scale == probe%s_prime_scale) .and. &
-              all(r%s_double_prime_scale == probe%s_double_prime_scale) .and. &
-              all(r%extra_cross_section_scale == probe%extra_cross_section_scale) .and. &
-              r%be7p_s_prime_scale == probe%be7p_s_prime_scale .and. &
-              r%be7p_s_double_prime_scale == probe%be7p_s_double_prime_scale .and. &
-              r%n15_pg_scale == probe%n15_pg_scale .and. &
-              r%n15_pa_scale == probe%n15_pa_scale .and. &
+              all(r%cross_section_scale == probe%cross_section_scale_in_use) .and. &
+              all(r%s_prime_scale == probe%physics%s_prime_scale) .and. &
+              all(r%s_double_prime_scale == probe%physics%s_double_prime_scale) .and. &
+              all(r%extra_cross_section_scale == probe%extra_cross_section_scale_in_use) .and. &
+              r%be7p_s_prime_scale == probe%physics%be7p_s_prime_scale .and. &
+              r%be7p_s_double_prime_scale == probe%physics%be7p_s_double_prime_scale .and. &
+              r%n15_pg_scale == probe%physics%n15_pg_scale .and. &
+              r%n15_pa_scale == probe%physics%n15_pa_scale .and. &
               r%li6_rate_scale == probe%physics%li6_rate_scale .and. &
               r%li7_rate_scale == probe%physics%li7_rate_scale .and. &
               r%be9_pg_rate_scale == probe%physics%be9_pg_rate_scale .and. &

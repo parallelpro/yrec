@@ -631,13 +631,14 @@ def check_control_copies(src_root):
     control's type and shape, its comment names the control
     (<group>%<name>) and controls_sync among its writers, and
     controls_sync's arm_run_copies sets it from the control, once and
-    nowhere else. Any other copy of a control into a whole star member is
+    nowhere else (a writer the comment names may restore it from its own
+    control). Any other copy of a control into a whole star member is
     in a module the member's comment names as a writer, and the comment
     names the control: outside the read and the tests s%m = s%<group>%x;
     in the read's own files (CONTROLS_READ_FILES but controls_sync)
     s%m = x, with x the control's buffer name or its legacy name (READ_COPY
     below). A run copy is set from its control by arm_run_copies alone, in
-    the read as outside it."""
+    the read as outside it (but for that restore by a named writer)."""
     import controls_registry
     import gen_star_docs
     _, members, _ = gen_star_docs.parse_star_info(src_root / "state" / "star_info_lib.f90")
@@ -690,8 +691,13 @@ def check_control_copies(src_root):
             if e is None:
                 continue
             if member in copies:
+                # restoring a run copy to its own control (the surface boundary's
+                # switch back to the deck's atmosphere) is a writer's business
+                if ref == copies[member] and module in [w.lower() for w in e["writers"]]:
+                    continue
                 problems.append(f"{rel}: sets the run copy {member} from {ref}; only the "
-                                "controls read arms it (arm_run_copies)")
+                                "controls read arms it (arm_run_copies), and a writer its "
+                                "comment names may restore it from its own control")
                 continue
             if module not in [w.lower() for w in e["writers"]]:
                 problems.append(f"{rel}: copies {ref} into {member}, but {member}'s comment does "

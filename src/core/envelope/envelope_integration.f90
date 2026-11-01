@@ -159,7 +159,7 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
       cfg%log10_total_mass = s%log_total_mass
       cfg%surface_composition = surface_composition
       cfg%log_fit_point_mass_fraction = s%log_fit_point_mass_fraction
-      cfg%envelope_store_log_temperature = s%envelope_store_log_temperature
+      cfg%envelope_store_log_temperature = s%physics%envelope_store_log_temperature
       cfg%log10_solar_luminosity = s%log10_solar_luminosity
       cfg%log10_gravitational_constant = cgl
       cfg%calc_envelope = s%physics%calc_envelope_flag

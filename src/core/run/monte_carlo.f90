@@ -117,9 +117,10 @@ end subroutine begin_monte_carlo_run
 ! the solar luminosity; and the age scale factor. Outside Monte Carlo it
 ! only sets age_scale_factor = 1.
 !   star reads: mc_samples, physics%monte_carlo_active
-!   star writes: card_max_age_yr, cross_section_scale,
-!     extra_cross_section_scale, ln10_over_lsun, log10_solar_luminosity,
-!     settling_z_factor_in_use, solar_luminosity_cgs
+!   star writes: card_max_age_yr, cross_section_scale_in_use,
+!     extra_cross_section_scale_in_use, ln10_over_lsun,
+!     log10_solar_luminosity, settling_z_factor_in_use,
+!     solar_luminosity_cgs
 subroutine apply_monte_carlo_parameters(s, monte_carlo_run_number, &
      age_scale_factor)
       use math_lib
@@ -142,10 +143,10 @@ subroutine apply_monte_carlo_parameters(s, monte_carlo_run_number, &
       double precision, parameter :: reference_solar_luminosity = 3.844D33
 
       if (s%physics%monte_carlo_active) then
-         s%cross_section_scale(r_pp) = s%mc_samples%s11_factor(monte_carlo_run_number)*bp96_pp_factor
-         s%cross_section_scale(r_he3he3) = s%mc_samples%s33_factor(monte_carlo_run_number)*bp96_he3he3_factor
-         s%cross_section_scale(r_he3he4) = s%mc_samples%s34_factor(monte_carlo_run_number)*bp96_he3he4_factor
-         s%extra_cross_section_scale(xs_be7p) = s%mc_samples%s17_factor(monte_carlo_run_number)*bp96_be7p_factor
+         s%cross_section_scale_in_use(r_pp) = s%mc_samples%s11_factor(monte_carlo_run_number)*bp96_pp_factor
+         s%cross_section_scale_in_use(r_he3he3) = s%mc_samples%s33_factor(monte_carlo_run_number)*bp96_he3he3_factor
+         s%cross_section_scale_in_use(r_he3he4) = s%mc_samples%s34_factor(monte_carlo_run_number)*bp96_he3he4_factor
+         s%extra_cross_section_scale_in_use(xs_be7p) = s%mc_samples%s17_factor(monte_carlo_run_number)*bp96_be7p_factor
 ! The sampled metal settling factor (legacy FHE, which the F77 code also
 ! copied to FZDIF and FGRSET) sets element diffusion's metal factor fgrz
 ! only; the helium factor fgry keeps its control value. The sampled Z/X

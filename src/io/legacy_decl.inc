@@ -239,7 +239,7 @@
       logical :: lmonte
       integer :: imbeg
       integer :: imend
-      real(dp) :: sstandard(17)
+      real(dp) :: sstandard(num_sstandard)
       logical :: lscv
       logical :: ldisk
       real(dp) :: tdisk
