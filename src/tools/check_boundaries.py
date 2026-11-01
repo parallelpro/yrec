@@ -759,10 +759,10 @@ STAR_ACCESS_BUDGET = {
     # rotation (2026-10): the drivers take the star as an argument s; the
     # rest is star-free
     "rotation": (0, 0),
-    # setup (2026-10): the settings builders and map_user_inputs take the
-    # star as an argument s
+    # setup (2026-10): the settings builders take the star as an argument s
     "setup": (0, 0),
-    # state (2026-10): controls_sync takes the star as an argument s
+    # state (2026-10): the layouts and the star's type; nothing refers to a
+    # star
     "state": (0, 0),
 }
 

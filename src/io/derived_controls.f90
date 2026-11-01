@@ -46,6 +46,27 @@ module derived_controls
 
       integer, parameter :: message_length = 512
 
+! The messages' formats: a species that is not one, the CNO mixture's
+! and the isotope mixture's (rejected, unknown, applied), and the
+! format of the run log's version banner.
+      character(len=*), parameter :: &
+           unknown_species_format = "('change_species_name (ANEWCP) ',a3," // &
+           "' is not a species of the starting model; no species rescaled')", &
+           negative_cno_format = "('negative CNO fraction (',3es12.4,'); mixture not modified')", &
+           cno_sum_format = "('the CNO fractions (',3es12.4,') sum to 1 or more; mixture not modified')", &
+           unknown_cno_format = "('CNO mixture ',a8,' not recognized; mixture not altered')", &
+           cno_applied_format = "('CNO mixture ',a8,': C =',es12.4,'  N =',es12.4," // &
+           "'  O =',es12.4,' (fractions of Z); applied to the starting model')", &
+           negative_isotope_format = "('negative isotope ratio or light-element'," // &
+           "' mass fraction (',11es12.4,'); mixture not modified')", &
+           light_element_sum_format = "('light-element mass fractions sum above 1'," // &
+           "' (',7es12.4,'); mixture not modified')", &
+           unknown_isotope_format = "('isotope mixture ',a8,' not recognized; mixture not altered')", &
+           isotope_applied_format = "('isotope/light-element mixture ',a8,': C12/C13 ='," // &
+           "es12.4,'  O16/O18 =',es12.4,'  H2 =',es12.4,'  He3 =',es12.4," // &
+           "'  Li6 =',es12.4,'  Li7 =',es12.4,'  Be9 =',es12.4,'; applied to the starting model')", &
+           banner_format_format = "('(''# YREC v'', A', i2.2, ', '' ('', A', i2.2, ', '')'')')"
+
 ! The species change_species_name may name, from He3 on in
 ! composition-slot order (He3 is slot i_he3).
       character(len=3), parameter :: element_id(12) = (/ 'HE3', 'C12', 'C13', 'N14', &
@@ -161,9 +182,7 @@ subroutine find_rescaled_species
       end do
       if (i > size(element_id)) then
          rescale_species_active = .false.
-         write(line,20) change_species_name
-      20    format('change_species_name (ANEWCP) ',a3, &
-           &    ' is not a species of the starting model; no species rescaled')
+         write(line,unknown_species_format) change_species_name
          call report_warning(line)
       end if
 end subroutine find_rescaled_species
@@ -182,19 +201,15 @@ subroutine select_cno_mixture
          if (cno_mixture_name == 'CUS') then
             if (target_carbon_cno_fraction < 0.0d0 .or. target_nitrogen_cno_fraction < 0.0d0 &
                  .or. target_oxygen_cno_fraction < 0.0d0) then
-               write(line,591) target_carbon_cno_fraction, target_nitrogen_cno_fraction, &
-                    target_oxygen_cno_fraction
-      591          format('negative CNO fraction (',3es12.4, &
-           &              '); mixture not modified')
+               write(line,negative_cno_format) target_carbon_cno_fraction, &
+                    target_nitrogen_cno_fraction, target_oxygen_cno_fraction
                call report_warning(line)
             else
                sum_frac = target_carbon_cno_fraction + target_nitrogen_cno_fraction &
                     + target_oxygen_cno_fraction
                if (sum_frac >= 1.0d0) then
-                  write(line,598) target_carbon_cno_fraction, target_nitrogen_cno_fraction, &
-                       target_oxygen_cno_fraction
-      598             format('the CNO fractions (',3es12.4, &
-           &                 ') sum to 1 or more; mixture not modified')
+                  write(line,cno_sum_format) target_carbon_cno_fraction, &
+                       target_nitrogen_cno_fraction, target_oxygen_cno_fraction
                   call report_warning(line)
                else
                   change_cno_mixture_active = .true.
@@ -212,17 +227,14 @@ subroutine select_cno_mixture
                end if
             end do
             if (.not. change_cno_mixture_active) then
-               write(line,589) cno_mixture_name
-      589       format('CNO mixture ',a8,' not recognized; mixture not altered')
+               write(line,unknown_cno_format) cno_mixture_name
                call report_warning(line)
             end if
          end if
       end if
       if (change_cno_mixture_active) then
-         write(line,604) cno_mixture_name, target_carbon_cno_fraction, target_nitrogen_cno_fraction, &
-              target_oxygen_cno_fraction
-      604    format('CNO mixture ',a8,': C =',es12.4,'  N =',es12.4, &
-           &         '  O =',es12.4,' (fractions of Z); applied to the starting model')
+         write(line,cno_applied_format) cno_mixture_name, target_carbon_cno_fraction, &
+              target_nitrogen_cno_fraction, target_oxygen_cno_fraction
          call report_note(line)
       end if
 end subroutine select_cno_mixture
@@ -244,23 +256,19 @@ subroutine select_isotope_mixture
                  .or. initial_li6_fraction < 0.0d0 .or. initial_li7_fraction < 0.0d0 &
                  .or. initial_be9_fraction < 0.0d0 .or. initial_b10_fraction < 0.0d0 &
                  .or. initial_b11_fraction < 0.0d0) then
-               write(line,596) c12_to_c13_ratio, n14_to_n15_ratio, o16_to_o17_ratio, &
+               write(line,negative_isotope_format) c12_to_c13_ratio, n14_to_n15_ratio, o16_to_o17_ratio, &
                     o16_to_o18_ratio, initial_h2_fraction, initial_he3_fraction, &
                     initial_li6_fraction, initial_li7_fraction, initial_be9_fraction, &
                     initial_b10_fraction, initial_b11_fraction
-      596          format('negative isotope ratio or light-element', &
-           &   ' mass fraction (',11es12.4,'); mixture not modified')
                call report_warning(line)
             else
                sum_frac = initial_h2_fraction + initial_he3_fraction + initial_li6_fraction &
                     + initial_li7_fraction + initial_be9_fraction + initial_b10_fraction &
                     + initial_b11_fraction
                if (sum_frac >= 1.0d0) then
-                  write(line,595) initial_h2_fraction, initial_he3_fraction, &
+                  write(line,light_element_sum_format) initial_h2_fraction, initial_he3_fraction, &
                        initial_li6_fraction, initial_li7_fraction, initial_be9_fraction, &
                        initial_b10_fraction, initial_b11_fraction
-      595             format('light-element mass fractions sum above 1', &
-           &     ' (',7es12.4,'); mixture not modified')
                   call report_warning(line)
                else
                   change_isotope_ratios_active = .true.
@@ -269,19 +277,14 @@ subroutine select_isotope_mixture
          else if (isotope_mixture_name == 'L21') then
             change_isotope_ratios_active = .true.
          else
-            write(line,597) isotope_mixture_name
-      597    format('isotope mixture ',a8,' not recognized; mixture not altered')
+            write(line,unknown_isotope_format) isotope_mixture_name
             call report_warning(line)
          end if
       end if
       if (change_isotope_ratios_active) then
-         write(line,605) isotope_mixture_name, c12_to_c13_ratio, o16_to_o18_ratio, initial_h2_fraction, &
-              initial_he3_fraction, initial_li6_fraction, initial_li7_fraction, &
-              initial_be9_fraction
-      605    format('isotope/light-element mixture ',a8,': C12/C13 =', &
-           &    es12.4,'  O16/O18 =',es12.4,'  H2 =',es12.4,'  He3 =',es12.4, &
-           &    '  Li6 =',es12.4,'  Li7 =',es12.4,'  Be9 =',es12.4, &
-           &    '; applied to the starting model')
+         write(line,isotope_applied_format) isotope_mixture_name, c12_to_c13_ratio, &
+              o16_to_o18_ratio, initial_h2_fraction, initial_he3_fraction, &
+              initial_li6_fraction, initial_li7_fraction, initial_be9_fraction
          call report_note(line)
       end if
 end subroutine select_isotope_mixture
@@ -313,10 +316,8 @@ subroutine write_run_log_header
       character(len=64) :: version_fmt
       character(len=message_length) :: line
 
-      write(version_fmt, 315) max(1, len_trim(yrec_version_string)), &
+      write(version_fmt, banner_format_format) max(1, len_trim(yrec_version_string)), &
            max(1, len_trim(git_hash_string))
-      315 format('(''# YREC v'', A', i2.2, ', '' ('', A', i2.2, &
-           &        ', '')'')')
       select case (atm_choice)
       case (0)
          call log_line(' surface boundary: Eddington gray T(tau) relation')

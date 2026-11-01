@@ -3,8 +3,8 @@
 !----------------------------------------------------------------------
 ! The controls' validation, errors and warnings:
 !   check_controls              the errors: values and combinations the
-!                               run cannot use (ierr = 1); the controls
-!                               read calls it (read_input), before
+!                               run cannot use (ierr = 1); read_controls
+!                               calls it after the deck is read, before
 !                               derive_controls
 !   warn_inert_controls         legacy controls a deck sets that nothing
 !                               uses; the controls read calls it

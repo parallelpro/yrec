@@ -23,6 +23,24 @@ module run_cards
       integer, parameter :: card_evolve = 1, card_rescale = 2, &
            card_rescale_and_evolve = 3
 
+! The run plan's lines: a card's kind and its starting model, a rescaling
+! card's targets, and an evolving card's stops.
+      character(len=*), parameter :: &
+           evolve_from_start_format = &
+           "(1x,'card',i3,': evolve up to',i6,' models from the starting model')", &
+           evolve_from_previous_format = &
+           "(1x,'card',i3,': evolve up to',i6,' models from the previous card''s model')", &
+           rescale_start_format = "(1x,'card',i3,': rescale the starting model')", &
+           rescale_previous_format = "(1x,'card',i3,': rescale the previous card''s model')", &
+           rescale_evolve_start_format = &
+           "(1x,'card',i3,': rescale and evolve the starting model')", &
+           rescale_evolve_previous_format = &
+           "(1x,'card',i3,': rescale and evolve the previous card''s model')", &
+           targets_format = "(9x,'relax for',i3,' models; targets (0 or negative = keep " // &
+           "current):','  M =',f9.6,'  X =',f9.6,'  Z =',f9.6,'  core mass =',f10.6)", &
+           stops_format = "(9x,'stop conditions (0 = unused): age =',es9.2,' yr   fixed " // &
+           "dt =',es9.2,' yr   central: D =',es10.3,'  X =',es10.3,'  Y =',es10.3)"
+
 contains
 
 ! ---------------------------------------------------------------
@@ -83,46 +101,36 @@ subroutine echo_card(n)
       case (card_evolve)
          if (num_models(n) <= 0) return
          if (first_call_flag(n)) then
-            write(line,350) n, num_models(n)
+            write(line,evolve_from_start_format) n, num_models(n)
          else
-            write(line,351) n, num_models(n)
+            write(line,evolve_from_previous_format) n, num_models(n)
          end if
       case (card_rescale)
          if (num_models(n) <= 0) return
          if (first_call_flag(n)) then
-            write(line,450) n
+            write(line,rescale_start_format) n
          else
-            write(line,451) n
+            write(line,rescale_previous_format) n
          end if
       case (card_rescale_and_evolve)
          if (first_call_flag(n)) then
-            write(line,550) n
+            write(line,rescale_evolve_start_format) n
          else
-            write(line,551) n
+            write(line,rescale_evolve_previous_format) n
          end if
       case default
          return
       end select
       call echo(line)
       if (rescales(n)) then
-         write(line,452) num_models(n), (rescale_params(i,n), i = 1,4)
+         write(line,targets_format) num_models(n), (rescale_params(i,n), i = 1,4)
          call echo(line)
       end if
       if (evolves(n) .and. (end_age_stop_active(n) .or. timestep_override_active(n))) then
-         write(line,370) target_end_age(n), timestep_override(n), central_deuterium_stop(n), central_hydrogen_stop(n), central_helium_stop(n)
+         write(line,stops_format) target_end_age(n), timestep_override(n), &
+              central_deuterium_stop(n), central_hydrogen_stop(n), central_helium_stop(n)
          call echo(line)
       end if
-
-  350 format(1x,'card',i3,': evolve up to',i6,' models from the starting model')
-  351 format(1x,'card',i3,': evolve up to',i6,' models from the previous card''s model')
-  450 format(1x,'card',i3,': rescale the starting model')
-  451 format(1x,'card',i3,': rescale the previous card''s model')
-  550 format(1x,'card',i3,': rescale and evolve the starting model')
-  551 format(1x,'card',i3,': rescale and evolve the previous card''s model')
-  452 format(9x,'relax for',i3,' models; targets (0 or negative = keep current):', &
-           '  M =',f9.6,'  X =',f9.6,'  Z =',f9.6,'  core mass =',f10.6)
-  370 format(9x,'stop conditions (0 = unused): age =',es9.2,' yr   fixed dt =',es9.2, &
-           ' yr   central: D =',es10.3,'  X =',es10.3,'  Y =',es10.3)
 end subroutine echo_card
 
 ! One line of the run plan, to the terminal and the run log.

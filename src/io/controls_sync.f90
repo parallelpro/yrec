@@ -5,15 +5,15 @@
 ! io/controls_buffer.f90 and defaults/controls_registry.tsv --
 ! do not edit; regenerate instead.
 ! The copies between controls_buffer, the buffer the decks are
-! read into, and the star. read_controls runs:
-!   call seed_controls_buffer(s)   (s%control, s%physics reset to
-!                                   their defaults; buffer <- them,
-!                                   and the defaults of the members
-!                                   the star does not hold)
-!   call read_input(s, ierr)       (the deck read over the buffer)
-!   call store_controls_to_star(s) (s%control, s%physics <- buffer)
-!   call arm_run_copies(s)         (each run copy <- its control)
-! All take the star as an argument s.
+! read into, and the star. read_controls (io/controls_reader.f90) calls
+!   seed_controls_buffer(s)   first: s%control and s%physics reset to
+!                             their defaults, the buffer from them, and
+!                             the members the star does not hold at
+!                             their defaults;
+!   store_controls_to_star(s) after the deck is read and the controls
+!                             derived: s%control and s%physics from the
+!                             buffer;
+!   arm_run_copies(s)         last: each run copy from its control.
 module controls_sync
       use controls_buffer, only: num_runs, run_kind, num_models, &
            first_call_flag, set_initial_model_number, run_description, &
