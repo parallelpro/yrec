@@ -15,8 +15,8 @@
 !    decks' ratios cross_section_ratios (net's
 !    cross_section_scales_from_sstandard; an inlist gets their defaults).
 !    The scales are derived controls in star%physics.
-!  - With use_new_rate_variables (use_new_rate_variables, which despite its name has
-!    nothing to do with reaction rates), the tol_*, flag_* and time_*
+!  - With use_new_rate_variables (legacy LNEWVARS; despite its name it
+!    has nothing to do with reaction rates), the tol_*, flag_* and time_*
 !    controls overwrite the rezoning tolerances chi_grid_scale (legacy
 !    HPTTOL) and the timestep limiters timestep_factors, and set
 !    use_structure_dt_limits, max_domega_global and

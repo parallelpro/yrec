@@ -1,9 +1,12 @@
-"""Every generated source file matches its generator, and the hand-kept
-list of path controls covers the registry.
+"""Every generated source file matches its generator, and every path a
+shipped deck sets is a path control.
 
 Runs each generator in src/tools/ with --check: it writes nothing and fails
 if a committed output differs from what the generator would write, so a hand
-edit to a generated file, or a source change without regenerating, is caught.
+edit to a generated file, or a source change committed without the files
+make regenerates, is caught. Then checks that every control a shipped deck
+sets to a {YREC_...} path has the registry type path, from whose rows
+io/expand_paths.inc is generated.
 """
 import pathlib
 import re
