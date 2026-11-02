@@ -49,9 +49,10 @@ contains
 !     last_mc_run, log10_solar_luminosity, log10_solar_radius,
 !     log_L_lsun, log_Teff, logP, logR, logRho, logT,
 !     luminosity_breakdown_lsun, luminosity_lsun, m, num_cards, nz,
-!     omega, physics%compute_neutrino_fluxes,
+!     omega, physics%atm_choice, physics%compute_neutrino_fluxes,
 !     physics%diffuse_helium_active, physics%helium_flash_active,
-!     solar_calibration_converged, star_found_flag, star_mass, xa
+!     physics%use_structure_dt_limits, solar_calibration_converged,
+!     star_found_flag, star_mass, xa
 !   star writes: atm_choice_in_use, convective_turnover_timescale,
 !     core_cz_top_index, current_card, current_card_envelope_x,
 !     current_card_envelope_z, dln_luminosity_dt, dlog_pressure_dt,
@@ -101,12 +102,10 @@ subroutine run_yrec(ierr)
       integer :: convergence_iterations
 ! Wall clock for the end-of-run summary line (terminal only).
       integer(kind=8) :: clock_start, clock_now, clock_rate
-      logical :: saved_use_structure_dt_limits
 ! Set by compute_timestep when it switches the structure-based timestep
 ! limits off; the driver then applies the switch to
 ! star%structure_dt_limits_active.
       logical :: disable_structure_dt_limits
-      integer :: saved_atm_choice
       integer :: i
       integer :: kind_card, model_iteration
       double precision :: log_r_rsun, current_zx
@@ -252,18 +251,16 @@ contains
 ! ---------------------------------------------------------------
 ! Arm the calibration protocols for this run, if configured.
 ! setup_solar_calibration expands the run list into solar-calibration
-! triples; the starting structure_dt_limits_active and atm_choice_in_use
-! (legacy LPTIME, KTTAU), which the run may change, are saved so that each
-! cycle starts from them again. setup_star_calibration expands the run
-! list into star-calibration pairs.
+! triples, each of which starts from the deck's structure_dt_limits_active
+! and atm_choice_in_use (legacy LPTIME, KTTAU), which the run may change
+! (end_of_card_calibration restores them from their controls).
+! setup_star_calibration expands the run list into star-calibration pairs.
 subroutine begin_calibration
 ! Automatic solar calibration (MHP 1/93). convergence_iterations counts
 ! the calibration cycles: it starts at 1, and is 0 without calibration.
       if (s%control%calibrate_solar_model) then
          call setup_solar_calibration(s, age_scale_factor)
          convergence_iterations = 1
-         saved_use_structure_dt_limits = s%structure_dt_limits_active   ! restored after each cycle
-         saved_atm_choice  = s%atm_choice_in_use    ! restored after each cycle
       else
          convergence_iterations = 0
       endif
@@ -279,8 +276,8 @@ end subroutine begin_calibration
 ! site). Sets runs_complete when the run list is done: the solar
 ! calibration has converged or given up, or the star calibration's
 ! final run has finished on an even card. After each solar triple it
-! restores structure_dt_limits_active and atm_choice_in_use for the next cycle
-! and, on a miss, advances the cycle counter.
+! restores structure_dt_limits_active and atm_choice_in_use from their
+! controls for the next cycle and, on a miss, advances the cycle counter.
 subroutine end_of_card_calibration(runs_complete)
       logical, intent(out) :: runs_complete
 
@@ -295,8 +292,9 @@ subroutine end_of_card_calibration(runs_complete)
 ! The surface Z/X, for the optional Z/X calibration (MHP 06/13).
                current_zx = s%xa(i_metals,s%nz)/s%xa(i_h1,s%nz)
                call check_solar_calibration(s, s%log_L_lsun,log_r_rsun,s%current_card,current_zx)
-               s%structure_dt_limits_active = saved_use_structure_dt_limits  ! restore for the next cycle
-               s%atm_choice_in_use  = saved_atm_choice    ! restore for the next cycle
+! the next cycle starts from the deck's latch and atmosphere
+               s%structure_dt_limits_active = s%physics%use_structure_dt_limits
+               s%atm_choice_in_use = s%physics%atm_choice
                if (s%solar_calibration_converged) then
                   s%termination_reason = 'solar calibration converged'
                   runs_complete = .true.

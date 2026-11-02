@@ -184,52 +184,32 @@ module star_info_lib
             type(physics_group_controls) :: physics
 
 ! ==== Constants set at setup ===========================================
-! Values fixed for the whole run by the controls read or the setup before
-! the first card: the solar units, and the cross-section scales the run
-! uses (the run copies of physics%cross_section_scale and
-! physics%extra_cross_section_scale; the other rate scales are read from
-! star%physics).
-! Valid: after read_controls and prepare_run; each Monte-Carlo run
-! rescales the solar luminosity and the first rate scales
-! (begin_monte_carlo_run).
+! Values fixed for the whole run by the setup before the first card
+! (run_setup's set_up_constants_and_tables): the solar mass and radius,
+! from their controls.
+! Valid: after prepare_run.
 
-! Lsun, a copy of physics%solar_luminosity_cgs (legacy clsun) [erg/s];
-! run_setup, monte_carlo. A Monte-Carlo run scales it.
-            real(dp) :: solar_luminosity_cgs
-! log10 Lsun [log10 erg/s]; run_setup, monte_carlo
-            real(dp) :: log10_solar_luminosity
-! ln(10)/Lsun, not a logarithm: times the enclosed mass it scales the
-! luminosity-equation terms [s/erg]; run_setup, monte_carlo
-            real(dp) :: ln10_over_lsun
 ! Msun, a copy of physics%solar_mass_cgs [g]; run_setup
             real(dp) :: solar_mass_cgs
 ! Rsun, a copy of physics%solar_radius_cgs (legacy crsun) [cm]; run_setup
             real(dp) :: solar_radius_cgs
 ! log10 Rsun [log10 cm]; run_setup
             real(dp) :: log10_solar_radius
-! the per-reaction scales of the cross section S0 the run uses, by
-! reaction_layout's slot r_* [-]; controls_sync, monte_carlo. From
-! physics%cross_section_scale; each Monte-Carlo run rescales those of pp,
-! He3 + He3 and He3 + He4.
-            real(dp) :: cross_section_scale_in_use(num_reactions)
-! the scales of the rates outside the reaction table the run uses, by
-! extra slot xs_* (pep, Be7 + e, Be7 + p, hep) [-]; controls_sync,
-! monte_carlo. From physics%extra_cross_section_scale; each Monte-Carlo
-! run rescales Be7 + p's.
-            real(dp) :: extra_cross_section_scale_in_use(num_extra_scales)
 
 ! ==== Monte-Carlo runs =================================================
-! The Monte-Carlo runs of one run_yrec call: their range (first_mc_run
-! to last_mc_run; the single run 1 without Monte Carlo), the samples read
-! from the sample file, one entry per run (mc_samples), and the values a
-! run takes from its sample (settling_z_factor_in_use). Each run starts
-! with monte_carlo's begin_monte_carlo_run, the per-run hook (the first
-! call in run_yrec's Monte-Carlo loop): it re-arms every run copy of a
-! control from its control, so each run starts from the deck's values,
-! and then sets the values the run changes per Monte-Carlo run from the
-! run's sample. The solar
-! luminosity and the first rate scales, which each run also sets from its
-! sample, are constants of the class above.
+! The Monte-Carlo runs of one run_yrec call, and the values fixed within
+! a run that may differ from run to run: the range (first_mc_run to
+! last_mc_run; the single run 1 without Monte Carlo), the samples read
+! from the sample file, one entry per run (mc_samples), and what a run
+! takes from its sample: the metal settling factor
+! (settling_z_factor_in_use), the cross-section scales (the run copies of
+! physics%cross_section_scale and physics%extra_cross_section_scale), and
+! the solar luminosity with its two logarithms. Each run starts with
+! monte_carlo's begin_monte_carlo_run, the per-run hook (the first call
+! in run_yrec's Monte-Carlo loop): it re-arms every run copy of a control
+! from its control, so each run starts from the deck's values, and then
+! sets these values from the run's sample. Without Monte Carlo they keep
+! the controls' values (the solar luminosity as run_setup copies it).
 ! Valid: the range and the samples from prepare_run on; a run's values
 ! from its begin_monte_carlo_run to its end.
 
@@ -245,6 +225,26 @@ module star_info_lib
 ! monte_carlo. From physics%settling_z_factor; with Monte Carlo,
 ! begin_monte_carlo_run sets it to the run's mc_samples%settling_z_factor.
             real(dp) :: settling_z_factor_in_use
+! the per-reaction scales of the cross section S0 the run uses, by
+! reaction_layout's slot r_* [-]; controls_sync, monte_carlo. From
+! physics%cross_section_scale; each Monte-Carlo run rescales those of pp,
+! He3 + He3 and He3 + He4.
+            real(dp) :: cross_section_scale_in_use(num_reactions)
+! the scales of the rates outside the reaction table the run uses, by
+! extra slot xs_* (pep, Be7 + e, Be7 + p, hep) [-]; controls_sync,
+! monte_carlo. From physics%extra_cross_section_scale; each Monte-Carlo
+! run rescales Be7 + p's.
+            real(dp) :: extra_cross_section_scale_in_use(num_extra_scales)
+! Lsun, a copy of physics%solar_luminosity_cgs (legacy clsun) [erg/s];
+! run_setup, monte_carlo. Under Monte Carlo each run sets it from its
+! sample, luminosity_factor times 3.844e33 erg/s, not from the control
+! (docs/bug_sweep.md M97).
+            real(dp) :: solar_luminosity_cgs
+! log10 Lsun [log10 erg/s]; run_setup, monte_carlo
+            real(dp) :: log10_solar_luminosity
+! ln(10)/Lsun, not a logarithm: times the enclosed mass it scales the
+! luminosity-equation terms [s/erg]; run_setup, monte_carlo
+            real(dp) :: ln10_over_lsun
 ! the Monte-Carlo samples, one entry per run, from the sample file [-];
 ! monte_carlo. Read by begin_monte_carlo_run and the Monte-Carlo summary;
 ! its fields are listed below it. One module alone uses it, and it stays
@@ -382,13 +382,12 @@ module star_info_lib
 ! switches to the gray T(tau) relation (0) while Teff is outside the
 ! Kurucz or Allard table, and back to physics%atm_choice when it returns;
 ! the envelope integration switches to it when a table lookup fails, and
-! each solar-calibration cycle restores the value its Monte-Carlo run
-! started with.
+! each solar-calibration cycle restores it from the control (run_driver).
             integer :: atm_choice_in_use
 ! the structure-based timestep limits are on [logical]; run_driver,
 ! step_driver, controls_sync. From physics%use_structure_dt_limits;
 ! compute_timestep switches them off, and each solar-calibration cycle
-! restores the value its Monte-Carlo run started with.
+! restores them from the control (run_driver).
             logical :: structure_dt_limits_active
 ! the mass change (accretion or the Reimers wind) runs [logical];
 ! mass_change, controls_sync. From physics%use_mass_accretion; switched off
