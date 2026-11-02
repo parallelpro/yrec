@@ -3487,7 +3487,9 @@ no error path (M173); M112's direct run-log writes; M170-M172
 (kap/alex06's unchecked open, the run plan's I6, the profile header's
 initial_z); M113's `used` column and M117's description;
 CI's first real run, which needs a push; and the flat 265-member star
-type (Phase 5's typed parts).
+type (Phase 5's typed parts). (The cleanup round, below, closed the
+mapping check, M169, M171-M173, M113's column, M117's description and
+M112 in io.)
 
 #### Learned
 
@@ -3529,3 +3531,223 @@ type (Phase 5's typed parts).
 - A make preprocessor rule reaches comments: `/*` in a Fortran comment
   opens a C comment under -cpp (M167), hit twice in one round, once in
   a generated description.
+
+### Cleanup round: io and state/setup (yrec-next, 2026-11-01)
+
+**Why.** The fifth evaluation (at 6a75b72f,
+audit/module-evaluation-5-2026-11-01/SUMMARY.md, out of 10 against
+rotation/'s bar) put io at 8.3 (8.5 / 8.5 / 8 / 8 / 8.5), state at 8.3
+(8.5 / 8 / 8.5 / 8.5 / 8) and setup at 8.8 (9.5 / 9 / 8.5 / 9 / 8),
+after round 3 had done its list almost item for item. What kept io and
+state below 9: docs the round-3 merge left behind (setup/README
+describing the read before READ3, controls_buffer's descriptions naming
+controls and F77 routines that do not exist, generated headers sending
+the reader to the wrong source); tests and checks that checked less
+than they said (test_controls' whole-dump hashes, a read-twice test
+that read one deck twice, check_max_runs comparing a value with itself,
+57 of 149 star-taking procedures without a contract); open bugs in the
+round's own goal (M108, M111, M112) and M117, M169, M171-M173; and a
+new one, the gray-atmosphere latch outliving the restore of its run
+copy (M175). The owner asked for 9: every "what would raise" item of
+the two reports, those bugs fixed, and three results-changing fixes
+allowed, each its own measured commit (the latch, M169 for Monte Carlo
+runs only, M172 in the profile headers only).
+
+**How.** Two packages from 3376bd0f, each in its own worktree with the
+files it owned, as in round 3: CLEAN-IO (io/, defaults/, the controls
+generators and the registry, test_controls, test_io and
+test_generated_files, monte_carlo's and the neutrino table's writes)
+and CLEAN-STATE (state/, setup/, the star tools, the contract lines in
+core/, the latch and the Monte Carlo state in core/). Each kept a
+hand-off note: commits, bugs in this list's format, decisions with
+revisable defaults, a ROADMAP draft. CLEAN-STATE made CLEAN-IO's
+hand-offs for state/ and traced its recipes on a trial merge of the
+two. Every commit was built and checked (CLEAN-IO's in an exact copy
+of the commit): check_boundaries, the star contracts and docs, the
+generators' --check, the unit tests and the scratchpad check.py, which
+byte-compares every per-deck output file with a snapshot of 3376bd0f's
+outputs (whose values the pins hold) and the run logs with the pins;
+the 56-deck set after each item that could move results, and at the
+end.
+
+The packages were cherry-picked onto one branch (mods4), CLEAN-IO's 16
+commits then CLEAN-STATE's 9, without a conflict: the tree is the
+three-way merge's, and each merged commit was built and passed make,
+check_boundaries, check_star_contracts, gen_star_docs --check,
+gen_makefile_deps --check and test_generated_files. The two bug_sweep
+commits' messages, and bug_sweep's links, cite the mods4 hashes. After
+the merge: M177's fix (d2fe96ec), test_monte_carlo in CI (a4d16b05),
+TARGET_ARCHITECTURE 4.6 and two stale statements (a6cde814), and this
+documentation.
+
+#### io (CLEAN-IO, 16 commits)
+
+- **Descriptions** (1bd2b554, a17400d3): the 49 controls_buffer
+  comments that named controls that do not exist (cno_mixture_mode,
+  isotope_mixture_mode, read_first_model) or F77 routines and legacy
+  variables (rscale/setcal, tpgrad, hpoint, mdot, starin, shape/fpft,
+  ...) say what the value means; M117 (fpft_average_weight is the shape
+  iteration's tolerance); gen_inlist stops on a description that names
+  what the code does not; the generated documents' headers say where
+  the descriptions and defaults live. M113: envelope_print_points is
+  used nowhere, and the read no longer normalizes it.
+- **Tests that check what they say** (fbb6e382, bcfdedf1): test_controls
+  hashes each deck's differences from the pristine dump, so a new
+  control moves pristine.txt alone (the pristine dump arms the run
+  copies, so a new run copy does too: M180); the read-twice test reads
+  a rotating deck, then a non-rotating one, in both deck forms, and
+  sees a leftover.
+- **Bugs** (f620af59, 9bbeaf7c, 7fa5529d, 8ab987fb, e213c7ef, f36b4e55):
+  M108 (a run_kind outside 1-3 is a deck error); M111 and M171 (the run
+  plan's counts, the isochrone record and the interior GYRE name widen
+  instead of overflowing; byte-identical where the number fits, and
+  ZAHB_m1p0feh+0p0_TAHB's run log reads "evolve up to 1000000 models"
+  for "******"); M112 (io's run-log writes through log_line); M173 (the
+  Monte Carlo summary, the run log at each model, the .mod and the
+  isochrone file checked on disk; the neutrino-flux table through
+  log_line); M178 (run_description's NUL default, now blanks); M179 (a
+  path that does not fit its control is an error naming it, and the
+  output paths are never cut).
+- **M172** (ea47d0c3; results-changing, the profile headers only): the
+  profile header's initial_z is the run's initial Z, card_initial_z(1),
+  as FGONG's glob(4). Measured with profiles on: the 8 profiles of
+  Test_solar_GS_norot_gray_OPALSCV_SF2_GS98_OP_CF10 (whose deck sets
+  card 1's composition three times) 0 -> 1.8804e-2 and nothing else;
+  test_mesa_baselines' two cases and four configuration-matrix decks
+  identical; history.data unchanged everywhere, so no drift.
+- **Tools** (9906f760, ecaf66ff): one parser of controls_buffer for the
+  three controls generators, which make reruns through a stamp (only
+  changed files rewritten); the registry's settings column names each
+  control's settings fields, and check_boundaries' check_settings_column
+  holds it to the builders' copies (TARGET_ARCHITECTURE 4.6's first open
+  item).
+- **Docs and readability** (7b0fa203, 92acfa1d, fb7b6463): model_files'
+  D exponents, run_files' last F77 shapes, assumed-shape arguments; io's
+  recipes re-traced with make running the generators (six traces on
+  throwaway branches); io/README's write paragraphs true after M173;
+  bug_sweep's io entries.
+
+#### state/ and setup/ (CLEAN-STATE, 9 commits)
+
+- **Docs** (a43d1efa): setup/README describes the read as it is (the
+  builders read the run copies of the cross-section scales,
+  map_user_inputs is io's), state/README names run_messages and why it
+  is in state/, control_slots' header and M161's slot-location comments
+  are true, and no README paragraph is over 1,000 characters.
+- **Checks that check** (462120b9, 9a63ed57): check_max_runs holds every
+  per-run registry cell and every generated run-card size to
+  control_slots' max_runs (10 mutations caught); check_settings_fields
+  covers the three paths records and rejects a builder that is not
+  pure; every star-taking procedure in core/, setup and io declares its
+  contract (38 added, 132 of 151 overall; rotation's 16 optional; 5
+  mutations caught).
+- **Organization and the latch** (df491048, 2765341c; the latch
+  measured): the values of one Monte Carlo run live in one class; the
+  calibration cycles restore their latches from the controls; the
+  gray-atmosphere latch is derived from its run copy (on_gray_fallback,
+  M175), with the rule for a latch paired with a run copy in
+  state/README §7. Measured with binaries before and after on nine
+  Monte Carlo and calibrating decks: a two-run 3 Msun Kurucz deck whose
+  run 1 ends on the gray fallback loses run 2's false "SWITCH BACK TO
+  KURUCZ" line, with every output file identical; the other eight
+  identical; the 56-deck set identical.
+- **CLEAN-IO's hand-offs** (8ac4496c): the run's units start at
+  error_unit, the value they had in practice (M112's initializer), and
+  log_line's and flush_pending_log's writes take iostat (M173's last
+  part); the READMEs say make reruns the generators and describe the
+  settings column.
+- **M169** (7ccd60be; results-changing, Monte Carlo runs 2 and later
+  only): a bisection on a scratch branch found one member that carries
+  from one run to the next, deuterium_burning_rate_start;
+  begin_monte_carlo_run now clears it and the settling report flag
+  (clear_previous_run_state), and test_monte_carlo.py requires two runs
+  of identical samples to be one run. Measured: run 1 identical on
+  every deck; with identical samples run 2 now equals run 1 row for
+  row on five decks (12 to 1775 rows); run 2's drift on the solar decks
+  at most |dlog L| 2.8e-8 (a two-run calibration), and on cm_rot_base's rotating
+  pre-main-sequence seed a final age of 1.48e5 instead of 8.99e5 yr
+  (run 2 had burned deuterium in its convective envelope at run 1's
+  stale rates); the 56-deck set (single runs) identical.
+- **Recipes and the record** (555ce08f, e601acb3): every recipe of
+  state/README and setup/README traced on the merge with the io
+  package, each ending with its checks passing; setup/ coverage 100% of
+  226 lines; bug_sweep's state entries.
+
+#### After the merge: M177
+
+check.py at 8 jobs stopped a configuration-matrix deck twice in 0 s
+with "cannot write output/inlist_used: the file on disk is shorter than
+what was written to it (is the disk full?)": the decks of one directory
+all copy themselves to that file as they start, and one deck's open
+could truncate it between another's writes and its size check (M174's
+remaining window, hit at every start). d2fe96ec writes every file io
+writes in one go (the copy of the deck, the profiles, the GYRE and
+FGONG files) under the run's own name, `<path>.<pid>.tmp`, checks it
+there and renames it over the path: the path always holds one run's
+whole file, the last to finish, and a file that fails is removed. The
+files kept open for the run (history.data among them) keep M174's
+measure right after each flush. test_io.py's two-writer test runs two
+processes that copy their decks 2000 times each to one path; the code
+before the fix failed it in six runs of six, within the first 81
+copies; four mutations caught.
+
+**Verification of the merged tree** (a6cde814, whose code is the final
+tree's): make and the checks at every merged commit; the unit tests 87
+passed, 1 skipped (HDF5), test_io.py's two-writer test and
+test_monte_carlo.py among them; check.py --set all at 8 jobs, run
+twice: both times 55 of the 56 decks identical in every per-deck file,
+and the 56th, ZAHB_m1p0feh+0p0_TAHB, in all but its run log's run-plan
+line (M171's intended "evolve up to 1000000 models" for "******"; the
+deck has no pin), the 35 pinned logs OK, and no deck stopped on a
+shared file (a third run, on d2fe96ec, gave the same);
+test_mesa_baselines 2 passed. io coverage 93.4% of 2357 lines
+(CLEAN-IO's measure with M177's 26 new lines, 24 of them run). No pins
+were reseeded: no pinned file moved.
+
+**Still open.** M176, the same stale deuterium rates between the cards
+of one run (a calibration cycle, a later card that reads the starting
+model): its fix moves Test_solarcal_noGS_norot's ages in the eighth
+digit, so whether to reseed the pins for it is the owner's decision
+(bug_sweep section 1); M112's direct run-log writes outside io (186 in
+27 files); M174's microsecond window for the files kept open for the
+run (a truncation between a flush and its measure); M85, M96, M97,
+M115 and M126 (results-changing, or io's checks of the Monte Carlo
+input); first_mc_run and last_mc_run as run copies; the
+solver-diagnostics gate and the read's buffer as module state, and the
+read's own open of the run log after an error (TARGET_ARCHITECTURE
+4.6); run_files' fixed unit numbers as named parameters; rotation's 16
+star-taking procedures without a contract; CI's first GitHub run,
+which needs a push; and the flat star type (Phase 5's typed parts).
+
+#### Learned
+
+- A check that reads back a file is only as sound as the file is the
+  run's own. The full-disk checks were right for each run's writes, and
+  the files the decks of one directory share broke them twice (M174 at
+  the history's end, M177 at every start). For a file written in one go
+  the fix is to write it under the run's own name and rename it, the
+  one step another run can see; for a file kept open, a measure right
+  after the flush narrows the window but does not close it.
+- A race needs a test that races: two processes writing one path 2000
+  times each failed the old code within a hundred copies, every time,
+  where a single run had hit it twice in many runs of the deck set.
+- Cherry-picked commits get new hashes, so the hashes a package cites
+  in its docs and messages must be mapped at the merge; a link checker
+  that only asks whether a commit exists passes them, since the
+  package branches are still in the repository. The merge checked that
+  every cited commit is on the branch.
+- Recipe traces on a trial merge find what neither package's own trace
+  can: a builder whose copy moves from a control to its run copy must
+  blank the control's settings cell, a rule that needed both packages'
+  code.
+- A bisection by lifetime class, then by member, turned M169's
+  rounding-level difference into one member, and the same mechanism
+  between cards (M176) into a decision for the owner rather than a
+  silent change of a pinned deck.
+- Scratch files are not safe in /tmp: at midnight the scratchpad lost
+  its deck checker and the extra decks it runs (older files only,
+  apparently a periodic clean of /tmp). The checker was rewritten to
+  the same rules and output, the decks restored from identical copies
+  kept by earlier measurements, and the full set gave the result it
+  gave before. Tools a round depends on belong in the tree, or at
+  least outside /tmp.
