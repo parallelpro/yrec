@@ -502,6 +502,9 @@ def settings_cell(fields):
     return ",".join(sorted(fields))
 
 
-# the run cards' capacity, state/control_slots.f90's max_runs (its one
-# source; check_boundaries' check_max_runs compares the two)
+# the run cards' capacity, state/control_slots.f90's max_runs, read from
+# there (its one source). check_boundaries' check_max_runs holds the rest
+# to it: every per-run control's registry type cell names max_runs at the
+# run cards' dimension, and every run-card size in the four generated
+# files equals its value.
 MAX_RUNS = int(named_sizes()["max_runs"])
