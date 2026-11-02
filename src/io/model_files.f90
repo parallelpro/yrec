@@ -174,13 +174,13 @@ end subroutine read_model_format_tag
 !   star writes: none
 subroutine write_mod_model(s, iwrite, replace, ierr)
       use star_info_lib, only: star_info
-      use run_messages, only: run_log_unit, check_io, solver_diagnostics
-      use run_files, only: last_model_unit
+      use run_messages, only: log_line, check_io, solver_diagnostics
       type(star_info), intent(in) :: s
       integer, intent(in) :: iwrite
       logical, intent(in) :: replace
       integer, intent(inout) :: ierr
       character(len=256) :: msg, path
+      character(len=80) :: line
       integer :: k, ios
 
       ios = 0
@@ -213,15 +213,16 @@ subroutine write_mod_model(s, iwrite, replace, ierr)
          return
       end if
 
-! the solver forensics' record of the write
+! the solver forensics' record of the write (an appended model, the
+! Monte Carlo file's, with its age)
       if (solver_diagnostics()) then
-         if (iwrite == last_model_unit) then
-            write(run_log_unit,'(a,i5,a,i3)') ' DUMPED MODEL', s%model_number, &
-                 '  FILE', iwrite
+         if (replace) then
+            write(line,'(a,i5,a,i3)') ' DUMPED MODEL', s%model_number, '  FILE', iwrite
          else
-            write(run_log_unit,'(a,i5,a,f13.9,a,i3)') ' DUMPED MODEL', s%model_number, &
+            write(line,'(a,i5,a,f13.9,a,i3)') ' DUMPED MODEL', s%model_number, &
                  ' AGE', s%age_gyr, '  FILE', iwrite
          end if
+         call log_line(trim(line))
       end if
 
 contains
@@ -269,7 +270,7 @@ end subroutine write_mod_model
 !     omega, star_mass, xa
 subroutine read_mod_model(s, iread, header, ierr)
       use star_info_lib, only: star_info
-      use run_messages, only: run_log_unit
+      use run_messages, only: log_line
       type(star_info), intent(inout) :: s
       integer, intent(in) :: iread
       type(model_file_header), intent(out) :: header
@@ -324,8 +325,7 @@ subroutine read_mod_model(s, iread, header, ierr)
          case ('rotation_active')
             read(line,*,iostat=ios,iomsg=msg) name, header%rotation_active
          case default
-            write(run_log_unit,'(2a)') &
-                 ' read_mod_model: ignoring the unknown global ', trim(name)
+            call log_line(' read_mod_model: ignoring the unknown global ' // trim(name))
             ios = 0
          end select
          call check_model_read(ios, msg, iread, 'the global '//trim(name), ierr)
@@ -366,7 +366,7 @@ end subroutine read_mod_model
 !     luminosity_breakdown_lsun, luminosity_lsun, model_number, nz,
 !     omega, star_mass, triangle_log_l_lsun, triangle_log_teff, xa
 subroutine read_yrec7(s, iread, header, ierr)
-      use run_messages, only: run_log_unit
+      use run_messages, only: log_line
       use star_info_lib, only: star_info, json
       use math_lib
       type(star_info), intent(inout) :: s
@@ -500,8 +500,7 @@ subroutine read_yrec7(s, iread, header, ierr)
       if (header%rotation_active) then
          read(iread,yrec7_omega_format,iostat=ios,iomsg=msg) (omega_log10(i), i = 1, s%nz)
          if (is_iostat_end(ios)) then
-            write(run_log_unit,'(a)') ' read_yrec7: the model file has no omega' // &
-                 ' records; omega is zero'
+            call log_line(' read_yrec7: the model file has no omega records; omega is zero')
             s%omega = 0.0d0
             rewind iread
             return

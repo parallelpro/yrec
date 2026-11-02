@@ -60,9 +60,10 @@ end subroutine log_final_model_line
 !   star writes: none
 subroutine write_model_line(s, progress)
       use star_info_lib, only: star_info, i_h1
-      use run_messages, only: run_log_unit, terminal_unit
+      use run_messages, only: log_line, terminal_unit
       type(star_info), intent(in) :: s
       type(progress_lines), intent(inout) :: progress
+      character(len=120) :: line
       character(len=*), parameter :: header = &
            '   model  zones         age_Gyr        dt_yr   log_Teff' // &
            '      log_L      log_R center_h1  iters'
@@ -71,15 +72,14 @@ subroutine write_model_line(s, progress)
       if (s%model_number == progress%last_printed_model) return
       if (progress%lines_since_header >= header_every) then
          write(terminal_unit,'(a)') header
-         write(run_log_unit,'(a)') header
+         call log_line(header)
          progress%lines_since_header = 0
       end if
-      write(terminal_unit,line_format) s%model_number, s%nz, s%age_gyr, &
+      write(line,line_format) s%model_number, s%nz, s%age_gyr, &
            s%timestep_yr, s%log_Teff, s%log_L_lsun, &
            s%log_R_surface_rsun, s%xa(i_h1,1), s%newton_iterations
-      write(run_log_unit,line_format) s%model_number, s%nz, s%age_gyr, &
-           s%timestep_yr, s%log_Teff, s%log_L_lsun, &
-           s%log_R_surface_rsun, s%xa(i_h1,1), s%newton_iterations
+      write(terminal_unit,'(a)') trim(line)
+      call log_line(trim(line))
       progress%lines_since_header = progress%lines_since_header + 1
       progress%last_printed_model = s%model_number
 end subroutine write_model_line
@@ -92,18 +92,19 @@ end subroutine write_model_line
 !   star writes: none
 subroutine log_run_summary(s, wall_seconds)
       use star_info_lib, only: star_info
-      use run_messages, only: run_log_unit, terminal_unit
+      use run_messages, only: log_line, terminal_unit
       type(star_info), intent(in) :: s
       real(dp), intent(in) :: wall_seconds
-      character(len=*), parameter :: reason_format = "(1x,'run finished: ',a)", &
-           model_format = "(3x,'final model',i7,'   age ',es15.8,' Gyr')", &
+      character(len=*), parameter :: model_format = "(3x,'final model',i7,'   age ',es15.8,' Gyr')", &
            clock_format = "(3x,'wall-clock ',f9.1,' s')"
+      character(len=80) :: line
       write(terminal_unit,'(a)') ''
-      write(run_log_unit,'(a)') ''
-      write(terminal_unit,reason_format) trim(s%termination_reason)
-      write(run_log_unit,reason_format) trim(s%termination_reason)
-      write(terminal_unit,model_format) s%model_number, s%age_gyr
-      write(run_log_unit,model_format) s%model_number, s%age_gyr
+      call log_line('')
+      write(terminal_unit,'(a)') ' run finished: ' // trim(s%termination_reason)
+      call log_line(' run finished: ' // trim(s%termination_reason))
+      write(line,model_format) s%model_number, s%age_gyr
+      write(terminal_unit,'(a)') trim(line)
+      call log_line(trim(line))
       write(terminal_unit,clock_format) wall_seconds
 end subroutine log_run_summary
 

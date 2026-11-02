@@ -126,7 +126,7 @@ end subroutine parse_columns
 ! to the selection; unknown names are fatal, with the valid list
 ! written to the run log.
 subroutine append_column(name, columns, sel, nsel, label, ierr)
-      use run_messages, only: run_log_unit, report_error
+      use run_messages, only: log_line, report_error
       character(len=*), intent(in) :: name, label
       type(output_column), intent(in) :: columns(:)
       integer, intent(inout) :: sel(max_cols), nsel
@@ -150,9 +150,9 @@ subroutine append_column(name, columns, sel, nsel, label, ierr)
       end do
       call report_error('unknown ' // label // ' column: ' // trim(name) // &
            ' (the run log lists the valid ones)')
-      write(run_log_unit,'(3a)') ' valid ', label, ' columns:'
+      call log_line(' valid ' // label // ' columns:')
       do j = 1, size(columns)
-         write(run_log_unit,'(2x,a)') trim(columns(j)%name)
+         call log_line('  ' // trim(columns(j)%name))
       end do
       ierr = 1
 end subroutine append_column

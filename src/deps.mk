@@ -422,7 +422,7 @@ io/controls_sync.o: controls_buffer.mod star_info_lib.mod
 io/derived_controls.o: composition_layout.mod controls_buffer.mod eos_lib.mod run_messages.mod yrec_version.mod
 io/history_output.o: neutrino_flux_layout.mod output_columns.mod output_files.mod run_messages.mod star_info_lib.mod yrec_version.mod
 io/legacy_controls.o: control_slots.mod controls_buffer.mod reaction_layout.mod run_messages.mod
-io/model_files.o: math_lib.mod run_files.mod run_messages.mod star_info_lib.mod
+io/model_files.o: math_lib.mod run_messages.mod star_info_lib.mod
 io/output_columns.o: run_messages.mod
 io/output_files.o: run_messages.mod
 io/profile_output.o: output_columns.mod output_files.mod star_info_lib.mod stitched_model.mod
