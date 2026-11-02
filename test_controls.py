@@ -165,16 +165,17 @@ def test_pristine_controls_are_the_defaults(tmp_path):
     """The pristine star%control, star%physics and buffer-only members are
     what a deck that sets nothing reads: each default is written once, as
     its controls_buffer initializer, and both readers start from it
-    (defaults/*.defaults document the same initializers). The exceptions
-    are not defaults: the members the read derives (the registry's status
-    derived) and the starting model the test deck names."""
+    (defaults/*.defaults document the same initializers); and the run
+    copies are armed from them (star%<run copy>). The exceptions are not
+    defaults: the members the read derives (the registry's status derived)
+    and their run copies, and the starting model the test deck names."""
     if not BINARY.exists():
         pytest.skip("src/test_controls not built (run `make tests` in src/)")
     rows = [l.split("\t") for l in (REPO / "src" / "defaults" / "controls_registry.tsv")
             .read_text().splitlines()]
     cols = rows[0]
-    derived = {dict(zip(cols, r))["canonical"].lower() for r in rows[1:]
-               if dict(zip(cols, r))["status"] == "derived"}
+    derived_rows = [dict(zip(cols, r)) for r in rows[1:] if dict(zip(cols, r))["status"] == "derived"]
+    derived = {r["canonical"].lower() for r in derived_rows} | {r["run_copy"].lower() for r in derived_rows}
     derived |= {"first_model_file"}
     deck = tmp_path / "empty.inlist"
     deck.write_text("&control\n first_model_file = 'empty.inlist'\n/\n&physics\n/\n")
@@ -189,8 +190,8 @@ def test_pristine_controls_are_the_defaults(tmp_path):
 
     pristine, empty = dump([]), dump([str(deck)])
     assert empty.get("ierr") == "0"
-    keys = [k for k in pristine if k.startswith(("control%", "physics%", "buffer%"))]
-    assert any(k.startswith("buffer%") for k in keys)
+    keys = [k for k in pristine if k.startswith(("control%", "physics%", "buffer%", "star%"))]
+    assert any(k.startswith("buffer%") for k in keys) and any(k.startswith("star%") for k in keys)
     diff = [k for k in keys if pristine[k] != empty.get(k) and member(k) not in derived]
     assert not diff, [(k, pristine[k], empty.get(k)) for k in diff[:10]]
 

@@ -430,7 +430,7 @@ io/pulsation_output.o: math_lib.mod output_files.mod physical_constants.mod run_
 io/run_cards.o: controls_buffer.mod output_columns.mod run_messages.mod
 io/run_files.o: output_files.mod run_messages.mod star_info_lib.mod
 io/run_log.o: run_messages.mod star_info_lib.mod
-io/test/test_controls.o: controls_buffer.mod controls_reader.mod run_files.mod run_messages.mod star_info_lib.mod
+io/test/test_controls.o: controls_buffer.mod controls_reader.mod controls_sync.mod run_files.mod run_messages.mod star_info_lib.mod
 io/test/test_io.o: controls_reader.mod history_output.mod model_files.mod output_columns.mod output_files.mod profile_output.mod pulsation_output.mod run_cards.mod run_files.mod run_messages.mod star_info_lib.mod stitched_model.mod yrec_output.mod
 io/user_inputs.o: control_slots.mod controls_buffer.mod net_lib.mod
 io/yrec_output.o: history_output.mod math_lib.mod model_files.mod output_columns.mod output_files.mod physical_constants.mod profile_output.mod pulsation_output.mod run_cards.mod run_files.mod run_log.mod run_messages.mod star_info_lib.mod stitched_model.mod

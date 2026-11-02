@@ -8,7 +8,9 @@
 ! Doubles
 ! print at full precision, so two dumps agree exactly when the controls
 ! are bit-identical.
-!   test_controls                  the pristine defaults (no deck read)
+!   test_controls                  the pristine defaults (no deck read;
+!                                  the run copies armed from them, as a
+!                                  read arms them)
 !   test_controls deck.inlist      a single-file inlist
 !   test_controls deck.nml1 deck.nml2   a legacy CONTROL/PHYSICS pair
 ! With YREC_TEST_READ_TWICE set to a second deck (and, for a legacy pair,
@@ -24,6 +26,7 @@ program test_controls
       use run_messages, only: run_log_unit, terminal_unit
       use run_files, only: last_model_unit, open_run_files
       use controls_reader, only: read_controls
+      use controls_sync, only: arm_run_copies
       implicit none
 ! the test's star (star_info_lib declares no instance); static, as it
 ! is too large for the stack
@@ -75,6 +78,10 @@ program test_controls
          if (kept_first) write(u,'(a)') "a run copy kept the first run's value"
          write(u,'(a,i0)') "ierr = ", ierr
       else
+! the run copies armed from the declared defaults, as a read arms them
+! from the deck's controls: a deck that leaves a control at its default
+! then dumps its run copy as the pristine dump does
+         call arm_run_copies(star)
          write(u,'(a)') "# controls (pristine defaults)"
       end if
       call dump_controls(star, u)
