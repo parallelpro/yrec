@@ -18,6 +18,21 @@ module surface_boundary
 contains
 
 !----------------------------------------------------------------------
+! on_gray_fallback: the run has switched the atmosphere to the gray
+! T(tau) relation (atm_choice_in_use 0) from the deck's tabulated one
+! (physics%atm_choice, Kurucz or Allard) because Teff left its table.
+! Derived from the run copy and its control rather than kept as a latch
+! (legacy LTTAU), so that every re-arm and restore of atm_choice_in_use
+! (begin_monte_carlo_run at the start of every Monte-Carlo run, each
+! solar-calibration cycle) ends the fallback with it.
+!   star reads: atm_choice_in_use, physics%atm_choice
+!   star writes: none
+pure logical function on_gray_fallback(s)
+      type(star_info), intent(in) :: s
+      on_gray_fallback = s%atm_choice_in_use == 0 .and. s%physics%atm_choice /= 0
+end function on_gray_fallback
+
+!----------------------------------------------------------------------
 ! compute_surface_boundary (legacy surfbc.f)
 !----------------------------------------------------------------------
 ! Maintains the triangle of envelope integrations around the current
@@ -49,7 +64,7 @@ contains
 !   star reads: nz, physics%atm_choice, physics%spot_filling_factor,
 !     physics%spot_temp_contrast, physics%tri_delta_logl,
 !     physics%tri_delta_teffl, xa
-!   star writes: atm_choice_in_use, use_ttau_relation
+!   star writes: atm_choice_in_use
 subroutine compute_surface_boundary(s, tri_teffl, tri_logl, envelope_coeffs, &
      vtx_logp, vtx_logt, &
      vtx_logr, tri_orientation, stored_vertex_index, &
@@ -129,8 +144,6 @@ subroutine switch_atmosphere_choice()
             write(*,*)
             s%atm_choice_in_use = 0
             start_new_triangle = .true.
-! Remember the switch.
-            s%use_ttau_relation = .true.
          endif
       endif
       if (s%atm_choice_in_use.eq.4) then
@@ -142,22 +155,18 @@ subroutine switch_atmosphere_choice()
             write(*,*)
             s%atm_choice_in_use = 0
             start_new_triangle = .true.
-! Remember the switch.
-            s%use_ttau_relation = .true.
          endif
       endif
-      if (s%use_ttau_relation) then
+      if (on_gray_fallback(s)) then
          if (s%physics%atm_choice.eq.3.and.log10_teff.lt.3.95d0) then
             s%atm_choice_in_use = s%physics%atm_choice
             start_new_triangle = .true.
-            s%use_ttau_relation = .false.
             write(*,9) log10_teff
  9          format('LOG TEFF OF ',F7.3,' BELOW 3.95 - SWITCH' &
            ,' BACK TO KURUCZ ATMOSPHERE BOUNDARY CONDITION')
          else if (s%physics%atm_choice.eq.4.and.log10_teff.lt.atm_allard_teff_max()) then
             s%atm_choice_in_use = s%physics%atm_choice
             start_new_triangle = .true.
-            s%use_ttau_relation = .false.
             write(*,11) log10_teff, atm_allard_teff_max()
  11         format('LOG TEFF OF ',F7.3,' below Allard Table max ',F7.3 &
            ,'  - SWITCH BACK TO ALLARD ATMOSPHERE BOUNDARY CONDITION')

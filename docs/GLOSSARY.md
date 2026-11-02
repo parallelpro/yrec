@@ -269,7 +269,7 @@ The `cur%`/`prev%` terms are components of `henyey_shell_terms` (`core/structure
 | — | logical | `star%reset_triangle` | `LRESET` | core/structure/surface_boundary.f90, core/model/rezoning.f90 | Redo all three envelopes and retriangulate if needed. |
 | log₁₀ T | dex (K) | `star%envelope_store_log_temperature` | `TENV` (`/CTLIM/`) | io/derived_controls.f90 | ½(`tenv0` + `tenv1`); T threshold for storing envelope state (the envelope kernel's copy is `cfg%envelope_store_log_temperature`). |
 | log₁₀ T(τ=2/3) | dex (K) | `cfg%hsra_log_t_offset` (the envelope kernel's configuration; no star member since 2026-10-29) | `HRAS` (`/ATMOS/`) | core/envelope/envelope_integration.f90 (atm's pure `hsra_t_tau_offset()`) | HSRA T–τ fit at τ = 2/3, the offset for `atm_choice` = 2. |
-| — | logical | `star%use_ttau_relation` | `LTTAU` | core/structure/surface_boundary.f90, core/envelope/envelope_integration.f90 | Runtime switch to a T–τ relation, e.g. the gray fallback outside table range. |
+| — | logical | `on_gray_fallback(s)` (derived: `atm_choice_in_use` 0, `physics%atm_choice` not 0) | `LTTAU` | core/structure/surface_boundary.f90 | The run has fallen back to the gray T–τ relation outside the Kurucz or Allard table; a star member, `use_ttau_relation`, until 2026-11-01. |
 | — | mixed | `env_points%env_log10_*`, `env_gradients(3,:)`, ... | `/ENVSTRUCT/`-style arrays | core/envelope/envelope_integration_kernel.f90 | Envelope points (fitting point to photosphere). Gradient rows are (rad, **ad**, actual) (trap 19). |
 | — | mixed | `atm_points%atmo_log10_*`, `atmo_gradients(3,:)`, ... | `/ATMSTRUCT/`-style arrays | core/envelope/envelope_integration_kernel.f90 | Atmosphere points. Gradient rows are (rad, **actual**, ad) (trap 19). |
 

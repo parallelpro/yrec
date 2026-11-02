@@ -84,7 +84,7 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
 ! and atm_choice_in_use) into an envint_config, calls the star-blind kernel
 ! (core/envelope/envelope_integration_kernel.f90), and applies the star-state consequences:
 ! star%photosphere_logP from the integrated photosphere, and the Allard
-! gray-fallback switch (atm_choice_in_use -> 0, use_ttau_relation) when the
+! gray-fallback switch (atm_choice_in_use -> 0) when the
 ! kernel reports it.
 !
 ! 2026 W2 (readability, core 5): the fit-vertex bookkeeping
@@ -189,7 +189,6 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
 ! Allard table lookup out of range: the kernel fell back to a gray
 ! atmosphere for this and all future calls (historical behavior)
          s%atm_choice_in_use = 0
-         s%use_ttau_relation = .true.
       end if
 
 contains

@@ -354,7 +354,11 @@ module star_info_lib
 ! controls read and again at the start of every Monte-Carlo run
 ! (begin_monte_carlo_run); settling_active, a latch every card starts
 ! afresh, is armed from its control by begin_kind_card at the start of
-! every card. The controls keep the deck's values.
+! every card. The controls keep the deck's values. A latch that records
+! how the run has switched a run copy is derived from the run copy and
+! its control where it is read, not kept here (the gray-atmosphere
+! fallback: surface_boundary's on_gray_fallback), so that every re-arm
+! and restore of the run copy resets it.
 ! Valid: from the card (or run) that sets them.
 
 ! the current run card's index, the run plan's cursor [-]; run_driver.
@@ -383,6 +387,8 @@ module star_info_lib
 ! Kurucz or Allard table, and back to physics%atm_choice when it returns;
 ! the envelope integration switches to it when a table lookup fails, and
 ! each solar-calibration cycle restores it from the control (run_driver).
+! The run is on that gray fallback while it is 0 and the control is not
+! (surface_boundary's on_gray_fallback, derived, not a latch).
             integer :: atm_choice_in_use
 ! the structure-based timestep limits are on [logical]; run_driver,
 ! step_driver, controls_sync. From physics%use_structure_dt_limits;
@@ -420,11 +426,6 @@ module star_info_lib
 ! star_mass at the start of the card, for the profile and pulsation
 ! headers [Msun]; run_driver
             real(dp) :: pulsation_mass_msun
-! the run has switched atm_choice to the gray atmosphere because Teff left
-! the Kurucz or Allard table [logical]; surface_boundary,
-! envelope_integration. Switches back (to physics%atm_choice) when Teff
-! returns.
-            logical :: use_ttau_relation
 ! why the last run card ended, for the run summary [text];
 ! stop_conditions, run_driver. Set to the default per card by
 ! init_stop_conditions, overridden by whichever stop fires.
