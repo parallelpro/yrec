@@ -252,16 +252,16 @@ Decided by default in round 3 (2026-10-31/11-01), revisable: M98 (a deck that ca
 | M105 | A second eos_init keeps OPAL's first table and leaks the unit | Partly (re-entry: 2026) | Open |
 | M106 | The Fermi-Dirac reader writes at the file's own indices | Yes | Open |
 | M107 | SCV's search start read before it is set | Partly (every run: 2026) | Open |
-| M108 | A run_kind outside 1-3 is accepted silently | Yes | Open |
+| M108 | A run_kind outside 1-3 is accepted silently | Yes | Fixed, [7740cf73](https://github.com/parallelpro/yrec/commit/7740cf73) |
 | M109 | An alias wins over a new name set to the default; split arrays lose elements | No (2026) | Fixed, [e311ee8e](https://github.com/parallelpro/yrec/commit/e311ee8e) |
 | M110 | write_mod_model has no error path | Partly (the writer: 2026) | Fixed, [ffd5ce50](https://github.com/parallelpro/yrec/commit/ffd5ce50) |
-| M111 | The GYRE file name and the isochrone record have five digits | GYRE no (2026); isochrone yes | Open |
-| M112 | Direct writes to the run log's unit bypass log_line's guard | Partly (the guard: 2026) | Open |
-| M113 | envelope_print_points (npenv) is used nowhere | Yes | Partly fixed (doc), [54b970f8](https://github.com/parallelpro/yrec/commit/54b970f8) |
+| M111 | The GYRE file name and the isochrone record have five digits | GYRE no (2026); isochrone yes | Fixed, [60047432](https://github.com/parallelpro/yrec/commit/60047432) |
+| M112 | Direct writes to the run log's unit bypass log_line's guard | Partly (the guard: 2026) | Fixed in io, [230e5e04](https://github.com/parallelpro/yrec/commit/230e5e04); open outside io |
+| M113 | envelope_print_points (npenv) is used nowhere | Yes | Fixed, [54b970f8](https://github.com/parallelpro/yrec/commit/54b970f8), [cf576da4](https://github.com/parallelpro/yrec/commit/cf576da4) |
 | M114 | net_report skips io_units' queue | No (2026) | Open |
 | M115 | The Monte Carlo run range and parameter file are not checked | Yes | Open |
 | M116 | The star tools miss `case (k);` assignments and `real(dp) function` | No (2026) | Fixed, [d1d14a6b](https://github.com/parallelpro/yrec/commit/d1d14a6b) |
-| M117 | The registry calls the shape tolerance an averaging weight | No (2026) | Open (doc) |
+| M117 | The registry calls the shape tolerance an averaging weight | No (2026) | Fixed (doc), [90936bd3](https://github.com/parallelpro/yrec/commit/90936bd3); the name stays |
 | M118 | At a cutoff exactly, the comparisons disagree; the helium comment | Yes (the comment: 2026) | Open |
 | M119 | test_eos's OPAL 2006 derivative check tests the 2001 table | No (2026) | Open (test) |
 | M120 | test_controls dumps two unset fields and misses six scales | No (2026) | Fixed, [58f6648f](https://github.com/parallelpro/yrec/commit/58f6648f) |
@@ -317,9 +317,9 @@ Decided by default in round 3 (2026-10-31/11-01), revisable: M98 (a deck that ca
 | M168 | The star tools dropped an if-condition's first star reference | No (2026) | Fixed, [d1d14a6b](https://github.com/parallelpro/yrec/commit/d1d14a6b) |
 | M169 | A second Monte Carlo run differs from the first at rounding level | Probably (not run) | Open |
 | M170 | A missing molecular opacity table is a Fortran runtime error | Yes | Open |
-| M171 | The run plan prints `******` for a card of a million models | Yes (I5; the I6: 2026) | Open |
-| M172 | The profile header's initial_z is the current card's Z, 0 on some cards | No (2026) | Open |
-| M173 | Writes outside io have no error path; the .mod has no size check | Partly (the writers: 2026) | Open |
+| M171 | The run plan prints `******` for a card of a million models | Yes (I5; the I6: 2026) | Fixed, [60047432](https://github.com/parallelpro/yrec/commit/60047432) |
+| M172 | The profile header's initial_z is the current card's Z, 0 on some cards | No (2026) | Fixed, [80a02898](https://github.com/parallelpro/yrec/commit/80a02898) |
+| M173 | Writes outside io have no error path; the .mod has no size check | Partly (the writers: 2026) | Fixed, [43a391e7](https://github.com/parallelpro/yrec/commit/43a391e7); `log_line`'s write open |
 | M174 | A run whose history file another run replaced reports a full disk | No (2026) | Fixed, [fa04ff45](https://github.com/parallelpro/yrec/commit/fa04ff45) |
 
 
@@ -2999,7 +2999,7 @@ On 2026-10-30 the five reviews of sections 7 and 8 were repeated a third time, a
 
 ### M108. A run_kind outside 1-3 is accepted silently, and the card then rescales and evolves without its stops
 
-- **Status:** open. The io review's item, corrected (below). Latent: every shipped card is of kind 1, 2 or 3.
+- **Status:** fixed in [7740cf73](https://github.com/parallelpro/yrec/commit/7740cf73) (2026-11-01, the cleanup round's io package). Byte-identical: every shipped card is of kind 1, 2 or 3. The links below show the code before the fix.
 - **In the original F77?** Yes. PARMIN's chain over the kinds has no ELSE, and STARIN and MAIN test for "not 1" and "not 2" ([parmin.f:1287-1288](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L1287-L1288), [:1326](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L1326), [:1355](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L1355), [:1377](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L1377), [starin.f:156](https://github.com/parallelpro/yrec/blob/6cd56739/src/starin.f#L156), [main.f:879](https://github.com/parallelpro/yrec/blob/6cd56739/src/main.f#L879)):
   ```fortran
          IRESCA(NKIND) = KINDRN(NKIND)
@@ -3013,7 +3013,7 @@ On 2026-10-30 the five reviews of sections 7 and 8 were repeated a third time, a
 - **Now:** `interpret_kind_cards`, [run_cards.f90:42-47](https://github.com/parallelpro/yrec/blob/6e058523/src/io/run_cards.f90#L42-L47), with `evolves` and `rescales` ([:51-60](https://github.com/parallelpro/yrec/blob/6e058523/src/io/run_cards.f90#L51-L60)) and `echo_card`'s `case default` ([:102-103](https://github.com/parallelpro/yrec/blob/6e058523/src/io/run_cards.f90#L102-L103)); `check_controls`, [controls_check.f90:62-112](https://github.com/parallelpro/yrec/blob/6e058523/src/io/controls_check.f90#L62-L112); core's tests, [starting_model.f90:620](https://github.com/parallelpro/yrec/blob/6e058523/src/core/model/starting_model.f90#L620), [step_driver.f90:247](https://github.com/parallelpro/yrec/blob/6e058523/src/core/step/step_driver.f90#L247) and [stop_conditions.f90:163](https://github.com/parallelpro/yrec/blob/6e058523/src/core/run/stop_conditions.f90#L163).
 - **What is wrong:** `run_kind(2) = 4` is copied, neither arms the card's stops nor sets its rescale targets, and prints no run-plan line (nor a card header on the terminal, [yrec_output.f90:297-307](https://github.com/parallelpro/yrec/blob/6e058523/src/io/yrec_output.f90#L297-L307)); core then rescales the model with targets of 0 ("keep") because the kind is not 1, and evolves it because it is not 2, with only the structure-limit stops and the model budget to end it.
 - **Expected behaviour, and why:** a card kind the code does not know is a deck error, reported with exit 1 like `num_runs` out of range (M48).
-- **What we did:** recorded, not fixed. Proposed fix: `check_controls` rejects a `run_kind` outside 1-3 on cards 1 to `num_runs`. Byte-identical for the shipped decks.
+- **What we did:** `check_controls` rejects a `run_kind` other than 1, 2 or 3 (run_cards' named kinds) on the cards the deck runs, 1 to `num_runs`, with ierr = 1 (exit 1 in a run) and a message naming the card and the legacy name KINDRN; both spellings read into `run_kind`, so both are checked. `test_controls.py`'s `test_a_card_kind_outside_1_to_3_is_an_error`: `run_kind(2) = 4` and `= 0` stop the read with the message, a card beyond `num_runs` is not checked; dropping the error fails it.
 
 ### M109. An inlist alias wins over its new name set to the default, and an array split across the two loses the alias's elements
 
@@ -3040,7 +3040,7 @@ On 2026-10-30 the five reviews of sections 7 and 8 were repeated a third time, a
 
 ### M111. The interior GYRE file's name and the isochrone record have five digits for the model number
 
-- **Status:** open. The io review's item. Latent: no shipped deck writes either file.
+- **Status:** fixed in [60047432](https://github.com/parallelpro/yrec/commit/60047432) (2026-11-01, the cleanup round's io package), with M171. Byte-identical below model 100000. The links below show the code before the fix.
 - **In the original F77?** The GYRE name, no: it came with the GYRE writer, [9df62b7e](https://github.com/parallelpro/yrec/commit/9df62b7e) (2026-08-20). The isochrone record, yes ([wrtout.f:610-612](https://github.com/parallelpro/yrec/blob/6cd56739/src/wrtout.f#L610-L612)):
   ```fortran
             WRITE(IISO,1005)MODEL,YRAGE,ERGPSL,CMR,XKTEFF,CMPSQS,YCENTER,
@@ -3050,11 +3050,11 @@ On 2026-10-30 the five reviews of sections 7 and 8 were repeated a third time, a
 - **Now:** `write_interior_gyre`, [yrec_output.f90:211-212](https://github.com/parallelpro/yrec/blob/6e058523/src/io/yrec_output.f90#L211-L212); the isochrone record, [:163](https://github.com/parallelpro/yrec/blob/6e058523/src/io/yrec_output.f90#L163).
 - **What is wrong:** `(I5.5)` writes `*****` for model numbers from 100000 on (and for a negative one), so every interval file after that is `profile*****.data.GYRE`, and each replaces the last (`status='REPLACE'`); the isochrone record's `I5` prints `*****` there too.
 - **Expected behaviour, and why:** one file per model, each named by its model number; a column that holds the number.
-- **What we did:** recorded, not fixed. Proposed fix: `(I0)` with the five-digit padding kept below 100000 (`I5.5` when it fits, `I0` above), and `I6` or wider in the isochrone record. Byte-identical below model 100000 for the GYRE names; a wider isochrone column changes that file's layout.
+- **What we did:** the interior GYRE file's path is `interior_gyre_path` (`yrec_output`): five zero-padded digits below 100000, all of them from there on (and for a negative number), so each file keeps its own name; the isochrone record writes the model number through `output_columns`' `integer_field`, an `I5` field when it fits and in full after a blank when not, so the file keeps its layout where it worked. `test_io` checks both (42, 99999, 123456 and -3; a million in a field of 6).
 
 ### M112. Direct writes to the run log's unit bypass log_line's guard
 
-- **Status:** open. The io review's item, corrected (below). Latent: in a run they all come after the run log opens.
+- **Status:** fixed for io in [230e5e04](https://github.com/parallelpro/yrec/commit/230e5e04) (2026-11-01, the cleanup round's io package); open outside io (the direct writes in 27 files) and for `run_log_unit`'s initializer (`state/run_messages.f90`). The links below show the code before the fix.
 - **In the original F77?** Partly. The F77 wrote to `ISHORT` directly everywhere, and PARMIN itself wrote to it before opening it, into `fort.20` ([parmin.f:754-756](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L754-L756)):
   ```fortran
   C DBG WRITE OUT ENTIRE NAMELIST TO ISHORT
@@ -3065,11 +3065,11 @@ On 2026-10-30 the five reviews of sections 7 and 8 were repeated a third time, a
 - **Now:** `run_log_unit`, declared without a value ([io_units.f90:38](https://github.com/parallelpro/yrec/blob/6e058523/src/io/io_units.f90#L38)) and set to 20 by `assign_unit_numbers` ([run_files.f90:42](https://github.com/parallelpro/yrec/blob/6e058523/src/io/run_files.f90#L42)); `log_line`, [io_units.f90:103-113](https://github.com/parallelpro/yrec/blob/6e058523/src/io/io_units.f90#L103-L113); the direct writes at [output_columns.f90:122-125](https://github.com/parallelpro/yrec/blob/6e058523/src/io/output_columns.f90#L122-L125), [model_files.f90:264](https://github.com/parallelpro/yrec/blob/6e058523/src/io/model_files.f90#L264) and [:434](https://github.com/parallelpro/yrec/blob/6e058523/src/io/model_files.f90#L434), and more in io (`model_files.f90` :189 and :192, `run_log.f90`) and 186 outside it, in 27 files.
 - **What is wrong:** before the run log is open (an embedding host, a unit test), a direct write to unit 20 makes gfortran create `fort.20`, and before `assign_unit_numbers` the undefined unit is in practice 0, stderr. Only `log_line` checks.
 - **Expected behaviour, and why:** run-log lines go through one routine, which knows whether the log is open (io_units' header says the messages do).
-- **What we did:** recorded, not fixed. Proposed fix: io's own writes go through `log_line` (or a `log_write` that takes a format), starting with those reachable outside a run, and `run_log_unit` gets an initializer. Byte-identical in a run.
+- **What we did:** io's eleven direct writes to the run log's unit (the progress line and its header, the end-of-run summary, the valid-columns list after an unknown column, the solver forensics' DUMPED MODEL line, `read_mod_model`'s unknown-global note and `read_yrec7`'s no-omega note) go through `log_line`, their text built first with the same named formats (byte-identical in a run); `model_files` no longer imports `run_files` (the DUMPED MODEL line's label comes from `replace`). The neutrino-flux table's lines go through it too (M173). Open: the writes outside io, and an initializer for `run_log_unit`.
 
 ### M113. envelope_print_points (npenv) is read and used nowhere
 
-- **Status:** partly fixed (doc) in [3a44ae33](https://github.com/parallelpro/yrec/commit/3a44ae33) and [54b970f8](https://github.com/parallelpro/yrec/commit/54b970f8) (2026-10-31, round 3): the description and the test's docstring say what the read does; the `used` column and the normalization stay, for M32's decision. The links below show the code before the fix.
+- **Status:** fixed: the description and the test's docstring in [3a44ae33](https://github.com/parallelpro/yrec/commit/3a44ae33) and [54b970f8](https://github.com/parallelpro/yrec/commit/54b970f8) (2026-10-31, round 3); the normalization dropped and `used` none in [cf576da4](https://github.com/parallelpro/yrec/commit/cf576da4) (2026-11-01, the cleanup round). The links below show the code before the fixes.
 - **In the original F77?** Yes. PARMIN normalizes `NPENV`, and its one use, in SURFBC, is commented out ([parmin.f:1159](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L1159), [surfbc.f:139-141](https://github.com/parallelpro/yrec/blob/6cd56739/src/surfbc.f#L139-L141)):
   ```fortran
         IF(NPENV.LE.0) NPENV = 9999                           ! parmin.f
@@ -3079,7 +3079,7 @@ On 2026-10-30 the five reviews of sections 7 and 8 were repeated a third time, a
 - **Now:** the registry row `npenv`, [controls_registry.tsv:56](https://github.com/parallelpro/yrec/blob/6e058523/src/defaults/controls_registry.tsv#L56) (`used` = `read`, "Envelope profile print count"); `derive_controls`' normalization, [derived_controls.f90:65](https://github.com/parallelpro/yrec/blob/6e058523/src/io/derived_controls.f90#L65), after which nothing reads it.
 - **What is wrong:** a deck can set an envelope print count, and the registry documents one, but nothing prints anything by it; it is M32's kind, under `used` = `read` because the read touches it. `test_controls.py`'s docstring calls 0 "every point" ([test_controls.py:157](https://github.com/parallelpro/yrec/blob/6e058523/test_controls.py#L157)), where 0 becomes 9999.
 - **Expected behaviour, and why:** a control that does nothing says so (M5's and M32's rule).
-- **What we did:** the control's description, now the comment above its declaration in `io/controls_buffer.f90` (and so in the generated registry table and `control.defaults`), says that nothing reads it (SURFBC's use was commented out) and that the read makes 0 or less into 9999, as PARMIN did; `test_controls.py`'s docstring says 0 becomes 9999. Open: `used` = `none` and the normalization dropped, with M32's controls (dropping it changes a dump value).
+- **What we did:** the control's description, now the comment above its declaration in `io/controls_buffer.f90` (and so in the generated registry table and `control.defaults`), says that nothing reads it (SURFBC's use was commented out) and that the read makes 0 or less into 9999, as PARMIN did; `test_controls.py`'s docstring says 0 becomes 9999. Then (cf576da4) `derive_controls` no longer normalizes it, the registry's `used` is `none`, and `test_pristine_controls_are_the_defaults` needs no exception for it; the controls dumps changed in that member only (9999 to 0 in every deck: a comparison of the two test_controls binaries over all 314 decks found no other line). The control stays, read and used nowhere, for M32's decision.
 
 ### M114. net_report's messages from before the run log opens skip io_units' queue
 
@@ -3116,7 +3116,7 @@ On 2026-10-30 the five reviews of sections 7 and 8 were repeated a third time, a
 
 ### M117. The registry calls fpft_average_weight an averaging weight; it is the shape iteration's tolerance
 
-- **Status:** open (doc). The setup review's item, checked against the F77: the copy into `shape_tolerance` is right and the registry is wrong.
+- **Status:** fixed (doc) in [90936bd3](https://github.com/parallelpro/yrec/commit/90936bd3) (2026-11-01, the cleanup round's io package): the description; the inlist name stays (below). The links below show the code before the fix.
 - **In the original F77?** No. ACFPFT is the convergence tolerance of SHAPE's iteration for r₀³, and its cube root the tolerance on r₀; nothing averages ([shape.f:44](https://github.com/parallelpro/yrec/blob/6cd56739/src/shape.f#L44), [:95](https://github.com/parallelpro/yrec/blob/6cd56739/src/shape.f#L95), [:112-113](https://github.com/parallelpro/yrec/blob/6cd56739/src/shape.f#L112-L113), its default [parmin.f:434](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L434)):
   ```fortran
               IF(DABS(DELR03/R03).LE.ACFPFT)GOTO 20
@@ -3128,7 +3128,7 @@ On 2026-10-30 the five reviews of sections 7 and 8 were repeated a third time, a
 - **Now:** the registry row `acfpft`, [controls_registry.tsv:125](https://github.com/parallelpro/yrec/blob/6e058523/src/defaults/controls_registry.tsv#L125) ("Averaging weight in the fp/ft update"), repeated by the generated `controls_registry.md`; the copy, [rotation_settings_setup.f90:90](https://github.com/parallelpro/yrec/blob/6e058523/src/setup/rotation_settings_setup.f90#L90), into the field documented at [rotation_configuration.f90:48-54](https://github.com/parallelpro/yrec/blob/6e058523/src/rotation/rotation_configuration.f90#L48-L54) and used by `rotating_shape.f90` ([:208-209](https://github.com/parallelpro/yrec/blob/6e058523/src/rotation/shape/rotating_shape.f90#L208-L209), [:267](https://github.com/parallelpro/yrec/blob/6e058523/src/rotation/shape/rotating_shape.f90#L267)).
 - **What is wrong:** a newcomer reading the registry or the inlist name would take the control for a weight between 0 and 1; it is a relative tolerance (default 1e-36). `docs/source/namelist_physics.md` and the deck comments describe it correctly. `docs/GLOSSARY.md`'s trap 24 records the mismatch but cites `rotation/shape/shape.f90`, which does not exist (the file is `rotating_shape.f90`).
 - **Expected behaviour, and why:** a control's name and description say what it does (M52's rule).
-- **What we did:** recorded, not fixed. Proposed fix: the description "relative tolerance on r₀³ in the shape iteration (its cube root on r₀)", a readable inlist name with the old one as an alias, as M52's, and GLOSSARY's paths. Byte-identical.
+- **What we did:** the control's description, the comment above its declaration in `io/controls_buffer.f90` (so `physics.defaults` and `controls_registry.md`), reads "The rotating star's shape: the relative tolerance on r0^3 of the equipotential radius iteration (its cube root that on r0 and eta2); not a weight", and its two iteration limits (`fpft_iter1`, `fpft_iter2`) say which loop each bounds. Open: a readable inlist name with the old one as an alias; the alias would shadow the code name, which then needs the rename too, left for the renames.
 
 ### M118. At log T exactly on a cutoff the burn's comparisons disagree, and net_configuration documents the helium cutoff the other way
 
@@ -3900,7 +3900,7 @@ Round 3 took io and state (with setup) toward 9/10 after the fourth evaluation, 
 
 ### M171. The run plan prints "evolve up to****** models" for a card of a million models or more
 
-- **Status:** open. Found by the output package on the `sample_cases/LowM_HB` decks. Log content of those decks only.
+- **Status:** fixed in [60047432](https://github.com/parallelpro/yrec/commit/60047432) (2026-11-01, the cleanup round's io package), with M111. The run logs of the decks with a card of a million models or more change in that line (no pinned log has one). The links below show the code before the fix.
 - **In the original F77?** Yes, in kind: PARMIN's run plan wrote the count with `I5`, which overflowed above 99999 ([parmin.f:1303-1305](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L1303-L1305)):
   ```fortran
     350          FORMAT(/1X,'RUN #',I3,'   EVOLVE ',I5,
@@ -3910,25 +3910,25 @@ Round 3 took io and state (with setup) toward 9/10 after the fourth evaluation, 
 - **Now:** `evolve_from_start_format` and `evolve_from_previous_format`, [run_cards.f90:29-32](https://github.com/parallelpro/yrec/blob/b475f0b6/src/io/run_cards.f90#L29-L32).
 - **What is wrong:** `sample_cases/LowM_HB`'s decks set `max_model_number(2) = 1000000`, which `i6` cannot hold, so the run plan's line reads "evolve up to****** models".
 - **Expected behaviour, and why:** the run plan states what the run will do.
-- **What we did:** recorded, not fixed. Proposed fix: `i0`. The run logs of the decks with a card of a million models or more change; no pinned log has one.
+- **What we did:** the run plan writes its counts through `output_columns`' `integer_field`: an `i6` field when the count fits, so every run plan keeps its layout, and in full after a blank when it does not; the `sample_cases/LowM_HB` decks' line now reads "evolve up to 1000000 models from the previous card's model". The rescale line's relaxation count (`i3`) and the card's line on the terminal (`i6`) are written the same way. `test_io` checks `integer_field`.
 
 ### M172. The profile header's initial_z is the current card's Z, 0 on a card whose deck leaves it unset
 
-- **Status:** open. Found by the output package beside M130. Results change when fixed: the profile files' header value only.
+- **Status:** fixed in [80a02898](https://github.com/parallelpro/yrec/commit/80a02898) (2026-11-01, the cleanup round's io package). Results change in the profile headers only. The links below show the code before the fix.
 - **In the original F77?** No; the F77 wrote no profile file, and the MESA-format writer came with [eb624a69](https://github.com/parallelpro/yrec/commit/eb624a69) (2026-08-22). The F77's own pulsation model header wrote the card's starting values, `XENV0A(NK)` and `ZENV0A(NK)`, the same way ([wrtmod.f:192-200](https://github.com/parallelpro/yrec/blob/6cd56739/src/wrtmod.f#L192-L200), [main.f:278-279](https://github.com/parallelpro/yrec/blob/6cd56739/src/main.f#L278-L279)).
 - **Now:** `write_profile`'s header, [profile_output.f90:80-86](https://github.com/parallelpro/yrec/blob/b475f0b6/src/io/profile_output.f90#L80-L86), which writes `s%current_card_envelope_z` under `initial_z`.
 - **What is wrong:** MESA's profile `initial_z` is the run's initial Z; YREC writes the current card's starting Z, which is 0 on an evolve card whose deck leaves `ZENV0A(k)` unset. `Test_solar_GS_norot_gray_OPALSCV_SF2_GS98_OP_CF10.nml1` sets `XENV0A(1)` and `ZENV0A(1)` three times (lines 29-30, 38-39 and 46-47), where cards 2 and 3's were meant, so its cards 2-3 write 0. FGONG's globals now take the first card's values (M130's fix), so the two files disagree.
 - **Expected behaviour, and why:** the same quantity under the same name in every file, as MESA writes it.
-- **What we did:** recorded, not fixed. Proposed fix: `card_initial_z(1)`, as FGONG's glob(4); and the deck's typo (`XENV0A(2)`/`ZENV0A(2)`, `(3)`), a deck fix that changes nothing (cards 2 and 3 continue from the previous model).
+- **What we did:** the profile header writes `card_initial_z(1)` under `initial_z`, the run's initial Z, as FGONG's glob(4) does; `initial_mass` stays the card's starting mass. Measured before and after with profiles on: `Test_solar_GS_norot_gray_OPALSCV_SF2_GS98_OP_CF10`'s 8 profiles' `initial_z` 0 to 1.8804e-2 and nothing else; `test_mesa_baselines`' two cases, and the configuration matrix decks tried, identical; no deck of the check sets writes a profile, and history.data is unchanged everywhere. The deck's typo (`XENV0A(1)`/`ZENV0A(1)` three times) stays, a deck fix that changes nothing.
 
 ### M173. Writes outside io have no error path
 
-- **Status:** open. Found by the output package after M138's fix. Error path only.
+- **Status:** fixed in [43a391e7](https://github.com/parallelpro/yrec/commit/43a391e7) (2026-11-01, the cleanup round's io package); open: `log_line`'s own write and the physics domains' direct writes to the run log's unit have no `iostat` (a full disk under them is caught, below). Byte-identical. The links below show the code before the fix.
 - **In the original F77?** Partly: the F77's writes had no `IOSTAT` either (M138); these are the 2026 writers outside io/ that M138's fix did not reach.
 - **Now:** the Monte Carlo summary records, [monte_carlo.f90:256-295](https://github.com/parallelpro/yrec/blob/b475f0b6/src/core/run/monte_carlo.f90#L256-L295) (`mc_summary_unit`); the neutrino-flux table, [neutrino_flux_output.f90:96-126](https://github.com/parallelpro/yrec/blob/b475f0b6/src/core/diagnostics/neutrino_flux_output.f90#L96-L126); and the run log's own writes, which carry the messages (a failure there cannot be reported in it). The `.mod` and the isochrone file, open for the run, check every write but not the size on disk, so a full disk under gfortran still cuts them silently (M138's fix).
 - **What is wrong:** a failed write in these ends the run in a Fortran runtime error (exit 2) or, on a full disk, goes unnoticed, where io's writers report and exit 1.
 - **Expected behaviour, and why:** a failed write is reported like a failed open, exit 1 (L5's and M138's rule).
-- **What we did:** recorded, not fixed. Proposed fix: the Monte Carlo summary and the neutrino-flux table through `output_files`' pattern (`open_output_file`, `iostat` on each write, `close_output_file`). Byte-identical.
+- **What we did:** the Monte Carlo summary's seven records are written with `iostat` and `iomsg`, each unless an earlier one failed, then checked with `output_files`' `flush_output_file` (the first failed write, or a file shorter on disk), whose ierr `write_monte_carlo_model` returns; `run_files`' `check_run_log` flushes the run log and checks its size on disk after each model's output and at the end (`output_write_model`, `output_close`), so a run whose log fails stops with exit 1; the neutrino-flux table's lines go through `log_line`, which that check covers; and the `.mod` model and each isochrone record end with `flush_output_file` too. gfortran truncates a rewound file at its next write and its inquire-by-unit size follows, so the `.mod` and a run log with `rewind_short_file` are not taken for cut files. `test_io` gained four checks (the `.mod`, the isochrone file and the run log under a file-size limit, and a run log rewound and written shorter); a two-run calibrating Monte Carlo deck and a deck with the neutrino table and the isochrone file on gave identical outputs before and after.
 
 ### M174. A run whose history file another run replaced reports a full disk and exits 1
 
