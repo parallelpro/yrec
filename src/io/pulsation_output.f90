@@ -16,7 +16,7 @@
 module pulsation_output
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use run_messages, only: check_io
-      use output_files, only: open_output_file, close_output_file
+      use output_files, only: open_replacement_file, close_replacement_file
       implicit none
       private
       public :: write_fgong_pulse, write_gsm_pulse, write_gyre_pulse, gsm_supported
@@ -59,7 +59,7 @@ subroutine write_fgong_pulse(s, n, pts, mstar_g, rstar_cm, lstar_cgs, &
       real(dp) :: radius_cm, mass_g, grav
       real(dp) :: grav_const_cgs
 
-      call open_output_file(pulse_path, u, ierr)
+      call open_replacement_file(pulse_path, u, ierr)
       if (ierr /= 0) return
 
       grav_const_cgs = exp(ln10*cgl)
@@ -148,7 +148,7 @@ subroutine write_fgong_pulse(s, n, pts, mstar_g, rstar_cm, lstar_cgs, &
 
          write(u,fgong_record_format,iostat=ios,iomsg=msg) (var(i), i = 1, ivar)
       end do
-      call close_output_file(u, pulse_path, ios, msg, ierr)
+      call close_replacement_file(u, pulse_path, ios, msg, ierr)
 end subroutine write_fgong_pulse
 
 ! ---------------------------------------------------------------
@@ -267,7 +267,7 @@ subroutine write_gyre_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, path, ierr)
       integer :: u, j, i, ios
       character(len=256) :: msg
 
-      call open_output_file(path, u, ierr)
+      call open_replacement_file(path, u, ierr)
       if (ierr /= 0) return
       write(u,'(I6,3(1X,1PE26.16),1X,I6)',iostat=ios,iomsg=msg) n, mstar_g, rstar_cm, &
            lstar_cgs, gyre_schema
@@ -275,7 +275,7 @@ subroutine write_gyre_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, path, ierr)
          if (ios /= 0) exit
          write(u,'(I6,99(1X,1PE26.16))',iostat=ios,iomsg=msg) j, (pts(i,j), i = 1, ipul_gyre_last)
       end do
-      call close_output_file(u, path, ios, msg, ierr)
+      call close_replacement_file(u, path, ios, msg, ierr)
 end subroutine write_gyre_pulse
 
 end module pulsation_output

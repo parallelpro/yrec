@@ -93,6 +93,11 @@
 !                measured is the unit's own); and the size check keeps
 !                the unit's place (a line written after another writer
 !                lengthened the file follows the unit's last line);
+!                a file written in one go (the copy of the deck) is
+!                written under the run's own name and renamed to its
+!                path (M177): a whole copy is at the path with no file of
+!                the run's own left beside it, and a copy that failed
+!                leaves neither;
 !   FGONG        write_fgong_pulse's globals 4-6 are the first card's
 !                starting Z and X and the mixing length (MESA's initial
 !                Z, X and alpha), whatever the current card's are.
@@ -107,6 +112,12 @@
 ! The messages io reports go to the files terminal.txt and run_log.txt
 ! (run_messages' terminal_unit and run_log_unit), where the error checks
 ! look for them.
+!
+! `test_io copy <deck> <dest> <times>` instead copies the deck to dest
+! (copy_inlists_used) times times over, and stops with status 1 at the
+! first copy that fails: one of the two runs test_io.py starts at once
+! on one dest, as the decks of one directory all write
+! output/inlist_used (M177).
 program test_io
       use, intrinsic :: iso_fortran_env, only: dp => real64, int64
       use, intrinsic :: iso_c_binding, only: c_char, c_int, c_null_char, c_int64_t, &
@@ -185,6 +196,9 @@ program test_io
             import :: c_int, c_char
             character(kind=c_char), intent(in) :: old_path(*), new_path(*)
          end function c_rename
+         integer(c_int) function c_getpid() bind(c, name='getpid')
+            import :: c_int
+         end function c_getpid
       end interface
 
 ! the files the checks write and read, in the working directory
@@ -211,6 +225,11 @@ program test_io
       integer :: failures
 ! the file-size limit the program started with (limit_file_size)
       type(file_size_limits) :: starting_limits
+
+      if (command_argument_count() == 4) then
+         call copy_deck_repeatedly()
+         stop
+      end if
 
       failures = 0
       call start_capture()
@@ -263,10 +282,12 @@ subroutine end_capture()
       close(run_log_unit)
 end subroutine end_capture
 
-! Does the file hold a line containing text? (The capture is closed
-! first and restarted after, so each check sees only its own messages.)
-logical function captured(file, text)
+! Does the file hold a line containing text (and also, when given)? (The
+! capture is closed first and restarted after, so each check sees only
+! its own messages.)
+logical function captured(file, text, also)
       character(len=*), intent(in) :: file, text
+      character(len=*), intent(in), optional :: also
       character(len=1024) :: line
       integer :: u, ios
       call end_capture()
@@ -276,12 +297,55 @@ logical function captured(file, text)
          do
             read(u,'(a)',iostat=ios) line
             if (ios /= 0) exit
-            if (index(line, text) > 0) captured = .true.
+            if (index(line, text) == 0) cycle
+            if (present(also)) then
+               if (index(line, also) == 0) cycle
+            end if
+            captured = .true.
          end do
          close(u)
       end if
       call start_capture()
 end function captured
+
+! Is there a file at path?
+logical function file_exists(path)
+      character(len=*), intent(in) :: path
+      inquire(file=path, exist=file_exists)
+end function file_exists
+
+! This process's own name for a file written in one go at path
+! (output_files' replacement_path, formed here from its definition)
+function own_name(path)
+      character(len=*), intent(in) :: path
+      character(len=:), allocatable :: own_name
+      character(len=12) :: pid_text
+      write(pid_text, '(i0)') c_getpid()
+      own_name = path // '.' // trim(pid_text) // '.tmp'
+end function own_name
+
+! ---------------------------------------------------------------
+! test_io copy <deck> <dest> <times>: the deck copied to dest times
+! times over (copy_inlists_used, an inlist: the same file twice, copied
+! once); status 1 at the first copy that fails, its message on stderr
+! (run_messages' units, standard error before any read)
+subroutine copy_deck_repeatedly()
+      character(len=256) :: deck, dest, times_text
+      integer :: times, i, ierr
+
+      call get_command_argument(2, deck)
+      call get_command_argument(3, dest)
+      call get_command_argument(4, times_text)
+      read(times_text, *) times
+      do i = 1, times
+         ierr = 0
+         call copy_inlists_used([deck, deck], trim(dest), ierr)
+         if (ierr /= 0) then
+            write(*,'(a,i0,a,i0)') 'copy ', i, ' of ', times, ' failed'
+            stop 1
+         end if
+      end do
+end subroutine copy_deck_repeatedly
 
 ! ---------------------------------------------------------------
 ! a text file of the given lines, replacing any file of that name
@@ -1256,7 +1320,7 @@ subroutine writes_check()
       call write_gyre_pulse(n_points, pts, 1.0d33, 7.0d10, 3.8d33, 'not_a_dir/x.GYRE', ierr)
 ! (the open's own reason, the operating system's)
       call report("writes: a file whose directory cannot be made is an error", ierr == 1 .and. &
-           captured(terminal_file, "not_a_dir/x.GYRE': Not a directory"))
+           captured(terminal_file, 'cannot write not_a_dir/x.GYRE: ', also='Not a directory'))
 
 ! a full disk, for the files io closes
       ierr = 0
@@ -1363,6 +1427,15 @@ subroutine writes_check()
       call limit_file_size(-1)
       call report("writes: a copy of the deck cut short by a full disk is an error", ierr == 1 .and. &
            captured(terminal_file, 'cannot write full_inlist_used'))
+      call report("writes: a copy of the deck that failed leaves no file behind", &
+           .not. file_exists('full_inlist_used') .and. .not. file_exists(own_name('full_inlist_used')))
+! a whole copy (M177: written under the run's own name, then renamed)
+      ierr = 0
+      call copy_inlists_used([character(len=12) :: 'big_deck.nml', 'big_deck.nml'], &
+           'whole_inlist_used', ierr)
+      call report("writes: a whole copy of the deck is at its path, none of its own left", &
+           ierr == 0 .and. count_lines_starting('whole_inlist_used', ' line_') == size(deck_lines) .and. &
+           .not. file_exists(own_name('whole_inlist_used')))
 
 ! Two runs that write one path (M174: several decks in one directory
 ! all write output/history.data). The other run's open, after this

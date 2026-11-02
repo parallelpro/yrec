@@ -11,12 +11,18 @@
 !                      disk checked
 !   close_output_file  after the writes: flush_output_file, then the
 !                      file closed
+!   open_replacement_file, close_replacement_file
+!                      the same for a file written in one go (the copy
+!                      of the deck, a profile, a pulsation file): the
+!                      writes go to this run's own file beside path,
+!                      which the close checks and renames over path
 ! A writer writes with iostat=ios and iomsg=msg and skips every write
 ! after the first that fails (`if (ios == 0) write ...`); the failure is
-! reported once, by flush_output_file. A file written in one go ends with
-! close_output_file. A file kept open across models has each write
-! checked the same way, by its writer; the history file is flushed with
-! flush_output_file after each row (history_output).
+! reported once, by flush_output_file. A file written in one go opens
+! with open_replacement_file and ends with close_replacement_file. A file
+! kept open across models has each write checked the same way, by its
+! writer; the history file is flushed with flush_output_file after each
+! row (history_output).
 !
 ! The size check is what catches a full disk under gfortran: its runtime
 ! drops the bytes a full disk refuses without reporting it on the
@@ -38,13 +44,26 @@
 ! write would see that run's truncation as this run's write failing.
 ! That is why the history, open for the run, is checked at each row and
 ! not again at its close.
+!
+! A file written in one go is shared the same way (the decks of one
+! directory all copy themselves to output/inlist_used as they start, and
+! those that keep the default profile_data_prefix write the same profile
+! and pulsation file names), and there the other run's open can fall between this run's
+! flush and its measure, or between its writes (M177). So it is written
+! under this run's own name, <path>.<process id>.tmp in the same
+! directory, checked there, and renamed over path, which replaces the
+! file at path in one step: a reader, or another run, sees the old file
+! or a complete new one, never one half written, and the last run to
+! finish leaves its copy. A file that failed is removed, and path left
+! as it was.
 module output_files
       use, intrinsic :: iso_fortran_env, only: int64
-      use, intrinsic :: iso_c_binding, only: c_int, c_int64_t
+      use, intrinsic :: iso_c_binding, only: c_int, c_int64_t, c_char, c_null_char
       use run_messages, only: check_io, report_error
       implicit none
       private
-      public :: open_output_file, flush_output_file, close_output_file
+      public :: open_output_file, flush_output_file, close_output_file, &
+           open_replacement_file, close_replacement_file
 
 ! lseek's whence: from the start, from the current offset, from the end
 ! (the same values on macOS and Linux)
@@ -58,6 +77,20 @@ module output_files
             integer(c_int), value :: fd, whence
             integer(c_int64_t), value :: offset
          end function c_lseek
+! pid_t getpid(void); pid_t is a 32-bit int on macOS and Linux
+         integer(c_int) function c_getpid() bind(c, name='getpid')
+            import :: c_int
+         end function c_getpid
+! int rename(const char *old, const char *new): new replaced in one step
+         integer(c_int) function c_rename(old_path, new_path) bind(c, name='rename')
+            import :: c_int, c_char
+            character(kind=c_char), intent(in) :: old_path(*), new_path(*)
+         end function c_rename
+! int remove(const char *path)
+         integer(c_int) function c_remove(path) bind(c, name='remove')
+            import :: c_int, c_char
+            character(kind=c_char), intent(in) :: path(*)
+         end function c_remove
       end interface
 
 contains
@@ -128,6 +161,65 @@ subroutine close_output_file(u, path, ios, msg, ierr)
          call check_io(close_ios, close_msg, 'write', path, ierr)
       end if
 end subroutine close_output_file
+
+! ---------------------------------------------------------------
+! A file written in one go at path, which other runs may write at the
+! same time (the module header): opened for writing on unit u (newunit)
+! under this run's own name beside it (replacement_path); its messages
+! name path.
+subroutine open_replacement_file(path, u, ierr)
+      character(len=*), intent(in) :: path
+      integer, intent(out) :: u
+      integer, intent(inout) :: ierr
+      character(len=256) :: msg
+      integer :: ios
+
+      open(newunit=u, file=replacement_path(path), status='REPLACE', action='WRITE', &
+           form='FORMATTED', iostat=ios, iomsg=msg)
+      call check_io(ios, msg, 'write', path, ierr)
+end subroutine open_replacement_file
+
+! ---------------------------------------------------------------
+! The file open_replacement_file opened for path on unit u, written: ios
+! and msg are its writes' status (the first failed write's, or 0). It is
+! checked and closed (close_output_file), then renamed over path. A file
+! that failed is removed and path left as it was; a failed rename is
+! reported too.
+subroutine close_replacement_file(u, path, ios, msg, ierr)
+      integer, intent(in) :: u, ios
+      character(len=*), intent(in) :: path, msg
+      integer, intent(inout) :: ierr
+      character(len=:), allocatable :: own_path
+      integer :: close_ierr
+      integer(c_int) :: rc
+
+      own_path = replacement_path(path)
+      close_ierr = 0
+      call close_output_file(u, path, ios, msg, close_ierr)
+      if (close_ierr == 0) then
+         if (c_rename(own_path // c_null_char, trim(path) // c_null_char) /= 0) then
+            call report_error('cannot write ' // trim(path) // ': ' // own_path // &
+                 ' could not be renamed to it')
+            close_ierr = 1
+         end if
+      end if
+      if (close_ierr /= 0) then
+         rc = c_remove(own_path // c_null_char)
+         ierr = close_ierr
+      end if
+end subroutine close_replacement_file
+
+! ---------------------------------------------------------------
+! This run's own name for the file at path: <path>.<process id>.tmp, in
+! the same directory, so that the rename stays within one file system.
+function replacement_path(path) result(own_path)
+      character(len=*), intent(in) :: path
+      character(len=:), allocatable :: own_path
+      character(len=12) :: pid_text
+
+      write(pid_text, '(i0)') c_getpid()
+      own_path = trim(path) // '.' // trim(pid_text) // '.tmp'
+end function replacement_path
 
 ! ---------------------------------------------------------------
 ! The size in bytes of the file open on unit u, from its descriptor

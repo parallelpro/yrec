@@ -265,9 +265,13 @@ end subroutine make_directory
 ! as the one before it is copied once) at dest, in the
 ! output directory: the run's record of its settings. A source that
 ! cannot be opened is skipped; a failed write is an error
-! (output_files).
+! (output_files). The decks of one directory share dest
+! (output/inlist_used) and copy themselves as they start, so the copy is
+! written beside it and renamed over it (output_files'
+! close_replacement_file, M177): the copy at dest is always a whole one,
+! that of the deck whose copy finished last.
 subroutine copy_inlists_used(sources, dest, ierr)
-      use output_files, only: open_output_file, close_output_file
+      use output_files, only: open_replacement_file, close_replacement_file
       character(len=*), intent(in) :: sources(:), dest
       integer, intent(inout) :: ierr
       integer :: src_unit, dst_unit
@@ -275,7 +279,7 @@ subroutine copy_inlists_used(sources, dest, ierr)
       character(len=256) :: msg
       integer :: ios, read_ios, nfile
 
-      call open_output_file(dest, dst_unit, ierr)
+      call open_replacement_file(dest, dst_unit, ierr)
       if (ierr /= 0) return
       ios = 0
       do nfile = 1, size(sources)
@@ -295,7 +299,7 @@ subroutine copy_inlists_used(sources, dest, ierr)
          close(src_unit)
          if (ios /= 0) exit
       end do
-      call close_output_file(dst_unit, dest, ios, msg, ierr)
+      call close_replacement_file(dst_unit, dest, ios, msg, ierr)
 end subroutine copy_inlists_used
 
 ! ---------------------------------------------------------------

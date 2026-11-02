@@ -53,7 +53,7 @@ end subroutine profile_output_init
 !   star writes: none
 subroutine write_profile(s, profiles, out_dir, iprof, ierr)
       use star_info_lib, only: star_info
-      use output_files, only: open_output_file, close_output_file
+      use output_files, only: open_replacement_file, close_replacement_file
       type(star_info), intent(in) :: s
       type(profile_selection), intent(in) :: profiles
       character(len=*), intent(in) :: out_dir
@@ -69,7 +69,7 @@ subroutine write_profile(s, profiles, out_dir, iprof, ierr)
       cols = profile_columns()
       write(numstr, '(i0)') iprof
       path = trim(out_dir) // trim(s%physics%profile_data_prefix) // trim(numstr) // '.data'
-      call open_output_file(path, u, ierr)
+      call open_replacement_file(path, u, ierr)
       if (ierr /= 0) return
 ! global block (MESA profile shape: numbers / names / values)
       write(u, column_numbers_format, iostat=ios, iomsg=msg) 1, 2, 3, 4, 5, 6, 7, 8
@@ -112,7 +112,7 @@ subroutine write_profile(s, profiles, out_dir, iprof, ierr)
          if (ios /= 0) exit
          write(u, '(a)', iostat=ios, iomsg=msg) ''
       end do
-      call close_output_file(u, path, ios, msg, ierr)
+      call close_replacement_file(u, path, ios, msg, ierr)
 end subroutine write_profile
 
 end module profile_output

@@ -82,6 +82,8 @@ writes: an isochrone file cut short by a full disk is an error         ok
 writes: a run log cut short by a full disk is an error                 ok
 writes: a run log rewound and written shorter is not cut short         ok
 writes: a copy of the deck cut short by a full disk is an error        ok
+writes: a copy of the deck that failed leaves no file behind           ok
+writes: a whole copy of the deck is at its path, none of its own left  ok
 writes: a history file another run truncated is not a full disk        ok
 writes: a history file another run replaced is not a full disk         ok
 writes: a closed file is measured, not the one now at its path         ok
