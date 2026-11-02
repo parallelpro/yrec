@@ -2,9 +2,11 @@
 
 A generator calls emit(path, text) for each output (or writes through
 `with Out(path) as f:`) and finish(name) at the end. Run plainly, it
-writes the files; run with --check, it writes nothing and exits 1 if any
-committed output differs from what it would write (test_generated_files.py
-runs every generator this way).
+writes the files whose text changes and leaves the others alone (their
+times too, so that make recompiles only what uses a changed file: make
+runs the controls generators, src/Makefile); run with --check, it writes
+nothing and exits 1 if any committed output differs from what it would
+write (test_generated_files.py runs every generator this way).
 """
 import io
 import sys
@@ -14,10 +16,11 @@ _stale = []
 
 
 def emit(path, text):
+    current = path.is_file() and path.read_text() == text
     if CHECK:
-        if not path.is_file() or path.read_text() != text:
+        if not current:
             _stale.append(path)
-    else:
+    elif not current:
         path.write_text(text)
 
 

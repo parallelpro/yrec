@@ -41,13 +41,13 @@ Every io procedure that touches the star takes it as an argument, `s` (`type(sta
 
 The test programs and their pinned outputs are in `io/test/` (§4).
 
-**Generated files** (`test_generated_files.py` checks they are current; each generator takes `--check`; CI runs all six, §4):
+**Generated files** (committed; `make` reruns the three controls generators when `controls_buffer.f90`, the registry or what they read changes, and `gen_default_columns.py` when a `.list` does, and a generator rewrites only the files whose text changes, so only their users recompile; `test_generated_files.py` checks they are current; each generator takes `--check`; CI runs all six, §4):
 
 | File | Generator | From |
 |---|---|---|
-| `state/control_group_def.inc`, `state/physics_group_def.inc`, `io/controls_sync.f90`, `io/controls_buffer_public.inc` | `tools/gen_controls_state.py` | `controls_buffer.f90` (members, types, defaults) and the registry's `home` and `run_copy` columns; it stops if a member has no registry row of its declared type |
+| `state/control_group_def.inc`, `state/physics_group_def.inc`, `io/controls_sync.f90`, `io/controls_buffer_public.inc` | `tools/gen_controls_state.py` | `controls_buffer.f90` (members, types, defaults: `controls_registry.buffer_members`, the one parser of the buffer, which the three controls generators share) and the registry's `home` and `run_copy` columns; it stops if a member has no registry row of its declared type |
 | `io/inlist_decl.inc`, `io/inlist_read.inc`, `io/legacy_use.inc`, `io/legacy_decl.inc`, `io/legacy_defaults.inc`, `io/legacy_to_code.inc`, `io/expand_paths.inc`, `defaults/control.defaults`, `defaults/physics.defaults`, `defaults/controls_registry.md` | `tools/gen_inlist.py` | the registry (names, aliases, types, groups, homes) and controls_buffer (types, defaults, descriptions); it stops, naming the row and printing which cells to fill for each kind of row (`gen_inlist.py --cells`), when a code name is not a buffer member of the row's type, a member has no description or shares its declaration, a name is used twice, an inlist local would hide a code name, a string control's default names a file (its type is `path`), the legacy namelists and the registry disagree, or a description names what the code does not (a name no control has and the code does not use, or an F77 routine or legacy name not written "legacy X") |
-| `io/test/controls_dump.inc` | `tools/gen_controls_dump.py` | the records' type bodies, the buffer-only members and the registry's run copies (`dump_controls`, a subroutine of `test_controls`) |
+| `io/test/controls_dump.inc` | `tools/gen_controls_dump.py` | `controls_buffer.f90`'s members by their registry homes (the records', then the buffer-only ones) and the registry's run copies (`dump_controls`, a subroutine of `test_controls`) |
 | `io/default_columns.inc` | `tools/gen_default_columns.py` | `defaults/*_columns.list` (and it checks them against the column tables) |
 
 `tools/upgrade_inlist.py` converts a legacy pair to a single-file inlist (under the current inlist names), and renames the groups of an inlist written with `&star_job` and `&controls`.

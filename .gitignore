@@ -43,3 +43,4 @@ src/.hdf5_mode_*
 src/*/test/test_*.short
 examples/other_energy/yrec_extra_heat
 src/.git_hash_stamp
+src/.controls_generated

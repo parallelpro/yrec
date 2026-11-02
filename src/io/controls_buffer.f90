@@ -14,12 +14,13 @@
 ! the code reads its controls; arm_run_copies sets the run's working
 ! copies of the controls the run changes. tools/gen_controls_state.py
 ! generates the two records' types and the copies (io/controls_sync.f90)
-! from these declarations: regenerate after changing a member, and give
-! it its registry row. Each member is declared on its own line, in the
-! section of its group (&control, &physics) and the topic it belongs to,
-! with its default as its initializer and its description as the comment
-! directly above it (gen_inlist copies the description into the
-! documents). Only the controls read's files
+! from these declarations, and gen_inlist the readers and the documents:
+! make reruns them when a member or the registry changes (src/Makefile);
+! give a new member its registry row. Each member is declared on its own
+! line, in the section of its group (&control, &physics) and the topic it
+! belongs to, with its default as its initializer and its description as
+! the comment directly above it (gen_inlist copies the description into
+! the documents). Only the controls read's files
 ! (tools/check_boundaries.py's CONTROLS_BUFFER_IMPORTERS) use this module,
 ! each naming what it takes (use ..., only:); the sizes and slots it uses
 ! are state/control_slots.f90's and state/reaction_layout.f90's.

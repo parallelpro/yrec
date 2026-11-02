@@ -47,8 +47,9 @@ Emits:
                            control with its default and description
   defaults/controls_registry.md -- the registry as a table
 
-It stops, naming the row and printing which cells to fill for each kind of
-row, when a row's code name is not a controls_buffer member of the row's
+make reruns it, with gen_controls_state and gen_controls_dump, when
+controls_buffer.f90 or the registry changes (src/Makefile). It stops,
+naming the row and printing which cells to fill for each kind of row, when a row's code name is not a controls_buffer member of the row's
 type, when a name is used twice, when an inlist local would hide a code
 name, when a string control's default is a path (its type is path), when
 the legacy namelists and the registry disagree (a legacy name in neither
@@ -99,10 +100,7 @@ def legacy_groups():
 def shown(member):
     """a member's default as an inlist would write it (one declared without
     an initializer starts at zero, blank or .false., as the records do)"""
-    value = member["init"]
-    if value is None:
-        return {"logical": ".false.", "integer": "0", "string": "''"}.get(
-            member["type"].split("(")[0], "0.0d0")
+    value = member["default"]
     if value.startswith("repeat(achar(0)"):
         return "''"
     m = re.match(r"reshape\(\(/(.*?)/\)", value) or re.match(r"\(/(.*)/\)$", value)

@@ -36,19 +36,18 @@ Emits:
       (each run copy, a star member star_info_lib declares, set from
       its control: star%<run_copy> = star%<group>%member).
 
-Regenerate (and commit the results) whenever controls_buffer's member
-list or the registry's home or run_copy column changes:
+make reruns it, with gen_inlist and gen_controls_dump, whenever
+controls_buffer.f90 or the registry changes (src/Makefile, the stamp
+.controls_generated); commit the results. By hand:
 python3 tools/gen_controls_state.py
 The build breaks loudly on drift (unknown/missing components).
 """
 import pathlib
-import re
 
 from generated_files import Out, finish
 import controls_registry
 
 SRC = pathlib.Path(__file__).resolve().parent.parent
-LIB = SRC / "io" / "controls_buffer.f90"
 # the star's records, by registry home: the namelist group's record and its
 # generated component list
 RECORDS = {"control": SRC / "state" / "control_group_def.inc",
@@ -59,136 +58,34 @@ PUBLIC = SRC / "io" / "controls_buffer_public.inc"
 # Each member's home, the record of its group (star%control, star%physics)
 # or the read's buffer, is the registry's home column
 # (tools/controls_registry.py; check_boundaries checks it against the code);
-# a control the run changes has a run copy, a star member.
-TYPE_RE = re.compile(
-    r"^\s*(double precision|real\s*\(\s*dp\s*\)|integer|logical|character\s*\(\s*len\s*=\s*\d+\s*\))"
-    r"\s*(,\s*public)?\s*::\s*(.*)$",
-    re.IGNORECASE,
-)
-
-# An integer constant of controls_buffer, not a member. The arrays' sizes
-# are named constants of the layout modules (max_runs, num_reactions), which
-# star_info_lib, where the records' types are defined, imports; the records
-# keep the names.
-PARAM_RE = re.compile(
-    r"^\s*integer\s*,\s*parameter\s*(,\s*public)?\s*::\s*(\w+)\s*=\s*(\d+)\s*$",
-    re.IGNORECASE,
-)
-
-ZERO = {
-    "real(dp)": "0.0d0",
-    "integer": "0",
-    "logical": ".false.",
-    "character": "' '",
-}
-
-
-def joined_decl_lines(text):
-    """Join &-continued lines, strip comments."""
-    out, buf = [], ""
-    for raw in text.splitlines():
-        code = raw.split("!")[0]
-        if buf:
-            code = code.lstrip().lstrip("&")
-        buf += code
-        if buf.rstrip().endswith("&"):
-            buf = buf.rstrip()[:-1]
-            continue
-        if buf.strip():
-            out.append(buf)
-        buf = ""
-    return out
-
-
-def split_entities(s):
-    """Split a declaration's entity list on top-level commas."""
-    ents, depth, cur = [], 0, ""
-    for ch in s:
-        if ch in "([":
-            depth += 1
-        elif ch in ")]":
-            depth -= 1
-        if ch == "," and depth == 0:
-            ents.append(cur.strip())
-            cur = ""
-        else:
-            cur += ch
-    if cur.strip():
-        ents.append(cur.strip())
-    return ents
-
-
-# A real named constant of controls_buffer (a default other members take,
-# e.g. li6_reference_xs): an initializer that names one is written as its
-# value, since the records and controls_sync do not import it.
-REAL_PARAM_RE = re.compile(r"^\s*real\s*\(\s*dp\s*\)\s*,\s*parameter\s*(,\s*public)?\s*::\s*(.*)$",
-                           re.IGNORECASE)
-
-
-def parse():
-    members = []  # (typespec, name, dims as written, init)
-    real_params = {}
-    for line in joined_decl_lines(LIB.read_text()):
-        if PARAM_RE.match(line):
-            continue
-        rm = REAL_PARAM_RE.match(line)
-        if rm:
-            for ent in split_entities(rm.group(2)):
-                name, value = (x.strip() for x in ent.split("=", 1))
-                real_params[name.lower()] = value
-            continue
-        m = TYPE_RE.match(line)
-        if not m:
-            continue
-        typespec = re.sub(r"\s+", " ", m.group(1).lower()).replace(" (", "(")
-        if typespec.replace(" ", "") in ("real(dp)", "doubleprecision"):
-            typespec = "real(dp)"   # star_info_lib's spelling (dp => real64 there)
-        for ent in split_entities(m.group(3)):
-            em = re.match(r"^(\w+)\s*(\([^)]*\))?\s*(=\s*(.*))?$", ent, re.S)
-            if not em:
-                raise SystemExit(f"cannot parse entity: {ent!r}")
-            name, dims, init = em.group(1), em.group(2) or "", em.group(4)
-            if init is None:
-                base = "character" if typespec.startswith("character") else typespec
-                init = ZERO[base]
-            init = real_params.get(init.strip().lower(), init)
-            members.append((typespec, name, dims, init.strip()))
-    if not members:
-        raise SystemExit("no members parsed from controls_buffer.f90")
-    return members
-
-
-def constants():
-    """the names of controls_buffer's real named constants"""
-    out = []
-    for line in joined_decl_lines(LIB.read_text()):
-        rm = REAL_PARAM_RE.match(line)
-        if rm:
-            out += [ent.split("=", 1)[0].strip() for ent in split_entities(rm.group(2))]
-    return out
+# a control the run changes has a run copy, a star member. The members,
+# their types, shapes and defaults are controls_registry.buffer_members(),
+# the one parser of controls_buffer.f90 (gen_inlist and gen_controls_dump
+# use it too).
 
 
 def homes(members):
-    """({member: 'control', 'physics' or 'buffer'}, {member: its run copy}) from the
-    registry, which must give every buffer member a row of its declared
-    type"""
+    """({member: 'control', 'physics' or 'buffer'}, {member: its run copy}),
+    by the members' lower-case names, from the registry, which must give
+    every buffer member a row of its declared type"""
     rows = [r for r in controls_registry.rows() if r["home"]]
     home, copy, problems = {}, {}, []
-    for typespec, name, dims, _ in members:
-        mine = [r for r in rows if r["canonical"] == name.lower()]
+    for m in members:
+        name = m["name"]
+        mine = [r for r in rows if r["canonical"] == name]
         if not mine:
-            problems.append(f"{name}: no registry row (canonical column)")
+            problems.append(f"{m['spelled']}: no registry row (canonical column)")
             continue
-        declared = controls_registry.type_of(typespec, dims)
         for r in mine:
-            if controls_registry.declared_type(r["type"]) != declared:
-                problems.append(f"{name}: registry type {r['type']} ({r['legacy']}), declared {declared}")
+            if controls_registry.declared_type(r["type"]) != m["type"]:
+                problems.append(f"{m['spelled']}: registry type {r['type']} ({r['legacy']}), "
+                                f"declared {m['type']}")
         if len({r["home"] for r in mine}) > 1 or len({r["run_copy"] for r in mine}) > 1:
-            problems.append(f"{name}: two homes or run copies in the registry")
+            problems.append(f"{m['spelled']}: two homes or run copies in the registry")
         home[name] = mine[0]["home"]
         if mine[0]["run_copy"]:
             copy[name] = mine[0]["run_copy"]
-    known = {n.lower() for _, n, _, _ in members}
+    known = {m["name"] for m in members}
     for r in rows:
         if r["canonical"] not in known:
             problems.append(f"registry row {r['legacy']}: canonical {r['canonical']} is not in controls_buffer")
@@ -207,19 +104,19 @@ def write_def(path, members, home, which, what):
             f"! {what}: one component per buffer member, declaration\n"
             "! order, every one default-initialized (see the generator's header).\n"
         )
-        for typespec, name, dims, init in members:
-            if home[name] in which:
-                f.write(f"            {typespec} :: {name}{dims} = {init}\n")
+        for m in members:
+            if home[m["name"]] in which:
+                f.write(f"            {m['decl']} :: {m['spelled']}{m['dims']} = {m['default']}\n")
 
 
 def main():
-    members = parse()
+    members = controls_registry.buffer_members()
     home, copy = homes(members)
     write_def(RECORDS["control"], members, home, {"control"},
               "The &control group's controls (star%control)")
     write_def(RECORDS["physics"], members, home, {"physics"},
               "The &physics group's controls (star%physics)")
-    names = constants() + [name for _, name, _, _ in members]
+    names = controls_registry.buffer_constants() + [m["spelled"] for m in members]
     lines, line = [], "      public :: "
     for i, name in enumerate(names):
         piece = name + (", " if i < len(names) - 1 else "")
@@ -251,7 +148,7 @@ def main():
             "!   arm_run_copies(s)         last: each run copy from its control.\n"
             "module controls_sync\n"
         )
-        names = [name for _, name, _, _ in members]
+        names = [m["spelled"] for m in members]
         line = "      use controls_buffer, only: "
         for i, name in enumerate(names):
             piece = name + (", " if i < len(names) - 1 else "")
@@ -274,20 +171,22 @@ def main():
             "      s%control = control_group_controls()\n"
             "      s%physics = physics_group_controls()\n"
         )
-        for _, name, _, init in members:
-            if home[name] == "buffer":
-                f.write(f"      {name} = {init}\n")
+        for m in members:
+            name = m["spelled"]
+            if home[m["name"]] == "buffer":
+                f.write(f"      {name} = {m['default']}\n")
             else:
-                f.write(f"      {name} = s%{home[name]}%{name}\n")
+                f.write(f"      {name} = s%{home[m['name']]}%{name}\n")
         f.write(
             "end subroutine seed_controls_buffer\n"
             "\n"
             "subroutine store_controls_to_star(s)\n"
             "      type(star_info), intent(inout) :: s\n"
         )
-        for _, name, _, _ in members:
-            if home[name] != "buffer":
-                f.write(f"      s%{home[name]}%{name} = {name}\n")
+        for m in members:
+            name = m["spelled"]
+            if home[m["name"]] != "buffer":
+                f.write(f"      s%{home[m['name']]}%{name} = {name}\n")
         f.write(
             "end subroutine store_controls_to_star\n"
             "\n"
@@ -297,9 +196,9 @@ def main():
             "subroutine arm_run_copies(s)\n"
             "      type(star_info), intent(inout) :: s\n"
         )
-        for _, name, _, _ in members:
-            if name in copy:
-                f.write(f"      s%{copy[name]} = s%{home[name]}%{name}\n")
+        for m in members:
+            if m["name"] in copy:
+                f.write(f"      s%{copy[m['name']]} = s%{home[m['name']]}%{m['spelled']}\n")
         f.write(
             "end subroutine arm_run_copies\n"
             "\n"

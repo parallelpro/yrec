@@ -1,6 +1,8 @@
 """The controls registry, defaults/controls_registry.tsv: one row per
 control, read by the controls generators (gen_controls_state, gen_inlist,
-gen_controls_dump), tools/upgrade_inlist.py and tools/check_boundaries.py.
+gen_controls_dump), tools/upgrade_inlist.py and tools/check_boundaries.py;
+and the one parser of io/controls_buffer.f90's declarations
+(buffer_members, buffer_constants), which the generators share.
 
 Every control has a code name, a controls_buffer member that holds its one
 default as its initializer and its description as the comment directly
@@ -266,38 +268,64 @@ def _descriptions(text):
     return docs, problems
 
 
-def buffer_members():
-    """controls_buffer's members, in declaration order: dicts with
-    name (lower case), decl (the type spec as written: real(dp),
-    character(len=256), ...), dims (as written: '(max_runs)', or ''),
-    init (the initializer as written, a named constant replaced by its
-    value; None without one), type (the registry's spelling: real(50),
-    string, ...) and doc (the comment directly above the declaration).
-    Named constants are not members. Stops when a declaration declares
-    several members or a member has no description."""
+# The value a member without an initializer starts at (static storage's
+# zero, blank or .false.), which the records' components declare.
+ZERO = {"real": "0.0d0", "integer": "0", "logical": ".false.", "string": "' '"}
+
+
+def _declarations():
+    """(members, constants) of controls_buffer.f90, in declaration order:
+    each a dict (see buffer_members); a constant's has name, spelled and
+    init only"""
     docs, problems = _descriptions(BUFFER.read_text())
     if problems:
         raise SystemExit("\n".join(problems))
-    members, params = [], {}
+    members, constants, params = [], [], {}
     for line in _joined(BUFFER.read_text()):
         m = _DECL_RE.match(line)
         if not m:
             continue
-        decl = re.sub(r"\s+", "", m.group(1).lower()).replace("doubleprecision", "double precision")
+        decl = re.sub(r"\s+", "", m.group(1).lower()).replace("doubleprecision", "real(dp)")
         constant = "parameter" in (m.group(2) or "").lower()
         for ent in _entities(m.group(3)):
             em = re.match(r"^(\w+)\s*(\([^)]*\))?\s*(?:=\s*(.*))?$", ent, re.S)
             if not em:
                 raise SystemExit(f"controls_buffer.f90: cannot parse {ent!r}")
-            name, dims, init = em.group(1).lower(), em.group(2) or "", em.group(3)
+            spelled, dims, init = em.group(1), (em.group(2) or "").replace(" ", ""), em.group(3)
             if constant:
-                params[name] = init.strip()
+                params[spelled.lower()] = init.strip()
+                constants.append(dict(name=spelled.lower(), spelled=spelled, init=init.strip()))
                 continue
             if init is not None:
                 init = params.get(init.strip().lower(), init.strip())
-            members.append(dict(name=name, decl=decl, dims=dims.replace(" ", ""), init=init,
-                                type=type_of(decl, dims), doc=docs.get(name, "")))
-    return members
+            kind = type_of(decl, dims)
+            members.append(dict(name=spelled.lower(), spelled=spelled, decl=decl, dims=dims, init=init,
+                                default=init if init is not None else ZERO[kind.split("(")[0]],
+                                type=kind, doc=docs.get(spelled.lower(), "")))
+    if not members:
+        raise SystemExit("controls_buffer.f90: no members parsed")
+    return members, constants
+
+
+def buffer_members():
+    """controls_buffer's members, in declaration order: dicts with
+    name (lower case), spelled (as declared: G_cgs), decl (the type spec,
+    as the records declare it: real(dp), integer, logical,
+    character(len=256)), dims (as written, blanks dropped: '(max_runs)',
+    or ''), init (the initializer as written, a named constant replaced by
+    its value; None without one), default (init, or the zero, blank or
+    .false. a member without one starts at), type (the registry's
+    spelling: real(50), string, ...) and doc (the comment directly above
+    the declaration). Named constants are not members. Stops when a
+    declaration declares several members or a member has no
+    description."""
+    return _declarations()[0]
+
+
+def buffer_constants():
+    """controls_buffer's named constants, in declaration order, as declared
+    (li6_reference_xs, ...): public by name with the members"""
+    return [c["spelled"] for c in _declarations()[1]]
 
 
 # The F77 routines' names (defaults/file_rename_map.tsv's subroutine

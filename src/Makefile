@@ -74,6 +74,34 @@ io/default_columns.inc: defaults/history_columns.list \
                         defaults/profile_columns.list \
                         tools/gen_default_columns.py
 	python3 tools/gen_default_columns.py
+
+# The controls' generated files are GENERATED from io/controls_buffer.f90
+# (each control's declaration, default and description) and the registry
+# defaults/controls_registry.tsv (its names, group, home, run copy):
+# make reruns the three controls generators when either, or what they
+# read, changes. A generator rewrites only the files whose text changes
+# (tools/generated_files.py), so only their users recompile. The files
+# stay committed, and test_generated_files.py checks them (--check). The
+# stamp .controls_generated records the last run.
+CONTROLS_INPUTS := io/controls_buffer.f90 defaults/controls_registry.tsv \
+                   io/legacy_controls.f90 state/control_slots.f90 \
+                   state/reaction_layout.f90 defaults/file_rename_map.tsv \
+                   tools/controls_registry.py tools/generated_files.py \
+                   tools/gen_controls_state.py tools/gen_inlist.py \
+                   tools/gen_controls_dump.py
+CONTROLS_GENERATED := state/control_group_def.inc state/physics_group_def.inc \
+                      io/controls_sync.f90 io/controls_buffer_public.inc \
+                      io/inlist_decl.inc io/inlist_read.inc io/legacy_use.inc \
+                      io/legacy_decl.inc io/legacy_defaults.inc \
+                      io/legacy_to_code.inc io/expand_paths.inc \
+                      io/test/controls_dump.inc defaults/control.defaults \
+                      defaults/physics.defaults defaults/controls_registry.md
+.controls_generated: $(CONTROLS_INPUTS)
+	python3 tools/gen_controls_state.py
+	python3 tools/gen_inlist.py
+	python3 tools/gen_controls_dump.py
+	@touch $@
+$(CONTROLS_GENERATED): .controls_generated ;
 MODULE_OBJS := $(patsubst %.f90,%.o,$(MODULE_SRCS))
 
 $(filter-out $(MODULE_OBJS),$(OBJS)): | $(MODULE_OBJS)
@@ -414,7 +442,7 @@ lib: $(SHLIB)
 # star%ctrl%report_solver_diagnostics this way).
 clean:
 	@rm -f $(NAME)
-	@rm -f *.mod $(HASH_STAMP)
+	@rm -f *.mod $(HASH_STAMP) .controls_generated
 	@rm -f $(OBJS)
 	@rm -f $(LIBS)
 	@rm -f libyrec.dylib libyrec.so
