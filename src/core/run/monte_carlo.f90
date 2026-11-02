@@ -10,8 +10,10 @@
 !    read from the sample file (once, from prepare_run);
 !  * begin_monte_carlo_run -- the start of every Monte-Carlo run, the
 !    per-run hook: every run copy of a control re-armed from its control,
-!    then the run's sampled values (apply_monte_carlo_parameters); a value
-!    the run changes per Monte-Carlo run is set here;
+!    the state the previous run left that the next would read cleared
+!    (clear_previous_run_state), then the run's sampled values
+!    (apply_monte_carlo_parameters); a value the run changes per
+!    Monte-Carlo run is set here;
 !  * write_run_summaries -- the end-of-run bookkeeping, including the
 !    Monte-Carlo model summary (write_monte_carlo_model, legacy
 !    wrtmonte), which reads star% directly.
@@ -90,10 +92,13 @@ end subroutine set_monte_carlo_range
 ! and mass-change latches, the atmosphere the surface boundary switched
 ! to, the core extension's factor. The run range, re-armed with them, is
 ! derived again as setup_monte_carlo_runs derived it (the loop's bounds
-! were fixed when it began). Then the run's samples are applied
-! (apply_monte_carlo_parameters). On the first run the re-arm changes
-! nothing: no run copy but the range is written between the controls
-! read and the loop. A value the run changes per Monte-Carlo run is a
+! were fixed when it began). The state the previous run left on the star
+! that the next would read before writing it is cleared
+! (clear_previous_run_state). Then the run's samples are applied
+! (apply_monte_carlo_parameters). On the first run the re-arm and the
+! clearing change nothing: no run copy but the range is written between
+! the controls read and the loop, and the cleared state is still the
+! template star's. A value the run changes per Monte-Carlo run is a
 ! star member of the Monte-Carlo runs class, set here from the run's
 ! sample (as settling_z_factor_in_use); state/README.md, "Add a value
 ! the run changes per Monte-Carlo run".
@@ -107,9 +112,33 @@ subroutine begin_monte_carlo_run(s, monte_carlo_run_number, &
       double precision, intent(out) :: age_scale_factor
       call arm_run_copies(s)
       call set_monte_carlo_range(s)
+      call clear_previous_run_state(s)
       call apply_monte_carlo_parameters(s, monte_carlo_run_number, &
            age_scale_factor)
 end subroutine begin_monte_carlo_run
+
+! ---------------------------------------------------------------
+! The state a run leaves on the star, other than the run copies, that
+! the next run would read before writing it, put back to its value at
+! the start of the first run (the template star's zero): the
+! start-of-step deuterium rates. compute_burn_rates stores them only in
+! the zones above the burning cutoff (and while there is deuterium to
+! burn), and burn_deuterium averages them over a mixed region, the
+! zones beyond the cutoff included, so the next run's first steps would
+! take the previous run's rates there (docs/bug_sweep.md M169); and the
+! settling routines' report flag, so that a run that ended with settling
+! suspended does not make the next one print "SETTLING RESUMED" for a
+! suspension it never reported.
+! test_monte_carlo.py runs two Monte-Carlo runs of identical samples,
+! which must be the same run: state that carries over fails it.
+!   star reads: none
+!   star writes: deuterium_burning_rate_start,
+!     settling_suspended_reported
+subroutine clear_previous_run_state(s)
+      type(star_info), intent(inout) :: s
+      s%deuterium_burning_rate_start = 0.0d0
+      s%settling_suspended_reported = .false.
+end subroutine clear_previous_run_state
 
 ! ---------------------------------------------------------------
 ! For a Monte-Carlo run, apply the current run's sampled values: the

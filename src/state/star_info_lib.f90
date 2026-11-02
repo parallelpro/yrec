@@ -207,8 +207,10 @@ module star_info_lib
 ! the solar luminosity with its two logarithms. Each run starts with
 ! monte_carlo's begin_monte_carlo_run, the per-run hook (the first call
 ! in run_yrec's Monte-Carlo loop): it re-arms every run copy of a control
-! from its control, so each run starts from the deck's values, and then
-! sets these values from the run's sample. Without Monte Carlo they keep
+! from its control, so each run starts from the deck's values, clears the
+! state the previous run left that the next would read
+! (clear_previous_run_state), and then sets these values from the run's
+! sample. Without Monte Carlo they keep
 ! the controls' values (the solar luminosity as run_setup copies it).
 ! Valid: the range and the samples from prepare_run on; a run's values
 ! from its begin_monte_carlo_run to its end.
@@ -432,8 +434,9 @@ module star_info_lib
             character(len=96) :: termination_reason = 'model budget exhausted'
 ! the settling routines have reported that settling is suspended (a fully
 ! convective model, or no hydrogen or helium to settle) [logical];
-! composition_step, mid_timestep_model. The message prints once per
-! suspension; "SETTLING RESUMED" clears it.
+! composition_step, mid_timestep_model, monte_carlo. The message prints
+! once per suspension; "SETTLING RESUMED" clears it, and so does the
+! start of every Monte-Carlo run (begin_monte_carlo_run).
             logical :: settling_suspended_reported = .false.
 ! helium settles in this run card [logical]; run_driver, composition_step,
 ! mid_timestep_model. Armed from the control physics%diffuse_helium_active
@@ -831,7 +834,10 @@ module star_info_lib
 ! evolve_rotation
             real(dp) :: rate_be9_start(json)
 ! deuterium burning rate at the start of the step, stored by the
-! composition step's predictor pass [1/s]; burn_step, rezoning
+! composition step's predictor pass [1/s]; burn_step, rezoning,
+! monte_carlo. Stored above the burning cutoff only, so the zones beyond
+! it keep their last stored (or regridded) value; zero at the start of
+! every Monte-Carlo run (begin_monte_carlo_run, M169).
             real(dp) :: deuterium_burning_rate_start(json)
 ! envelope-overshoot depth alpha_ov H_P below the surface convection zone
 ! at the start of the step [cm]; step_driver, evolve_rotation
