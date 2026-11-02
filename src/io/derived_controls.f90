@@ -20,7 +20,7 @@ module derived_controls
            c12_to_c13_ratio, change_cno_mixture_active, &
            change_isotope_ratios_active, change_species_name, cno_mixture_name, &
            coulomb_log_choice, diffuse_helium_active, diffuse_lithium, &
-           envelope_print_points, initial_b10_fraction, initial_b11_fraction, &
+           initial_b10_fraction, initial_b11_fraction, &
            initial_be9_fraction, initial_h2_fraction, initial_he3_fraction, &
            initial_li6_fraction, initial_li7_fraction, isotope_change_mode, &
            isotope_mixture_name, li6_rate_scale, li6_rate_value, li6_reference_xs, &
@@ -95,7 +95,6 @@ subroutine derive_controls
       call select_cno_mixture
       call select_isotope_mixture
       call derive_diffusion_switches
-      if (envelope_print_points <= 0) envelope_print_points = 9999
       if (pulse_gyre_interval < 0) pulse_gyre_interval = 0
       call write_run_log_header
 end subroutine derive_controls

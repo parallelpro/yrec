@@ -298,7 +298,7 @@ module controls_buffer
 ! Write the interior-only GYRE file every this many models (0 = off)
       integer :: pulse_gyre_interval = 0
 ! Inert: read and used nowhere (legacy NPENV, an envelope print count, whose
-! one use in the F77 was commented out); the read makes 0 or less into 9999
+! one use in the F77 was commented out)
       integer :: envelope_print_points = 0
 
 ! ---- The opacity tables: which families, and their metallicities

@@ -163,8 +163,7 @@ def test_pristine_controls_are_the_defaults(tmp_path):
     its controls_buffer initializer, and both readers start from it
     (defaults/*.defaults document the same initializers). The exceptions
     are not defaults: the members the read derives (the registry's status
-    derived), envelope_print_points (the read makes 0 into 9999), and the
-    starting model the test deck names."""
+    derived) and the starting model the test deck names."""
     if not BINARY.exists():
         pytest.skip("src/test_controls not built (run `make tests` in src/)")
     rows = [l.split("\t") for l in (REPO / "src" / "defaults" / "controls_registry.tsv")
@@ -172,7 +171,7 @@ def test_pristine_controls_are_the_defaults(tmp_path):
     cols = rows[0]
     derived = {dict(zip(cols, r))["canonical"].lower() for r in rows[1:]
                if dict(zip(cols, r))["status"] == "derived"}
-    derived |= {"envelope_print_points", "first_model_file"}
+    derived |= {"first_model_file"}
     deck = tmp_path / "empty.inlist"
     deck.write_text("&control\n first_model_file = 'empty.inlist'\n/\n&physics\n/\n")
     env = dict(os.environ, YREC_OUTPUT=str(tmp_path))

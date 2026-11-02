@@ -85,7 +85,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `use_opal95_tables` | `lopal95` | `use_opal95_tables` | control | - | run | logical | `.false.` | live | Use the OPAL 1995 / OP atomic opacity tables (opal95_opacity_table_file) |
 | `use_kurucz90_tables` | `lkur90` | `use_kurucz90_tables` | control | - | run | logical | `.false.` | live | Use the Kurucz 1990 low-temperature opacity tables |
 | `use_alex95_tables` | `lalex95` | `use_alex95_tables` | control | - | run | logical | `.false.` | live | Use the Alexander & Ferguson 1994 low-temperature opacity tables (alex95_table_z_list) |
-| `envelope_print_points` | `npenv` | `envelope_print_points` | buffer | - | read | integer | `0` | live | Inert: read and used nowhere (legacy NPENV, an envelope print count, whose one use in the F77 was commented out); the read makes 0 or less into 9999 |
+| `envelope_print_points` | `npenv` | `envelope_print_points` | buffer | - | none | integer | `0` | live | Inert: read and used nowhere (legacy NPENV, an envelope print count, whose one use in the F77 was commented out) |
 | `num_runs` | `numrun` | `num_runs` | control | `num_cards` | run | integer | `1` | live | The number of runs (kind cards): each rescales a model, evolves it, or both |
 | `max_model_number` | `nmodls` | `num_models` | control | `card_num_models` | run | integer(max_runs) | `0` | live | Per run: the number of models to compute (the run stops earlier if a stop condition is met) |
 | `alex95_opacity_table_files` (`alex95_table_z_list`) | `opecalex` | `alex95_table_paths` | control | - | run | path(7) | `''` | live | The seven Alexander & Ferguson 1994 low-temperature opacity table files |

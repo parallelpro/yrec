@@ -165,7 +165,6 @@ buffer%rescale_x(1) =  7.19620000000000037E-001
 buffer%rescale_z(1) =  1.64919999999999997E-002
 buffer%rescale_core_mass(1) = -8.00000000000000044E-001
 buffer%surface_composition_file = "{YREC_OUTPUT}/cm_massloss_const.excomp"
-buffer%envelope_print_points = 9999
 buffer%opal2006_eos_table_path = "{YREC_INPUT}/eos/opal2006/EOSOPAL06Z0.016492"
 buffer%use_new_rate_variables = T
 buffer%use_structure_time_limits = T

@@ -217,7 +217,7 @@
       ! (legacy name: lalex95)
       use_alex95_tables = .false.
 
-      ! Inert: read and used nowhere (legacy NPENV, an envelope print count, whose one use in the F77 was commented out); the read makes 0 or less into 9999
+      ! Inert: read and used nowhere (legacy NPENV, an envelope print count, whose one use in the F77 was commented out)
       ! (legacy name: npenv)
       envelope_print_points = 0
 
