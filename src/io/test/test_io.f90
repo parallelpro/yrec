@@ -16,6 +16,11 @@
 !                '/', blank for a bare file name;
 !   pulse format pulse_format_code: GYRE, FGONG and GSM in any case and
 !                with blanks around them; anything else is unknown;
+!   fields       integer_field: a number that fits is right-justified in
+!                its width, as an I<width> edit writes it; a wider one
+!                (a million models in a field of 6) is written in full
+!                after a blank; interior_gyre_path: the model number
+!                zero-padded to five digits, in full from 100000 on;
 !   columns      parse_columns on a four-column table: a blank file name
 !                selects the default names, in their order; a columns
 !                file selects its names in file order, past '!' comments
@@ -105,11 +110,11 @@ program test_io
       use run_messages, only: run_log_unit, terminal_unit
       use run_files, only: expand_value, directory_of, copy_inlists_used, isochrone_unit
       use yrec_output, only: pulse_format_code, unknown_pulse_format, &
-           pulse_gyre, pulse_fgong, pulse_gsm, output_run_header
+           pulse_gyre, pulse_fgong, pulse_gsm, output_run_header, interior_gyre_path
       use run_cards, only: card_evolve
       use output_columns, only: output_column, real_column, integer_column, &
            parse_columns, max_cols, column_name_len, hist_default_names, &
-           prof_default_names
+           prof_default_names, integer_field
       use controls_reader, only: nml_file_has_group
       use model_files, only: model_file_header, write_mod_model, read_mod_model, &
            read_yrec7, read_model2, read_model_format_tag
@@ -205,6 +210,7 @@ program test_io
       call paths_check()
       call directories_check()
       call pulse_format_check()
+      call fields_check()
       call columns_check()
       call groups_check()
       call mod_round_trip_check()
@@ -392,6 +398,25 @@ subroutine directories_check()
       call report("directories: blank for a bare file name", &
            directory_of('run.log') == ' ' .and. directory_of('') == '')
 end subroutine directories_check
+
+! ---------------------------------------------------------------
+subroutine fields_check()
+      character(len=6) :: i6
+      character(len=3) :: i3
+
+      write(i6,'(i6)') 400
+      write(i3,'(i3)') -12
+      call report("fields: a number that fits is an I<width> field", &
+           integer_field(400, 6) == i6 .and. integer_field(-12, 3) == i3 .and. &
+           integer_field(999999, 6) == '999999')
+      call report("fields: a wider one in full after a blank, no asterisks", &
+           integer_field(1000000, 6) == ' 1000000' .and. integer_field(-123, 3) == ' -123')
+      call report("fields: the interior GYRE file's model number, 5 digits or all", &
+           interior_gyre_path('out/', 'profile', 42) == 'out/profile00042.data.GYRE' .and. &
+           interior_gyre_path('', 'p', 99999) == 'p99999.data.GYRE' .and. &
+           interior_gyre_path('out/', 'profile', 123456) == 'out/profile123456.data.GYRE' .and. &
+           interior_gyre_path('d/', 'x', -3) == 'd/x-3.data.GYRE')
+end subroutine fields_check
 
 ! ---------------------------------------------------------------
 subroutine pulse_format_check()

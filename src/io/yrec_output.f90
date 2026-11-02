@@ -33,13 +33,14 @@ module yrec_output
       use pulsation_output, only: write_fgong_pulse, write_gsm_pulse, &
            write_gyre_pulse, gsm_supported
       use model_files, only: write_mod_model
+      use output_columns, only: integer_field
       use math_lib
       implicit none
       private
       public :: output_state, output_open, output_close, output_run_header, &
            output_write_model, output_final_model_line
       public :: pulse_format_code, unknown_pulse_format, pulse_gyre, pulse_fgong, &
-           pulse_gsm
+           pulse_gsm, interior_gyre_path
 
 ! The pulsation file formats pulse_format names (case-insensitive);
 ! unknown_pulse_format for any other name.
@@ -158,8 +159,9 @@ subroutine output_write_model(s, output, ierr)
 ! the progress line (every terminal_interval models)
       call log_model_line(s, output%progress)
 
-! isochrone record: model no., age (yr), L (erg/s), R (cm), Teff (K),
-! g (cm/s**2), Ycenter, He-core mass (g)
+! isochrone record: model no. (a field of 5, wider from model 100000 on),
+! age (yr), L (erg/s), R (cm), Teff (K), g (cm/s**2), Ycenter, He-core
+! mass (g)
       if (s%control%isochrone_output_active) then
          age_yr = s%age_gyr*1.0D9
          luminosity_erg_s = exp10(s%log_L_lsun)*s%solar_luminosity_cgs
@@ -172,7 +174,7 @@ subroutine output_write_model(s, output, ierr)
          else
             he_core_mass_grams = 0.0D0
          end if
-         write(isochrone_unit,'(1X, I5, 1P7E17.8)',iostat=ios,iomsg=msg) s%model_number, &
+         write(isochrone_unit,'(1X, A, 1P7E17.8)',iostat=ios,iomsg=msg) integer_field(s%model_number, 5), &
               age_yr,luminosity_erg_s,radius_cm,teff_k,gravity_cgs, &
               ycenter_local,he_core_mass_grams
          call check_isochrone_write(ios, msg, ierr)
@@ -208,12 +210,11 @@ subroutine output_write_model(s, output, ierr)
 end subroutine output_write_model
 
 ! ---------------------------------------------------------------
-! The interior-only GYRE file, profile<model>.data.GYRE (the model
-! number zero-padded to five digits, with the profiles' prefix and
-! directory): the stitched model's interior points, which are the first
-! nz of its point set (centre to the fitting point), with the outermost
-! interior shell's mass, radius and luminosity as M_star, R_star and
-! L_star.
+! The interior-only GYRE file, interior_gyre_path's
+! profile<model>.data.GYRE: the stitched model's interior points, which
+! are the first nz of its point set (centre to the fitting point), with
+! the outermost interior shell's mass, radius and luminosity as M_star,
+! R_star and L_star.
 !   star reads: model_number, nz, physics%profile_data_prefix, stitched
 !   star writes: none
 subroutine write_interior_gyre(s, output, ierr)
@@ -222,14 +223,27 @@ subroutine write_interior_gyre(s, output, ierr)
       type(star_info), intent(in) :: s
       type(output_state), intent(in) :: output
       integer, intent(inout) :: ierr
-      character(len=5) :: model_suffix
       character(len=320) :: path
 
-      write(model_suffix,'(I5.5)') s%model_number
-      path = trim(output%out_dir) // trim(s%physics%profile_data_prefix) // model_suffix // '.data.GYRE'
+      path = interior_gyre_path(output%out_dir, s%physics%profile_data_prefix, s%model_number)
       call write_gyre_pulse(s%nz, s%stitched%pulse(:,1:s%nz), s%stitched%pulse(ipul_m,s%nz), &
            s%stitched%pulse(ipul_r,s%nz), s%stitched%pulse(ipul_L,s%nz), path, ierr)
 end subroutine write_interior_gyre
+
+! ---------------------------------------------------------------
+! The interior GYRE file's path: the output directory, the profiles'
+! prefix, the model number zero-padded to five digits (as it is written
+! in full from model 100000 on, and for a negative one), '.data.GYRE'.
+pure function interior_gyre_path(out_dir, prefix, model_number) result(path)
+      character(len=*), intent(in) :: out_dir, prefix
+      integer, intent(in) :: model_number
+      character(len=:), allocatable :: path
+      character(len=24) :: model_text
+
+      write(model_text,'(i0)') model_number
+      if (model_number >= 0 .and. len_trim(model_text) < 5) write(model_text,'(i5.5)') model_number
+      path = trim(out_dir) // trim(prefix) // trim(model_text) // '.data.GYRE'
+end function interior_gyre_path
 
 ! ---------------------------------------------------------------
 ! The end of a card: the progress line of its last converged model,
@@ -322,23 +336,26 @@ subroutine output_run_header(s, total_mass_msun, ierr)
 
 ! the card's line: its kind, the rescale targets, the mixing length and
 ! the number of models
+! (the number of models a field of 6, wider when it does not fit)
       character(len=*), parameter :: evolve_format = &
-           "(/,1x,'card',i3,' (evolve):  mixing length =',f8.6,'  models =',i6)", &
+           "(/,1x,'card',i3,' (evolve):  mixing length =',f8.6,'  models =',a)", &
            rescale_format = "(/,1x,'card',i3,' (rescale):         X =',f8.6," // &
-           "'  Z =',f8.6,'  mixing length =',f8.6,'  models =',i6)", &
+           "'  Z =',f8.6,'  mixing length =',f8.6,'  models =',a)", &
            rescale_and_evolve_format = "(/,1x,'card',i3,' (rescale+evolve):  X =',f8.6," // &
-           "'  Z =',f8.6,'  mixing length =',f8.6,'  models =',i6)"
+           "'  Z =',f8.6,'  mixing length =',f8.6,'  models =',a)"
 
       select case (s%card_kind(s%current_card))
       case (card_evolve)
          write(terminal_unit, evolve_format) s%current_card, &
-              s%mixing_length_alpha, s%card_num_models(s%current_card)
+              s%mixing_length_alpha, integer_field(s%card_num_models(s%current_card), 6)
       case (card_rescale)
          write(terminal_unit, rescale_format) s%current_card, s%current_card_envelope_x, &
-              s%current_card_envelope_z, s%mixing_length_alpha, s%card_num_models(s%current_card)
+              s%current_card_envelope_z, s%mixing_length_alpha, &
+              integer_field(s%card_num_models(s%current_card), 6)
       case (card_rescale_and_evolve)
          write(terminal_unit, rescale_and_evolve_format) s%current_card, s%current_card_envelope_x, &
-              s%current_card_envelope_z, s%mixing_length_alpha, s%card_num_models(s%current_card)
+              s%current_card_envelope_z, s%mixing_length_alpha, &
+              integer_field(s%card_num_models(s%current_card), 6)
       end select
 
 ! the isochrone file's card header: the mass (g), X, Z, the mixing

@@ -7,6 +7,7 @@
 module run_cards
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use run_messages, only: terminal_unit, log_line
+      use output_columns, only: integer_field
       use controls_buffer, only: num_runs, run_kind, num_models, target_end_age, &
            timestep_override, central_deuterium_stop, central_hydrogen_stop, &
            central_helium_stop, rescale_mass, rescale_x, rescale_z, rescale_core_mass, &
@@ -24,19 +25,21 @@ module run_cards
            card_rescale_and_evolve = 3
 
 ! The run plan's lines: a card's kind and its starting model, a rescaling
-! card's targets, and an evolving card's stops.
+! card's targets, and an evolving card's stops. A count is written as
+! integer_field writes it (a field of 6, or of 3 for the relaxation's
+! models, wider when it does not fit), into the a edit.
       character(len=*), parameter :: &
            evolve_from_start_format = &
-           "(1x,'card',i3,': evolve up to',i6,' models from the starting model')", &
+           "(1x,'card',i3,': evolve up to',a,' models from the starting model')", &
            evolve_from_previous_format = &
-           "(1x,'card',i3,': evolve up to',i6,' models from the previous card''s model')", &
+           "(1x,'card',i3,': evolve up to',a,' models from the previous card''s model')", &
            rescale_start_format = "(1x,'card',i3,': rescale the starting model')", &
            rescale_previous_format = "(1x,'card',i3,': rescale the previous card''s model')", &
            rescale_evolve_start_format = &
            "(1x,'card',i3,': rescale and evolve the starting model')", &
            rescale_evolve_previous_format = &
            "(1x,'card',i3,': rescale and evolve the previous card''s model')", &
-           targets_format = "(9x,'relax for',i3,' models; targets (0 or negative = keep " // &
+           targets_format = "(9x,'relax for',a,' models; targets (0 or negative = keep " // &
            "current):','  M =',f9.6,'  X =',f9.6,'  Z =',f9.6,'  core mass =',f10.6)", &
            stops_format = "(9x,'stop conditions (0 = unused): age =',es9.2,' yr   fixed " // &
            "dt =',es9.2,' yr   central: D =',es10.3,'  X =',es10.3,'  Y =',es10.3)"
@@ -101,9 +104,9 @@ subroutine echo_card(n)
       case (card_evolve)
          if (num_models(n) <= 0) return
          if (first_call_flag(n)) then
-            write(line,evolve_from_start_format) n, num_models(n)
+            write(line,evolve_from_start_format) n, integer_field(num_models(n), 6)
          else
-            write(line,evolve_from_previous_format) n, num_models(n)
+            write(line,evolve_from_previous_format) n, integer_field(num_models(n), 6)
          end if
       case (card_rescale)
          if (num_models(n) <= 0) return
@@ -123,7 +126,7 @@ subroutine echo_card(n)
       end select
       call echo(line)
       if (rescales(n)) then
-         write(line,targets_format) num_models(n), (rescale_params(i,n), i = 1,4)
+         write(line,targets_format) integer_field(num_models(n), 3), (rescale_params(i,n), i = 1,4)
          call echo(line)
       end if
       if (evolves(n) .and. (end_age_stop_active(n) .or. timestep_override_active(n))) then

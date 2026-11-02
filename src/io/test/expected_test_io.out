@@ -9,6 +9,9 @@ directories: blank for a bare file name                                ok
 pulse format: GYRE, FGONG, GSM in any case                             ok
 pulse format: leading and trailing blanks ignored                      ok
 pulse format: any other name unknown                                   ok
+fields: a number that fits is an I<width> field                        ok
+fields: a wider one in full after a blank, no asterisks                ok
+fields: the interior GYRE file's model number, 5 digits or all         ok
 columns: a blank file name selects the defaults, in order              ok
 columns: a file selects its names in order, past comments              ok
 columns: an unknown name is an error                                   ok

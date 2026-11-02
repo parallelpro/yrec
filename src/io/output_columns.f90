@@ -13,6 +13,11 @@
 ! authoritative defaults/{history,profile}_columns.list (uncommented
 ! names, file order) by tools/gen_default_columns.py -- edit a .list
 ! and rebuild (make reruns the generator) to change the defaults.
+!
+! integer_field is the text fields' integers (the run plan's counts, the
+! isochrone record's model number): an I<width> field when the number
+! fits, so the files keep their layout, and wider when it does not,
+! where an I<width> edit would write asterisks.
 module output_columns
       implicit none
       private
@@ -22,6 +27,7 @@ module output_columns
            column_names_format
       public :: hist_default_names, n_hist_default
       public :: prof_default_names, n_prof_default
+      public :: integer_field
 
       integer, parameter :: max_cols = 128
 ! the longest column name (gen_default_columns.py's WIDTH)
@@ -48,6 +54,22 @@ module output_columns
       include 'default_columns.inc'
 
 contains
+
+! ---------------------------------------------------------------
+! n as an I<width> edit writes it, right-justified in width columns, or,
+! when it does not fit, after one blank in as many columns as it needs.
+pure function integer_field(n, width) result(text)
+      integer, intent(in) :: n, width
+      character(len=:), allocatable :: text
+      character(len=24) :: digits
+
+      write(digits,'(i0)') n
+      if (len_trim(digits) <= width) then
+         text = repeat(' ', width - len_trim(digits)) // trim(digits)
+      else
+         text = ' ' // trim(digits)
+      end if
+end function integer_field
 
 ! ---------------------------------------------------------------
 subroutine parse_columns(fname, columns, default_names, sel, nsel, &
