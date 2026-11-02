@@ -52,6 +52,38 @@ contains
 ! rotation geometry); the
 ! single-point physics in set_new_last_shell_convection uses
 ! shell_physics' log10_* names.
+!   star reads: card_from_starting_model, card_kind,
+!     control%c12_to_c13_ratio, control%change_cno_mixture_active,
+!     control%change_isotope_ratios_active,
+!     control%initial_be9_fraction, control%initial_h2_fraction,
+!     control%initial_he3_fraction, control%initial_li6_fraction,
+!     control%initial_li7_fraction, control%o16_to_o18_ratio,
+!     control%target_carbon_cno_fraction,
+!     control%target_nitrogen_cno_fraction,
+!     control%target_oxygen_cno_fraction, convective_turnover_timescale,
+!     envelope_cz_bottom_index, fit_point_move_requested,
+!     log10_solar_luminosity, log_L_lsun, log_Teff, mixing_length_alpha,
+!     model_number, photosphere_logP, physics%chi_grid_scale,
+!     physics%extend_core_inward, physics%initial_omega,
+!     physics%mixture_weights_seed, physics%rotation_active,
+!     physics%set_initial_omega, physics%spot_filling_factor,
+!     physics%spot_temp_contrast, physics%use_extended_composition
+!   star writes: am_transport_convective_flag, convective_flag,
+!     convective_turnover_timescale_prev, core_mass_reduction, dm,
+!     env_points, envelope_he3_fraction, envelope_helium_fraction,
+!     envelope_hydrogen_fraction, envelope_inverse_atomic_weight,
+!     envelope_metal_fraction, envelope_metals_no_cno,
+!     envelope_number_fractions, envelope_overshoot_bottom_index,
+!     envelope_overshoot_top_index, envelope_radius_rsun, eta_squared,
+!     fp_rot, ft_rot, i_rot, j_rot, kinetic_energy_rot,
+!     log_fit_point_mass_fraction, log_mass, log_Teff_start,
+!     log_total_mass, logP, logP_start, logR, logR_start, logRho, logT,
+!     logT_start, luminosity_lsun, luminosity_lsun_start, m,
+!     mean_gravity, mean_radius, num_core_points_added, nz, omega,
+!     omega_start, photosphere_logP_prev,
+!     requested_log_fit_point_mass_fraction, star_mass,
+!     substep_time_fraction, surface_hydrogen_fraction,
+!     surface_luminosity_lsun_start, surface_metal_fraction, xa
 subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
      triangle_orientation, ikut_flag, stored_vertex_index, model_failed_flag, &
      envelope_recomputed_flag, run_index, &

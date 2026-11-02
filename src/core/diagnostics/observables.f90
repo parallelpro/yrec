@@ -50,6 +50,8 @@ contains
 ! ---------------------------------------------------------------
 ! Fills every per-model observable on star%, theme by theme, in the
 ! order the header explains.
+!   star reads: none
+!   star writes: none
 subroutine compute_observables(s, ierr)
       type(star_info), intent(inout) :: s
       integer, intent(out) :: ierr
@@ -114,6 +116,8 @@ end subroutine shell_masses_from_log_mass
 ! L(nz)/sum of channels (structure_equations' luminosity_channel_sum,
 ! with the extra energy sources' channel when there are any). Skipped
 ! during the helium flash. (This changes the model.)
+!   star reads: luminosity_lsun, nz, physics%helium_flash_active
+!   star writes: luminosity_breakdown_lsun
 subroutine renormalize_luminosity_breakdown(s)
       type(star_info), intent(inout) :: s
       double precision :: total_luminosity_sum, temp_value
@@ -136,6 +140,8 @@ end subroutine renormalize_luminosity_breakdown
 ! ---------------------------------------------------------------
 ! The mass of the convective core in Msun, m at its top zone (zero
 ! without a convective core).
+!   star reads: core_cz_top_index, m, solar_mass_cgs
+!   star writes: core_cz_mass_msun
 subroutine locate_core_cz(s)
       type(star_info), intent(inout) :: s
       if(s%core_cz_top_index.gt.1) then
@@ -149,6 +155,10 @@ end subroutine locate_core_cz
 ! The central P and T, extrapolated from the first zone, and the
 ! central density, beta and electron degeneracy parameter eta from the
 ! eos there. Stores star%central_*.
+!   star reads: gradT, log_mass, logP, logRho, logT, xa
+!   star writes: central_beta, central_degeneracy_eta,
+!     central_log10_density, central_log10_pressure,
+!     central_log10_temperature, central_saha_state
 subroutine compute_central_conditions(s, ierr)
       use math_lib
       type(star_info), intent(inout) :: s
@@ -200,6 +210,13 @@ end subroutine compute_central_conditions
 ! envelope_cz_temperature, _density, _pressure and _opacity. A fully
 ! convective star takes the central values (so compute_central_conditions
 ! runs first); without a surface convection zone all are zero.
+!   star reads: central_log10_density, central_log10_pressure,
+!     central_log10_temperature, envelope_cz_bottom_index, grada, gradr,
+!     log10_solar_radius, log_total_mass, logP, logR, logRho, logT, m,
+!     nz, opacity_zone, solar_mass_cgs, star_mass
+!   star writes: envelope_cz_density, envelope_cz_opacity,
+!     envelope_cz_pressure, envelope_cz_temperature, envelope_mass_msun,
+!     envelope_radius_rsun
 subroutine locate_surface_cz_base(s)
       use math_lib
       use convection_geometry, only: cz_base_fraction
@@ -258,6 +275,9 @@ end subroutine locate_surface_cz_base
 ! to their _prev versions, which the mid-step consumers (the wind, the
 ! deuterium limiter) read during the next step. compute_turnover_timescale
 ! also overwrites star%envelope_radius_rsun with its own base radius.
+!   star reads: convective_turnover_timescale, photosphere_logP
+!   star writes: convective_turnover_timescale_prev,
+!     envelope_radius_rsun, photosphere_logP_prev
 subroutine refresh_turnover_timescale(s, ierr)
       type(star_info), intent(inout) :: s
       integer, intent(out) :: ierr
@@ -270,6 +290,9 @@ end subroutine refresh_turnover_timescale
 ! ---------------------------------------------------------------
 ! The surface radius from L = 4 pi R^2 sigma Teff^4, log g = log G +
 ! log M - 2 log R (CGS), then log_R_surface_rsun = log10(R/Rsun).
+!   star reads: log10_solar_luminosity, log10_solar_radius, log_L_lsun,
+!     log_Teff, log_total_mass
+!   star writes: log_g_surface, log_R_surface_rsun
 subroutine compute_surface_globals(s)
       type(star_info), intent(inout) :: s
       s%log_R_surface_rsun = log10_radius_from_l_teff(s%log_L_lsun, s%log_Teff, &
@@ -288,6 +311,10 @@ end subroutine compute_surface_globals
 ! with log g_sun from the run's own solar constants, so that
 ! Monte-Carlo-scaled solar values stay self-consistent; then the
 ! asymptotic delta_nu_uhz and delta_Pg from the stitched model.
+!   star reads: log_g_surface, log_R_surface_rsun, log_Teff,
+!     physics%delta_nu_sun, physics%nu_max_sun, physics%Teff_sun,
+!     solar_mass_cgs, solar_radius_cgs, star_mass, stitched
+!   star writes: delta_nu_rho_uhz, delta_nu_uhz, delta_Pg, nu_max_uhz
 subroutine compute_seismic_observables(s)
       use math_lib
       use stitched_model, only: ip_logR, &
@@ -361,6 +388,8 @@ end subroutine compute_seismic_observables
 ! ---------------------------------------------------------------
 ! The total moment of inertia: without rotation the thin-shell sum
 ! I = sum (2/3) dm r^2, with rotation the sum of the shells' i_rot.
+!   star reads: dm, i_rot, logR, nz, physics%rotation_active
+!   star writes: total_moment_of_inertia
 subroutine compute_moment_of_inertia(s)
       use math_lib
       type(star_info), intent(inout) :: s
@@ -384,6 +413,9 @@ end subroutine compute_moment_of_inertia
 ! ---------------------------------------------------------------
 ! The chlorine and gallium capture rates (SNU) from the neutrino flux
 ! totals; without calc_neutrinos the rates and all ten fluxes are zero.
+!   star reads: physics%calc_neutrinos
+!   star writes: cl37_snu_rate, ga71_snu_rate,
+!     neutrino_flux_total_e10_per_cm2_s
 subroutine compute_snu_rates(s)
       type(star_info), intent(inout) :: s
       integer :: i
@@ -410,6 +442,10 @@ end subroutine compute_snu_rates
 ! inertia of the surface convection zone (the i_rot sum with rotation,
 ! sum (2/3) dm r^2 without). Reads star%log_R_surface_rsun, so
 ! compute_surface_globals runs first.
+!   star reads: dm, envelope_cz_bottom_index, i_rot, log10_solar_radius,
+!     log_R_surface_rsun, logR, nz, omega, physics%rotation_active
+!   star writes: cz_moment_of_inertia, rotation_period_days,
+!     surf_velocity_kms
 subroutine compute_rotation_observables(s)
       use math_lib
       type(star_info), intent(inout) :: s
@@ -444,6 +480,12 @@ end subroutine compute_rotation_observables
 ! The bottom, middle and top of the hydrogen-burning shell: masses in
 ! Msun and radii as r/R (zero without a shell). Reads
 ! star%log_R_surface_rsun, so compute_surface_globals runs first.
+!   star reads: h_shell_bot_index, h_shell_mid_index, h_shell_top_index,
+!     has_h_shell, log10_solar_radius, log_R_surface_rsun, logR, m,
+!     solar_mass_cgs
+!   star writes: h_shell_bot_mass_msun, h_shell_bot_radius_fraction,
+!     h_shell_mid_mass_msun, h_shell_mid_radius_fraction,
+!     h_shell_top_mass_msun, h_shell_top_radius_fraction
 subroutine compute_h_shell_boundaries(s)
       use math_lib
       type(star_info), intent(inout) :: s

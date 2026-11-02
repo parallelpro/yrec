@@ -83,6 +83,8 @@ contains
 ! 2 = dL(i-1), 3 = dlog P(i-1), 4 = dlog T(i-1), 5 = dlog R(i),
 ! 6 = dL(i); dlog P(i) and dlog T(i) stay on the right as
 ! elim_coeff(:,1:2,i). q(k,1) and q(k,2) hold columns 3 and 4.
+!   star reads: log_mass, logP, logR, logT, luminosity_lsun
+!   star writes: elim_coeff, elim_rhs, max_residual
 subroutine henyey_eliminate(s, zone_index, prev, cur)
       use physical_constants
       implicit none

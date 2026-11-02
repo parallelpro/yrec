@@ -38,6 +38,9 @@ contains
 ! N13, O15 and F17; slots 9-10 are the He3+He3 and He3+He4 reaction
 ! rates in the same units. The shell masses are local arrays, so the
 ! model's star%m and star%dm are not touched.
+!   star reads: log_mass, log_total_mass, logR, logRho, logT,
+!     physics%nuclear_logT_cutoffs, solar_mass_cgs, solar_radius_cgs, xa
+!   star writes: neutrino_flux_total_e10_per_cm2_s, nz
 subroutine write_neutrino_flux_table(s)
       use star_info_lib, only: json, i_h1, i_h2, i_he3, i_he4, i_c12, &
            i_c13, i_n14, i_o16, i_o18, i_nu_pp, i_nu_pep, i_nu_hep, &

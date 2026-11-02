@@ -28,6 +28,8 @@ contains
 ! mid-step consumers (the wind saturation, the deuterium limiter) read
 ! the values stored at the end of the previous step (the _prev copies).
 ! Called by read_starting_model and compute_observables.
+!   star reads: convective_flag, logP, nz, solar_mass_cgs, stitched
+!   star writes: convective_turnover_timescale
 subroutine compute_turnover_timescale(s, radius_at_bcz, ierr)
       use stitched_model, only: &
            ip_mass, ip_logR, ip_logRho, ip_logP, ip_mixing_type, ip_gradr, &
@@ -110,6 +112,8 @@ end subroutine compute_turnover_timescale
 ! Legacy names: cz_base_index (IMAX), the base found from below;
 ! upper_cz_base_index (JMAX), the base of the uppermost zone;
 ! radius_at_bcz (RBCZ); the timescale (TAUCZ).
+!   star reads: solar_mass_cgs, solar_radius_cgs
+!   star writes: convective_turnover_timescale
 subroutine turnover_from_interior_new(s, shell_mass, convective_flag, log10_radius, &
      log10_pressure, log10_density, local_gravity, num_points, &
      num_interior_points, convective_velocity, radiative_gradient, &

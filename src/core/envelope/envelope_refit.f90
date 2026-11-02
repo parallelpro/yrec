@@ -35,6 +35,8 @@ contains
 ! He3 and the heavier tracers from the last interior shell, and
 ! Y = 1 - X - Z - X(He3). ierr = 1 when the mass interval of the
 ! interpolation is below 1e-14 dex.
+!   star reads: env_points, log_fit_point_mass_fraction, log_total_mass
+!   star writes: none
 subroutine append_envelope_points(s, accept_point_at_fit_mass, species_end_index, &
      composition, log_density, log_luminosity, log_pressure, log_radius, &
      log_mass, log_temperature, convective_flag, num_zones, ierr)

@@ -99,6 +99,11 @@ contains
 ! so a fresh atm_get at the converged values is required, with the
 ! fixed output step sizes. ierr = 1 when a profile column has no value
 ! in a region (fill_stitched_arrays).
+!   star reads: atm_points, convective_flag, env_points, log_L_lsun,
+!     log_Teff, log_total_mass, logP, logR, nz, physics%atm_step_size,
+!     physics%calc_envelope_flag, physics%envelope_step_size,
+!     physics%spot_filling_factor, physics%spot_temp_contrast
+!   star writes: fp_rot, ft_rot, stitched, xa
 subroutine build_stitched_model(s, ierr)
       use star_info_lib, only: i_h1, i_metals
       use envelope_integration, only: atm_get, envint_step_config, fixed_envint_step, &
@@ -226,6 +231,8 @@ end subroutine build_stitched_model
 !     gradient is a centered difference in lnP)
 !   4 gradr_div_grada
 ! Endpoints copy their neighbor's derivative-based values.
+!   star reads: solar_mass_cgs
+!   star writes: stitched
 subroutine compute_seismic_columns(s)
       use math_lib
       type(star_info), intent(inout) :: s
@@ -372,6 +379,8 @@ end function profile_columns
 ! compute_seismic_columns' pass, otherwise its value in the point's
 ! region. found is false when that region has no case for the column
 ! (a column added without one), which fill_stitched_arrays reports.
+!   star reads: stitched
+!   star writes: none
 subroutine extended_point_value(s, icol, j, value, found)
       type(star_info), intent(in) :: s
       integer, intent(in) :: icol, j
@@ -401,6 +410,8 @@ end subroutine extended_point_value
 ! Profile column icol at extended point j, for compute_seismic_columns,
 ! which reads only columns every region has (fill_stitched_arrays
 ! reports any that is missing).
+!   star reads: none
+!   star writes: none
 real(dp) function ext_profile_value(s, icol, j)
       type(star_info), intent(in) :: s
       integer, intent(in) :: icol, j
@@ -445,6 +456,8 @@ end function convective_indicator
 
 ! Mass [g] enclosed at envelope point i (env_log10_mass is relative to
 ! the total mass).
+!   star reads: env_points, log_total_mass
+!   star writes: none
 real(dp) function envelope_mass_g(s, i)
       type(star_info), intent(in) :: s
       integer, intent(in) :: i
@@ -453,6 +466,8 @@ end function envelope_mass_g
 
 ! Radius [cm] of atmosphere point i: the photosphere (the envelope's
 ! outermost point) plus its accumulated height (see build_stitched_model).
+!   star reads: env_points, stitched
+!   star writes: none
 real(dp) function atmosphere_radius_cm(s, i)
       type(star_info), intent(in) :: s
       integer, intent(in) :: i
@@ -478,6 +493,14 @@ end function ideal_gas_mu
 ! Profile column icol at interior zone k (1 = center .. nz = surface):
 ! the converged model's values. found is false for a column without a
 ! case.
+!   star reads: adiabatic_index_gamma1, am_diffusion_coeff, beta,
+!     conv_vel, convective_flag, dm, eps_channels, eps_extra, eps_total,
+!     eta, fp_rot, ft_rot, grada, gradr, gradT, i_rot, j_rot, logP,
+!     logR, logRho, logT, luminosity_lsun, m, mechanism_velocity,
+!     mixing_diffusion_coeff, omega, opacity_zone, pulse_dlnrho_dlnt,
+!     pulse_electron_mean_weight_inverse, pulse_mean_molecular_weight,
+!     pulse_specific_heat, solar_mass_cgs, xa
+!   star writes: none
 subroutine interior_value(s, icol, k, value, found)
       use math_lib
       use star_info_lib, only: i_be9, i_c12, i_c13, i_eps_cno, i_eps_grav, &
@@ -572,6 +595,8 @@ end subroutine interior_value
 ! columns it does not compute (burning, the composition beyond X and Z,
 ! the rotation's internals and transport). found is false for a column
 ! without a case.
+!   star reads: env_points, nz, omega, solar_mass_cgs
+!   star writes: none
 subroutine envelope_value(s, icol, i, value, found)
       type(star_info), intent(in) :: s
       integer, intent(in) :: icol, i
@@ -630,6 +655,8 @@ end subroutine envelope_value
 ! composition and omega, and zero for the columns it does not compute
 ! (the envelope's, and the mixing type and convective velocity). found
 ! is false for a column without a case.
+!   star reads: atm_points, log_L_lsun, nz, omega, star_mass, xa
+!   star writes: none
 subroutine atmosphere_value(s, icol, i, value, found)
       use star_info_lib, only: i_h1, i_metals
       type(star_info), intent(in) :: s
@@ -687,6 +714,14 @@ end subroutine atmosphere_value
 ! (Sources, 3). The energy generation derivative columns are zero there
 ! (no burning above the fitting point), and the composition above the
 ! fitting point is the surface composition.
+!   star reads: adiabatic_index_gamma1, atm_points, env_points,
+!     eps_channels, eps_total, grada, gradT, log_L_lsun, log_total_mass,
+!     logP, logR, logRho, logT, luminosity_lsun, m, nz, omega,
+!     opacity_zone, pulse_deps_dlnrho, pulse_deps_dlnt,
+!     pulse_dlnkap_dlnrho, pulse_dlnkap_dlnt, pulse_dlnrho_dlnt,
+!     pulse_electron_mean_weight_inverse, pulse_specific_heat,
+!     solar_luminosity_cgs, stitched, xa
+!   star writes: none
 subroutine build_pulse_points(s, pts)
       use math_lib
       use star_info_lib, only: i_eps_grav, i_h1, i_metals
@@ -889,6 +924,8 @@ end function species_slot
 ! The writers' arrays from the assembled grid: every profile column at
 ! every point, then the pulse points. A column without a value in a
 ! point's region is an error (ierr = 1), reported once.
+!   star reads: none
+!   star writes: stitched
 subroutine fill_stitched_arrays(s, ierr)
       use run_messages, only: report_error
       type(star_info), intent(inout) :: s

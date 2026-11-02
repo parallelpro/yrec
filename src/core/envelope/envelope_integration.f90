@@ -49,6 +49,8 @@ end function fixed_envint_step
 ! same identity with the - 4 log Teff term last, which can differ in
 ! the last bit. Unifying
 ! them is a numbers-changing decision (R6), so both forms are kept.
+!   star reads: log10_solar_luminosity
+!   star writes: none
 double precision function surface_log10_radius_cm(s, log_luminosity_lsun, log_teff)
       use physical_constants
       type(star_info), intent(inout) :: s
@@ -63,6 +65,8 @@ end function surface_log10_radius_cm
 ! surface shell is convective. The single-precision literals
 ! (0.25, 4.0, 1.0) are the original ones; build_stitched_model keeps
 ! its own copy with d0 literals, which is not token-identical.
+!   star reads: physics%spot_filling_factor, physics%spot_temp_contrast
+!   star writes: none
 double precision function ambient_log10_teff(s, log_teff)
       use math_lib
       type(star_info), intent(inout) :: s
@@ -71,6 +75,16 @@ double precision function ambient_log10_teff(s, log_teff)
            pow(s%physics%spot_temp_contrast, 4.0) + 1.0 - s%physics%spot_filling_factor)
 end function ambient_log10_teff
 
+!   star reads: log10_solar_luminosity, log_fit_point_mass_fraction,
+!     log_total_mass, physics%atm_error_tol, physics%atm_step_begin,
+!     physics%atm_step_initial, physics%atm_step_max,
+!     physics%atm_step_min, physics%calc_envelope_flag,
+!     physics%env_error_tol, physics%env_step_begin,
+!     physics%env_step_max, physics%env_step_min,
+!     physics%envelope_store_log_temperature, physics%extrap_order,
+!     physics%max_stage_index, physics%tolerance_fraction
+!   star writes: atm_choice_in_use, atm_point, atm_points, env_points,
+!     photosphere_logP
 subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
      temperature_rotation_factor, log10_gravity, log10_star_mass, &
      print_flag, save_boundary_flag, log10_pressure_limit, &

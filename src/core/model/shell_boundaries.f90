@@ -57,6 +57,8 @@ contains
 !   shell_mid : first shell where x exceeds 1/2 the surface value.
 !   shell_end : last shell where l(i)-l(i-1) > luminosity_change_tol*l(num_points)
 !        or x is within hydrogen_surface_tol of the surface value.
+!   star reads: physics%timestep_factors
+!   star writes: none
 subroutine locate_shell_boundaries(s, composition, luminosity, is_convective, num_points, &
      core_edge, envelope_edge, shell_begin, shell_end, shell_mid, &
      has_h_shell)

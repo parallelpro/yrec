@@ -35,6 +35,23 @@ contains
 ! and dln rho/dln T were carried into the next pass through the star, as
 ! a starting value every eos family overwrites before reading it;
 ! docs/bug_sweep.md O23.)
+!   star reads: convective_turnover_timescale, delta_log_pressure,
+!     delta_log_temperature, dm, envelope_cz_bottom_index_start,
+!     envelope_overshoot_bottom_index, envelope_overshoot_top_index,
+!     fp_rot, ft_rot, kinetic_energy_rot, kinetic_energy_rot_start,
+!     ln10_over_lsun, log_mass, log_pressure_delta, log_Teff,
+!     log_temperature_delta, logP, logR, logT, luminosity_lsun, m,
+!     mass_change_active, nz, physics%calc_neutrinos,
+!     physics%mass_accretion_rate, physics%rotation_active,
+!     solar_luminosity_cgs, xa
+!   star writes: adiabatic_index_gamma1, beta, conv_vel,
+!     convective_flag, elim_coeff, elim_rhs, eps_channels, eps_extra,
+!     eps_grav, eps_total, eta, grada, gradr, gradT, logRho,
+!     luminosity_breakdown_lsun, neutrino_flux_total_e10_per_cm2_s,
+!     opacity_zone, pulse_deps_dlnrho, pulse_deps_dlnt,
+!     pulse_dlnkap_dlnrho, pulse_dlnkap_dlnt, pulse_dlnrho_dlnt,
+!     pulse_electron_mean_weight_inverse, pulse_mean_molecular_weight,
+!     pulse_specific_heat
 subroutine compute_henyey_coefficients(s, delta_time, saha_iterations, &
      envelope_zone_index, ierr)
       use henyey_elimination

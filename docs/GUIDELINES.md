@@ -257,8 +257,8 @@ docs/TARGET_ARCHITECTURE.md section 4.2.
 
    `tools/check_star_contracts.py` checks every declared list against the
    code (run by `test_boundaries.py`) and `--fix` rewrites them; write the
-   two lines with `none` and let `--fix` fill them in. In `core/run/`,
-   `core/step/`, `setup/` and `io/` every procedure that takes the star
+   two lines with `none` and let `--fix` fill them in. In `core/`,
+   `setup/` and `io/` every procedure that takes the star
    declares them, and the check fails on one that does not (its
    `REQUIRED_DIRS`; the generated `io/controls_sync.f90` is exempt). The lists cover the
    procedure's own body; a `star%` field passed to an `intent(inout)`

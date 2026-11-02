@@ -37,6 +37,14 @@ contains
 ! and total_mass_log are log10 m and log10 M (g); star_mass is M in
 ! Msun. surface_hydrogen_fraction and surface_metal_fraction hold the old
 ! surface X and Z on entry, and the targets on return when X or Z is rescaled.
+!   star reads: card_rescale_targets, card_z_ramp_core_z,
+!     card_z_ramp_inner_mass_fraction, card_z_ramp_outer_mass_fraction,
+!     control%use_z_ramp, physics%new_species_index,
+!     physics%new_species_value, physics%rescale_species_active,
+!     physics%value_relative_to_h, solar_mass_cgs
+!   star writes: current_card_envelope_x, current_card_envelope_z,
+!     envelope_metal_fraction, surface_hydrogen_fraction,
+!     surface_metal_fraction
 subroutine rescale_model(s, luminosity_array, composition, shell_mass_log, &
      total_mass_log, num_zones, run_index, star_mass, convective_flag, ierr)
       use physical_constants

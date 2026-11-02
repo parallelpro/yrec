@@ -31,6 +31,11 @@ contains
 ! star%log_fit_point_mass_fraction and num_zones; called from
 ! evolve_step. ierr: the integration failed, the zones would overflow
 ! json, or the mass interpolation was degenerate.
+!   star reads: disk_gate_age_gyr, log_total_mass,
+!     physics%chi_grid_scale, physics%cz_rotation_law_exponent,
+!     physics%rotation_active, physics%spot_filling_factor,
+!     physics%spot_temp_contrast, physics%use_extended_composition
+!   star writes: env_points, log_fit_point_mass_fraction, omega
 subroutine rebuild_envelope(s, target_envelope_mass, composition, log_density, &
      log_luminosity, log_pressure, log_radius, log_mass, enclosed_mass, &
      shell_mass, &

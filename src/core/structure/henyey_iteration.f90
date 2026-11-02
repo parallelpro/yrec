@@ -50,6 +50,13 @@ contains
 ! (forced on for a new triangle, or for a reset one at level 2), it
 ! rebuilds the envelope fit with compute_surface_boundary.
 !----------------------------------------------------------------------
+!   star reads: convective_flag, fp_rot, ft_rot, log_mass, log_Teff,
+!     log_total_mass, logP, luminosity_lsun, nz,
+!     physics%rotation_active, surface_hydrogen_fraction,
+!     surface_metal_fraction
+!   star writes: envelope_fit_coeffs, fit_point_logP, fit_point_logR,
+!     fit_point_logT, log_fit_point_mass_fraction, log_L_lsun,
+!     stored_envelope_state, triangle_log_l_lsun, triangle_log_teff
 subroutine refresh_surface_bc(s, iteration_level, start_new_triangle, &
      reset_triangle, recompute_surface_bc, tri_orientation, &
      stored_vertex_index, saha_iterations, envelope_recomputed_flag, ierr)
@@ -133,6 +140,17 @@ end subroutine refresh_surface_bc
 !   exceeded its limit; iterations_done, increased by one for each
 !   applied correction.
 !----------------------------------------------------------------------
+!   star reads: am_transport_convective_flag, disk_gate_age_gyr, dm,
+!     elim_coeff, envelope_fit_coeffs, log_mass, logRho, nz,
+!     physics%helium_flash_active, physics%rotation_active,
+!     physics%solver_tolerances, physics%solver_underrelax_increment,
+!     physics%solver_underrelax_start
+!   star writes: elim_rhs, eta_squared, fp_rot, ft_rot, i_rot, j_rot,
+!     kinetic_energy_rot, log_L_lsun, log_pressure_delta, log_Teff,
+!     log_temperature_delta, logP, logR, logT,
+!     luminosity_breakdown_lsun, luminosity_lsun, max_correction_index,
+!     max_residual, mean_gravity, mean_radius, newton_correction_factor,
+!     newton_iterations, omega, surface_bc
 subroutine henyey_iterate(s, delta_time, max_iterations, converged, &
      corrections_too_large, recompute_surface_bc, envelope_recomputed_flag, &
      saha_iterations, envelope_zone_index, iterations_done, ierr)
