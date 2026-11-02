@@ -1,15 +1,15 @@
 !----------------------------------------------------------------------
 ! control_slots
 !----------------------------------------------------------------------
-! The slot names of the controls that are vectors: atime(itime_*), the
-! timestep-control factors, and chi_grid_scale(ichi_*), the zoning
-! tolerances (star%physics%timestep_factors, star%physics%chi_grid_scale);
-! and max_runs, the length of the run-card arrays. Constants only, so
-! that any module may use them: the controls buffer
-! (io/controls_buffer.f90) re-exports them for the controls read, and
-! the star layer (star_info_lib's run plan) and setup/'s builders use
-! this module. (They were the buffer's own until 2026-10-29, max_runs
-! until 2026-10-30.)
+! The slot names of the controls that are vectors: timestep_factors
+! (itime_*, legacy atime), the timestep-control factors, and
+! chi_grid_scale(ichi_*), the zoning tolerances
+! (star%physics%timestep_factors, star%physics%chi_grid_scale); and
+! max_runs, the length of the run-card arrays. Constants only, so that
+! any module may use them; each user imports what it takes from here
+! (the controls buffer, io/controls_buffer.f90, imports only max_runs,
+! and nothing re-exports them). (They were the buffer's own until
+! 2026-10-29, max_runs until 2026-10-30.)
 module control_slots
       implicit none
       private
@@ -18,11 +18,12 @@ module control_slots
 ! every per-run array of the controls and of the star's run plan (the
 ! calibration protocols in core/run/calibration.f90 fill them up to
 ! this limit). The one source of the value: the controls buffer, the
-! star's run plan and the calibrations use this parameter, and
-! tools/gen_controls_state.py writes its value into the generated type
-! bodies of the controls; tools/controls_registry.py's MAX_RUNS and the
-! registry's per-run type cells repeat it, and tools/check_boundaries.py
-! (check_max_runs) fails when MAX_RUNS differs.
+! star's run plan and the calibrations use this parameter; the
+! generated declarations of the controls (tools/gen_controls_state.py,
+! tools/gen_inlist.py) spell it by name, and tools/controls_registry.py
+! reads its value from here (MAX_RUNS, and the registry's per-run type
+! cells, real(max_runs)). tools/check_boundaries.py (check_max_runs)
+! fails on a registry cell or a generated per-run size that is not it.
       integer, parameter, public :: max_runs = 50
 
 ! Slot names for atime (the per-phase timestep-control factors). The

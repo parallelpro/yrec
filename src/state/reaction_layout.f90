@@ -2,12 +2,14 @@
 ! reaction_layout
 !----------------------------------------------------------------------
 ! The slots of net/'s per-reaction arrays, constants only, shared like
-! composition_layout: by net/ (net_configuration re-exports them to its
-! modules), by the star's scale arrays (star_info_lib sizes
-! cross_section_scale and its derivative scales by num_reactions, and
-! extra_cross_section_scale by num_extra_scales), and by the code that
-! fills those (setup's map_user_inputs, core's Monte Carlo, through
-! net_lib).
+! composition_layout: by net/'s modules, which use them directly (and
+! net_lib re-exports them to the star layer); by the rate-scale controls
+! (physics%cross_section_scale and its derivative scales sized by
+! num_reactions, physics%extra_cross_section_scale by num_extra_scales;
+! io/controls_buffer.f90) and the star's run copies of the two scales
+! (star_info_lib's cross_section_scale_in_use and
+! extra_cross_section_scale_in_use); and by the code that fills those
+! (io's map_user_inputs, core's Monte Carlo, through net_lib).
 !   - the reaction slots r_*: the index of every per-reaction array (the
 !     rates and their derivatives, the energies, the first num_reactions
 !     rows of the composition rate vector, the per-reaction scales). Each

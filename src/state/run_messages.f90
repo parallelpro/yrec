@@ -16,7 +16,9 @@
 !                   with (an inert control, a combination that cancels)
 !   report_note     "<text>", what the read did (a mixture applied)
 !   log_line        a line for the run log only (its header, the run plan)
-! The two units, assigned at each read (run_files' assign_unit_numbers):
+! The two units, assigned at the start of each read (run_files'
+! assign_unit_numbers); a program that reads no controls sets them
+! itself (test_atm, test_element_diffusion):
 !   run_log_unit    -- the run log (log_output_file, default run.log)
 !   terminal_unit   -- stdout (always 6; kept as a named unit only
 !                      because ~20 files write through it)

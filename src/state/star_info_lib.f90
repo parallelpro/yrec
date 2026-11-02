@@ -349,10 +349,12 @@ module star_info_lib
 ! its report flag among them), the core extension, the surface mixture
 ! of the first card, the solar and star calibration loops (targets,
 ! derivatives, verdicts), the reason the run ended.
-! The members armed from a control (each names it) are the run's working
-! copies of controls it changes, armed by the controls read and again at
-! the start of every Monte-Carlo run (begin_monte_carlo_run); the
-! controls keep the deck's values.
+! The members armed from a control each name it. Most are the run's
+! working copies of controls it changes (run copies), armed by the
+! controls read and again at the start of every Monte-Carlo run
+! (begin_monte_carlo_run); settling_active, a latch every card starts
+! afresh, is armed from its control by begin_kind_card at the start of
+! every card. The controls keep the deck's values.
 ! Valid: from the card (or run) that sets them.
 
 ! the current run card's index, the run plan's cursor [-]; run_driver.
@@ -441,8 +443,11 @@ module star_info_lib
             logical :: settling_active = .false.
 ! surface X of the first run card: the reference X of the EOS mixture and
 ! of 1/mu_ion in compute_shell_physics [-]; starting_model. Set once
-! (update_surface_mixture) and kept for the run on purpose; the controls
-! read and kap_init use it earlier, while it is still 0.
+! (update_surface_mixture) and kept for the run on purpose; two users
+! see it earlier, while it is still 0: kap_init (install_run_settings)
+! and the EOS mixture of the run plan's Z (set_run_plan_envelope_z's
+! install_surface_z_settings, whose inverse atomic weight and number
+! fractions are 0 too).
             real(dp) :: envelope_hydrogen_fraction
 ! surface Z of the EOS mixture: the first card's, or the last Z
 ! rescale's [-]; starting_model, model_rescaling, run_setup. The run

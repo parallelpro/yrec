@@ -21,8 +21,8 @@
 !                              (light_elements) and its energy
 !                              (nuclear_energy) alike
 ! It also holds the rate-law names a table row can give. The screening
-! it applies is screening's; the reaction slots and the settings it
-! reads are net_configuration's.
+! it applies is screening's; the reaction slots are state/reaction_layout's,
+! and the settings it reads net_configuration's.
 ! Sources and history: the end of this file.
 ! ---------------------------------------------------------------------
 module reaction_rates

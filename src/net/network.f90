@@ -18,7 +18,7 @@
 ! and whether it burns with hydrogen or in helium burning.
 ! compute_reaction_rates evaluates every row that owns a rate; a second
 ! outcome of the same reaction (shares_rate) uses the rate of the row
-! above. The rates land at the rows' slots r_* (net_configuration),
+! above. The rates land at the rows' slots r_* (state/reaction_layout),
 ! where the settings' scales of each reaction are too.
 !
 ! Reactions. Reaction j proceeds at
@@ -62,7 +62,7 @@
 ! outside net/ sees only what net_lib re-exports).
 !
 ! Adding a reaction means adding a row to the table, and naming its rate
-! slot r_* in net_configuration (raising num_reactions); a rate of a new
+! slot r_* in state/reaction_layout.f90 (raising num_reactions); a rate of a new
 ! functional form also needs its rate law in reaction_rates. Adding a
 ! species means adding it to the species table, before s_o18 if it is
 ! solved, and to the rows that make or burn it; net/README.md's recipe
