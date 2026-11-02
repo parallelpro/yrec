@@ -17,14 +17,21 @@
 !   report_note     "<text>", what the read did (a mixture applied)
 !   log_line        a line for the run log only (its header, the run plan)
 ! The two units, assigned at the start of each read (run_files'
-! assign_unit_numbers); a program that reads no controls sets them
-! itself (test_atm, test_element_diffusion):
+! assign_unit_numbers), are standard error until then: a message before
+! the read (an embedding host's, a unit test's) goes to stderr, and a
+! run-log line waits, since the log counts as closed while it is the
+! terminal's unit (nothing writes to an unconnected unit). A test program
+! may point them elsewhere (test_atm, test_element_diffusion):
 !   run_log_unit    -- the run log (log_output_file, default run.log)
 !   terminal_unit   -- stdout (always 6; kept as a named unit only
 !                      because ~20 files write through it)
 ! The solver diagnostics' gate: the control report_solver_diagnostics, as
 ! the controls read installs it (set_solver_diagnostics).
+! A run-log write that fails (a full disk) does not stop the run here:
+! log_line has no ierr to return, and io checks the run log on disk
+! after each model and at the end (run_files' check_run_log, M173).
 module run_messages
+      use, intrinsic :: iso_fortran_env, only: error_unit
       implicit none
       private
       public :: run_log_unit, terminal_unit, check_io, &
@@ -32,7 +39,7 @@ module run_messages
            flush_pending_log, discard_pending_log
       public :: solver_diagnostics, set_solver_diagnostics
 
-      integer :: run_log_unit, terminal_unit
+      integer :: run_log_unit = error_unit, terminal_unit = error_unit
 
 ! The run log's lines written before it opened, in order (the most a
 ! read writes is its warnings, the header and a line or three per run
@@ -101,9 +108,11 @@ end subroutine report
 ! kept for flush_pending_log.
 subroutine log_line(text)
       character(len=*), intent(in) :: text
+      integer :: ios
 
       if (run_log_is_open()) then
-         write(run_log_unit,'(a)') text
+! a failed write is io's check_run_log's to report (the header)
+         write(run_log_unit,'(a)',iostat=ios) text
       else if (num_pending < max_pending_lines) then
          num_pending = num_pending + 1
          pending_line(num_pending) = text
@@ -115,11 +124,12 @@ end subroutine log_line
 ! The lines kept while the run log was closed, written to it (open_run_log
 ! calls this as soon as it has opened the log).
 subroutine flush_pending_log
-      integer :: k
+      integer :: k, ios
 
       if (.not. run_log_is_open()) return
       do k = 1, num_pending
-         write(run_log_unit,'(a)') pending_line(k)(1:pending_length(k))
+! a failed write is io's check_run_log's to report (the header)
+         write(run_log_unit,'(a)',iostat=ios) pending_line(k)(1:pending_length(k))
       end do
       num_pending = 0
 end subroutine flush_pending_log
