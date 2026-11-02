@@ -403,8 +403,8 @@ end subroutine write_history_row
 ! The id columns moved to the front of a selection, in id_columns'
 ! order; the other columns keep theirs.
 subroutine hoist_id_columns(sel, nsel)
-      integer, intent(inout) :: sel(max_cols), nsel
-      integer :: tmp(max_cols), n, id, i
+      integer, intent(inout) :: sel(:), nsel
+      integer :: tmp(size(sel)), n, id, i
 
       n = 0
       do id = 1, size(id_columns)

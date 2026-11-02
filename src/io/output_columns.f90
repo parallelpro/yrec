@@ -78,7 +78,7 @@ subroutine parse_columns(fname, columns, default_names, sel, nsel, &
       character(len=*), intent(in) :: fname, label
       type(output_column), intent(in) :: columns(:)
       character(len=column_name_len), intent(in) :: default_names(:)
-      integer, intent(out) :: sel(max_cols), nsel
+      integer, intent(out) :: sel(:), nsel
       integer, intent(out) :: ierr
       character(len=256) :: line, msg
       integer :: u, ios, i
@@ -123,20 +123,20 @@ end subroutine parse_columns
 
 ! ---------------------------------------------------------------
 ! Look a column name up in the writer's table and append its index
-! to the selection; unknown names are fatal, with the valid list
-! written to the run log.
+! to the selection (at most size(sel), the writers' max_cols); unknown
+! names are fatal, with the valid list written to the run log.
 subroutine append_column(name, columns, sel, nsel, label, ierr)
       use run_messages, only: log_line, report_error
       character(len=*), intent(in) :: name, label
       type(output_column), intent(in) :: columns(:)
-      integer, intent(inout) :: sel(max_cols), nsel
+      integer, intent(inout) :: sel(:), nsel
       integer, intent(out) :: ierr
       character(len=80) :: text
       integer :: j
 
       ierr = 0
-      if (nsel >= max_cols) then
-         write(text, '(a,i0,3a)') 'more than ', max_cols, ' ', label, ' columns selected'
+      if (nsel >= size(sel)) then
+         write(text, '(a,i0,3a)') 'more than ', size(sel), ' ', label, ' columns selected'
          call report_error(trim(text))
          ierr = 1
          return

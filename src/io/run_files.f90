@@ -104,13 +104,13 @@ subroutine open_run_files(s, ierr)
               iostat=ios, iomsg=msg)
          call check_io(ios, msg, 'open the Monte Carlo model file', s%control%monte_carlo_file2_path, ierr)
          if (ierr /= 0) return
-      endif
+      end if
       if (s%control%isochrone_output_active) then
          open(newunit=isochrone_unit, file=s%control%isochrone_file, status='UNKNOWN', form='FORMATTED', &
               iostat=ios, iomsg=msg)
          call check_io(ios, msg, 'open the isochrone file', s%control%isochrone_file, ierr)
          if (ierr /= 0) return
-      endif
+      end if
 end subroutine open_run_files
 
 ! ---------------------------------------------------------------
@@ -261,13 +261,14 @@ end subroutine make_directory
 
 ! ---------------------------------------------------------------
 ! A verbatim copy of the deck's files (sources: the CONTROL and PHYSICS
-! files, the same file twice for an inlist, copied once) at dest, in the
+! files, the same file twice for an inlist, copied once; a file the same
+! as the one before it is copied once) at dest, in the
 ! output directory: the run's record of its settings. A source that
 ! cannot be opened is skipped; a failed write is an error
 ! (output_files).
 subroutine copy_inlists_used(sources, dest, ierr)
       use output_files, only: open_output_file, close_output_file
-      character(len=*), intent(in) :: sources(2), dest
+      character(len=*), intent(in) :: sources(:), dest
       integer, intent(inout) :: ierr
       integer :: src_unit, dst_unit
       character(len=4096) :: line
@@ -277,8 +278,10 @@ subroutine copy_inlists_used(sources, dest, ierr)
       call open_output_file(dest, dst_unit, ierr)
       if (ierr /= 0) return
       ios = 0
-      do nfile = 1, 2
-         if (nfile == 2 .and. trim(sources(2)) == trim(sources(1))) exit
+      do nfile = 1, size(sources)
+         if (nfile > 1) then
+            if (trim(sources(nfile)) == trim(sources(nfile-1))) cycle
+         end if
          open(newunit=src_unit, file=sources(nfile), form='FORMATTED', &
               status='OLD', iostat=read_ios)
          if (read_ios /= 0) cycle

@@ -166,7 +166,7 @@ subroutine output_write_model(s, output, ierr)
 ! age (yr), L (erg/s), R (cm), Teff (K), g (cm/s**2), Ycenter, He-core
 ! mass (g)
       if (s%control%isochrone_output_active) then
-         age_yr = s%age_gyr*1.0D9
+         age_yr = s%age_gyr*1.0d9
          luminosity_erg_s = exp10(s%log_L_lsun)*s%solar_luminosity_cgs
          radius_cm = exp10(s%log_R_surface_rsun)*s%solar_radius_cgs
          teff_k = exp10(s%log_Teff)
@@ -175,7 +175,7 @@ subroutine output_write_model(s, output, ierr)
          if (s%has_h_shell) then
             he_core_mass_grams = s%m(s%h_shell_bot_index-1)
          else
-            he_core_mass_grams = 0.0D0
+            he_core_mass_grams = 0.0d0
          end if
          write(isochrone_unit,'(1X, A, 1P7E17.8)',iostat=ios,iomsg=msg) integer_field(s%model_number, 5), &
               age_yr,luminosity_erg_s,radius_cm,teff_k,gravity_cgs, &

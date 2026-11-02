@@ -147,7 +147,7 @@ subroutine read_model_format_tag(iread, tag, ierr)
       integer :: ios
 
       ierr = 0
-      rewind iread
+      rewind(iread)
       read(iread,'(a4)',iostat=ios,iomsg=msg) tag
       call check_model_read(ios, msg, iread, 'the format tag', ierr)
 end subroutine read_model_format_tag
@@ -288,7 +288,7 @@ subroutine read_mod_model(s, iread, header, ierr)
       integer :: k, izone, ios
 
       ierr = 0
-      rewind iread
+      rewind(iread)
       read(iread,'(a)',iostat=ios,iomsg=msg) line
       call check_model_read(ios, msg, iread, 'the format tag', ierr)
       if (ierr /= 0) return
@@ -386,7 +386,7 @@ subroutine read_yrec7(s, iread, header, ierr)
       real(dp) :: omega_log10(json)
 ! -log10(omega) at or above this value marks a non-rotating shell
 ! (omega stored as 0)
-      real(dp), parameter :: omega_log10_zero_sentinel = 58.9D0
+      real(dp), parameter :: omega_log10_zero_sentinel = 58.9d0
       integer :: i, j, core_top, envelope_bottom
       integer :: envelope_record_number
       integer :: pair_start_index
@@ -462,7 +462,7 @@ subroutine read_yrec7(s, iread, header, ierr)
       call fill_convection_zones(yrec7_cno_slots)
 ! He4 = 1 - X - Z - He3
       do i = 1, s%nz
-         s%xa(i_he4,i) = 1.0D0 - s%xa(i_h1,i) - s%xa(i_metals,i) - &
+         s%xa(i_he4,i) = 1.0d0 - s%xa(i_h1,i) - s%xa(i_metals,i) - &
               s%xa(i_he3,i)
       end do
 
@@ -508,14 +508,14 @@ subroutine read_yrec7(s, iread, header, ierr)
          if (is_iostat_end(ios)) then
             call log_line(' read_yrec7: the model file has no omega records; omega is zero')
             s%omega = 0.0d0
-            rewind iread
+            rewind(iread)
             return
          end if
          call check_model_read(ios, msg, iread, 'the rotation rates', ierr)
          if (ierr /= 0) return
          do i = 1, s%nz
             if (omega_log10(i) < omega_log10_zero_sentinel) then
-               s%omega(i) = pow(10D0, (-omega_log10(i)))
+               s%omega(i) = pow(10.0d0, -omega_log10(i))
             else
                s%omega(i) = 0.0d0
             end if
@@ -523,7 +523,7 @@ subroutine read_yrec7(s, iread, header, ierr)
       end if
 
 ! (the unit stays open, rewound)
-      rewind iread
+      rewind(iread)
 
 contains
 
@@ -537,14 +537,14 @@ subroutine read_yrec7_shell(i)
            s%convective_flag(i), ix, iz
       call check_model_read(ios, msg, iread, 'the shells', ierr)
       if (ierr /= 0) return
-      if (s%log_mass(i) < 0D0 .or. s%log_mass(i) > s%log_total_mass) then
+      if (s%log_mass(i) < 0.0d0 .or. s%log_mass(i) > s%log_total_mass) then
          write(msg, '(a,i0,a)') 'shell ', i, &
               ' has a mass below zero or above the star''s'
          call report_model_error(iread, trim(msg), ierr)
          return
       end if
-      s%xa(i_h1,i) = 1.0D-6*dble(ix)
-      s%xa(i_metals,i) = 1.0D-6*dble(iz)
+      s%xa(i_h1,i) = 1.0d-6*dble(ix)
+      s%xa(i_metals,i) = 1.0d-6*dble(iz)
 end subroutine read_yrec7_shell
 
 ! The slots' values through the convection zones: the core convection
@@ -659,7 +659,7 @@ subroutine luminosities_to_solar_units(s)
       use star_info_lib, only: star_info
       type(star_info), intent(inout) :: s
 ! the largest luminosity in Lsun a model can hold [Lsun]
-      real(dp), parameter :: largest_solar_units = 1.0D20
+      real(dp), parameter :: largest_solar_units = 1.0d20
       real(dp) :: largest
 
       largest = max(maxval(s%luminosity_breakdown_lsun(file_luminosities)), &
