@@ -172,7 +172,7 @@ subroutine seed_controls_buffer(s)
       num_models = s%control%num_models
       first_call_flag = s%control%first_call_flag
       set_initial_model_number = s%control%set_initial_model_number
-      run_description = repeat(achar(0), 256)
+      run_description = ' '
       rescale_mass = 0.0d0
       rescale_x = 0.0d0
       rescale_z = 0.0d0

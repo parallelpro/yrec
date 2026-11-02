@@ -76,8 +76,9 @@ module controls_buffer
 ! load (first_call_flag card). <= 0 keeps the counter stored in the model file
 ! (restart continuation, the pre-2026 behavior).
       integer :: set_initial_model_number = 1
-! Per-run description strings echoed in output headers
-      character(len=256) :: run_description(2) = repeat(achar(0), 256)
+! The deck's two description lines, written in the run log's header (a
+! blank second line is left out)
+      character(len=256) :: run_description(2) = ' '
 ! Per-run target mass (Msun) for rescale runs
       real(dp) :: rescale_mass(max_runs) = 0.0d0
 ! Per-run target hydrogen fraction for rescale runs

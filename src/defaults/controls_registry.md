@@ -35,7 +35,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `mixing_length_alpha` | `cmixla` | `mixing_length_array` | control | `card_mixing_length_alpha` | run | real(max_runs) | `0` | live | Per card: the mixing-length parameter alpha |
 | `target_solar_age` | `calsolage` | `target_solar_age` | control | - | run | real | `4.57d9` | live | Solar calibration: the target age of the Sun (yr) |
 | `target_solar_zx` | `calsolzx` | `target_solar_zx` | control | - | run | real | `0.02292d0` | live | Solar calibration: the target surface Z/X (with calibrate_solar_zx) |
-| `run_description` | `descrip` | `run_description` | buffer | - | read | string(2) | `''` | live | Per-run description strings echoed in output headers |
+| `run_description` | `descrip` | `run_description` | buffer | - | read | string(2) | `' '` | live | The deck's two description lines, written in the run log's header (a blank second line is left out) |
 | `max_age` | `endage` | `target_end_age` | control | `card_max_age_yr` | run | real(max_runs) | `0.0d0` | live | Stop the run card at this age (yr); 0 = no age limit |
 | `laol_opacity_table_file` | `flaol` | `laol_table_path` | control | - | run | path | `''` | live | LAOL 1989 opacity table |
 | `pure_z_opacity_table_file` | `fpurez` | `pure_z_table_path` | control | - | run | path | `''` | live | Pure-Z opacity table (metal diffusion support) |

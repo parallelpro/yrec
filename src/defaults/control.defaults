@@ -18,9 +18,9 @@
       ! (legacy name: calsolzx)
       target_solar_zx = 0.02292d0
 
-      ! Per-run description strings echoed in output headers
+      ! The deck's two description lines, written in the run log's header (a blank second line is left out)
       ! (legacy name: descrip)
-      run_description = ''
+      run_description = ' '
 
       ! Stop the run card at this age (yr); 0 = no age limit
       ! (legacy name: endage)

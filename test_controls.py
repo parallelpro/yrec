@@ -450,3 +450,22 @@ def test_a_card_kind_outside_1_to_3_is_an_error(tmp_path):
         kind = name == "four" and 4 or 0
         assert (f" ERROR: run_kind (KINDRN) must be 1 (evolve), 2 (rescale) or 3 (rescale and "
                 f"evolve); card 2 has {kind}") in stdout
+
+
+def test_a_deck_without_a_description_writes_a_clean_run_log(tmp_path):
+    """run_description defaults to blanks: a deck that sets neither line
+    writes the run log's header with an empty description and no second
+    line, and no NUL byte anywhere (it once wrote 256 of them, which made
+    grep call the log binary)."""
+    if not BINARY.exists():
+        pytest.skip("src/test_controls not built (run `make tests` in src/)")
+    deck = tmp_path / "empty.inlist"
+    deck.write_text("&control\n first_model_file = 'empty.inlist'\n/\n&physics\n/\n")
+    r = subprocess.run([str(BINARY), str(deck)], cwd=tmp_path, capture_output=True,
+                       env=dict(os.environ, YREC_OUTPUT=str(tmp_path)))
+    assert "ierr = 0" in r.stdout.decode("latin-1").splitlines()
+    log = (tmp_path / "run.log").read_bytes()
+    assert b"\x00" not in log
+    lines = log.decode().splitlines()
+    k = lines.index(" description: ")
+    assert not lines[k + 1].startswith(" " * 14), lines[k:k + 2]
