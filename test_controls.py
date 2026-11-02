@@ -13,9 +13,12 @@ ZAHB and TAHB chains) stops inside read_controls; its hash records that. Then it
   * for the representative decks (the legacy pairs and the configuration
     matrix), the lines that differ from pristine with
     src/io/test/expected_controls/<deck>.txt;
-  * a hash of every deck's dump with src/io/test/expected_controls/hashes.txt.
+  * for every deck, a hash of the same: its dump's lines that differ from
+    the pristine dump, with src/io/test/expected_controls/hashes.txt. A
+    control added at its default then moves pristine.txt and nothing else;
+    a deck's hash moves only when what the deck reads changes.
 Regenerate the expected files with YREC_REGEN_CONTROLS=1 after a deliberate
-change.
+change, and check which lines moved.
 """
 import concurrent.futures
 import hashlib
@@ -104,10 +107,11 @@ def test_controls_every_deck():
         dumps = list(pool.map(lambda d: run(d[1]), all_decks))
     hashes = []
     for (name, _), dump in zip(all_decks, dumps):
-        hashes.append(f"{hashlib.sha256(chr(10).join(dump).encode()).hexdigest()}  {name}")
+        own = differing(dump, pristine)
+        hashes.append(f"{hashlib.sha256(chr(10).join(own).encode()).hexdigest()}  {name}")
         if representative(name):
             fname = name.replace("/", "__") + ".txt"
-            if not expect(EXPECTED / fname, differing(dump, pristine)):
+            if not expect(EXPECTED / fname, own):
                 failures.append(name)
     if not expect(EXPECTED / "hashes.txt", hashes):
         old = dict(l.split("  ", 1)[::-1] for l in (EXPECTED / "hashes.txt").read_text().splitlines()) \
@@ -294,25 +298,52 @@ def test_monte_carlo_paths_are_expanded(tmp_path):
         assert (out / f"mc.mc{k}").is_file()
 
 
-def test_a_second_read_starts_from_the_defaults(tmp_path):
-    """read_controls resets the controls and re-arms the run's working
-    copies of them: a deck read into a star that a run has used (a card's
-    mixing length rewritten, the atmosphere in use switched, a
-    cross-section scale rescaled) dumps exactly as a fresh read, and the
-    copies equal their controls again (test_controls prints a line
-    otherwise), as an embedding host or a second in-process run needs."""
+SECOND_READS = {
+    "inlist": (["examples/run_config_matrix/cm_rot_base.inlist"],
+               ["examples/run_config_matrix/cm_base.inlist"]),
+    "legacy": (["examples/run_standard_solar_model/Test_solar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10.nml1",
+                "examples/run_standard_solar_model/Test_solar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10.nml2"],
+               ["examples/run_standard_solar_model/Test_solar_noGS_norot.nml1",
+                "examples/run_standard_solar_model/Test_solar_noGS_norot.nml2"]),
+}
+
+
+@pytest.mark.parametrize("form", sorted(SECOND_READS))
+def test_a_second_read_leaves_nothing_of_the_first(tmp_path, form):
+    """read_controls starts every read from the defaults and re-arms the
+    run's working copies: a deck read into a star that another deck was
+    read into, and a run then used (a card's mixing length rewritten, the
+    atmosphere in use switched, a cross-section scale rescaled), dumps
+    exactly as that deck read alone, and the copies equal their controls
+    again (test_controls prints a line otherwise), as an embedding host or
+    a second in-process run needs. The first deck is a rotating one, the
+    second not, so that the second leaves at their defaults many controls
+    the first sets (the test checks it has such controls to see); for an
+    inlist (the records and the buffer reset) and for a legacy pair (the
+    legacy variables reset too)."""
     if not BINARY.exists():
         pytest.skip("src/test_controls not built (run `make tests` in src/)")
-    deck = REPO / "examples" / "run_config_matrix" / "cm_base.inlist"
-    dumps = []
-    for twice in ("0", "1"):
-        out = tmp_path / twice
+    first, second = ([REPO / f for f in files] for files in SECOND_READS[form])
+
+    def dump(files, out, **extra):
         out.mkdir()
-        r = subprocess.run([str(BINARY), str(deck)], cwd=deck.parent, capture_output=True,
-                           env=dict(os.environ, YREC_OUTPUT=str(out), YREC_TEST_READ_TWICE=twice))
-        dumps.append(dump_of(r.stdout, out))
-    assert "ierr = 0" in dumps[1]
-    assert dumps[1] == dumps[0], [l for l in dumps[1] if l not in dumps[0]][:5]
+        r = subprocess.run([str(BINARY)] + [str(f) for f in files], cwd=files[0].parent,
+                           capture_output=True, env=dict(os.environ, YREC_OUTPUT=str(out), **extra))
+        lines = dump_of(r.stdout, out)
+        assert "ierr = 0" in lines, files
+        return lines
+
+    pristine = run([])
+    alone_first = dump(first, tmp_path / "first")
+    alone = dump(second, tmp_path / "second")
+    twice = dump(first, tmp_path / "twice", YREC_TEST_READ_TWICE=str(second[0]),
+                 YREC_TEST_READ_TWICE_PHYSICS=str(second[-1]))
+    # the controls the first deck sets and the second leaves at their
+    # defaults, where a value left over from the first read would show
+    values = [dict(l.split(" = ", 1) for l in d if " = " in l) for d in (pristine, alone_first, alone)]
+    left = [k for k, v in values[1].items() if k in values[0] and v != values[0][k] == values[2].get(k)]
+    assert len(left) >= 20, left
+    assert twice == alone, [l for l in twice if l not in alone][:5]
 
 
 def test_older_inlist_names_still_read(tmp_path):

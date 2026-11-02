@@ -11,7 +11,11 @@
 !   test_controls                  the pristine defaults (no deck read)
 !   test_controls deck.inlist      a single-file inlist
 !   test_controls deck.nml1 deck.nml2   a legacy CONTROL/PHYSICS pair
-! (with YREC_TEST_READ_TWICE=1, the deck read twice into the same star).
+! With YREC_TEST_READ_TWICE set to a second deck (and, for a legacy pair,
+! YREC_TEST_READ_TWICE_PHYSICS to its .nml2), the deck given is read, the
+! run copies scribbled on as a run would, and then the second deck read
+! into the same star: the dump is the second read's, which must equal
+! that deck read alone.
 ! The output files a run opens go under $YREC_OUTPUT (test_controls.py
 ! points it at a scratch directory). test_controls.py runs this on every
 ! deck in examples/ and testsuite/.
@@ -24,8 +28,7 @@ program test_controls
 ! the test's star (star_info_lib declares no instance); static, as it
 ! is too large for the stack
       type(star_info), save :: star
-      character(len=256) :: deck1, deck2
-      character(len=8) :: twice
+      character(len=256) :: deck1, deck2, second1, second2
       integer :: ierr, u, i1, nargs
       logical :: kept_first = .false.
 
@@ -42,14 +45,18 @@ program test_controls
          call read_controls(star, ierr)
 ! the run's files, as run_yrec opens them after the read
          if (ierr == 0) call open_run_files(star, ierr)
-! YREC_TEST_READ_TWICE=1: scribble on the run's working copies of the
-! controls as a run would (a card's mixing length, the atmosphere in
+! YREC_TEST_READ_TWICE=<deck>: scribble on the run's working copies of
+! the controls as a run would (a card's mixing length, the atmosphere in
 ! use, a Monte-Carlo cross-section scale), close the run's files, then
-! read the deck again into the same star; the dump must be a single
-! read's, and the read must have armed the copies from their controls
-! again
-         call get_environment_variable("YREC_TEST_READ_TWICE", twice)
-         if (twice == "1") then
+! read the second deck into the same star; the dump must be that deck's
+! alone (nothing of the first read left), and the read must have armed
+! the copies from their controls again
+         call get_environment_variable("YREC_TEST_READ_TWICE", second1)
+         if (len_trim(second1) > 0) then
+            call get_environment_variable("YREC_TEST_READ_TWICE_PHYSICS", second2)
+            if (len_trim(second2) == 0) second2 = second1
+            control_nml_override = second1
+            physics_nml_override = second2
             star%card_mixing_length_alpha(1) = 7.0d0
             star%atm_choice_in_use = 7
             star%cross_section_scale_in_use(1) = 7.0d0
