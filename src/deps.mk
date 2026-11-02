@@ -364,7 +364,7 @@ core/model/rezoning.o: am_regions.mod control_slots.mod math_lib.mod moments_of_
 core/model/shell_boundaries.o: control_slots.mod star_info_lib.mod
 core/model/starting_model.o: am_regions.mod control_slots.mod convection_lib.mod envelope_integration.mod envelope_refit.mod eos_lib.mod kap_lib.mod math_lib.mod model_files.mod model_rescaling.mod moments_of_inertia.mod observables.mod physical_constants.mod rotating_shape.mod run_files.mod run_messages.mod settings_install.mod shell_physics.mod star_info_lib.mod stitched_model.mod turnover_timescale.mod
 core/run/calibration.o: control_slots.mod math_lib.mod physical_constants.mod run_messages.mod star_info_lib.mod
-core/run/monte_carlo.o: controls_sync.mod math_lib.mod model_files.mod net_lib.mod physical_constants.mod run_files.mod run_messages.mod star_info_lib.mod
+core/run/monte_carlo.o: controls_sync.mod math_lib.mod model_files.mod net_lib.mod output_files.mod physical_constants.mod run_files.mod run_messages.mod star_info_lib.mod
 core/run/run_driver.o: calibration.mod controls_check.mod controls_reader.mod model_files.mod monte_carlo.mod neutrino_flux_output.mod physical_constants.mod run_files.mod run_log.mod run_setup.mod settings_install.mod shell_boundaries.mod star_info_lib.mod starting_model.mod step_driver.mod stop_conditions.mod timestep_control.mod yrec_output.mod yrec_reset.mod yrec_version.mod
 core/run/run_setup.o: math_lib.mod monte_carlo.mod physical_constants.mod settings_install.mod star_info_lib.mod
 core/run/stop_conditions.o: calibration.mod math_lib.mod run_messages.mod star_info_lib.mod
@@ -422,7 +422,7 @@ io/controls_sync.o: controls_buffer.mod star_info_lib.mod
 io/derived_controls.o: composition_layout.mod controls_buffer.mod eos_lib.mod run_messages.mod yrec_version.mod
 io/history_output.o: neutrino_flux_layout.mod output_columns.mod output_files.mod run_messages.mod star_info_lib.mod yrec_version.mod
 io/legacy_controls.o: control_slots.mod controls_buffer.mod reaction_layout.mod run_messages.mod
-io/model_files.o: math_lib.mod run_messages.mod star_info_lib.mod
+io/model_files.o: math_lib.mod output_files.mod run_messages.mod star_info_lib.mod
 io/output_columns.o: run_messages.mod
 io/output_files.o: run_messages.mod
 io/profile_output.o: output_columns.mod output_files.mod star_info_lib.mod stitched_model.mod
@@ -433,7 +433,7 @@ io/run_log.o: run_messages.mod star_info_lib.mod
 io/test/test_controls.o: controls_buffer.mod controls_reader.mod run_files.mod run_messages.mod star_info_lib.mod
 io/test/test_io.o: controls_reader.mod history_output.mod model_files.mod output_columns.mod output_files.mod profile_output.mod pulsation_output.mod run_cards.mod run_files.mod run_messages.mod star_info_lib.mod stitched_model.mod yrec_output.mod
 io/user_inputs.o: control_slots.mod controls_buffer.mod net_lib.mod
-io/yrec_output.o: history_output.mod math_lib.mod model_files.mod output_columns.mod physical_constants.mod profile_output.mod pulsation_output.mod run_cards.mod run_files.mod run_log.mod run_messages.mod star_info_lib.mod stitched_model.mod
+io/yrec_output.o: history_output.mod math_lib.mod model_files.mod output_columns.mod output_files.mod physical_constants.mod profile_output.mod pulsation_output.mod run_cards.mod run_files.mod run_log.mod run_messages.mod star_info_lib.mod stitched_model.mod
 kap/alex06/alex06_opacity.o: math_lib.mod numerics_lib.mod opacity_tables.mod physical_constants.mod
 kap/alex94/alex94_opacity.o: math_lib.mod numerics_lib.mod opacity_tables.mod physical_constants.mod run_messages.mod
 kap/conductive/conductive_opacity.o: math_lib.mod numerics_lib.mod

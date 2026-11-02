@@ -165,7 +165,9 @@ end subroutine read_model_format_tag
 ! appended after the ones already written (the Monte Carlo model file,
 ! one model per run). The unit stays open. A failed write is reported
 ! ("cannot write the model file <path>: <reason>") and returns ierr = 1;
-! the writes after it are skipped.
+! the writes after it are skipped. The model is then flushed and its size
+! on disk checked (flush_output_file), as a full disk would cut it
+! silently.
 !   star reads: age_gyr, convective_flag, log_L_lsun, log_mass,
 !     log_Teff, log_total_mass, logP, logR, logRho, logT,
 !     luminosity_lsun, mixing_length_alpha, model_number, nz, omega,
@@ -175,6 +177,7 @@ end subroutine read_model_format_tag
 subroutine write_mod_model(s, iwrite, replace, ierr)
       use star_info_lib, only: star_info
       use run_messages, only: log_line, check_io, solver_diagnostics
+      use output_files, only: flush_output_file
       type(star_info), intent(in) :: s
       integer, intent(in) :: iwrite
       logical, intent(in) :: replace
@@ -206,12 +209,15 @@ subroutine write_mod_model(s, iwrite, replace, ierr)
               s%convective_flag(k), s%omega(k), &
               s%xa(mod_slots,k)
       end do
-      if (ios == 0) flush(iwrite, iostat=ios, iomsg=msg)
+      inquire(unit=iwrite, name=path)
       if (ios /= 0) then
-         inquire(unit=iwrite, name=path)
          call check_io(ios, msg, 'write the model file', path, ierr)
          return
       end if
+! handed to the system, and its size on disk checked (output_files: a
+! full disk cuts it without a word otherwise)
+      call flush_output_file(iwrite, path, ios, msg, ierr)
+      if (ierr /= 0) return
 
 ! the solver forensics' record of the write (an appended model, the
 ! Monte Carlo file's, with its age)

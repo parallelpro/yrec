@@ -79,7 +79,11 @@
 !                end up shorter on disk than what was written (gfortran's
 !                runtime reports no error on the writes themselves,
 !                io/output_files.f90; a runtime that does reports it at
-!                the write, with the same message head);
+!                the write, with the same message head), and for the
+!                files open for the run, the .mod model and the isochrone
+!                file at their write and the run log at check_run_log (a
+!                run log rewound and written again, shorter, is not cut
+!                short);
 !                two runs that write one path (M174) are not a full
 !                disk: a history file that another run truncates in
 !                place after this run's last row (the C library's fopen
@@ -96,7 +100,10 @@
 ! formats (expected = what the text written here reads back as, by an
 ! internal read), never by the reader under test. Each check prints ok
 ! or FAIL; the program stops with status 1 on any FAIL. Each check was
-! confirmed to fail under a mutation of the code it covers (2026-10-29).
+! confirmed to fail under a mutation of the code it covers: the first
+! ones on 2026-10-29, the writes' and FGONG's when they came (2026-10-31),
+! M174's on 2026-11-01, and the fields' and the full-disk checks of the
+! .mod, the isochrone file and the run log on 2026-11-01.
 ! The messages io reports go to the files terminal.txt and run_log.txt
 ! (run_messages' terminal_unit and run_log_unit), where the error checks
 ! look for them.
@@ -107,8 +114,9 @@ program test_io
       use star_info_lib, only: star_info, json, i_h1, i_he4, i_metals, i_he3, &
            i_c12, i_c13, i_n14, i_n15, i_o16, i_o17, i_o18, i_h2, i_li6, i_li7, &
            i_be9
-      use run_messages, only: run_log_unit, terminal_unit
-      use run_files, only: expand_value, directory_of, copy_inlists_used, isochrone_unit
+      use run_messages, only: run_log_unit, terminal_unit, log_line
+      use run_files, only: expand_value, directory_of, copy_inlists_used, isochrone_unit, &
+           check_run_log
       use yrec_output, only: pulse_format_code, unknown_pulse_format, &
            pulse_gyre, pulse_fgong, pulse_gsm, output_run_header, interior_gyre_path
       use run_cards, only: card_evolve
@@ -1172,7 +1180,7 @@ subroutine writes_check()
       character(len=200) :: deck_lines(100)
       character(len=256) :: msg
       character(len=8) :: lines(3)
-      integer :: u, ierr, i, j, ios, row_ierr
+      integer :: u, ierr, i, j, ios, row_ierr, test_log_unit
 
       call fill_mod_model(s)
       do j = 1, n_points
@@ -1252,6 +1260,64 @@ subroutine writes_check()
       call limit_file_size(-1)
       call report("writes: a history row cut short by a full disk is an error", row_ierr == 1 .and. &
            ierr == 1 .and. captured(terminal_file, 'cannot write full_history.data'))
+
+! a full disk, for the files kept open for the run: the .mod model and
+! the isochrone file at each write, the run log at each model
+! (check_run_log)
+      open(newunit=u, file='full.mod', status='replace', action='write')
+      ierr = 0
+      call limit_file_size(limit_bytes)
+      call write_mod_model(s, u, replace=.true., ierr=ierr)
+      call limit_file_size(-1)
+      close(u)
+      call report("writes: a .mod model cut short by a full disk is an error", ierr == 1 .and. &
+           captured(terminal_file, 'cannot write full.mod'))
+! (card kind 0: output_run_header writes the isochrone header and no
+! terminal line)
+      open(newunit=isochrone_unit, file='full.iso', status='replace', action='write')
+      s%control%isochrone_output_active = .true.
+      s%current_card = 1
+      s%card_kind(1) = 0
+      ierr = 0
+      call limit_file_size(limit_bytes)
+      do i = 1, 30
+         if (ierr == 0) call output_run_header(s, 1.0d0, ierr)
+      end do
+      call limit_file_size(-1)
+      close(isochrone_unit)
+      isochrone_unit = -1
+      s%control%isochrone_output_active = .false.
+      call report("writes: an isochrone file cut short by a full disk is an error", ierr == 1 .and. &
+           captured(terminal_file, 'cannot write full.iso'))
+      test_log_unit = run_log_unit
+      open(newunit=run_log_unit, file='full_run.log', status='replace', action='write')
+      ierr = 0
+      call limit_file_size(limit_bytes)
+      do i = 1, size(deck_lines)
+         call log_line(trim(deck_lines(i)))
+      end do
+      call check_run_log(ierr)
+      call limit_file_size(-1)
+      close(run_log_unit)
+      run_log_unit = test_log_unit
+      call report("writes: a run log cut short by a full disk is an error", ierr == 1 .and. &
+           captured(terminal_file, 'cannot write full_run.log'))
+! a run log rewound and written again, shorter (rewind_short_file), is
+! not cut short
+      test_log_unit = run_log_unit
+      open(newunit=run_log_unit, file='rewound_run.log', status='replace', action='write')
+      do i = 1, size(deck_lines)
+         call log_line(trim(deck_lines(i)))
+      end do
+      ierr = 0
+      call check_run_log(ierr)
+      rewind(run_log_unit)
+      call log_line('one line')
+      call check_run_log(ierr)
+      close(run_log_unit)
+      run_log_unit = test_log_unit
+      call report("writes: a run log rewound and written shorter is not cut short", ierr == 0 .and. &
+           .not. captured(terminal_file, 'rewound_run.log'))
 
 ! the copy of the deck (an inlist: one file, copied once)
       do i = 1, size(deck_lines)

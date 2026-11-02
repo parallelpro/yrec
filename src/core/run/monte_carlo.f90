@@ -26,6 +26,7 @@ module monte_carlo
       use run_files, only: last_model_unit, starting_model_unit, &
            dynamics_unit, mc_summary_unit, mc_model_unit
       use model_files, only: write_mod_model
+      use output_files, only: flush_output_file
       implicit none
       private
       public :: setup_monte_carlo_runs, begin_monte_carlo_run, &
@@ -227,9 +228,10 @@ end subroutine write_run_summaries
 ! the last card of the calibration triple.
 !   star reads: card_mixing_length_alpha, card_rescale_targets,
 !     central_log10_density, central_log10_pressure,
-!     central_log10_temperature, cl37_snu_rate, dlum_dalpha, dlum_dx,
-!     drad_dalpha, drad_dx, envelope_mass_msun, envelope_radius_rsun,
-!     ga71_snu_rate, log_L_lsun, luminosity_breakdown_lsun, mc_samples,
+!     central_log10_temperature, cl37_snu_rate,
+!     control%monte_carlo_file1_path, dlum_dalpha, dlum_dx, drad_dalpha,
+!     drad_dx, envelope_mass_msun, envelope_radius_rsun, ga71_snu_rate,
+!     log_L_lsun, luminosity_breakdown_lsun, mc_samples,
 !     neutrino_flux_total_e10_per_cm2_s, nz, xa
 !   star writes: none
 subroutine write_monte_carlo_model(s, local_log_radius, &
@@ -239,21 +241,26 @@ subroutine write_monte_carlo_model(s, local_log_radius, &
       double precision, intent(in) :: local_log_radius
       integer, intent(in) :: convergence_iterations, run_index, &
            monte_carlo_run_number
-! a failed write of the model (write_mod_model) returns ierr = 1
+! a failed write of the model (write_mod_model) or of the summary
+! returns ierr = 1
       integer, intent(inout) :: ierr
 ! --- locals ---
-      integer :: iwrite, j
+      integer :: iwrite, j, ios
+      character(len=256) :: msg
       double precision :: surface_z_over_x, tcen, pcen, dcen, yini, zini
 
 ! Append the last converged model to monte_carlo_unit2 (legacy IMONTE2).
       iwrite = mc_model_unit
       call write_mod_model(s, iwrite, replace=.false., ierr=ierr)
       if (ierr /= 0) return
-! The summary on monte_carlo_unit1. The surface Z/X:
+! The summary on monte_carlo_unit1, each record written unless an
+! earlier one failed, then checked (output_files' flush_output_file: the
+! first failed write, or a file cut short on disk). The surface Z/X:
+      ios = 0
       surface_z_over_x = s%xa(i_metals,s%nz)/s%xa(i_h1,s%nz)
 ! Record 1: the run number and its samples. The metal settling factor
 ! is written twice, as WRTMONTE wrote FHE and its copy FZDIF.
-      write(mc_summary_unit,10)monte_carlo_run_number,s%mc_samples%s11_factor(monte_carlo_run_number), &
+      if (ios == 0) write(mc_summary_unit,10,iostat=ios,iomsg=msg)monte_carlo_run_number,s%mc_samples%s11_factor(monte_carlo_run_number), &
               s%mc_samples%s33_factor(monte_carlo_run_number),s%mc_samples%s34_factor(monte_carlo_run_number), &
               s%mc_samples%s17_factor(monte_carlo_run_number), &
               s%mc_samples%metal_to_h_ratio(monte_carlo_run_number),s%mc_samples%settling_z_factor(monte_carlo_run_number), &
@@ -262,38 +269,39 @@ subroutine write_monte_carlo_model(s, local_log_radius, &
    10 format(I7,1P9E10.3)
 ! Record 2: the number of calibration cycles, and the partial
 ! derivatives d log L/dX, d log R/dX, d log L/d alpha, d log R/d alpha.
-      write(mc_summary_unit,20)convergence_iterations,s%dlum_dx,s%drad_dx, &
+      if (ios == 0) write(mc_summary_unit,20,iostat=ios,iomsg=msg)convergence_iterations,s%dlum_dx,s%drad_dx, &
            s%dlum_dalpha,s%drad_dalpha
  20   format(1X,I2,1P4E11.4)
 ! Record 3: the Cl37 and Ga71 capture rates (SNU) and the first eight
 ! neutrino fluxes, pp, pep, hep, Be7, B8, N13, O15 and F17 (see
 ! compute_solar_neutrino_fluxes).
-      write(mc_summary_unit,30) s%cl37_snu_rate,s%ga71_snu_rate,(s%neutrino_flux_total_e10_per_cm2_s(j),j=1,8)
+      if (ios == 0) write(mc_summary_unit,30,iostat=ios,iomsg=msg) s%cl37_snu_rate,s%ga71_snu_rate,(s%neutrino_flux_total_e10_per_cm2_s(j),j=1,8)
  30   format(1X,2F8.3,1P8E10.3)
 ! Record 4: the central T/1e6 K, density (g cm^-3),
 ! P/1e17 dyn cm^-2, X and Z.
       tcen = exp10((s%central_log10_temperature-6.0d0))
       pcen = exp10((s%central_log10_pressure-17.0d0))
       dcen = exp10(s%central_log10_density)
-      write(mc_summary_unit,40)tcen,dcen,pcen,s%xa(i_h1,1),s%xa(i_metals,1)
+      if (ios == 0) write(mc_summary_unit,40,iostat=ios,iomsg=msg)tcen,dcen,pcen,s%xa(i_h1,1),s%xa(i_metals,1)
  40   format(1X,F7.3,F7.2,F6.3,2F8.5)
 ! Record 5: the number of shells, alpha, the initial Y and Z (from the
 ! triple's rescale card, current_card-2), and the final log(L/Lsun) and
 ! log(R/Rsun).
       yini = 1.0d0 - s%card_rescale_targets(2,run_index-2) - s%card_rescale_targets(3,run_index-2)
       zini = s%card_rescale_targets(3,run_index-2)
-      write(mc_summary_unit,50)s%nz,s%card_mixing_length_alpha(run_index),yini,zini, &
+      if (ios == 0) write(mc_summary_unit,50,iostat=ios,iomsg=msg)s%nz,s%card_mixing_length_alpha(run_index),yini,zini, &
            s%log_L_lsun,local_log_radius
  50   format(I5,F7.4,2F8.5,1P2E10.3)
 ! Record 6: the radius (Rsun) of the base of the surface convection
 ! zone and the mass above it (Msun), and the surface Y, Z and Z/X.
-      write(mc_summary_unit,60)s%envelope_radius_rsun,s%envelope_mass_msun,s%xa(i_he4,s%nz), &
+      if (ios == 0) write(mc_summary_unit,60,iostat=ios,iomsg=msg)s%envelope_radius_rsun,s%envelope_mass_msun,s%xa(i_he4,s%nz), &
            s%xa(i_metals,s%nz),surface_z_over_x
  60   format(F8.5,F9.6,2F8.5,F9.6)
 ! Record 7: the luminosities (Lsun) of the pp I, pp II, pp III and CNO
 ! channels and of gravitational energy release.
-      write(mc_summary_unit,70)(s%luminosity_breakdown_lsun(j),j=1,4),s%luminosity_breakdown_lsun(i_lum_grav)
+      if (ios == 0) write(mc_summary_unit,70,iostat=ios,iomsg=msg)(s%luminosity_breakdown_lsun(j),j=1,4),s%luminosity_breakdown_lsun(i_lum_grav)
  70   format(1P5E10.3)
+      call flush_output_file(mc_summary_unit, s%control%monte_carlo_file1_path, ios, msg, ierr)
 end subroutine write_monte_carlo_model
 
 end module monte_carlo

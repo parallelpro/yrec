@@ -20,7 +20,9 @@ contains
 ! An optional diagnostic (compute_neutrino_fluxes, default .false.),
 ! called by run_yrec once per kind card right after
 ! read_starting_model, so the table describes each card's starting
-! model. It writes to run_log_unit:
+! model. It writes to the run log, each line through run_messages'
+! log_line (the run log is checked on disk at each model, run_files'
+! check_run_log):
 !  1. for each shell from the center out, as long as log T >= 6 and
 !     log T is above the nuclear cutoff: the shell index, the shell
 !     mass (g) and the shell's contributions to the ten flux slots (the
@@ -40,7 +42,7 @@ subroutine write_neutrino_flux_table(s)
       use star_info_lib, only: json, i_h1, i_h2, i_he3, i_he4, i_c12, &
            i_c13, i_n14, i_o16, i_o18, i_nu_pp, i_nu_pep, i_nu_hep, &
            i_nu_be7, i_nu_b8, i_nu_n13, i_nu_o15, i_nu_f17, n_nu_fluxes
-      use run_messages, only: run_log_unit
+      use run_messages, only: log_line
       use physical_constants
       use net_lib, only: nuclear_energy_result
       use burn_step, only: compute_zone_energy
@@ -61,6 +63,8 @@ subroutine write_neutrino_flux_table(s)
       double precision :: t6_million_k, log_electron_density, &
            zone_mass_fraction, zone_radius_fraction
       integer :: i, j
+! one line of the table, as its format writes it
+      character(len=160) :: line
 
 ! The shell masses from the log m grid: shell_center_mass is the mass
 ! (g) inside each shell center, and shell_mass the mass (g) of each
@@ -93,14 +97,16 @@ subroutine write_neutrino_flux_table(s)
             s%neutrino_flux_total_e10_per_cm2_s(j) = s%neutrino_flux_total_e10_per_cm2_s(j) &
                  + flux_zone(j,i)
          end do
-         write(run_log_unit,911)i,shell_mass(i), &
+         write(line,911)i,shell_mass(i), &
               (flux_zone(j,i),j=1,n_nu_fluxes)
  911     format(I5,1P11E10.3)
+         call log_line(trim(line))
       end do
 
 ! The total fluxes, in units of 10^10 cm^-2 s^-1.
-      write(run_log_unit,222)(s%neutrino_flux_total_e10_per_cm2_s(i),i=1,n_nu_fluxes)
+      write(line,222)(s%neutrino_flux_total_e10_per_cm2_s(i),i=1,n_nu_fluxes)
  222  format(1P10E10.3)
+      call log_line(trim(line))
 
 ! Normalize each shell's flux to the total of its slot.
       do j = 1,n_nu_fluxes
@@ -123,7 +129,7 @@ subroutine write_neutrino_flux_table(s)
 ! The radius in solar radii.
          zone_radius_fraction = exp(ln10*s%logR(i))/s%solar_radius_cgs
 ! The fluxes in the order Bahcall & Pinsonneault use.
-         write(run_log_unit,145)zone_radius_fraction,t6_million_k, &
+         write(line,145)zone_radius_fraction,t6_million_k, &
               log_electron_density,zone_mass_fraction, &
               be7_mass_fraction(i), &
               flux_zone(i_nu_pp,i), &
@@ -135,6 +141,7 @@ subroutine write_neutrino_flux_table(s)
               flux_zone(i_nu_pep,i), &
               flux_zone(i_nu_hep,i)
  145     format(F9.5,F7.3,F6.3,1P10E10.3)
+         call log_line(trim(line))
       end do
       return
 end subroutine write_neutrino_flux_table

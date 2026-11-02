@@ -15,7 +15,8 @@ module run_files
       implicit none
       private
       public :: assign_unit_numbers, open_run_files, expand_value, &
-           output_directory, directory_of, copy_inlists_used, open_run_log_after_error
+           output_directory, directory_of, copy_inlists_used, open_run_log_after_error, &
+           check_run_log
       public :: last_model_unit, starting_model_unit, dynamics_unit, mc_summary_unit, &
            mc_model_unit, isochrone_unit
 
@@ -196,6 +197,24 @@ subroutine open_run_log(log_output_file, ierr)
       call check_io(ios, msg, 'open the run log', log_path, ierr)
       if (ierr == 0) call flush_pending_log
 end subroutine open_run_log
+
+! ---------------------------------------------------------------
+! The run log's lines so far handed to the system and its size on disk
+! checked (output_files' flush_output_file: a failed flush, or a file
+! cut short by a full disk, which gfortran's runtime does not report on
+! the writes; ierr = 1). output_write_model calls it after each model's
+! output and output_close at the end, so a run whose log fails stops
+! with exit 1. Nothing to check before the log is open.
+subroutine check_run_log(ierr)
+      use output_files, only: flush_output_file
+      integer, intent(inout) :: ierr
+      character(len=256) :: path
+      logical :: is_open
+
+      inquire(unit=run_log_unit, opened=is_open, name=path)
+      if (.not. is_open .or. run_log_unit == terminal_unit) return
+      call flush_output_file(run_log_unit, path, 0, ' ', ierr)
+end subroutine check_run_log
 
 ! ---------------------------------------------------------------
 ! The directory part of a path, up to and including its last '/';

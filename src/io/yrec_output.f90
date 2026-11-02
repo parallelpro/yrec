@@ -105,12 +105,14 @@ subroutine output_open(s, output, ierr)
 end subroutine output_open
 
 ! ---------------------------------------------------------------
-! The end of the job's output: the history file closed, its size on
-! disk checked.
+! The end of the job's output: the history file closed, and the run
+! log's last lines checked on disk.
 subroutine output_close(output, ierr)
+      use run_files, only: check_run_log
       type(output_state), intent(inout) :: output
       integer, intent(inout) :: ierr
       call close_history(output%history, ierr)
+      if (ierr == 0) call check_run_log(ierr)
 end subroutine output_close
 
 ! ---------------------------------------------------------------
@@ -137,7 +139,8 @@ end function pulse_format_code
 ! ---------------------------------------------------------------
 ! One converged model's output: the progress line, the isochrone
 ! record, the profile and pulse files when due, the history row, the
-! .mod model, and the interval GYRE file.
+! .mod model, and the interval GYRE file; then the run log checked on
+! disk (run_files' check_run_log).
 !   star reads: age_gyr, control%isochrone_output_active,
 !     control%pulse_gyre_interval, h_shell_bot_index, has_h_shell,
 !     log_g_surface, log_L_lsun, log_R_surface_rsun, log_Teff, m,
@@ -147,7 +150,7 @@ end function pulse_format_code
 !   star writes: none
 subroutine output_write_model(s, output, ierr)
       use star_info_lib, only: star_info, i_he4
-      use run_files, only: last_model_unit, isochrone_unit
+      use run_files, only: last_model_unit, isochrone_unit, check_run_log
       type(star_info), intent(in) :: s
       type(output_state), intent(inout) :: output
       integer, intent(inout) :: ierr
@@ -207,6 +210,8 @@ subroutine output_write_model(s, output, ierr)
       if (s%control%pulse_gyre_interval > 0 .and. &
           mod(s%model_number,s%control%pulse_gyre_interval) == 0) &
            call write_interior_gyre(s, output, ierr)
+      if (ierr /= 0) return
+      call check_run_log(ierr)
 end subroutine output_write_model
 
 ! ---------------------------------------------------------------
@@ -371,18 +376,24 @@ end subroutine output_run_header
 
 ! ---------------------------------------------------------------
 ! After a write to the isochrone file (open for the run) with
-! iostat=ios and iomsg=msg: a failure reported, ierr = 1.
+! iostat=ios and iomsg=msg: a failure reported, ierr = 1; otherwise the
+! record handed to the system and the file's size on disk checked
+! (output_files' flush_output_file: a full disk).
 subroutine check_isochrone_write(ios, msg, ierr)
       use run_messages, only: check_io
       use run_files, only: isochrone_unit
+      use output_files, only: flush_output_file
       integer, intent(in) :: ios
       character(len=*), intent(in) :: msg
       integer, intent(inout) :: ierr
       character(len=256) :: path
 
-      if (ios == 0) return
       inquire(unit=isochrone_unit, name=path)
-      call check_io(ios, msg, 'write the isochrone file', path, ierr)
+      if (ios /= 0) then
+         call check_io(ios, msg, 'write the isochrone file', path, ierr)
+      else
+         call flush_output_file(isochrone_unit, path, 0, ' ', ierr)
+      end if
 end subroutine check_isochrone_write
 
 end module yrec_output
