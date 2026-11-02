@@ -322,27 +322,32 @@ def check_install_sites(src_root):
     return problems
 
 
-# Every field of a domain's settings record is set by its builder
-# (2026-10-29): a field the builder does not set keeps its declared
-# default for every run, which is how a newly added field is forgotten.
+# Every field of a domain's settings record, and of the paths record of
+# the tables its init loads, is set by its builder (2026-10-29; the paths
+# records 2026-11-01): a field the builder does not set keeps its
+# declared default for every run, which is how a newly added field is
+# forgotten (a table path then stays '' until the domain's open fails).
 # The builders are setup/'s functions that return a record of a
-# *_settings_t type (`type(<t>) :: settings` in the function); a field is
-# set when the function assigns settings%<field> (or an element of it).
-# A field that is deliberately left at its default is listed here, with
-# the reason.
+# *_settings_t or *_table_paths_t type (`type(<t>) :: settings`, or
+# `:: paths`, the function's result); a field is set when the function
+# assigns settings%<field> (paths%<field>, or an element of it). Every
+# builder is a pure function, so that the compiler rejects a side effect
+# (setup/README.md §3). A field that is deliberately left at its default
+# is listed here, with the reason.
 SETTINGS_DEFAULT_ONLY = {}
+SETTINGS_TYPE = r"\w+_(?:settings|table_paths)_t"
 
 def settings_type_fields(src_root):
-    """{type name: [field, ...]} for the *_settings_t types the domains
-    declare"""
+    """{type name: [field, ...]} for the *_settings_t and *_table_paths_t
+    types the domains declare"""
     out = {}
     for d in DOMAINS:
         for f in sorted((src_root / d).rglob("*.f90")):
             if "/test/" in f.relative_to(src_root).as_posix():
                 continue
             code = "\n".join(join_continuations(strip_comments(f.read_text(errors="replace"))))
-            for m in re.finditer(r"(?ims)^\s*type\s*(?:,\s*public\s*)?(?:::)?\s*(\w+_settings_t)\s*$(.*?)^\s*end\s*type\b",
-                                 code):
+            for m in re.finditer(r"(?ims)^\s*type\s*(?:,\s*public\s*)?(?:::)?\s*(" + SETTINGS_TYPE +
+                                 r")\s*$(.*?)^\s*end\s*type\b", code):
                 fields = []
                 for line in m.group(2).splitlines():
                     if "::" not in line:
@@ -358,23 +363,35 @@ def settings_type_fields(src_root):
                 out[m.group(1).lower()] = fields
     return out
 
-def check_settings_fields(src_root):
-    types = settings_type_fields(src_root)
+def settings_builders(src_root):
+    """{type name: (function, prefixes, {assigned field, ...})} for setup/'s
+    functions whose result (settings or paths) is a settings or paths
+    record"""
     built = {}
     for f in sorted((src_root / "setup").glob("*.f90")):
         code = "\n".join(join_continuations(strip_comments(f.read_text(errors="replace"))))
-        for m in re.finditer(r"(?ims)^\s*(?:(?:pure|elemental|impure|recursive)\s+)*function\s+(\w+)\s*\([^)]*\)\s*result\s*\(\s*settings\s*\)(.*?)^\s*end\s*function\b",
-                             code):
-            t = re.search(r"(?im)^\s*type\s*\(\s*(\w+_settings_t)\s*\)\s*::\s*settings\s*$", m.group(2))
+        for m in re.finditer(r"(?ims)^\s*((?:(?:pure|elemental|impure|recursive|module)\s+)*)function\s+(\w+)"
+                             r"\s*\([^)]*\)\s*result\s*\(\s*(settings|paths)\s*\)(.*?)^\s*end\s*function\b", code):
+            result = m.group(3).lower()
+            t = re.search(r"(?im)^\s*type\s*\(\s*(" + SETTINGS_TYPE + r")\s*\)\s*::\s*" + result + r"\s*$",
+                          m.group(4))
             if t:
-                built[t.group(1).lower()] = (m.group(1), {a.lower() for a in re.findall(
-                    r"(?im)^\s*(?:if\s*\(.*\)\s*)?settings%(\w+)(?:\s*\([^=]*\))?\s*=(?!=)", m.group(2))})
+                built[t.group(1).lower()] = (m.group(2), m.group(1).lower().split(), {a.lower() for a in re.findall(
+                    r"(?im)^\s*(?:if\s*\(.*\)\s*)?" + result + r"%(\w+)(?:\s*\([^=]*\))?\s*=(?!=)", m.group(4))})
+    return built
+
+def check_settings_fields(src_root):
+    types = settings_type_fields(src_root)
+    built = settings_builders(src_root)
     problems = []
     for t, fields in sorted(types.items()):
         if t not in built:
             problems.append(f"{t}: no builder in setup/ returns it")
             continue
-        name, assigned = built[t]
+        name, prefixes, assigned = built[t]
+        if "pure" not in prefixes:
+            problems.append(f"{t}: its builder {name} is not a pure function (setup/README.md §3: "
+                            "declare it `pure function`)")
         for fld in fields:
             if fld not in assigned and fld not in SETTINGS_DEFAULT_ONLY.get(t, {}):
                 problems.append(f"{t}%{fld}: {name} does not set it (copy its control, or list it "
@@ -569,18 +586,97 @@ def check_controls_writer(src_root):
 
 
 # The run cards' capacity, max_runs, is state/control_slots.f90's
-# parameter; tools/controls_registry.py repeats it (MAX_RUNS) to read the
-# registry's per-run types, and the two must agree.
+# parameter, its one source: io/controls_buffer.f90 declares the per-run
+# controls with it, the registry's type cells spell it (real(max_runs)),
+# and the generated files declare and loop over the per-run arrays with
+# it, by name or (the controls dump) by its value. A per-run control is a
+# buffer member whose dimensions name max_runs; its registry cell must
+# name max_runs at the same position, not a number, and every size the
+# generated files give it at that position must equal max_runs' value
+# (a generator that wrote a stale or a literal size, or a max_runs
+# changed without regenerating, fails here). GENERATED_PER_RUN lists the
+# generated files that hold per-run sizes; each must yield some, so that
+# a scan that finds nothing fails rather than passing.
+GENERATED_PER_RUN = ["state/control_group_def.inc", "io/inlist_decl.inc",
+                     "io/legacy_decl.inc", "io/test/controls_dump.inc"]
+
+def per_run_controls():
+    """{name: position of max_runs in its dimensions} for every name a
+    per-run control has (canonical, inlist, legacy, alias, run copy), and
+    the registry problems of their type cells"""
+    import controls_registry
+    rows = {r["canonical"].lower(): r for r in controls_registry.rows() if r["canonical"]}
+    names, other, problems = {}, set(), []
+    for m in controls_registry.buffer_members():
+        dims = [d.strip().lower() for d in m["dims"].strip("()").split(",")] if m["dims"] else []
+        r = rows.get(m["name"])
+        alias = r["aliases"].replace(",", " ").split() if r and r.get("aliases") else []
+        own = [m["name"]] + ([r["proposed_name"], r["legacy"], r["run_copy"]] + alias if r else [])
+        own = {n.lower() for n in own if n and n != "-"}
+        if "max_runs" not in dims:
+            other |= own
+            continue
+        pos = dims.index("max_runs")
+        if r is not None:
+            cell = [d.strip().lower() for d in r["type"].partition("(")[2].rstrip(")").split(",")]
+            if len(cell) != len(dims) or cell[pos] != "max_runs":
+                problems.append(f"defaults/controls_registry.tsv: {m['name']} has the type {r['type']}; "
+                                f"its dimension {pos + 1} is the run cards' (max_runs), so the cell "
+                                "names max_runs there")
+        for n in own:
+            names[n] = pos
+    return {n: p for n, p in names.items() if n not in other}, problems
+
+def generated_per_run_sizes(text, names):
+    """[(name, size as written)] for the per-run names in a generated
+    file: each declaration's dimension at max_runs' position, and in the
+    controls dump the extent of the loop over that index"""
+    out = []
+    decl = re.compile(r"(?i)^\s*(?:double precision|real\s*\(\s*dp\s*\)|integer|logical|"
+                      r"character\s*\(\s*len\s*=\s*\w+\s*\))\s*(?:,[^:]*)?::\s*(.*)$")
+    loops = []
+    for line in join_continuations(strip_comments(text)):
+        m = decl.match(line)
+        if m:
+            for ent in re.findall(r"(\w+)\s*\(([^()]*)\)", re.sub(r"=.*", "", m.group(1))):
+                pos = names.get(ent[0].lower())
+                if pos is not None:
+                    dims = [d.strip() for d in ent[1].split(",")]
+                    out.append((ent[0], dims[pos] if pos < len(dims) else "(missing)"))
+            continue
+        m = re.match(r"(?i)^\s*do\s+(\w+)\s*=\s*1\s*,\s*(\w+)\s*$", line)
+        if m:
+            loops.append((m.group(1).lower(), m.group(2)))
+            continue
+        if re.match(r"(?i)^\s*end\s*do\b", line):
+            loops.pop()
+            continue
+        extent = dict(loops)
+        for ref in re.finditer(r"(?i)(?:%|\b)(\w+)\s*\(((?:\s*i\d\s*,?)+)\)", line):
+            pos = names.get(ref.group(1).lower())
+            idx = [i.strip().lower() for i in ref.group(2).split(",") if i.strip()]
+            if pos is not None and pos < len(idx) and idx[pos] in extent:
+                out.append((ref.group(1), extent[idx[pos]]))
+    return out
+
 def check_max_runs(src_root):
     import controls_registry
     m = re.search(r"(?im)^\s*integer\s*,\s*parameter\s*,\s*public\s*::\s*max_runs\s*=\s*(\d+)",
                   (src_root / "state" / "control_slots.f90").read_text())
     if not m:
         return ["state/control_slots.f90: no max_runs parameter"]
-    if int(m.group(1)) != controls_registry.MAX_RUNS:
-        return [f"state/control_slots.f90 has max_runs = {m.group(1)}, tools/controls_registry.py "
-                f"MAX_RUNS = {controls_registry.MAX_RUNS}"]
-    return []
+    value = m.group(1)
+    names, problems = per_run_controls()
+    sizes = controls_registry.named_sizes()
+    for rel in GENERATED_PER_RUN:
+        found = generated_per_run_sizes((src_root / rel).read_text(), names)
+        if not found:
+            problems.append(f"{rel}: no per-run size found (the scan, or the file, has changed)")
+        for name, size in found:
+            if sizes.get(size.lower(), size) != value:
+                problems.append(f"{rel}: {name}'s run-card size is {size}, not max_runs = {value} "
+                                "(state/control_slots.f90; regenerate)")
+    return sorted(set(problems))
 
 
 def check_settings_column(src_root):
