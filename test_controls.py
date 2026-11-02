@@ -420,3 +420,33 @@ def test_an_alias_counts_where_the_deck_sets_it_and_not_the_new_name(tmp_path):
     assert 'control%alex95_table_paths(2) = "a2"' in dump
     assert 'control%alex95_table_paths(3) = "n3"' in dump
     assert "alex95_table_z_list and alex95_opacity_table_files are both set" not in messages
+
+
+def test_a_card_kind_outside_1_to_3_is_an_error(tmp_path):
+    """A run card the deck runs has a kind run_cards knows: 1 evolve, 2
+    rescale, 3 rescale and evolve. Another (run_kind(2) = 4, or 0) stops the
+    read with ierr = 1 and a message naming the card and run_kind (legacy
+    KINDRN); a card beyond num_runs is not checked (M108)."""
+    if not BINARY.exists():
+        pytest.skip("src/test_controls not built (run `make tests` in src/)")
+    deck = REPO / "examples" / "run_config_matrix" / "cm_base.inlist"
+    text = deck.read_text()
+    assert "run_kind(2) = 1" in text and "num_runs = 2" in text
+    cases = {"four": text.replace("run_kind(2) = 1", "run_kind(2) = 4"),
+             "zero": text.replace("run_kind(2) = 1", "run_kind(2) = 0"),
+             "beyond": text.replace("run_kind(2) = 1", "run_kind(2) = 1\n run_kind(3) = 9")}
+    for name, body in cases.items():
+        d = tmp_path / f"{name}.inlist"
+        d.write_text(body)
+        out = tmp_path / name
+        out.mkdir()
+        r = subprocess.run([str(BINARY), str(d)], cwd=deck.parent, capture_output=True,
+                           env=dict(os.environ, YREC_OUTPUT=str(out)))
+        stdout = r.stdout.decode("latin-1")
+        if name == "beyond":
+            assert "ierr = 0" in stdout.splitlines(), stdout[-300:]
+            continue
+        assert "ierr = 1" in stdout.splitlines(), stdout[-300:]
+        kind = name == "four" and 4 or 0
+        assert (f" ERROR: run_kind (KINDRN) must be 1 (evolve), 2 (rescale) or 3 (rescale and "
+                f"evolve); card 2 has {kind}") in stdout

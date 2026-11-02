@@ -23,8 +23,9 @@ module controls_check
       use controls_buffer, only: use_semiconvection, core_overshoot_active, &
            envelope_overshoot_active, intermediate_overshoot_active, tri_delta_teffl, tri_delta_logl, &
            rotation_active, max_diffusion_iters, tolerance_fraction, max_stage_index, &
-           extrap_order, num_runs
+           extrap_order, num_runs, run_kind
       use rotation_configuration, only: max_transport_iterations
+      use run_cards, only: card_evolve, card_rescale, card_rescale_and_evolve
       implicit none
       private
       public :: check_controls, warn_inert_controls, warn_inconsistent_controls
@@ -57,12 +58,17 @@ end subroutine warn
 !     index the stage sequence at 0) and extrap_order <= max_stage_index
 !     (above, its step-size retry loop has no end); or the tolerance is
 !     not positive;
-!   - num_runs is outside 0 to max_runs (the run cards' arrays).
+!   - num_runs is outside 0 to max_runs (the run cards' arrays);
+!   - a card the deck runs (1 to num_runs) has a run_kind (legacy KINDRN)
+!     other than run_cards' three kinds: 1 evolve, 2 rescale, 3 rescale
+!     and evolve (the F77 took any other value for a card that rescales
+!     with no targets and evolves with no stops; docs/bug_sweep.md M108).
 ! It reads the controls in the read's buffer, after the deck is read
 ! and map_user_inputs.
 subroutine check_controls(ierr)
       integer, intent(inout) :: ierr
       character(len=message_length) :: line
+      integer :: n
 
       if (use_semiconvection .and. (core_overshoot_active .or. &
            envelope_overshoot_active .or. intermediate_overshoot_active)) then
@@ -110,6 +116,15 @@ subroutine check_controls(ierr)
          ierr = 1
          return
       end if
+      do n = 1, num_runs
+         if (.not. any(run_kind(n) == [card_evolve, card_rescale, card_rescale_and_evolve])) then
+            write(line,'(a,i0,a,i0)') 'run_kind (KINDRN) must be 1 (evolve), 2 (rescale) or' &
+                 //' 3 (rescale and evolve); card ', n, ' has ', run_kind(n)
+            call report_error(line)
+            ierr = 1
+            return
+         end if
+      end do
 end subroutine check_controls
 
 !----------------------------------------------------------------------

@@ -416,7 +416,7 @@ eos/test/test_eos.o: blended_eos.mod eos_configuration.mod eos_lib.mod eos_mixtu
 eos/yale/yale_eos.o: eos_configuration.mod eos_messages.mod eos_mixture.mod eos_results.mod math_lib.mod physical_constants.mod yale_eos_tables.mod
 eos/yale_eos_tables.o: physical_constants.mod
 io/controls_buffer.o: control_slots.mod reaction_layout.mod
-io/controls_check.o: control_slots.mod controls_buffer.mod numerics_lib.mod rotation_configuration.mod run_messages.mod star_info_lib.mod
+io/controls_check.o: control_slots.mod controls_buffer.mod numerics_lib.mod rotation_configuration.mod run_cards.mod run_messages.mod star_info_lib.mod
 io/controls_reader.o: control_slots.mod controls_buffer.mod controls_check.mod controls_sync.mod derived_controls.mod legacy_controls.mod run_cards.mod run_files.mod run_messages.mod star_info_lib.mod user_inputs.mod yrec_version.mod
 io/controls_sync.o: controls_buffer.mod star_info_lib.mod
 io/derived_controls.o: composition_layout.mod controls_buffer.mod eos_lib.mod run_messages.mod yrec_version.mod
