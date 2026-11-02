@@ -19,8 +19,11 @@
 # baselines, not a looser local check.
 #
 # The test list and the sparse checkout below were derived by tracing
-# which files each test opens (2026-10-31); a test that
-# starts reading another table needs its line here.
+# which files each test opens (2026-10-31; test_monte_carlo.py, added
+# 2026-11-01, runs cm_monte_carlo twice in a scratch directory and reads
+# that deck, mc_input.dat, startmodels/dbl/ and the tables listed for the
+# configuration-matrix decks); a test that starts reading another table
+# needs its line here.
 name: CI
 
 on:
@@ -110,8 +113,9 @@ jobs:
       - name: Library-based link check (archives complete, layout self-consistent)
         run: make -C src -j4 libs && make -C src yrec_libs
 
-      # the decks write into their own output/ directories (untracked);
-      # cm_monte_carlo's Monte Carlo files are named relative to its deck
+      # the decks write into their own output/ directories (untracked, so
+      # a fresh checkout has none); cm_monte_carlo's Monte Carlo files are
+      # named relative to its deck, and test_controls opens them
       - name: Make the decks' output directories
         run: mkdir -p examples/run_config_matrix/output
 
@@ -127,7 +131,7 @@ jobs:
           test_regrid.py test_eos.py test_kap.py test_atm.py test_net.py
           test_other_energy.py test_error_exit.py test_reentry.py
           test_physics.py test_stop_conditions.py test_inlist_convert.py
-          test_mesa_output.py test_pyyrec.py
+          test_mesa_output.py test_pyyrec.py test_monte_carlo.py
 
   # The standard solar case run TWICE in one job: the first run is the
   # reference, the second must reproduce it byte for byte (minus the
