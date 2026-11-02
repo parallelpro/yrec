@@ -300,6 +300,77 @@ def buffer_members():
     return members
 
 
+# The F77 routines' names (defaults/file_rename_map.tsv's subroutine
+# column), less the ones that are English words: a description names one
+# only as "legacy X", since in lower case it reads as a name of today's code.
+RENAME_MAP = SRC / "defaults" / "file_rename_map.tsv"
+ENGLISH = {"wind", "solid", "reduce", "func", "mu", "remap", "stitch", "physic"}
+
+
+def _code_words():
+    """every name the Fortran sources use outside comments: identifiers,
+    and the words of string literals (column names, file names)"""
+    words = set()
+    for p in sorted(SRC.rglob("*.f90")) + sorted(SRC.rglob("*.inc")):
+        for line in p.read_text(errors="replace").splitlines():
+            code, quote = "", None
+            for ch in line:
+                if quote:
+                    quote = None if ch == quote else quote
+                elif ch in "'\"":
+                    quote = ch
+                elif ch == "!":
+                    break
+                code += ch
+            words |= {w.lower() for w in re.findall(r"[A-Za-z_]\w*", code)}
+    return words
+
+
+def description_problems(rs, members):
+    """the descriptions that name what the code does not: a lower-case
+    snake_case name that is no control's (code, inlist, alias, legacy or
+    run-copy name, or a MESA name of mesa_note) and nothing the Fortran
+    sources use; a prefix pattern (tol_*) that starts no such name; an F77
+    routine or a legacy name in lower case, unless written "legacy X" (a
+    path, with a / and an extension or a placeholder, is not checked)"""
+    names, legacy = set(), set()
+    for r in rs:
+        names |= {r[k].lower() for k in ("proposed_name", "canonical", "run_copy") if r[k]}
+        names |= {a.lower() for a in r["aliases"].split(",") if a}
+        names |= {w.lower() for w in re.findall(r"\w+", r["mesa_note"])}
+        if r["legacy"] != "-":
+            legacy.add(r["legacy"].lower())
+    legacy -= names
+    f77 = set()
+    for line in RENAME_MAP.read_text().splitlines():
+        cells = line.split("\t")
+        if len(cells) > 2 and "->" in cells[2]:
+            f77.add(cells[2].split("->")[0].strip().lower())
+    old = (f77 - ENGLISH) | legacy
+    known = names | _code_words()
+    problems = []
+    for m in members:
+        doc = m["doc"]
+        words = []
+        for token in re.findall(r"[\w.{}*/-]+", doc):
+            if "/" in token and (re.search(r"\.\w+$|[{}]", token) or token.endswith("/")):
+                continue
+            words += re.findall(r"([A-Za-z_]\w*)(\*?)", token)
+        for w, star in dict.fromkeys(words):
+            lw = w.lower()
+            if star:
+                if not any(k.startswith(lw) for k in known):
+                    problems.append(f"{m['name']}: its description's {w}* matches no name")
+            elif w == lw and "_" in w and lw not in known and lw not in legacy:
+                problems.append(f"{m['name']}: its description names {w}, which is no control "
+                                "and nothing the code uses")
+            elif w == lw and lw in old and not re.search(r"legacy\s+" + re.escape(w) + r"\b", doc):
+                problems.append(f"{m['name']}: its description names {w}, an F77 or legacy name: "
+                                "say what the value means, in today's names (\"(legacy "
+                                f"{w.upper()})\" may follow)")
+    return problems
+
+
 def declared_type(cell):
     """a registry type cell as type_of spells a declaration's type: a path
     is a string, and a named size (real(max_runs)) is its value"""

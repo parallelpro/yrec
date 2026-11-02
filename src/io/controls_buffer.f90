@@ -108,11 +108,14 @@ module controls_buffer
 ! positive: Z = rescale_core_z inside the mass fraction rescale_z_mix1, then
 ! linear to the surface Z at rescale_z_mix2
       logical :: use_z_ramp = .false.
-! rscale/setcal: core-Z rescale target
+! Per rescaling card, with use_z_ramp: the Z the ramp sets inside the mass
+! fraction rescale_z_mix1 (positive to ramp; the default -1 is off)
       real(dp) :: rescale_core_z(max_runs) = -1.0d0
-! rscale/setcal: Z-mix rescale parameter 1
+! Per rescaling card, with use_z_ramp: the mass fraction m/M inside which Z
+! is rescale_core_z (positive to ramp)
       real(dp) :: rescale_z_mix1(max_runs) = -1.0d0
-! rscale/setcal: Z-mix rescale parameter 2
+! Per rescaling card, with use_z_ramp: the mass fraction m/M at which the
+! ramp reaches the surface Z (positive to ramp)
       real(dp) :: rescale_z_mix2(max_runs) = -1.0d0
 
 ! ---- Each card's stops and its fixed timestep (a structure limit at its
@@ -200,7 +203,7 @@ module controls_buffer
 ! Heavy-element mixture selector (GS98/CUS/...) applied to the start model
       character(len=8) :: cno_mixture_name = 'GS98'
 ! Carbon fraction of the CNO metals for cno_mixture_name 'CUS' (with
-! cno_mixture_mode = 1)
+! mixture_change_mode = 1)
       real(dp) :: target_carbon_cno_fraction = 0.172148d0
 ! Nitrogen fraction of the CNO metals for cno_mixture_name 'CUS'
       real(dp) :: target_nitrogen_cno_fraction = 0.050426d0
@@ -209,7 +212,7 @@ module controls_buffer
 ! Z/X for cno_mixture_name 'CUS' (inert: stored and used nowhere; the starting
 ! model keeps its Z)
       real(dp) :: target_metal_fraction = 0.02292d0
-! The starting model's CNO mixture is changed (cno_mixture_mode = 1 and a
+! The starting model's CNO mixture is changed (mixture_change_mode = 1 and a
 ! valid mixture)
       logical :: change_cno_mixture_active
 ! 1: set the starting model's CNO isotope ratios and light-element abundances
@@ -218,7 +221,7 @@ module controls_buffer
 ! Isotope-ratio set selector (L21 default or CUS custom)
       character(len=8) :: isotope_mixture_name = 'L21'
 ! C12/C13 number ratio of the starting model for isotope_mixture_name 'CUS'
-! (with isotope_mixture_mode = 1)
+! (with isotope_change_mode = 1)
       real(dp) :: c12_to_c13_ratio = 88.27d0
 ! N14/N15 number ratio for isotope_mixture_name 'CUS'
       real(dp) :: n14_to_n15_ratio = 411.9d0
@@ -240,7 +243,7 @@ module controls_buffer
       real(dp) :: initial_b10_fraction = 1.002d-9
 ! Initial B11 mass fraction for isotope_mixture_name 'CUS'
       real(dp) :: initial_b11_fraction = 4.405d-9
-! The starting model's isotope ratios are changed (isotope_mixture_mode = 1
+! The starting model's isotope ratios are changed (isotope_change_mode = 1
 ! and a valid mixture)
       logical :: change_isotope_ratios_active
 
@@ -258,11 +261,13 @@ module controls_buffer
 ! provenance; blank (the default): inlist_used in the output directory, the
 ! run log's
       character(len=256) :: inlist_used_file = ' '
-! Starting model read when read_first_model is set for a run
+! The starting model, which card 1 and every card with first_call_flag set
+! read
       character(len=256) :: first_model_file = repeat(achar(0), 256)
 ! Path for the final model (.mod) written every model; reloadable
       character(len=256) :: last_model_file = '{YREC_OUTPUT}/final.mod'
-! Opened on the dynamics unit (formatted, STATUS=OLD)
+! Monte Carlo runs: the file of each run's samples (the rate, composition,
+! luminosity and age factors), read at the start
       character(len=256) :: dynamics_file = repeat(achar(0), 256)
 ! Monte Carlo runs: the file for each run's summary
       character(len=256) :: monte_carlo_file1_path = repeat(achar(0), 256)
@@ -292,9 +297,8 @@ module controls_buffer
       character(len=256) :: profile_columns_file = ' '
 ! Write the interior-only GYRE file every this many models (0 = off)
       integer :: pulse_gyre_interval = 0
-! Envelope profile print count: read and used nowhere (the F77's one use, in
-! SURFBC, was commented out); the read makes 0 or less into 9999, as PARMIN
-! did
+! Inert: read and used nowhere (legacy NPENV, an envelope print count, whose
+! one use in the F77 was commented out); the read makes 0 or less into 9999
       integer :: envelope_print_points = 0
 
 ! ---- The opacity tables: which families, and their metallicities
@@ -439,16 +443,16 @@ module controls_buffer
 !      Monte-Carlo run rescales the luminosity), Newton's G and the
 !      asteroseismic references
 
-! Solar mass (g) used to convert Msun <-> grams everywhere (rescaling, log g,
-! seismic scalings). Formerly hard-coded in setups.
+! Solar mass (g), which converts Msun to grams everywhere (the rescaling, log
+! g, the seismic scalings)
       real(dp) :: solar_mass_cgs = 1.9891d33
 ! Solar luminosity (erg/s)
       real(dp) :: solar_luminosity_cgs = 3.8515d33
 ! The solar radius (cm) used for the tracks and the output
       real(dp) :: solar_radius_cgs = 6.9598d10
-! Newton's G (cgs). Negative (default) keeps YREC's historical log10 G =
-! -7.17571 (G = 6.6726e-8) bit-for-bit; set positive (e.g. 6.6743d-8 CODATA
-! 2018) to override. Formerly hard-coded in setups.
+! Newton's G (cgs). Negative (the default) keeps YREC's log10 G = -7.17571
+! (G = 6.6726e-8) bit for bit; a positive value (e.g. 6.6743d-8, CODATA
+! 2018) replaces it
       real(dp) :: G_cgs = -1.0d0
 ! Solar nu_max [uHz] for the scaling relation (Huber et al. 2011)
       real(dp) :: nu_max_sun = 3090.0d0
@@ -462,7 +466,12 @@ module controls_buffer
 ! ---- The timestep: its factors, and the readable tolerances map_user_inputs
 !      maps onto them
 
-! Per-phase timestep-control factor array (wtime/ytime governors)
+! The timestep limits, slot by slot as the time_* controls (itime_* in
+! state/control_slots.f90): time_core_min, time_dx_core_tot,
+! time_dx_core_frac, time_dy_core_tot, time_dy_core_frac, time_dx_total,
+! time_dx_shell, time_dt, time_dp, time_dr, time_dl, time_dy_shell,
+! time_max_dt_frac, time_dy_total; used unless use_new_rate_variables, which
+! takes the named controls instead
       real(dp) :: timestep_factors(14) = (/1.0d-3,2.0d-2,5.0d-1,2.0d-2, 3.0d-1, &
            1.5d-3,1.0d-1,2.0d-2,4.0d-2,2.0d-2,2.0d-2,0.25d0, 1.5d0,0.25d0/)
 ! Timestep limit: the largest fractional change of omega per step
@@ -473,8 +482,8 @@ module controls_buffer
 ! Limit the timestep by the envelope-fit triangle
       logical :: use_envelope_triangle_dt = .false.
 ! Take the zoning and timestep tolerances from the named tol_*, flag_* and
-! time_* controls (and lstruct_time) instead of zoning_tolerances and
-! timestep_factors; nothing to do with reaction rates
+! time_* controls (and use_structure_time_limits) instead of
+! zoning_tolerances and timestep_factors; nothing to do with reaction rates
       logical :: use_new_rate_variables = .false.
 ! With use_new_rate_variables: limit the timestep by the structure changes
 ! time_dt..time_dl (switched off once nuclear burning dominates)
@@ -573,7 +582,8 @@ module controls_buffer
       real(dp) :: solver_tolerances(5,2) = reshape((/6.0d-5,4.5d-5,3.0d-5, 9.0d-5, &
            3.0d-5,9.0d-1,5.0d-1,5.0d-1,2.0d0,2.5d-6/), (/5,2/))
 ! Henyey under-relaxation: each step starts with the correction factor
-! |fcorr0| - fcorri; a positive fcorr0 lets it grow each iteration
+! |solver_underrelax_start| - solver_underrelax_increment; a positive value
+! lets it grow each iteration
       real(dp) :: solver_underrelax_start = 0.8d0
 ! Henyey under-relaxation: the correction factor grows by this each corrector
 ! pass, up to 1
@@ -595,11 +605,14 @@ module controls_buffer
       real(dp) :: nuclear_logT_cutoffs(5) = (/6.5d0,6.5d0,6.82d0,7.7d0,7.5d0/)
 ! log10 T above which the default EOS assumes full ionization
       real(dp) :: saha_log10t_cutoff = 6.0d0
-! tpgrad: above this logT simplified gradient handling applies
+! Above this log10 T a convective point takes the adiabatic gradient without
+! the mixing-length theory (deep convective cores)
       real(dp) :: gradient_logt_cutoff = 6.9d0
-! hpoint envelope rezoning temperature bound (lower)
+! The rezone keeps the outermost interior point hotter than this log10 T:
+! cooler outer points are deleted
       real(dp) :: rezone_env_logt0 = 3.0d0
-! hpoint envelope rezoning temperature bound (upper)
+! The rezone adds a point outside the outermost interior point when that
+! point is hotter than this log10 T (at the stored envelope state)
       real(dp) :: rezone_env_logt1 = 9.0d0
 ! The log T at which an envelope integration stores its state for the surface
 ! boundary: the mean of rezone_env_logT0 and rezone_env_logT1
@@ -626,7 +639,8 @@ module controls_buffer
       real(dp) :: relative_tolerance = 1.0d-4
 ! The burning network solver's largest number of iterations
       integer :: max_burn_iterations = 50
-! cross-section ratios used when use_new_nuclear_rates = .false.
+! The cross sections as ratios to Bahcall & Ulrich (1988), one per slot of
+! the legacy SSTANDARD array, used without use_new_nuclear_rates
       real(dp) :: cross_section_ratios(num_sstandard) = (/ 0.9828d0, 1.0485d0, &
             0.9815d0, 0.9241d0, 1.3818d0, 1.0542d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, &
             1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0108d0, 0.7819d0, 0.2875d0 /)
@@ -658,32 +672,39 @@ module controls_buffer
       real(dp) :: li6_rate_scale = 1.0d0
 ! Li7 burning rate scale (scale_li7_rate with li7_rate_value overrides it)
       real(dp) :: li7_rate_scale = 1.0d0
-! Scale of the Be9(p,g) rate (overridden by xsbe91 with lxbe91)
+! Scale of the Be9(p,g) rate (scale_be9_rate1 with be9_rate_value1 overrides
+! it)
       real(dp) :: be9_pg_rate_scale = 1.0d0
-! Scale of the Be9(p,d) rate (overridden by xsbe92 with lxbe92)
+! Scale of the Be9(p,d) rate (scale_be9_rate2 with be9_rate_value2 overrides
+! it)
       real(dp) :: be9_pd_rate_scale = 1.0d0
-! Scale of the Be9(p,a) rate (overridden by xsbe93 with lxbe93)
+! Scale of the Be9(p,a) rate (scale_be9_rate3 with be9_rate_value3 overrides
+! it)
       real(dp) :: be9_palpha_rate_scale = 1.0d0
-! Apply li6_rate_value
+! Take li6_rate_scale from the cross section li6_rate_value
       logical :: scale_li6_rate = .false.
-! Apply li7_rate_value
+! Take li7_rate_scale from the cross section li7_rate_value
       logical :: scale_li7_rate = .false.
-! Apply be9_rate_value1
+! Take be9_pg_rate_scale from the cross section be9_rate_value1
       logical :: scale_be9_rate1 = .false.
-! Apply be9_rate_value2
+! Take be9_pd_rate_scale from the cross section be9_rate_value2
       logical :: scale_be9_rate2 = .false.
-! Apply be9_rate_value3
+! Take be9_palpha_rate_scale from the cross section be9_rate_value3
       logical :: scale_be9_rate3 = .false.
-! Li6 burning cross-section override (sets sli6 = value/5.5e3 when
-! scale_li6_rate)
+! The Li6 burning cross section (keV b): with scale_li6_rate, li6_rate_scale
+! is this over li6_reference_xs (5.5e3)
       real(dp) :: li6_rate_value = li6_reference_xs
-! Li7 burning cross-section override (value/5.2e1)
+! The Li7 burning cross section (keV b): with scale_li7_rate, li7_rate_scale
+! is this over li7_reference_xs (52)
       real(dp) :: li7_rate_value = li7_reference_xs
-! Be9 cross-section override 1 (value/1.1)
+! The Be9(p,g) cross section (keV b): with scale_be9_rate1,
+! be9_pg_rate_scale is this over be9_pg_reference_xs (1.1)
       real(dp) :: be9_rate_value1 = be9_pg_reference_xs
-! Be9 cross-section override 2 (value/1.5e4)
+! The Be9(p,d) cross section (keV b): with scale_be9_rate2,
+! be9_pd_rate_scale is this over be9_pd_reference_xs (1.5e4)
       real(dp) :: be9_rate_value2 = be9_pd_reference_xs
-! Be9 cross-section override 3 (value/1.5e4)
+! The Be9(p,a) cross section (keV b): with scale_be9_rate3,
+! be9_palpha_rate_scale is this over be9_palpha_reference_xs (1.5e4)
       real(dp) :: be9_rate_value3 = be9_palpha_reference_xs
 
 ! ---- The nuclear S-factors (keV b) and their first and second derivatives
@@ -782,15 +803,17 @@ module controls_buffer
 ! log10 T above which only the atomic opacities are used (a ramp joins the
 ! two)
       real(dp) :: molecular_opacity_logt_max = 4.1d0
-! The LAOL 1989 interpolators extrapolate linearly within log(tollaol) of a
-! table edge
+! The LAOL 1989 interpolators extrapolate linearly within
+! log10(laol_extrapolation_tolerance) of a table edge
       real(dp) :: laol_extrapolation_tolerance = 10.0d0
 ! Use the conductive opacity tables (conductive_opacity_table_file)
       logical :: use_conductive_opacity = .false.
 
 ! ---- Convection: overshoot and semiconvection
 
-! mix: envelope pressure step control
+! Deep mixing: below 1, the composition step mixes every shell from the centre
+! out to the mass envelope_logp_step times the star's (a mass fraction,
+! whatever the name says); 1 or more is off
       real(dp) :: envelope_logp_step = 1.0d0
 ! Enable convective-core overshoot
       logical :: core_overshoot_active = .false.
@@ -807,12 +830,13 @@ module controls_buffer
 ! Overshoot of intermediate convection zones (intermediate_overshoot_active),
 ! in pressure scale heights
       real(dp) :: overshoot_alpha_min = 0.0d0
-! tpgrad: treat overshoot region adiabatically
+! The overshoot region below the surface convection zone is adiabatic: its
+! radiative points take the adiabatic gradient
       logical :: adiabatic_overshoot_active = .false.
 ! Cap the core overshoot extent at overshoot_beta_core times the core radius
       logical :: overshoot_max_extent_flag = .false.
-! With overshoot_max_extent_flag: the core overshoot extent is capped at betac
-! times the core radius
+! With overshoot_max_extent_flag: the core overshoot extent is capped at this
+! fraction of the core radius
       real(dp) :: overshoot_beta_core = 0.15d0
 ! Semiconvection treatment (conflicts with core overshoot)
       logical :: use_semiconvection = .false.
@@ -901,15 +925,20 @@ module controls_buffer
       real(dp) :: cz_rotation_law_exponent = 0.0d0
 ! Rotationally induced mixing and hydrodynamic angular momentum transport
       logical :: instability_transport_active = .false.
-! Averaging weight in the fp/ft update (shape, checkj)
+! The rotating star's shape: the relative tolerance on r0^3 of the
+! equipotential radius iteration (its cube root that on r0 and eta2); not a
+! weight
       real(dp) :: fpft_average_weight = 1.0d-36
-! shape/fpft iteration bound 1
+! The rotating star's shape: the most iterations of eta2 and r0 in turn
       integer :: fpft_iter1 = 5
-! shape/fpft iteration bound 2
+! The rotating star's shape: the most Newton steps of each r0 solve
       integer :: fpft_iter2 = 20
-! Structure<->rotation iterations per step (itrot loop)
+! The passes of the structure-rotation iteration per step (each pass
+! converges the structure, mixes the convection zones and updates the angular
+! momentum and the shape); 1 without rotation
       integer :: num_rotation_structure_iters = 1
-! Rotation diffusion-solve iteration limit (seculr/checkj)
+! The most iterations of each angular momentum transport sub-step (1 to 16;
+! the controls read rejects a rotating run outside that)
       integer :: max_diffusion_iters = 10
 ! Sub-timestep factor for rotation diffusion
       real(dp) :: diffusion_timestep_factor = 1.0d-2
@@ -988,8 +1017,8 @@ module controls_buffer
 ! Matt wind law: V13 (van Saders & Pinsonneault 2013), K97 (Krishnamurthi et
 ! al. 1997), or CUS (the pmm_exponent_* as given)
       character(len=3) :: wind_law_name = 'K97'
-! Kawaler wind law: the index alfa (Jdot ~ Omega**(1+4 alfa/3) ...); K97 takes
-! m = alfa/3
+! Kawaler wind law: the index n (Jdot ~ Omega**(1+4n/3) ...); K97 takes m =
+! n/3
       real(dp) :: wind_law_index = 1.5d0
 ! The constant factor of both wind laws (1 reproduces the solar angular
 ! momentum loss)
@@ -1046,11 +1075,13 @@ module controls_buffer
 ! Disk locking: hold the surface rotation at disk_omega_rad_s until
 ! disk_locking_age_gyr
       logical :: disk_locking_active = .false.
-! Disk locking is enforced while star_age <= this value. UNITS: Gyr (historic
-! deck comments wrongly said yr).
+! Disk locking: the age (Gyr) up to which the surface rotation is held at
+! disk_omega_rad_s (some older deck comments give it in yr, which the code
+! never read)
       real(dp) :: disk_locking_age_gyr = 0.0d0
-! Disk co-rotation ANGULAR VELOCITY in rad/s (historic deck comments wrongly
-! said period in days; the code has always consumed rad/s).
+! Disk locking: the surface angular velocity (rad/s) held until
+! disk_locking_age_gyr (some older deck comments call it a period in days,
+! which the code never read)
       real(dp) :: disk_omega_rad_s = 7.2722d-6
 
 ! ---- Mass loss and accretion
@@ -1060,9 +1091,10 @@ module controls_buffer
       logical :: use_mass_accretion = .false.
 ! Mass change rate (Msun/yr; negative for loss) when use_mass_change is set
       real(dp) :: mass_accretion_rate = -1.0d-14
-! mdot: accreted-mass fraction deposited in the CZ
+! Mass change: the timestep changes the surface convection zone's mass by at
+! most this fraction
       real(dp) :: accretion_cz_fraction = 0.1d0
-! mdot: total accreted-mass fraction parameter
+! Mass change: the timestep changes the star's mass by at most this fraction
       real(dp) :: accretion_total_fraction = 1.0d-2
 ! Mass fractions of the accreted material (star%xa layout)
       real(dp) :: accreted_composition(15) = (/0.71668d0, 0.265721d0,0.01757d0, &
@@ -1089,9 +1121,10 @@ module controls_buffer
       logical :: use_thoul_fit = .false.
 ! Use the new diffusion routines
       logical :: use_new_diffusion_routines = .false.
-! Gravitational settling multiplier for helium (microdiff)
+! Gravitational settling: the factor on helium's settling coefficients
       real(dp) :: settling_y_factor = 1.0d0
-! Gravitational settling multiplier for metals (microdiff)
+! Gravitational settling: the factor on the metals' settling coefficients
+! (a Monte-Carlo run samples it)
       real(dp) :: settling_z_factor = 1.0d0
 ! Gravitational settling: solver tolerance
       real(dp) :: settling_tolerance = 1.0d-8
@@ -1118,7 +1151,10 @@ module controls_buffer
 
 ! Extended composition: also follow H2, Li6, Li7 and Be9 (15 species)
       logical :: use_extended_composition = .false.
-! Species mixture-weight vector seeding starin's mixture algorithm
+! The surface mixture's relative mass fractions, one per slot of
+! state/composition_layout.f90 (Na, Al, Mg, Fe, Si, C, H, O, N, Ar, Ne, He;
+! H and He are set from the envelope X and Z): the starting model's envelope
+! number fractions and the EOS mixture are made from the ten metals'
       real(dp) :: mixture_weights_seed(12) = (/0.001999d0, 0.003238d0, 0.037573d0, &
             0.071794d0, 0.040520d0, 0.173285d0, 0.000000d0, 0.482273d0, 0.053152d0, &
             0.005379d0, 0.098668d0, 0.000000d0/)
