@@ -47,9 +47,9 @@ end subroutine profile_output_init
 ! ---------------------------------------------------------------
 ! Profile iprof, <out_dir><profile_data_prefix><iprof>.data, of the
 ! stitched model (s%stitched).
-!   star reads: age_gyr, current_card_envelope_z, log_Teff,
-!     model_number, physics%profile_data_prefix, pulsation_mass_msun,
-!     star_mass, stitched, timestep_yr
+!   star reads: age_gyr, card_initial_z, log_Teff, model_number,
+!     physics%profile_data_prefix, pulsation_mass_msun, star_mass,
+!     stitched, timestep_yr
 !   star writes: none
 subroutine write_profile(s, profiles, out_dir, iprof, ierr)
       use star_info_lib, only: star_info
@@ -78,12 +78,14 @@ subroutine write_profile(s, profiles, out_dir, iprof, ierr)
            adjustr('initial_z'), adjustr('star_age'), &
            adjustr('time_step'), adjustr('log_Teff'), &
            adjustr('star_mass')
-! initial_mass/initial_z are the kind card's starting values
-! (pulsation_mass_msun is stamped by begin_kind_card); star_age and
-! time_step are in years, matching MESA's profile header.
+! initial_mass is the kind card's starting mass (pulsation_mass_msun,
+! stamped by begin_kind_card); initial_z is the run's initial Z, the
+! first card's starting Z (card_initial_z(1)), as MESA writes it and as
+! FGONG's glob(4) is; star_age and time_step are in years, matching
+! MESA's profile header.
       if (ios == 0) write(u, '(2(1x,i40),6(1x,es40.16e3))', iostat=ios, iomsg=msg) &
            s%model_number, s%stitched%n_ext, s%pulsation_mass_msun, &
-           s%current_card_envelope_z, s%age_gyr*1.0d9, &
+           s%card_initial_z(1), s%age_gyr*1.0d9, &
            s%timestep_yr, s%log_Teff, s%star_mass
       if (ios == 0) write(u, '(a)', iostat=ios, iomsg=msg) ''
       if (ios == 0) write(u, column_numbers_format, iostat=ios, iomsg=msg) (k, k = 1, profiles%nsel)
