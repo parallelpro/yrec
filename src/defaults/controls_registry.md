@@ -17,6 +17,10 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
   values), the star member the run keeps as its working copy, set from
   the control by the controls read (star_info_lib documents it); the
   control keeps the deck's value.
+- **settings**: the settings fields a domain's builder in `setup/` sets
+  from the control (`<record>%<field>`); blank when no builder statement
+  names it (core reads it, or a builder derives from it through a local).
+  `tools/check_boundaries.py` checks it.
 - **used**: `run`, read after the controls read; `read`, only during the
   read (an input-only control: `map_user_inputs` or `derive_controls`
   turns it into others); `none`, nowhere. `tools/check_boundaries.py`
@@ -30,424 +34,424 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 
 ## &control
 
-| inlist name | legacy name | code name | home | run copy | used | type | default | status | description |
-|---|---|---|---|---|---|---|---|---|---|
-| `mixing_length_alpha` | `cmixla` | `mixing_length_array` | control | `card_mixing_length_alpha` | run | real(max_runs) | `0` | live | Per card: the mixing-length parameter alpha |
-| `target_solar_age` | `calsolage` | `target_solar_age` | control | - | run | real | `4.57d9` | live | Solar calibration: the target age of the Sun (yr) |
-| `target_solar_zx` | `calsolzx` | `target_solar_zx` | control | - | run | real | `0.02292d0` | live | Solar calibration: the target surface Z/X (with calibrate_solar_zx) |
-| `run_description` | `descrip` | `run_description` | buffer | - | read | string(2) | `' '` | live | The deck's two description lines, written in the run log's header (a blank second line is left out) |
-| `max_age` | `endage` | `target_end_age` | control | `card_max_age_yr` | run | real(max_runs) | `0.0d0` | live | Stop the run card at this age (yr); 0 = no age limit |
-| `laol_opacity_table_file` | `flaol` | `laol_table_path` | control | - | run | path | `''` | live | LAOL 1989 opacity table |
-| `pure_z_opacity_table_file` | `fpurez` | `pure_z_table_path` | control | - | run | path | `''` | live | Pure-Z opacity table (metal diffusion support) |
-| `laol_opacity_table2_file` | `flaol2` | `laol_table2_path` | control | - | run | path | `''` | live | LAOL 1989 opacity table, second Z |
-| `opal92_opacity_table2_file` | `fopal2` | `opal92_table2_path` | control | - | run | path | `''` | live | OPAL 1992 opacity table, second Z |
-| `last_model_file` | `flast` | `last_model_file` | control | - | run | path | `'{YREC_OUTPUT}/final.mod'` | live | Path for the final model (.mod) written every model; reloadable |
-| `first_model_file` | `ffirst` | `first_model_file` | control | - | run | path | `''` | live | The starting model, which card 1 and every card with first_call_flag set read |
-| `fermi_table_file` | `ffermi` | `fermi_table_path` | control | - | run | path | `''` | live | Fermi-Dirac integral table (Yale/Prather degenerate-electron EOS) |
-| `(legacy only)` | `fstch` | `stored_change_file` | buffer | - | none | string | `''` | unused | Unused: read by the legacy reader and ignored |
-| `dynamics_file` | `fdyn` | `dynamics_file` | control | - | run | path | `''` | live | Monte Carlo runs: the file of each run's samples (the rate, composition, luminosity and age factors), read at the start |
-| `opal92_opacity_table_file` (`ll_data_file`) | `flldat` | `opal92_table_path` | control | - | run | path | `''` | live | OPAL 1992 opacity table (use_opal92_tables) |
-| `surface_composition_file` | `fscomp` | `surface_composition_file` | buffer | - | none | string | `''` | live | Accepted and ignored: no surface-composition file is written any more (the light elements are history columns); kept so that decks setting it still read |
-| `kurucz_opacity_table_file` (`kurucz_atm_table_file`) | `fkur` | `kurucz_table_path` | control | - | run | path | `''` | live | Kurucz 1990 low-temperature opacity table (use_kurucz90_tables) |
-| `mhd_table_file_1` | `fmhd1` | `zams_a_table_path` | control | - | run | path | `''` | live | MHD EOS table 1 of 8: the first ZAMS-type composition |
-| `mhd_table_file_2` | `fmhd2` | `zams_b_table_path` | control | - | run | path | `''` | live | MHD EOS table 2 of 8: the second ZAMS-type composition |
-| `mhd_table_file_3` | `fmhd3` | `zams_c_table_path` | control | - | run | path | `''` | live | MHD EOS table 3 of 8: the third ZAMS-type composition |
-| `mhd_table_file_4` | `fmhd4` | `centre1_table_path` | control | - | run | path | `''` | live | MHD EOS table 4 of 8: the first centre-type composition |
-| `mhd_table_file_5` | `fmhd5` | `centre2_table_path` | control | - | run | path | `''` | live | MHD EOS table 5 of 8: the second centre-type composition |
-| `mhd_table_file_6` | `fmhd6` | `centre3_table_path` | control | - | run | path | `''` | live | MHD EOS table 6 of 8: the third centre-type composition |
-| `mhd_table_file_7` | `fmhd7` | `centre4_table_path` | control | - | run | path | `''` | live | MHD EOS table 7 of 8: the fourth centre-type composition |
-| `mhd_table_file_8` | `fmhd8` | `centre5_table_path` | control | - | run | path | `''` | live | MHD EOS table 8 of 8: the fifth centre-type composition |
-| `isochrone_file` | `fiso` | `isochrone_file` | control | - | run | path | `''` | live | Isochrone output file |
-| `atm_table_file` | `fatm` | `atm_table_path` | control | - | run | path | `''` | live | Kurucz (atm_choice 3 and 4) or Castelli/Kurucz (5) surface-pressure table |
-| `kurucz_opacity_table2_file` (`kurucz_castelli_atm_table_file`) | `fkur2` | `kurucz_table2_path` | control | - | run | path | `''` | live | Kurucz 1990 low-temperature opacity table, second Z |
-| `allard_atm_table_file` | `fallard` | `allard_table_path` | control | - | run | path | `''` | live | Allard NextGen model-atmosphere table |
-| `scv_h_table_file` | `fscvh` | `scv_h_table_path` | control | - | run | path | `''` | live | Saumon-Chabrier-Van Horn EOS: hydrogen table |
-| `scv_he_table_file` | `fscvhe` | `scv_he_table_path` | control | - | run | path | `''` | live | SCV EOS: helium table |
-| `scv_z_table_file` | `fscvz` | `scv_z_table_path` | control | - | run | path | `''` | live | SCV EOS: metals table |
-| `opal95_eos_table_file` (`opal_eos_table_file`) | `fopale` | `opal95_eos_table_path` | buffer | - | read | path | `''` | live | OPAL 1995 EOS table (use_opal95_eos) |
-| `opal95_opacity_table_file` | `fliv95` | `opal95_table_path` | control | - | run | path | `''` | live | OPAL 1995-format opacity table (use_opal95_tables) |
-| `monte_carlo_file1_path` | `fmonte1` | `monte_carlo_file1_path` | control | - | run | path | `''` | live | Monte Carlo runs: the file for each run's summary |
-| `monte_carlo_file2_path` | `fmonte2` | `monte_carlo_file2_path` | control | - | run | path | `''` | live | Monte Carlo runs: the file for each run's final model |
-| `run_kind` | `kindrn` | `run_kind` | buffer | - | read | integer(max_runs) | `1` | live | Per-run kind card: 1 = evolve, 2 = rescale (zero timestep, MS/CHeB), 3 = rescale and evolve (pre-MS) |
-| `first_call_flag` | `lfirst` | `first_call_flag` | control | `card_from_starting_model` | run | logical(max_runs) | `.true.` | live | Per card: start from the starting model (first_model_file) rather than the previous card's model; .true. for every card unless the deck says otherwise, so a continuation card sets it .false. (card 1 always starts from the starting model) |
-| `set_initial_model_number` | `set_initial_model_number` | `set_initial_model_number` | control | - | run | integer | `1` | live | Model number given to the first converged model after a fresh start-model load (first_call_flag card). <= 0 keeps the counter stored in the model file (restart continuation, the pre-2026 behavior). |
-| `use_z_ramp` | `lzramp` | `use_z_ramp` | control | - | run | logical | `.false.` | live | On a rescaling run with rescale_core_z, rescale_z_mix1 and rescale_z_mix2 positive: Z = rescale_core_z inside the mass fraction rescale_z_mix1, then linear to the surface Z at rescale_z_mix2 |
-| `specify_teff_flag` | `lteff` | `specify_teff_flag` | control | - | run | logical | `.false.` | live | Star calibration: match the target Teff (target_teff) instead of the target radius (target_radius_rsun) |
-| `calibrate_star_flag` | `lcalst` | `calibrate_star_flag` | control | - | run | logical | `.false.` | live | Calibrate the mixing length and Y so that the star reaches target_luminosity_lsun at the target radius or Teff |
-| `use_pure_z_table` | `lpurez` | `use_pure_z_table` | control | - | run | logical | `.false.` | live | Use the pure C and N opacity tables (pure_z_opacity_table_file) for metal-enriched mixtures |
-| `isochrone_output_active` | `liso` | `isochrone_output_active` | control | - | run | logical | `.false.` | live | Write an isochrone record every model to isochrone_file |
-| `rewind_short_file` | `lrwsh` | `rewind_short_file` | control | - | run | logical | `.false.` | live | Rewind the run log every model, so it holds only the latest model's solver diagnostics |
-| `has_senv0_array` | `lsenv0a` | `has_senv0_array` | control | `card_moves_fit_point` | run | logical(max_runs) | `.false.` | live | Per run: move the outer fitting point to the fractional envelope mass senv0_array |
-| `calibrate_solar_model` | `lcals` | `calibrate_solar_model` | control | - | run | logical | `.false.` | live | Calibrate Y and the mixing length so that the model matches the solar L and R at target_solar_age |
-| `calibrate_solar_zx` | `lcalsolzx` | `calibrate_solar_zx` | control | - | run | logical | `.false.` | live | Solar calibration: also calibrate Z to match target_solar_zx (within zx_tolerance) |
-| `use_laol89_tables` | `llaol89` | `use_laol89_tables` | control | - | run | logical | `.false.` | live | Use the LAOL 1989 opacity tables (laol_opacity_table_file) |
-| `use_opal92_tables` | `lopal92` | `use_opal92_tables` | control | - | run | logical | `.false.` | live | Use the OPAL 1992 opacity tables (opal92_opacity_table_file) |
-| `use_opal95_tables` | `lopal95` | `use_opal95_tables` | control | - | run | logical | `.false.` | live | Use the OPAL 1995 / OP atomic opacity tables (opal95_opacity_table_file) |
-| `use_kurucz90_tables` | `lkur90` | `use_kurucz90_tables` | control | - | run | logical | `.false.` | live | Use the Kurucz 1990 low-temperature opacity tables |
-| `use_alex95_tables` | `lalex95` | `use_alex95_tables` | control | - | run | logical | `.false.` | live | Use the Alexander & Ferguson 1994 low-temperature opacity tables (alex95_table_z_list) |
-| `envelope_print_points` | `npenv` | `envelope_print_points` | buffer | - | none | integer | `0` | live | Inert: read and used nowhere (legacy NPENV, an envelope print count, whose one use in the F77 was commented out) |
-| `num_runs` | `numrun` | `num_runs` | control | `num_cards` | run | integer | `1` | live | The number of runs (kind cards): each rescales a model, evolves it, or both |
-| `max_model_number` | `nmodls` | `num_models` | control | `card_num_models` | run | integer(max_runs) | `0` | live | Per run: the number of models to compute (the run stops earlier if a stop condition is met) |
-| `alex95_opacity_table_files` (`alex95_table_z_list`) | `opecalex` | `alex95_table_paths` | control | - | run | path(7) | `''` | live | The seven Alexander & Ferguson 1994 low-temperature opacity table files |
-| `rescale_mass` | `rsclm` | `rescale_mass` | buffer | - | read | real(max_runs) | `0.0d0` | live | Per-run target mass (Msun) for rescale runs |
-| `rescale_x` | `rsclx` | `rescale_x` | buffer | - | read | real(max_runs) | `0.0d0` | live | Per-run target hydrogen fraction for rescale runs |
-| `rescale_z` | `rsclz` | `rescale_z` | buffer | - | read | real(max_runs) | `0.0d0` | live | Per-run target metallicity for rescale runs |
-| `rescale_core_mass` | `rsclcm` | `rescale_core_mass` | buffer | - | read | real(max_runs) | `0.0d0` | live | Per-run rescale: core mass bound |
-| `rescale_core_z` | `rsclzc` | `rescale_core_z` | control | `card_z_ramp_core_z` | run | real(max_runs) | `-1.0d0` | live | Per rescaling card, with use_z_ramp: the Z the ramp sets inside the mass fraction rescale_z_mix1 (positive to ramp; the default -1 is off) |
-| `rescale_z_mix1` | `rsclzm1` | `rescale_z_mix1` | control | `card_z_ramp_inner_mass_fraction` | run | real(max_runs) | `-1.0d0` | live | Per rescaling card, with use_z_ramp: the mass fraction m/M inside which Z is rescale_core_z (positive to ramp) |
-| `rescale_z_mix2` | `rsclzm2` | `rescale_z_mix2` | control | `card_z_ramp_outer_mass_fraction` | run | real(max_runs) | `-1.0d0` | live | Per rescaling card, with use_z_ramp: the mass fraction m/M at which the ramp reaches the surface Z (positive to ramp) |
-| `timestep_override` | `setdt` | `timestep_override` | control | `card_fixed_timestep_yr` | run | real(max_runs) | `0.0d0` | live | Per run: if positive, a fixed timestep (yr) for every model of the run, overriding the timestep limits |
-| `senv0_array` | `senv0a` | `senv0_array` | control | `card_log_fit_point_mass_fraction` | run | real(max_runs) | `1.26d-4` | live | Per run: log10 of the fractional envelope mass of the outer fitting point (with has_senv0_array) |
-| `target_teff` | `steff` | `target_teff` | control | `calibration_target_teff` | run | real | `0` | live | Star calibration: the target Teff (K), with specify_teff_flag |
-| `target_radius_rsun` | `sr` | `target_radius_rsun` | control | `calibration_target_radius_rsun` | run | real | `0` | live | Star calibration: the target radius (Rsun) |
-| `radius_tolerance` | `tolr` | `radius_tolerance` | control | - | run | real | `1.0d-4` | live | Solar calibration: tolerance on \|log R/Rsun\| |
-| `luminosity_tolerance` | `toll` | `luminosity_tolerance` | control | - | run | real | `1.0d-5` | live | Solar calibration: tolerance on \|log L/Lsun\| |
-| `zx_tolerance` | `tolz` | `zx_tolerance` | control | - | run | real | `1.0d-3` | live | Solar calibration: the tolerance on log10(Z/X) |
-| `initial_x_array` | `xenv0a` | `initial_x_array` | control | `card_initial_x` | run | real(max_runs) | `0` | live | Starting hydrogen mass fraction X, per run card |
-| `target_luminosity_lsun` | `xls` | `target_luminosity_lsun` | control | - | run | real | `0` | live | Star calibration: the target luminosity (Lsun) |
-| `target_star_luminosity_tolerance` | `xlstol` | `target_star_luminosity_tolerance` | control | - | run | real | `0` | live | Star calibration: the tolerance on L/Lsun at the target radius or Teff |
-| `initial_z_array` | `zenv0a` | `initial_z_array` | control | `card_initial_z` | run | real(max_runs) | `0` | live | Starting metal mass fraction Z, per run card |
-| `laol_table_z1` | `zlaol1` | `laol_table_z1` | control | - | run | real | `0` | live | Metallicity of the first LAOL89 opacity table |
-| `laol_table_z2` | `zlaol2` | `laol_table_z2` | control | - | run | real | `0` | live | Metallicity of the second LAOL89 opacity table (two-Z interpolation) |
-| `opal_table_z1` | `zopal1` | `opal_table_z1` | control | - | run | real | `0` | live | Metallicity of the first OPAL92 opacity table |
-| `opal_table_z2` | `zopal2` | `opal_table_z2` | control | - | run | real | `0` | live | Z of the second OPAL 1992 opacity table |
-| `opal95_single_table_z` | `zopal951` | `opal95_single_table_z` | control | - | run | real | `0` | live | Z of the surface-mixture OPAL 1995 / OP table generated at the start |
-| `opal95_z2` | `zopal952` | `opal95_z2` | buffer | - | none | real | `0` | live | Inert: read and used nowhere (the OPAL 1995 tables take one Z, opal95_single_table_z); the controls read warns when it is set |
-| `alex_table_z1` | `zalex1` | `alex_table_z1` | control | - | run | real | `0` | live | Z of the Alexander & Ferguson 1994 low-temperature table |
-| `alex_z2` | `zalex2` | `alex_z2` | buffer | - | none | real | `0` | live | Inert: read and used nowhere (the Alexander tables take one Z, alex_table_z1); the controls read warns when it is set |
-| `kurucz_table_z1` | `zkur1` | `kurucz_table_z1` | control | - | run | real | `0` | live | Z of the first Kurucz 1990 opacity table |
-| `kurucz_table_z2` | `zkur2` | `kurucz_table_z2` | control | - | run | real | `0` | live | Z of the second Kurucz 1990 opacity table |
-| `opal01_eos_table_file` | `fopale01` | `opal2001_eos_table_path` | buffer | - | read | path | `''` | live | OPAL 2001 EOS table (use_opal2001_eos) |
-| `conductive_opacity_table_file` | `fcondopacp` | `conductive_table_path` | control | - | run | path | `''` | live | Potekhin conductive opacity table |
-| `opal06_eos_table_file` | `fopale06` | `opal2006_eos_table_path` | buffer | - | read | path | `''` | live | OPAL 2006 EOS table (use_opal2006_eos) |
-| `alex06_opacity_table_file` | `falex06` | `alex06_table_path` | control | - | run | path | `''` | live | Ferguson/Alexander 2006 low-T opacity tables |
-| `use_alex06_tables` | `lalex06` | `use_alex06_tables` | control | - | run | logical | `.false.` | live | Use the Ferguson et al. 2005 molecular opacity tables (alex06_opacity_table_file) |
-| `central_deuterium_stop` | `end_dcen` | `central_deuterium_stop` | control | `card_central_deuterium_stop` | run | real(max_runs) | `0.0d0` | live | Per run: stop when the central deuterium mass fraction falls below this (0: off) |
-| `central_hydrogen_stop` | `end_xcen` | `central_hydrogen_stop` | control | `card_central_hydrogen_stop` | run | real(max_runs) | `0.0d0` | live | Per run: stop when the central hydrogen mass fraction falls below this (0: off) |
-| `central_helium_stop` | `end_ycen` | `central_helium_stop` | control | `card_central_helium_stop` | run | real(max_runs) | `0.0d0` | live | Per run: stop when the central helium mass fraction falls below this (0: off) |
-| `mixture_change_mode` | `isetmix` | `mixture_change_mode` | buffer | - | read | integer | `0` | live | 1: set the starting model's C, N and O fractions of Z from cno_mixture_name |
-| `isotope_change_mode` | `isetiso` | `isotope_change_mode` | buffer | - | read | integer | `0` | live | 1: set the starting model's CNO isotope ratios and light-element abundances from isotope_mixture_name |
-| `cno_mixture_name` | `amix` | `cno_mixture_name` | buffer | - | read | string | `'GS98'` | live | Heavy-element mixture selector (GS98/CUS/...) applied to the start model |
-| `isotope_mixture_name` | `aiso` | `isotope_mixture_name` | buffer | - | read | string | `'L21'` | live | Isotope-ratio set selector (L21 default or CUS custom) |
-| `target_carbon_cno_fraction` | `frac_c` | `target_carbon_cno_fraction` | control | - | run | real | `0.172148d0` | live | Carbon fraction of the CNO metals for cno_mixture_name 'CUS' (with mixture_change_mode = 1) |
-| `target_nitrogen_cno_fraction` | `frac_n` | `target_nitrogen_cno_fraction` | control | - | run | real | `0.050426d0` | live | Nitrogen fraction of the CNO metals for cno_mixture_name 'CUS' |
-| `target_oxygen_cno_fraction` | `frac_o` | `target_oxygen_cno_fraction` | control | - | run | real | `0.468195d0` | live | Oxygen fraction of the CNO metals for cno_mixture_name 'CUS' |
-| `c12_to_c13_ratio` | `r12_13` | `c12_to_c13_ratio` | control | - | run | real | `88.27d0` | live | C12/C13 number ratio of the starting model for isotope_mixture_name 'CUS' (with isotope_change_mode = 1) |
-| `n14_to_n15_ratio` | `r14_15` | `n14_to_n15_ratio` | buffer | - | read | real | `411.9d0` | live | N14/N15 number ratio for isotope_mixture_name 'CUS' |
-| `o16_to_o17_ratio` | `r16_17` | `o16_to_o17_ratio` | buffer | - | read | real | `471.4d0` | live | O16/O17 number ratio for isotope_mixture_name 'CUS' |
-| `o16_to_o18_ratio` | `r16_18` | `o16_to_o18_ratio` | control | - | run | real | `2693.0d0` | live | O16/O18 number ratio for isotope_mixture_name 'CUS' |
-| `target_metal_fraction` | `zxmix` | `target_metal_fraction` | buffer | - | none | real | `0.02292d0` | live | Z/X for cno_mixture_name 'CUS' (inert: stored and used nowhere; the starting model keeps its Z) |
-| `initial_h2_fraction` | `xh2_ini` | `initial_h2_fraction` | control | - | run | real | `2.781d-5` | live | Initial H2 mass fraction for isotope_mixture_name 'CUS' |
-| `initial_he3_fraction` | `xhe3_ini` | `initial_he3_fraction` | control | - | run | real | `3.461d-5` | live | Initial He3 mass fraction for isotope_mixture_name 'CUS' |
-| `initial_li6_fraction` | `xli6_ini` | `initial_li6_fraction` | control | - | run | real | `7.187d-10` | live | Initial Li6 mass fraction for isotope_mixture_name 'CUS' |
-| `initial_li7_fraction` | `xli7_ini` | `initial_li7_fraction` | control | - | run | real | `1.025d-8` | live | Initial Li7 mass fraction for isotope_mixture_name 'CUS' |
-| `initial_be9_fraction` | `xbe9_ini` | `initial_be9_fraction` | control | - | run | real | `1.595d-10` | live | Initial Be9 mass fraction for isotope_mixture_name 'CUS' |
-| `initial_b10_fraction` | `xb10_ini` | `initial_b10_fraction` | buffer | - | read | real | `1.002d-9` | live | Initial B10 mass fraction for isotope_mixture_name 'CUS' |
-| `initial_b11_fraction` | `xb11_ini` | `initial_b11_fraction` | buffer | - | read | real | `4.405d-9` | live | Initial B11 mass fraction for isotope_mixture_name 'CUS' |
-| `pulse_gyre_interval` | `pulse_gyre_interval` | `pulse_gyre_interval` | control | - | run | integer | `0` | live | Write the interior-only GYRE file every this many models (0 = off) |
-| `history_columns_file` | `-` | `history_columns_file` | control | - | run | path | `' '` | live | File listing the history columns (one name per line, ! comments); blank: the default selection of defaults/history_columns.list |
-| `profile_columns_file` | `-` | `profile_columns_file` | control | - | run | path | `' '` | live | File listing the profile columns; blank: the default selection of defaults/profile_columns.list |
-| `inlist_used_file` | `inlist_used_file` | `inlist_used_file` | control | - | run | path | `' '` | live | Verbatim copy of the input namelist file(s), written at startup as run provenance; blank (the default): inlist_used in the output directory, the run log's |
-| `log_L_upper_limit` | `log_L_upper_limit` | `log_l_upper_limit` | control | - | run | real(max_runs) | `1.0d99` | live | Per kind card: stop the card when log(L/Lsun) exceeds this (1d99 = off) |
-| `log_L_lower_limit` | `log_L_lower_limit` | `log_l_lower_limit` | control | - | run | real(max_runs) | `-1.0d99` | live | Per kind card: stop the card when log(L/Lsun) drops below this (-1d99 = off) |
-| `Teff_upper_limit` | `Teff_upper_limit` | `teff_upper_limit` | control | - | run | real(max_runs) | `1.0d99` | live | Per kind card: stop the card when Teff [K] exceeds this (1d99 = off) |
-| `Teff_lower_limit` | `Teff_lower_limit` | `teff_lower_limit` | control | - | run | real(max_runs) | `-1.0d99` | live | Per kind card: stop the card when Teff [K] drops below this (-1d99 = off) |
-| `log_g_upper_limit` | `log_g_upper_limit` | `log_g_upper_limit` | control | - | run | real(max_runs) | `1.0d99` | live | Per kind card: stop the card when surface log g [cgs] exceeds this (1d99 = off) |
-| `log_g_lower_limit` | `log_g_lower_limit` | `log_g_lower_limit` | control | - | run | real(max_runs) | `-1.0d99` | live | Per kind card: stop the card when surface log g [cgs] drops below this (-1d99 = off) |
-| `nu_max_upper_limit` | `nu_max_upper_limit` | `nu_max_upper_limit` | control | - | run | real(max_runs) | `1.0d99` | live | Per kind card: stop the card when nu_max [uHz] (scaling relation) exceeds this (1d99 = off) |
-| `nu_max_lower_limit` | `nu_max_lower_limit` | `nu_max_lower_limit` | control | - | run | real(max_runs) | `-1.0d99` | live | Per kind card: stop the card when nu_max [uHz] (scaling relation) drops below this (-1d99 = off) |
+| inlist name | legacy name | code name | home | run copy | settings | used | type | default | status | description |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `mixing_length_alpha` | `cmixla` | `mixing_length_array` | control | `card_mixing_length_alpha` | - | run | real(max_runs) | `0` | live | Per card: the mixing-length parameter alpha |
+| `target_solar_age` | `calsolage` | `target_solar_age` | control | - | - | run | real | `4.57d9` | live | Solar calibration: the target age of the Sun (yr) |
+| `target_solar_zx` | `calsolzx` | `target_solar_zx` | control | - | - | run | real | `0.02292d0` | live | Solar calibration: the target surface Z/X (with calibrate_solar_zx) |
+| `run_description` | `descrip` | `run_description` | buffer | - | - | read | string(2) | `' '` | live | The deck's two description lines, written in the run log's header (a blank second line is left out) |
+| `max_age` | `endage` | `target_end_age` | control | `card_max_age_yr` | - | run | real(max_runs) | `0.0d0` | live | Stop the run card at this age (yr); 0 = no age limit |
+| `laol_opacity_table_file` | `flaol` | `laol_table_path` | control | - | `kap_table_paths%laol` | run | path | `''` | live | LAOL 1989 opacity table |
+| `pure_z_opacity_table_file` | `fpurez` | `pure_z_table_path` | control | - | `kap_table_paths%pure_z` | run | path | `''` | live | Pure-Z opacity table (metal diffusion support) |
+| `laol_opacity_table2_file` | `flaol2` | `laol_table2_path` | control | - | `kap_table_paths%laol_z2` | run | path | `''` | live | LAOL 1989 opacity table, second Z |
+| `opal92_opacity_table2_file` | `fopal2` | `opal92_table2_path` | control | - | `kap_table_paths%opal92_z2` | run | path | `''` | live | OPAL 1992 opacity table, second Z |
+| `last_model_file` | `flast` | `last_model_file` | control | - | - | run | path | `'{YREC_OUTPUT}/final.mod'` | live | Path for the final model (.mod) written every model; reloadable |
+| `first_model_file` | `ffirst` | `first_model_file` | control | - | - | run | path | `''` | live | The starting model, which card 1 and every card with first_call_flag set read |
+| `fermi_table_file` | `ffermi` | `fermi_table_path` | control | - | `eos_table_paths%fermi` | run | path | `''` | live | Fermi-Dirac integral table (Yale/Prather degenerate-electron EOS) |
+| `(legacy only)` | `fstch` | `stored_change_file` | buffer | - | - | none | string | `''` | unused | Unused: read by the legacy reader and ignored |
+| `dynamics_file` | `fdyn` | `dynamics_file` | control | - | - | run | path | `''` | live | Monte Carlo runs: the file of each run's samples (the rate, composition, luminosity and age factors), read at the start |
+| `opal92_opacity_table_file` (`ll_data_file`) | `flldat` | `opal92_table_path` | control | - | `kap_table_paths%opal92` | run | path | `''` | live | OPAL 1992 opacity table (use_opal92_tables) |
+| `surface_composition_file` | `fscomp` | `surface_composition_file` | buffer | - | - | none | string | `''` | live | Accepted and ignored: no surface-composition file is written any more (the light elements are history columns); kept so that decks setting it still read |
+| `kurucz_opacity_table_file` (`kurucz_atm_table_file`) | `fkur` | `kurucz_table_path` | control | - | `kap_table_paths%kurucz` | run | path | `''` | live | Kurucz 1990 low-temperature opacity table (use_kurucz90_tables) |
+| `mhd_table_file_1` | `fmhd1` | `zams_a_table_path` | control | - | `eos_table_paths%mhd_zams` | run | path | `''` | live | MHD EOS table 1 of 8: the first ZAMS-type composition |
+| `mhd_table_file_2` | `fmhd2` | `zams_b_table_path` | control | - | `eos_table_paths%mhd_zams` | run | path | `''` | live | MHD EOS table 2 of 8: the second ZAMS-type composition |
+| `mhd_table_file_3` | `fmhd3` | `zams_c_table_path` | control | - | `eos_table_paths%mhd_zams` | run | path | `''` | live | MHD EOS table 3 of 8: the third ZAMS-type composition |
+| `mhd_table_file_4` | `fmhd4` | `centre1_table_path` | control | - | `eos_table_paths%mhd_centre` | run | path | `''` | live | MHD EOS table 4 of 8: the first centre-type composition |
+| `mhd_table_file_5` | `fmhd5` | `centre2_table_path` | control | - | `eos_table_paths%mhd_centre` | run | path | `''` | live | MHD EOS table 5 of 8: the second centre-type composition |
+| `mhd_table_file_6` | `fmhd6` | `centre3_table_path` | control | - | `eos_table_paths%mhd_centre` | run | path | `''` | live | MHD EOS table 6 of 8: the third centre-type composition |
+| `mhd_table_file_7` | `fmhd7` | `centre4_table_path` | control | - | `eos_table_paths%mhd_centre` | run | path | `''` | live | MHD EOS table 7 of 8: the fourth centre-type composition |
+| `mhd_table_file_8` | `fmhd8` | `centre5_table_path` | control | - | `eos_table_paths%mhd_centre` | run | path | `''` | live | MHD EOS table 8 of 8: the fifth centre-type composition |
+| `isochrone_file` | `fiso` | `isochrone_file` | control | - | - | run | path | `''` | live | Isochrone output file |
+| `atm_table_file` | `fatm` | `atm_table_path` | control | - | `atm_table_paths%surface_pressure` | run | path | `''` | live | Kurucz (atm_choice 3 and 4) or Castelli/Kurucz (5) surface-pressure table |
+| `kurucz_opacity_table2_file` (`kurucz_castelli_atm_table_file`) | `fkur2` | `kurucz_table2_path` | control | - | `kap_table_paths%kurucz_z2` | run | path | `''` | live | Kurucz 1990 low-temperature opacity table, second Z |
+| `allard_atm_table_file` | `fallard` | `allard_table_path` | control | - | `atm_table_paths%allard` | run | path | `''` | live | Allard NextGen model-atmosphere table |
+| `scv_h_table_file` | `fscvh` | `scv_h_table_path` | control | - | `eos_table_paths%scv_h` | run | path | `''` | live | Saumon-Chabrier-Van Horn EOS: hydrogen table |
+| `scv_he_table_file` | `fscvhe` | `scv_he_table_path` | control | - | `eos_table_paths%scv_he` | run | path | `''` | live | SCV EOS: helium table |
+| `scv_z_table_file` | `fscvz` | `scv_z_table_path` | control | - | `eos_table_paths%scv_z` | run | path | `''` | live | SCV EOS: metals table |
+| `opal95_eos_table_file` (`opal_eos_table_file`) | `fopale` | `opal95_eos_table_path` | buffer | - | - | read | path | `''` | live | OPAL 1995 EOS table (use_opal95_eos) |
+| `opal95_opacity_table_file` | `fliv95` | `opal95_table_path` | control | - | `kap_table_paths%opal95` | run | path | `''` | live | OPAL 1995-format opacity table (use_opal95_tables) |
+| `monte_carlo_file1_path` | `fmonte1` | `monte_carlo_file1_path` | control | - | - | run | path | `''` | live | Monte Carlo runs: the file for each run's summary |
+| `monte_carlo_file2_path` | `fmonte2` | `monte_carlo_file2_path` | control | - | - | run | path | `''` | live | Monte Carlo runs: the file for each run's final model |
+| `run_kind` | `kindrn` | `run_kind` | buffer | - | - | read | integer(max_runs) | `1` | live | Per-run kind card: 1 = evolve, 2 = rescale (zero timestep, MS/CHeB), 3 = rescale and evolve (pre-MS) |
+| `first_call_flag` | `lfirst` | `first_call_flag` | control | `card_from_starting_model` | - | run | logical(max_runs) | `.true.` | live | Per card: start from the starting model (first_model_file) rather than the previous card's model; .true. for every card unless the deck says otherwise, so a continuation card sets it .false. (card 1 always starts from the starting model) |
+| `set_initial_model_number` | `set_initial_model_number` | `set_initial_model_number` | control | - | - | run | integer | `1` | live | Model number given to the first converged model after a fresh start-model load (first_call_flag card). <= 0 keeps the counter stored in the model file (restart continuation, the pre-2026 behavior). |
+| `use_z_ramp` | `lzramp` | `use_z_ramp` | control | - | `kap_settings%use_two_z_tables` | run | logical | `.false.` | live | On a rescaling run with rescale_core_z, rescale_z_mix1 and rescale_z_mix2 positive: Z = rescale_core_z inside the mass fraction rescale_z_mix1, then linear to the surface Z at rescale_z_mix2 |
+| `specify_teff_flag` | `lteff` | `specify_teff_flag` | control | - | - | run | logical | `.false.` | live | Star calibration: match the target Teff (target_teff) instead of the target radius (target_radius_rsun) |
+| `calibrate_star_flag` | `lcalst` | `calibrate_star_flag` | control | - | - | run | logical | `.false.` | live | Calibrate the mixing length and Y so that the star reaches target_luminosity_lsun at the target radius or Teff |
+| `use_pure_z_table` | `lpurez` | `use_pure_z_table` | control | - | `kap_settings%use_pure_z_table` | run | logical | `.false.` | live | Use the pure C and N opacity tables (pure_z_opacity_table_file) for metal-enriched mixtures |
+| `isochrone_output_active` | `liso` | `isochrone_output_active` | control | - | - | run | logical | `.false.` | live | Write an isochrone record every model to isochrone_file |
+| `rewind_short_file` | `lrwsh` | `rewind_short_file` | control | - | - | run | logical | `.false.` | live | Rewind the run log every model, so it holds only the latest model's solver diagnostics |
+| `has_senv0_array` | `lsenv0a` | `has_senv0_array` | control | `card_moves_fit_point` | - | run | logical(max_runs) | `.false.` | live | Per run: move the outer fitting point to the fractional envelope mass senv0_array |
+| `calibrate_solar_model` | `lcals` | `calibrate_solar_model` | control | - | - | run | logical | `.false.` | live | Calibrate Y and the mixing length so that the model matches the solar L and R at target_solar_age |
+| `calibrate_solar_zx` | `lcalsolzx` | `calibrate_solar_zx` | control | - | - | run | logical | `.false.` | live | Solar calibration: also calibrate Z to match target_solar_zx (within zx_tolerance) |
+| `use_laol89_tables` | `llaol89` | `use_laol89_tables` | control | - | `kap_settings%use_laol89_tables` | run | logical | `.false.` | live | Use the LAOL 1989 opacity tables (laol_opacity_table_file) |
+| `use_opal92_tables` | `lopal92` | `use_opal92_tables` | control | - | `kap_settings%use_opal92_tables` | run | logical | `.false.` | live | Use the OPAL 1992 opacity tables (opal92_opacity_table_file) |
+| `use_opal95_tables` | `lopal95` | `use_opal95_tables` | control | - | `kap_settings%use_opal95_tables` | run | logical | `.false.` | live | Use the OPAL 1995 / OP atomic opacity tables (opal95_opacity_table_file) |
+| `use_kurucz90_tables` | `lkur90` | `use_kurucz90_tables` | control | - | `kap_settings%use_kurucz90_tables` | run | logical | `.false.` | live | Use the Kurucz 1990 low-temperature opacity tables |
+| `use_alex95_tables` | `lalex95` | `use_alex95_tables` | control | - | `kap_settings%use_alex95_tables` | run | logical | `.false.` | live | Use the Alexander & Ferguson 1994 low-temperature opacity tables (alex95_table_z_list) |
+| `envelope_print_points` | `npenv` | `envelope_print_points` | buffer | - | - | none | integer | `0` | live | Inert: read and used nowhere (legacy NPENV, an envelope print count, whose one use in the F77 was commented out) |
+| `num_runs` | `numrun` | `num_runs` | control | `num_cards` | - | run | integer | `1` | live | The number of runs (kind cards): each rescales a model, evolves it, or both |
+| `max_model_number` | `nmodls` | `num_models` | control | `card_num_models` | - | run | integer(max_runs) | `0` | live | Per run: the number of models to compute (the run stops earlier if a stop condition is met) |
+| `alex95_opacity_table_files` (`alex95_table_z_list`) | `opecalex` | `alex95_table_paths` | control | - | `kap_table_paths%alex94` | run | path(7) | `''` | live | The seven Alexander & Ferguson 1994 low-temperature opacity table files |
+| `rescale_mass` | `rsclm` | `rescale_mass` | buffer | - | - | read | real(max_runs) | `0.0d0` | live | Per-run target mass (Msun) for rescale runs |
+| `rescale_x` | `rsclx` | `rescale_x` | buffer | - | - | read | real(max_runs) | `0.0d0` | live | Per-run target hydrogen fraction for rescale runs |
+| `rescale_z` | `rsclz` | `rescale_z` | buffer | - | - | read | real(max_runs) | `0.0d0` | live | Per-run target metallicity for rescale runs |
+| `rescale_core_mass` | `rsclcm` | `rescale_core_mass` | buffer | - | - | read | real(max_runs) | `0.0d0` | live | Per-run rescale: core mass bound |
+| `rescale_core_z` | `rsclzc` | `rescale_core_z` | control | `card_z_ramp_core_z` | - | run | real(max_runs) | `-1.0d0` | live | Per rescaling card, with use_z_ramp: the Z the ramp sets inside the mass fraction rescale_z_mix1 (positive to ramp; the default -1 is off) |
+| `rescale_z_mix1` | `rsclzm1` | `rescale_z_mix1` | control | `card_z_ramp_inner_mass_fraction` | - | run | real(max_runs) | `-1.0d0` | live | Per rescaling card, with use_z_ramp: the mass fraction m/M inside which Z is rescale_core_z (positive to ramp) |
+| `rescale_z_mix2` | `rsclzm2` | `rescale_z_mix2` | control | `card_z_ramp_outer_mass_fraction` | - | run | real(max_runs) | `-1.0d0` | live | Per rescaling card, with use_z_ramp: the mass fraction m/M at which the ramp reaches the surface Z (positive to ramp) |
+| `timestep_override` | `setdt` | `timestep_override` | control | `card_fixed_timestep_yr` | - | run | real(max_runs) | `0.0d0` | live | Per run: if positive, a fixed timestep (yr) for every model of the run, overriding the timestep limits |
+| `senv0_array` | `senv0a` | `senv0_array` | control | `card_log_fit_point_mass_fraction` | - | run | real(max_runs) | `1.26d-4` | live | Per run: log10 of the fractional envelope mass of the outer fitting point (with has_senv0_array) |
+| `target_teff` | `steff` | `target_teff` | control | `calibration_target_teff` | - | run | real | `0` | live | Star calibration: the target Teff (K), with specify_teff_flag |
+| `target_radius_rsun` | `sr` | `target_radius_rsun` | control | `calibration_target_radius_rsun` | - | run | real | `0` | live | Star calibration: the target radius (Rsun) |
+| `radius_tolerance` | `tolr` | `radius_tolerance` | control | - | - | run | real | `1.0d-4` | live | Solar calibration: tolerance on \|log R/Rsun\| |
+| `luminosity_tolerance` | `toll` | `luminosity_tolerance` | control | - | - | run | real | `1.0d-5` | live | Solar calibration: tolerance on \|log L/Lsun\| |
+| `zx_tolerance` | `tolz` | `zx_tolerance` | control | - | - | run | real | `1.0d-3` | live | Solar calibration: the tolerance on log10(Z/X) |
+| `initial_x_array` | `xenv0a` | `initial_x_array` | control | `card_initial_x` | - | run | real(max_runs) | `0` | live | Starting hydrogen mass fraction X, per run card |
+| `target_luminosity_lsun` | `xls` | `target_luminosity_lsun` | control | - | - | run | real | `0` | live | Star calibration: the target luminosity (Lsun) |
+| `target_star_luminosity_tolerance` | `xlstol` | `target_star_luminosity_tolerance` | control | - | - | run | real | `0` | live | Star calibration: the tolerance on L/Lsun at the target radius or Teff |
+| `initial_z_array` | `zenv0a` | `initial_z_array` | control | `card_initial_z` | - | run | real(max_runs) | `0` | live | Starting metal mass fraction Z, per run card |
+| `laol_table_z1` | `zlaol1` | `laol_table_z1` | control | - | `kap_settings%laol_table_z1` | run | real | `0` | live | Metallicity of the first LAOL89 opacity table |
+| `laol_table_z2` | `zlaol2` | `laol_table_z2` | control | - | `kap_settings%laol_table_z2` | run | real | `0` | live | Metallicity of the second LAOL89 opacity table (two-Z interpolation) |
+| `opal_table_z1` | `zopal1` | `opal_table_z1` | control | - | `kap_settings%opal_table_z1` | run | real | `0` | live | Metallicity of the first OPAL92 opacity table |
+| `opal_table_z2` | `zopal2` | `opal_table_z2` | control | - | `kap_settings%opal_table_z2` | run | real | `0` | live | Z of the second OPAL 1992 opacity table |
+| `opal95_single_table_z` | `zopal951` | `opal95_single_table_z` | control | - | `kap_settings%opal95_single_table_z` | run | real | `0` | live | Z of the surface-mixture OPAL 1995 / OP table generated at the start |
+| `opal95_z2` | `zopal952` | `opal95_z2` | buffer | - | - | none | real | `0` | live | Inert: read and used nowhere (the OPAL 1995 tables take one Z, opal95_single_table_z); the controls read warns when it is set |
+| `alex_table_z1` | `zalex1` | `alex_table_z1` | control | - | `kap_settings%alex_table_z1` | run | real | `0` | live | Z of the Alexander & Ferguson 1994 low-temperature table |
+| `alex_z2` | `zalex2` | `alex_z2` | buffer | - | - | none | real | `0` | live | Inert: read and used nowhere (the Alexander tables take one Z, alex_table_z1); the controls read warns when it is set |
+| `kurucz_table_z1` | `zkur1` | `kurucz_table_z1` | control | - | `kap_settings%kurucz_table_z1` | run | real | `0` | live | Z of the first Kurucz 1990 opacity table |
+| `kurucz_table_z2` | `zkur2` | `kurucz_table_z2` | control | - | `kap_settings%kurucz_table_z2` | run | real | `0` | live | Z of the second Kurucz 1990 opacity table |
+| `opal01_eos_table_file` | `fopale01` | `opal2001_eos_table_path` | buffer | - | - | read | path | `''` | live | OPAL 2001 EOS table (use_opal2001_eos) |
+| `conductive_opacity_table_file` | `fcondopacp` | `conductive_table_path` | control | - | `kap_table_paths%conductive` | run | path | `''` | live | Potekhin conductive opacity table |
+| `opal06_eos_table_file` | `fopale06` | `opal2006_eos_table_path` | buffer | - | - | read | path | `''` | live | OPAL 2006 EOS table (use_opal2006_eos) |
+| `alex06_opacity_table_file` | `falex06` | `alex06_table_path` | control | - | `kap_table_paths%alex06` | run | path | `''` | live | Ferguson/Alexander 2006 low-T opacity tables |
+| `use_alex06_tables` | `lalex06` | `use_alex06_tables` | control | - | `kap_settings%use_alex06_tables` | run | logical | `.false.` | live | Use the Ferguson et al. 2005 molecular opacity tables (alex06_opacity_table_file) |
+| `central_deuterium_stop` | `end_dcen` | `central_deuterium_stop` | control | `card_central_deuterium_stop` | - | run | real(max_runs) | `0.0d0` | live | Per run: stop when the central deuterium mass fraction falls below this (0: off) |
+| `central_hydrogen_stop` | `end_xcen` | `central_hydrogen_stop` | control | `card_central_hydrogen_stop` | - | run | real(max_runs) | `0.0d0` | live | Per run: stop when the central hydrogen mass fraction falls below this (0: off) |
+| `central_helium_stop` | `end_ycen` | `central_helium_stop` | control | `card_central_helium_stop` | - | run | real(max_runs) | `0.0d0` | live | Per run: stop when the central helium mass fraction falls below this (0: off) |
+| `mixture_change_mode` | `isetmix` | `mixture_change_mode` | buffer | - | - | read | integer | `0` | live | 1: set the starting model's C, N and O fractions of Z from cno_mixture_name |
+| `isotope_change_mode` | `isetiso` | `isotope_change_mode` | buffer | - | - | read | integer | `0` | live | 1: set the starting model's CNO isotope ratios and light-element abundances from isotope_mixture_name |
+| `cno_mixture_name` | `amix` | `cno_mixture_name` | buffer | - | - | read | string | `'GS98'` | live | Heavy-element mixture selector (GS98/CUS/...) applied to the start model |
+| `isotope_mixture_name` | `aiso` | `isotope_mixture_name` | buffer | - | - | read | string | `'L21'` | live | Isotope-ratio set selector (L21 default or CUS custom) |
+| `target_carbon_cno_fraction` | `frac_c` | `target_carbon_cno_fraction` | control | - | - | run | real | `0.172148d0` | live | Carbon fraction of the CNO metals for cno_mixture_name 'CUS' (with mixture_change_mode = 1) |
+| `target_nitrogen_cno_fraction` | `frac_n` | `target_nitrogen_cno_fraction` | control | - | - | run | real | `0.050426d0` | live | Nitrogen fraction of the CNO metals for cno_mixture_name 'CUS' |
+| `target_oxygen_cno_fraction` | `frac_o` | `target_oxygen_cno_fraction` | control | - | - | run | real | `0.468195d0` | live | Oxygen fraction of the CNO metals for cno_mixture_name 'CUS' |
+| `c12_to_c13_ratio` | `r12_13` | `c12_to_c13_ratio` | control | - | - | run | real | `88.27d0` | live | C12/C13 number ratio of the starting model for isotope_mixture_name 'CUS' (with isotope_change_mode = 1) |
+| `n14_to_n15_ratio` | `r14_15` | `n14_to_n15_ratio` | buffer | - | - | read | real | `411.9d0` | live | N14/N15 number ratio for isotope_mixture_name 'CUS' |
+| `o16_to_o17_ratio` | `r16_17` | `o16_to_o17_ratio` | buffer | - | - | read | real | `471.4d0` | live | O16/O17 number ratio for isotope_mixture_name 'CUS' |
+| `o16_to_o18_ratio` | `r16_18` | `o16_to_o18_ratio` | control | - | - | run | real | `2693.0d0` | live | O16/O18 number ratio for isotope_mixture_name 'CUS' |
+| `target_metal_fraction` | `zxmix` | `target_metal_fraction` | buffer | - | - | none | real | `0.02292d0` | live | Z/X for cno_mixture_name 'CUS' (inert: stored and used nowhere; the starting model keeps its Z) |
+| `initial_h2_fraction` | `xh2_ini` | `initial_h2_fraction` | control | - | - | run | real | `2.781d-5` | live | Initial H2 mass fraction for isotope_mixture_name 'CUS' |
+| `initial_he3_fraction` | `xhe3_ini` | `initial_he3_fraction` | control | - | - | run | real | `3.461d-5` | live | Initial He3 mass fraction for isotope_mixture_name 'CUS' |
+| `initial_li6_fraction` | `xli6_ini` | `initial_li6_fraction` | control | - | - | run | real | `7.187d-10` | live | Initial Li6 mass fraction for isotope_mixture_name 'CUS' |
+| `initial_li7_fraction` | `xli7_ini` | `initial_li7_fraction` | control | - | - | run | real | `1.025d-8` | live | Initial Li7 mass fraction for isotope_mixture_name 'CUS' |
+| `initial_be9_fraction` | `xbe9_ini` | `initial_be9_fraction` | control | - | - | run | real | `1.595d-10` | live | Initial Be9 mass fraction for isotope_mixture_name 'CUS' |
+| `initial_b10_fraction` | `xb10_ini` | `initial_b10_fraction` | buffer | - | - | read | real | `1.002d-9` | live | Initial B10 mass fraction for isotope_mixture_name 'CUS' |
+| `initial_b11_fraction` | `xb11_ini` | `initial_b11_fraction` | buffer | - | - | read | real | `4.405d-9` | live | Initial B11 mass fraction for isotope_mixture_name 'CUS' |
+| `pulse_gyre_interval` | `pulse_gyre_interval` | `pulse_gyre_interval` | control | - | - | run | integer | `0` | live | Write the interior-only GYRE file every this many models (0 = off) |
+| `history_columns_file` | `-` | `history_columns_file` | control | - | - | run | path | `' '` | live | File listing the history columns (one name per line, ! comments); blank: the default selection of defaults/history_columns.list |
+| `profile_columns_file` | `-` | `profile_columns_file` | control | - | - | run | path | `' '` | live | File listing the profile columns; blank: the default selection of defaults/profile_columns.list |
+| `inlist_used_file` | `inlist_used_file` | `inlist_used_file` | control | - | - | run | path | `' '` | live | Verbatim copy of the input namelist file(s), written at startup as run provenance; blank (the default): inlist_used in the output directory, the run log's |
+| `log_L_upper_limit` | `log_L_upper_limit` | `log_l_upper_limit` | control | - | - | run | real(max_runs) | `1.0d99` | live | Per kind card: stop the card when log(L/Lsun) exceeds this (1d99 = off) |
+| `log_L_lower_limit` | `log_L_lower_limit` | `log_l_lower_limit` | control | - | - | run | real(max_runs) | `-1.0d99` | live | Per kind card: stop the card when log(L/Lsun) drops below this (-1d99 = off) |
+| `Teff_upper_limit` | `Teff_upper_limit` | `teff_upper_limit` | control | - | - | run | real(max_runs) | `1.0d99` | live | Per kind card: stop the card when Teff [K] exceeds this (1d99 = off) |
+| `Teff_lower_limit` | `Teff_lower_limit` | `teff_lower_limit` | control | - | - | run | real(max_runs) | `-1.0d99` | live | Per kind card: stop the card when Teff [K] drops below this (-1d99 = off) |
+| `log_g_upper_limit` | `log_g_upper_limit` | `log_g_upper_limit` | control | - | - | run | real(max_runs) | `1.0d99` | live | Per kind card: stop the card when surface log g [cgs] exceeds this (1d99 = off) |
+| `log_g_lower_limit` | `log_g_lower_limit` | `log_g_lower_limit` | control | - | - | run | real(max_runs) | `-1.0d99` | live | Per kind card: stop the card when surface log g [cgs] drops below this (-1d99 = off) |
+| `nu_max_upper_limit` | `nu_max_upper_limit` | `nu_max_upper_limit` | control | - | - | run | real(max_runs) | `1.0d99` | live | Per kind card: stop the card when nu_max [uHz] (scaling relation) exceeds this (1d99 = off) |
+| `nu_max_lower_limit` | `nu_max_lower_limit` | `nu_max_lower_limit` | control | - | - | run | real(max_runs) | `-1.0d99` | live | Per kind card: stop the card when nu_max [uHz] (scaling relation) drops below this (-1d99 = off) |
 
 ## &physics
 
-| inlist name | legacy name | code name | home | run copy | used | type | default | status | description |
-|---|---|---|---|---|---|---|---|---|---|
-| `log_output_file` | `fshort` | `log_output_file` | physics | - | run | path | `'{YREC_OUTPUT}/run.log'` | live | Run log path; its directory part defines the output directory (legacy FSHORT) |
-| `atm_step_min` | `atmmin` | `atm_step_min` | physics | - | run | real | `1.0d-1` | live | The atmosphere integration's smallest step (in log tau) |
-| `atm_step_begin` | `atmbeg` | `atm_step_begin` | physics | - | run | real | `1.0d-1` | live | Atmosphere integration: the first step |
-| `atm_error_tol` | `atmerr` | `atm_error_tol` | physics | - | run | real | `3.0d-4` | live | Atmosphere integration: error tolerance |
-| `atm_step_max` | `atmmax` | `atm_step_max` | physics | - | run | real | `5.0d-1` | live | The atmosphere integration's largest step (in log tau) |
-| `atm_step_initial` | `atmd0` | `atm_step_initial` | physics | - | run | real | `1.0d-10` | live | Atmosphere integration: the starting density (g/cm^3) at optical depth near zero; divided by 10 on each retry |
-| `change_species_name` | `anewcp` | `change_species_name` | buffer | - | read | string | `'   '` | live | Element id whose abundance to override in the start model (with change_species_value) |
-| `new_species_value_mode` | `atmp` | `new_species_value_mode` | buffer | - | read | string | `''` | live | With rescale_species_active: 'ABS' makes new_species_value an absolute mass fraction; anything else, relative to hydrogen |
-| `fpft_average_weight` | `acfpft` | `fpft_average_weight` | physics | - | run | real | `1.0d-36` | live | The rotating star's shape: the relative tolerance on r0^3 of the equipotential radius iteration (its cube root that on r0 and eta2); not a weight |
-| `timestep_factors` | `atime` | `timestep_factors` | physics | - | run | real(14) | `1.0d-3, 2.0d-2, 5.0d-1, 2.0d-2, 3.0d-1, 1.5d-3, 1.0d-1, 2.0d-2, 4.0d-2, 2.0d-2, 2.0d-2, 0.25d0, 1.5d0, 0.25d0` | live | The timestep limits, slot by slot as the time_* controls (itime_* in state/control_slots.f90): time_core_min, time_dx_core_tot, time_dx_core_frac, time_dy_core_tot, time_dy_core_frac, time_dx_total, time_dx_shell, time_dt, time_dp, time_dr, time_dl, time_dy_shell, time_max_dt_frac, time_dy_total; used unless use_new_rate_variables, which takes the named controls instead |
-| `overshoot_alpha_core` | `alphac` | `overshoot_alpha_core` | physics | - | run | real | `0.0d0` | live | Core overshoot extent in pressure scale heights |
-| `overshoot_alpha_envelope` | `alphae` | `overshoot_alpha_envelope` | physics | - | run | real | `0.0d0` | live | Envelope overshoot extent in pressure scale heights |
-| `wind_law_index` | `alfa` | `wind_law_index` | physics | - | run | real | `1.5d0` | live | Kawaler wind law: the index n (Jdot ~ Omega**(1+4n/3) ...); K97 takes m = n/3 |
-| `overshoot_alpha_min` | `alpham` | `overshoot_alpha_min` | physics | - | run | real | `0.0d0` | live | Overshoot of intermediate convection zones (intermediate_overshoot_active), in pressure scale heights |
-| `atm_step_size` | `atmstp` | `atm_step_size` | physics | - | run | real | `0.5d0` | live | Envelope generation: the atmosphere step size |
-| `absolute_tolerance` | `abstol` | `absolute_tolerance` | physics | - | run | real | `1.0d-5` | live | Burning network: absolute tolerance |
-| `overshoot_beta_core` | `betac` | `overshoot_beta_core` | physics | - | run | real | `0.15d0` | live | With overshoot_max_extent_flag: the core overshoot extent is capped at this fraction of the core radius |
-| `min_abundance` | `cmin` | `min_abundance` | physics | - | run | real | `1.0d-20` | live | Burning network: abundances below this are treated as zero |
-| `solar_luminosity_cgs` | `clsun` | `solar_luminosity_cgs` | physics | - | run | real | `3.8515d33` | live | Solar luminosity (erg/s) |
-| `solar_radius_cgs` | `crsun` | `solar_radius_cgs` | physics | - | run | real | `6.9598d10` | live | The solar radius (cm) used for the tracks and the output |
-| `solar_mass_cgs` | `solar_mass_cgs` | `solar_mass_cgs` | physics | - | run | real | `1.9891d33` | live | Solar mass (g), which converts Msun to grams everywhere (the rescaling, log g, the seismic scalings) |
-| `G_cgs` | `G_cgs` | `g_cgs` | physics | - | run | real | `-1.0d0` | live | Newton's G (cgs). Negative (the default) keeps YREC's log10 G = -7.17571 (G = 6.6726e-8) bit for bit; a positive value (e.g. 6.6743d-8, CODATA 2018) replaces it |
-| `envelope_logP_step` | `dpenv` | `envelope_logp_step` | physics | - | run | real | `1.0d0` | live | Deep mixing: below 1, the composition step mixes every shell from the centre out to the mass envelope_logp_step times the star's (a mass fraction, whatever the name says); 1 or more is off |
-| `diffusion_timestep_factor` | `dtdif` | `diffusion_timestep_factor` | physics | - | run | real | `1.0d-2` | live | Sub-timestep factor for rotation diffusion |
-| `max_domega_global` | `dtwind` | `max_domega_global` | physics | - | run | real | `1.0d1` | live | Timestep limit: the largest fractional change of omega per step |
-| `convergence_tolerance` | `djok` | `convergence_tolerance` | physics | - | run | real | `1.0d-4` | live | Angular momentum transport: the convergence tolerance of the transport iterations |
-| `settling_timestep_fraction` | `dt_gs` | `settling_timestep_fraction` | physics | - | run | real | `0.1d0` | live | Gravitational settling: sub-timestep as a fraction of the timestep |
-| `env_error_tol` | `enverr` | `env_error_tol` | physics | - | run | real | `3.0d-4` | live | Envelope integration: error tolerance |
-| `env_step_max` | `envmax` | `env_step_max` | physics | - | run | real | `5.0d-1` | live | The envelope integration's largest step (in log P) |
-| `env_step_min` | `envmin` | `env_step_min` | physics | - | run | real | `1.0d-1` | live | Envelope integration: minimum step |
-| `env_step_begin` | `envbeg` | `env_step_begin` | physics | - | run | real | `1.0d-1` | live | Envelope integration: first step |
-| `envelope_step_size` | `envstp` | `envelope_step_size` | physics | - | run | real | `0.5d0` | live | Envelope generation: the envelope step size |
-| `debye_huckel_eta_min` | `etadh0` | `debye_huckel_eta_min` | physics | - | run | real | `-1.0d0` | live | Debye-Hueckel correction: the lower degeneracy (eta) bound of its domain |
-| `debye_huckel_eta_max` | `etadh1` | `debye_huckel_eta_max` | physics | - | run | real | `1.0d0` | live | Debye-Hueckel correction: the upper degeneracy (eta) bound of its domain |
-| `solver_underrelax_start` | `fcorr0` | `solver_underrelax_start` | physics | - | run | real | `0.8d0` | live | Henyey under-relaxation: each step starts with the correction factor \|solver_underrelax_start\| - solver_underrelax_increment; a positive value lets it grow each iteration |
-| `solver_underrelax_increment` | `fcorri` | `solver_underrelax_increment` | physics | - | run | real | `0.1d0` | live | Henyey under-relaxation: the correction factor grows by this each corrector pass, up to 1 |
-| `wind_law_constant` | `fk` | `wind_law_constant` | physics | - | run | real | `1.0d0` | live | The constant factor of both wind laws (1 reproduces the solar angular momentum loss) |
-| `difad_velocity_scale` | `fw` | `difad_velocity_scale` | physics | - | run | real | `1.0d0` | live | Scale of the angular momentum diffusion coefficients in the diffusion-advection transport |
-| `mixing_velocity_scale` | `fc` | `mixing_velocity_scale` | physics | - | run | real | `1.0d0` | live | Ratio of the chemical mixing to the angular momentum diffusion coefficients (calibrated to Li depletion) |
-| `coupling_factor` | `fo` | `coupling_factor` | buffer | - | none | real | `1.0d0` | live | Inert: read and used nowhere (the F77 code only echoed it, as COUPLING, in the run log's header) |
-| `(legacy only)` | `fmu` | `mu_gradient_scale` | buffer | - | none | real | `1.0d0` | unused | Unused: read from the legacy decks and ignored (the mu-gradient scale had no effect, docs/bug_sweep.md O15; dropped from the inlist format) |
-| `es_velocity_scale` | `fes` | `es_velocity_scale` | physics | - | run | real | `1.0d0` | live | Scale of the Eddington-Sweet circulation velocity in the angular momentum transport |
-| `core_mass_reduction_factor` | `fcore` | `core_mass_reduction_factor` | physics | `core_mass_reduction` | run | real | `1.0d0` | live | With extend_core_inward: the factor by which the innermost mass is reduced |
-| `gsf_velocity_scale` | `fgsf` | `gsf_velocity_scale` | physics | - | run | real | `1.0d0` | live | Scale of the GSF and ABCD instability velocities in the angular momentum transport |
-| `secular_shear_velocity_scale` | `fss` | `secular_shear_velocity_scale` | physics | - | run | real | `1.0d0` | live | Scale of the secular shear instability velocity in the angular momentum transport |
-| `es_mixing_scale` | `fesc` | `es_mixing_scale` | physics | - | run | real | `1.0d0` | live | Scale of the Eddington-Sweet circulation's chemical mixing relative to its angular momentum transport |
-| `secular_shear_mixing_scale` | `fssc` | `secular_shear_mixing_scale` | physics | - | run | real | `1.0d0` | live | Scale of the secular shear's chemical mixing relative to its angular momentum transport |
-| `gsf_mixing_scale` | `fgsfc` | `gsf_mixing_scale` | physics | - | run | real | `1.0d0` | live | Scale of the GSF instability's chemical mixing relative to its angular momentum transport |
-| `solberg_hoiland_velocity_scale` | `solberg_hoiland_velocity_scale` | `solberg_hoiland_velocity_scale` | physics | - | run | real | `0.0d0` | live | Rotational transport: the Solberg-Hoiland instability's velocity scale (0 = off; it can act only where the dynamical shear does; MESA D_SH_factor) |
-| `solberg_hoiland_mixing_scale` | `solberg_hoiland_mixing_scale` | `solberg_hoiland_mixing_scale` | physics | - | run | real | `1.0d0` | live | Rotational mixing: the Solberg-Hoiland instability's mixing efficiency |
-| `settling_y_factor` | `fgry` | `settling_y_factor` | physics | - | run | real | `1.0d0` | live | Gravitational settling: the factor on helium's settling coefficients |
-| `settling_z_factor` | `fgrz` | `settling_z_factor` | physics | `settling_z_factor_in_use` | run | real | `1.0d0` | live | Gravitational settling: the factor on the metals' settling coefficients (a Monte-Carlo run samples it) |
-| `settling_tolerance` | `grtol` | `settling_tolerance` | physics | - | run | real | `1.0d-8` | live | Gravitational settling: solver tolerance |
-| `solver_tolerances` | `htoler` | `solver_tolerances` | physics | - | run | real(5,2) | `6.0d-5, 4.5d-5, 3.0d-5, 9.0d-5, 3.0d-5, 9.0d-1, 5.0d-1, 5.0d-1, 2.0d0, 2.5d-6` | live | The Henyey thresholds: rows 1-4 the per-variable convergence (column 1) and correction-too-large (column 2) limits, row 5 the level-5 residual test |
-| `zoning_tolerances` | `hpttol` | `chi_grid_scale` | physics | - | run | real(12) | `1.0d-8, 8.0d-2, 5.0d-2, 5.0d-2, 1.0d0, 1.0d0, 0.0d0, 5.0d-2, 2.0d-2, 5.0d-2, 5.0d-2, 1.0d-1` | live | The zoning tolerances, slot by slot as the tol_*/flag_* controls (ichi_* in state/control_slots.f90): tol_dm_min, tol_dm_max, flag_dx, flag_dz, tol_dx_max, tol_dz_max, tol_czbase_fine_width, tol_dp_env_max, tol_dl_max, tol_dp_czbase_max, tol_dp_core_max, flag_dw; used unless use_new_rate_variables, which takes the named controls instead |
-| `fpft_iter1` | `itfp1` | `fpft_iter1` | physics | - | run | integer | `5` | live | The rotating star's shape: the most iterations of eta2 and r0 in turn |
-| `fpft_iter2` | `itfp2` | `fpft_iter2` | physics | - | run | integer | `20` | live | The rotating star's shape: the most Newton steps of each r0 solve |
-| `max_stage_index` | `imax` | `max_stage_index` | physics | - | run | integer | `11` | live | The Bulirsch-Stoer integrator (envelope and atmosphere): the number of stages, 1 to 11 |
-| `num_rotation_structure_iters` | `itdif1` | `num_rotation_structure_iters` | physics | `num_rotation_structure_passes` | run | integer | `1` | live | The passes of the structure-rotation iteration per step (each pass converges the structure, mixes the convection zones and updates the angular momentum and the shape); 1 without rotation |
-| `max_diffusion_iters` | `itdif2` | `max_diffusion_iters` | physics | - | run | integer | `10` | live | The most iterations of each angular momentum transport sub-step (1 to 16; the controls read rejects a rotating run outside that) |
-| `(legacy only)` | `ies` | `enable_eddington_sweet` | buffer | - | none | integer | `1` | unused | Unused: read by the legacy reader and ignored |
-| `gsf_inhibition_mode` | `igsf` | `gsf_inhibition_mode` | physics | - | run | integer | `1` | live | The stability condition of the GSF and ABCD instabilities (1 is recommended) |
-| `(legacy only)` | `imu` | `enable_mu_gradient` | buffer | - | none | integer | `1` | unused | Unused: read by the legacy reader and ignored |
-| `coulomb_log_choice` | `ilambda` | `coulomb_log_choice` | physics | - | run | integer | `1` | live | The Coulomb logarithm of the settling coefficients (4, a constant 2.2, is recommended) |
-| `atm_choice` | `kttau` | `atm_choice` | physics | `atm_choice_in_use` | run | integer | `0` | live | Surface boundary condition: 0 Eddington gray T(tau), 1 Krishna-Swamy T(tau), 2 Harvard-Smithsonian atmosphere, 3 Kurucz tables, 4 Allard tables, 5 Kurucz/Castelli tables |
-| `max_burn_iterations` | `kemmax` | `max_burn_iterations` | physics | - | run | integer | `50` | live | The burning network solver's largest number of iterations |
-| `velocity_form_correction` | `lvfc` | `velocity_form_correction` | physics | - | run | logical | `.false.` | live | Rotational mixing: scale the composition diffusion coefficient by the Zahn (1992) coupling factor (D_mix = D_omega f_Zahn) instead of the fixed efficiencies (mixing_velocity_scale and the per-mechanism mixing scales) |
-| `use_diffusion_advection_transport` | `ldifad` | `use_diffusion_advection_transport` | physics | - | run | logical | `.false.` | live | Treat meridional circulation as diffusion plus advection (Zahn) instead of diffusion (stops a rotating run: the path is commented out) |
-| `no_am_transport_in_core` | `lnoj` | `no_am_transport_in_core` | physics | - | run | logical | `.false.` | live | No angular momentum transport in the convective core |
-| `use_new_diffusion_routines` | `lnewdif` | `use_new_diffusion_routines` | physics | - | run | logical | `.false.` | live | Use the new diffusion routines |
-| `diffuse_helium_active` | `ldify` | `diffuse_helium_active` | physics | - | run | logical | `.false.` | live | Gravitational settling of helium (and hydrogen) |
-| `use_diffusion_z` | `ldifz` | `use_diffusion_z` | physics | - | run | logical | `.false.` | live | Gravitational settling of the metals (implies helium settling and the Thoul et al. routines) |
-| `diffuse_lithium` | `ldifli` | `diffuse_lithium` | physics | - | run | logical | `.false.` | live | Include Li/Be in gravitational settling |
-| `calc_neutrinos` | `lsnu` | `calc_neutrinos` | physics | - | run | logical | `.false.` | live | Compute solar neutrino fluxes |
-| `use_debye_huckel_correction` | `ldh` | `use_debye_huckel_correction` | physics | - | run | logical | `.false.` | live | Apply the Debye-Hueckel correction to the simplified EOS |
-| `rescale_species_active` | `lnewcp` | `rescale_species_active` | physics | - | run | logical | `.false.` | live | Set one species of the starting model (change_species_name) to new_species_value |
-| `helium_flash_active` | `lkuthe` | `helium_flash_active` | physics | - | run | logical | `.false.` | live | Helium flash run: no rezoning, the starting model written to the .mod file for timestep cuts, and flash-specific solver handling |
-| `core_overshoot_active` | `lovstc` | `core_overshoot_active` | physics | - | run | logical | `.false.` | live | Enable convective-core overshoot |
-| `envelope_overshoot_active` | `lovste` | `envelope_overshoot_active` | physics | - | run | logical | `.false.` | live | Overshoot below the surface convection zone, by overshoot_alpha_envelope pressure scale heights |
-| `intermediate_overshoot_active` | `lovstm` | `intermediate_overshoot_active` | physics | - | run | logical | `.false.` | live | Overshoot at intermediate convection zones (neither the core nor the surface convection zone), by overshoot_alpha_min |
-| `overshoot_max_extent_flag` | `lovmax` | `overshoot_max_extent_flag` | physics | - | run | logical | `.false.` | live | Cap the core overshoot extent at overshoot_beta_core times the core radius |
-| `use_extended_composition` | `lexcom` | `use_extended_composition` | physics | - | run | logical | `.false.` | live | Extended composition: also follow H2, Li6, Li7 and Be9 (15 species) |
-| `rotation_flag` | `lrot` | `rotation_active` | physics | - | run | logical | `.false.` | live | Rotation: evolve the rotation curve and the angular momentum transport |
-| `new_triangle_init_flag` | `lnew0` | `new_triangle_init_flag` | physics | - | run | logical | `.false.` | live | Force a fresh envelope-fit triangle at run start |
-| `instability_transport_active` | `linstb` | `instability_transport_active` | physics | - | run | logical | `.false.` | live | Rotationally induced mixing and hydrodynamic angular momentum transport |
-| `set_initial_omega` | `lwnew` | `set_initial_omega` | physics | - | run | logical | `.false.` | live | Initialize solid-body rotation at omega = initial_omega |
-| `use_wind_torque` | `ljdot0` | `use_wind_torque` | physics | - | run | logical | `.true.` | live | Apply magnetic wind angular-momentum loss |
-| `use_structure_dt_limits` | `lptime` | `use_structure_dt_limits` | physics | `structure_dt_limits_active` | run | logical | `.true.` | live | Limit the timestep by the structure changes (time_dt, time_dp, time_dr, time_dl) |
-| `adiabatic_overshoot_active` | `ladov` | `adiabatic_overshoot_active` | physics | - | run | logical | `.false.` | live | The overshoot region below the surface convection zone is adiabatic: its radiative points take the adiabatic gradient |
-| `use_envelope_triangle_dt` | `ltrist` | `use_envelope_triangle_dt` | physics | - | run | logical | `.false.` | live | Limit the timestep by the envelope-fit triangle |
-| `envelope_generation_flag` | `lenvg` | `envelope_generation_flag` | buffer | - | none | logical | `.false.` | live | Inert: read and stored, used nowhere (the outer layers are built by stitched_model) |
-| `use_itoh_neutrino_loss` | `lnulos1` | `use_itoh_neutrino_loss` | physics | - | run | logical | `.false.` | live | Neutrino losses from Itoh et al. (1996) |
-| `use_thoul_diffusion` | `lthoul` | `use_thoul_diffusion` | physics | - | run | logical | `.false.` | live | Thoul et al. diffusion coefficients |
-| `use_thoul_fit` | `lthoulfit` | `use_thoul_fit` | physics | - | run | logical | `.false.` | live | Use the published fit to the Thoul et al. settling coefficients instead of the full solution (not recommended) |
-| `use_opal95_eos` | `lopale` | `use_opal95_eos` | buffer | - | read | logical | `.false.` | live | Use the OPAL 1995 EOS (a newer OPAL EOS selected wins) |
-| `use_mhd_eos` | `lmhd` | `use_mhd_eos` | physics | - | run | logical | `.false.` | live | Use the MHD EOS |
-| `extend_core_inward` | `lcore` | `extend_core_inward` | physics | - | run | logical | `.false.` | live | Add shells inward of the starting model's innermost shell |
-| `use_semiconvection` | `lsemic` | `use_semiconvection` | physics | - | run | logical | `.false.` | live | Semiconvection treatment (conflicts with core overshoot) |
-| `improved_first_guess_flag` | `lnews` | `improved_first_guess_flag` | physics | - | run | logical | `.false.` | live | Use stored structure changes for the next model's first guess |
-| `num_core_shells_added` | `mcore` | `num_core_shells_added` | physics | `num_core_points_added` | run | integer | `0` | live | With extend_core_inward: the number of points added inward (recomputed from core_mass_reduction_factor) |
-| `max_iter_level1` | `niter1` | `max_iter_level1` | physics | - | run | integer | `2` | live | Henyey iteration limit, level 1 (fresh surface BC) |
-| `max_iter_level2` | `niter2` | `max_iter_level2` | physics | - | run | integer | `20` | live | Henyey iteration limit, level 2 |
-| `max_iter_level3` | `niter3` | `max_iter_level3` | physics | - | run | integer | `2` | live | Henyey iteration limit, level 3 |
-| `max_iter_level4` | `niter4` | `max_iter_level4` | physics | - | run | integer | `0` | live | Henyey iteration limit, level 4 (high precision) |
-| `extrap_order` | `nuse` | `extrap_order` | physics | - | run | integer | `7` | live | The Bulirsch-Stoer integrator (envelope and atmosphere): the extrapolation order, 2 to 7 and at most max_stage_index |
-| `settling_num_iterations` | `niter_gs` | `settling_num_iterations` | physics | - | run | integer | `10` | live | Settling: the largest number of iterations of the abundance-change solver |
-| `metal_fraction_match_tolerance` | `optol` | `metal_fraction_match_tolerance` | physics | - | run | real | `1.0d-8` | live | Opacity tables: tolerance for matching the model's metallicity to a table's |
-| `critical_reynolds` | `rcrit` | `critical_reynolds` | physics | - | run | real | `1.0d3` | live | Critical Reynolds number for the onset of the secular shear instability |
-| `relative_tolerance` | `reltol` | `relative_tolerance` | physics | - | run | real | `1.0d-4` | live | The burning network solver's relative tolerance |
-| `tolerance_fraction` | `stolr0` | `tolerance_fraction` | physics | - | run | real | `1.0d-3` | live | The envelope integration stops when log(m/M) is within this fraction of senv (also the atmosphere integration's step tolerance) |
-| `nuclear_logT_cutoffs` | `tcut` | `nuclear_logt_cutoffs` | physics | - | run | real(5) | `6.5d0, 6.5d0, 6.82d0, 7.7d0, 7.5d0` | live | log T cutoffs (5) below which burning groups are switched off |
-| `saha_log10t_cutoff` | `tscut` | `saha_log10t_cutoff` | physics | - | run | real | `6.0d0` | live | log10 T above which the default EOS assumes full ionization |
-| `rezone_env_logT0` | `tenv0` | `rezone_env_logt0` | physics | - | run | real | `3.0d0` | live | The rezone keeps the outermost interior point hotter than this log10 T: cooler outer points are deleted |
-| `rezone_env_logT1` | `tenv1` | `rezone_env_logt1` | physics | - | run | real | `9.0d0` | live | The rezone adds a point outside the outermost interior point when that point is hotter than this log10 T (at the stored envelope state) |
-| `gradient_logT_cutoff` | `tgcut` | `gradient_logt_cutoff` | physics | - | run | real | `6.9d0` | live | Above this log10 T a convective point takes the adiabatic gradient without the mixing-length theory (deep convective cores) |
-| `tri_delta_teffl` | `tridt` | `tri_delta_teffl` | physics | - | run | real | `1.0d-2` | live | Envelope-fit triangle: size in log Teff |
-| `tri_delta_logl` | `tridl` | `tri_delta_logl` | physics | - | run | real | `8.0d-2` | live | Envelope-fit triangle: size in log L |
-| `laol_z_tolerance` | `tollaol` | `laol_extrapolation_tolerance` | physics | - | run | real | `10.0d0` | live | The LAOL 1989 interpolators extrapolate linearly within log10(laol_extrapolation_tolerance) of a table edge |
-| `mixture_weights_seed` | `vnew` | `mixture_weights_seed` | physics | - | run | real(12) | `0.001999d0, 0.003238d0, 0.037573d0, 0.071794d0, 0.040520d0, 0.173285d0, 0.000000d0, 0.482273d0, 0.053152d0, 0.005379d0, 0.098668d0, 0.000000d0` | live | The surface mixture's relative mass fractions, one per slot of state/composition_layout.f90 (Na, Al, Mg, Fe, Si, C, H, O, N, Ar, Ne, He; H and He are set from the envelope X and Z): the starting model's envelope number fractions and the EOS mixture are made from the ten metals' |
-| `cz_rotation_law_exponent` (`new_zone_omega_weight`) | `walpcz` | `cz_rotation_law_exponent` | physics | - | run | real | `0.0d0` | live | Exponent alpha of the surface convection zone's rotation law omega ~ r^alpha (0 or above: solid body; -2 or below: constant specific angular momentum); also gives the omega of shells added at the surface and the specific angular momentum the wind removes |
-| `initial_omega` | `wnew` | `initial_omega` | physics | - | run | real | `0.0d0` | live | Initial rotation rate when set_initial_omega |
-| `weak_screening_threshold` | `weakscreening` | `weak_screening_threshold` | physics | - | run | real | `0.03d0` | live | Threshold of the screening parameter below which nuclear rates use weak screening |
-| `change_species_value` | `xnewcp` | `new_species_value` | physics | - | run | real | `1.3d1` | live | New abundance for change_species_name |
-| `hydrogen_diffusion_floor` | `xmin` | `hydrogen_diffusion_floor` | physics | - | run | real | `1.0d-3` | live | Settling stops (for the rest of the run card) once the central X falls below this |
-| `helium_diffusion_min` | `ymin` | `helium_diffusion_min` | physics | - | run | real | `1.0d-3` | live | Settling's outer boundary moves inward to the first zone where Y exceeds this |
-| `molecular_opacity_logt_min` | `tmolmin` | `molecular_opacity_logt_min` | physics | - | run | real | `4.0d0` | live | log10 T below which only the molecular opacities are used |
-| `molecular_opacity_logt_max` | `tmolmax` | `molecular_opacity_logt_max` | physics | - | run | real | `4.1d0` | live | log10 T above which only the atomic opacities are used (a ramp joins the two) |
-| `monte_carlo_active` | `lmonte` | `monte_carlo_active` | physics | - | run | logical | `.false.` | live | Monte-Carlo multi-realization mode |
-| `mc_run_start` | `imbeg` | `mc_run_start` | physics | `first_mc_run` | run | integer | `1` | live | First Monte-Carlo realization index |
-| `mc_run_end` | `imend` | `mc_run_end` | physics | `last_mc_run` | run | integer | `1` | live | Last Monte-Carlo realization index |
-| `(legacy only)` | `sstandard` | `cross_section_ratios` | buffer | - | read | real(num_sstandard) | `0.9828d0, 1.0485d0, 0.9815d0, 0.9241d0, 1.3818d0, 1.0542d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0108d0, 0.7819d0, 0.2875d0` | legacy | The cross sections as ratios to Bahcall & Ulrich (1988), one per slot of the legacy SSTANDARD array, used without use_new_nuclear_rates |
-| `use_scv_eos` | `lscv` | `use_scv_eos` | physics | - | run | logical | `.false.` | live | Use the SCV EOS where it is valid and the OPAL EOS is not |
-| `disk_locking_active` | `ldisk` | `disk_locking_active` | physics | - | run | logical | `.false.` | live | Disk locking: hold the surface rotation at disk_omega_rad_s until disk_locking_age_gyr |
-| `disk_locking_age_gyr` | `tdisk` | `disk_locking_age_gyr` | physics | - | run | real | `0.0d0` | live | Disk locking: the age (Gyr) up to which the surface rotation is held at disk_omega_rad_s (some older deck comments give it in yr, which the code never read) |
-| `disk_omega_rad_s` | `pdisk` | `disk_omega_rad_s` | physics | - | run | real | `7.2722d-6` | live | Disk locking: the surface angular velocity (rad/s) held until disk_locking_age_gyr (some older deck comments call it a period in days, which the code never read) |
-| `wind_saturation_omega` | `wmax` | `wind_saturation_omega` | physics | - | run | real | `3.0d-4` | live | Saturation angular velocity of the wind law (rad/s); solar_omega_sat below 1000 overrides it in solar units |
-| `force_solid_body_rotation` | `lsolid` | `force_solid_body_rotation` | physics | - | run | logical | `.false.` | live | Force solid-body rotation (sets solid_body_mode_flag = 1) |
-| `solid_body_mode_flag` | `impjmod` | `solid_body_mode_flag` | physics | - | run | integer | `0` | live | Angular momentum coupling: 0 none, 1 solid body everywhere, 2 solid-body core with a decoupled convection zone, 3 solid-body core coupled at the base of the convection zone |
-| `mass_change` | `dmdt0` | `mass_accretion_rate` | physics | - | run | real | `-1.0d-14` | live | Mass change rate (Msun/yr; negative for loss) when use_mass_change is set |
-| `accretion_cz_fraction` | `fczdmdt` | `accretion_cz_fraction` | physics | - | run | real | `0.1d0` | live | Mass change: the timestep changes the surface convection zone's mass by at most this fraction |
-| `accretion_total_fraction` | `ftotdmdt` | `accretion_total_fraction` | physics | - | run | real | `1.0d-2` | live | Mass change: the timestep changes the star's mass by at most this fraction |
-| `accreted_composition` | `compacc` | `accreted_composition` | physics | - | run | real(15) | `0.71668d0, 0.265721d0, 0.01757d0, 2.9d-5, 3.013d-3, 3.385d-5, 9.346d-4, 0.0d0, 8.462d-3, 0.0d0, 1.696d-5, 0.0d0, 2.0d-9, 2.0d-9, 3.0d-11` | live | Mass fractions of the accreted material (star%xa layout) |
-| `reimers_scaling_factor` | `creim` | `reimers_scaling_factor` | physics | - | run | real | `-4.0d-13` | live | Reimers mass-loss efficiency eta |
-| `use_reimers_wind` | `lreimer` | `use_reimers_wind` | physics | - | run | logical | `.false.` | live | Enable Reimers red-giant mass loss |
-| `use_mass_change` | `lmdot` | `use_mass_accretion` | physics | `mass_change_active` | run | logical | `.false.` | live | Mass change: a constant rate (mass_accretion_rate) or the Reimers wind; switched off for the run when the disk is exhausted |
-| `use_opal2001_eos` | `lopale01` | `use_opal2001_eos` | buffer | - | read | logical | `.false.` | live | Use the OPAL 2001 EOS (the 2006 EOS, if also selected, wins) |
-| `use_conductive_opacity` | `lcondopacp` | `use_conductive_opacity` | physics | - | run | logical | `.false.` | live | Use the conductive opacity tables (conductive_opacity_table_file) |
-| `use_opal2006_eos` | `lopale06` | `use_opal2006_eos` | buffer | - | read | logical | `.false.` | live | Use the OPAL 2006 EOS |
-| `use_numerical_derivatives` | `lnumderiv` | `use_numerical_derivatives` | physics | - | run | logical | `.false.` | live | Use numerical derivatives of the EOS instead of analytic ones (much slower) |
-| `allard_target_feh` | `alatm_feh` | `allard_target_feh` | physics | - | run | real | `0d0` | live | Allard atmosphere tables: [Fe/H] |
-| `allard_target_alpha` | `alatm_alpha` | `allard_target_alpha` | physics | - | run | real | `0d0` | live | Allard atmosphere tables: [alpha/Fe] |
-| `allard_use_tau100` | `laltptau100` | `allard_use_tau100` | physics | - | run | logical | `.false.` | live | Allard atmosphere tables: the boundary at tau = 100 instead of the photosphere |
-| `constant_mixing_coeff` | `cstmixing` | `constant_mixing_coeff` | physics | - | run | real | `1.0d0` | live | Constant added diffusion coefficient (mixing) |
-| `constant_settling_reduction` | `cstdiffmix` | `constant_settling_reduction` | physics | - | run | real | `1.0d0` | live | Constant coefficient mimicking mixing to reduce settling |
-| `use_rotation_scaled_solar_wind` | `lsolwind` | `use_rotation_scaled_solar_wind` | buffer | - | none | logical | `.false.` | live | Inert: the rotation-scaled solar wind is commented out (core/step/mass_change.f90); the controls read warns when it is set |
-| `use_pmm_wind_law` | `lmwind` | `use_pmm_wind_law` | physics | - | run | logical | `.false.` | live | Use the Matt et al. (2012) magnetized wind law (wind_law_name) instead of the Kawaler law |
-| `scale_by_rossby_number` | `lrossby` | `scale_by_rossby_number` | physics | - | run | logical | `.true.` | live | Matt wind law: scale the loss rate with the Rossby number (use with a saturation threshold) |
-| `use_pmm_wind` | `lpmm` | `use_pmm_wind` | buffer | - | none | logical | `.false.` | live | Inert: read and used nowhere (the Matt law is use_pmm_wind_law); the controls read warns when it is set |
-| `scale_by_b_field` | `lbscale` | `scale_by_b_field` | physics | - | run | logical | `.false.` | live | Matt wind law: scale the field with the equipartition B (set by wind_law_name for K97 and V13) |
-| `wind_law_name` | `awind` | `wind_law_name` | physics | - | run | string | `'K97'` | live | Matt wind law: V13 (van Saders & Pinsonneault 2013), K97 (Krishnamurthi et al. 1997), or CUS (the pmm_exponent_* as given) |
-| `pmm_exponent_a` | `pmma` | `pmm_exponent_a` | physics | - | run | real | `2.0d0` | live | PMM wind law: exponent a (Lx/Lbol ~ omega**a); K97 and V13 set it |
-| `pmm_exponent_b` | `pmmb` | `pmm_exponent_b` | physics | - | run | real | `1.0d0` | live | PMM wind law: exponent b, with Bmag ~ (omega R**c)**b; K97 and V13 set it |
-| `pmm_exponent_c` | `pmmc` | `pmm_exponent_c` | physics | - | run | real | `2.0d0` | live | PMM wind law: exponent c, with Bmag ~ (omega R**c)**b; K97 and V13 set it |
-| `pmm_exponent_d` | `pmmd` | `pmm_exponent_d` | physics | - | run | real | `0.0d0` | live | Matt wind law: exponent d of the convective turnover time in Bmag (CUS only; K97 and V13 set it) |
-| `pmm_exponent_m` | `pmmm` | `pmm_exponent_m` | physics | - | run | real | `0.5d0` | live | Matt wind law: exponent m of the torque (CUS only; K97 and V13 set it) |
-| `pmm_norm_jdot` | `pmmjd` | `pmm_norm_jdot` | physics | - | run | real | `1.32d30` | live | Matt wind law: the solar wind torque (cgs), the zero point of the loss rate (adjust with wind_law_constant) |
-| `pmm_norm_mdot` | `pmmmd` | `pmm_norm_mdot` | buffer | - | none | real | `1.27d12` | live | Matt wind law: the solar mass-loss rate (g/s), its zero point |
-| `pmm_omega_sat` | `pmmwmax` | `pmm_omega_sat` | buffer | - | none | real | `0` | live | Inert: read and used nowhere (the saturation is wind_saturation_omega or solar_omega_sat); the controls read warns when it is set |
-| `pmm_solar_pressure` | `pmmsolp` | `pmm_solar_pressure` | physics | - | run | real | `4.9304d0` | live | Matt wind law: log10 of the solar photospheric pressure (dyn/cm^2), the zero point of the field strength |
-| `pmm_solar_omega` | `pmmsolw` | `pmm_solar_omega` | physics | - | run | real | `2.836d-6` | live | Matt wind law: the solar angular velocity (rad/s), the zero point of the torque |
-| `pmm_solar_turnover_timescale` | `pmmsoltau` | `pmm_solar_turnover_timescale` | physics | - | run | real | `9.4805d5` | live | Matt wind law: the solar convective turnover time (s), the zero point of the Rossby number |
-| `use_constant_background_diffusion` | `lcodm` | `use_constant_background_diffusion` | physics | - | run | logical | `.false.` | live | Add a constant background diffusion (constant_background_diffusion_coeff) to the angular momentum transport |
-| `constant_background_diffusion_coeff` | `codm` | `constant_background_diffusion_coeff` | physics | - | run | real | `2.5d4` | live | Constant background diffusion coefficient for angular momentum (cm^2/s) |
-| `solar_omega_sat` | `wmax_sun` | `solar_omega_sat` | physics | - | run | real | `1000.0d0` | live | The wind's saturation omega in units of the solar omega (pmm_solar_omega); below 1000 it overrides wind_saturation_omega |
-| `li6_rate_value` | `xsli6` | `li6_rate_value` | buffer | - | read | real | `5.5d3` | live | The Li6 burning cross section (keV b): with scale_li6_rate, li6_rate_scale is this over li6_reference_xs (5.5e3) |
-| `li7_rate_value` | `xsli7` | `li7_rate_value` | buffer | - | read | real | `5.2d1` | live | The Li7 burning cross section (keV b): with scale_li7_rate, li7_rate_scale is this over li7_reference_xs (52) |
-| `be9_rate_value1` | `xsbe91` | `be9_rate_value1` | buffer | - | read | real | `1.1d0` | live | The Be9(p,g) cross section (keV b): with scale_be9_rate1, be9_pg_rate_scale is this over be9_pg_reference_xs (1.1) |
-| `be9_rate_value2` | `xsbe92` | `be9_rate_value2` | buffer | - | read | real | `1.5d4` | live | The Be9(p,d) cross section (keV b): with scale_be9_rate2, be9_pd_rate_scale is this over be9_pd_reference_xs (1.5e4) |
-| `be9_rate_value3` | `xsbe93` | `be9_rate_value3` | buffer | - | read | real | `1.5d4` | live | The Be9(p,a) cross section (keV b): with scale_be9_rate3, be9_palpha_rate_scale is this over be9_palpha_reference_xs (1.5e4) |
-| `scale_li6_rate` | `lxli6` | `scale_li6_rate` | buffer | - | read | logical | `.false.` | live | Take li6_rate_scale from the cross section li6_rate_value |
-| `scale_li7_rate` | `lxli7` | `scale_li7_rate` | buffer | - | read | logical | `.false.` | live | Take li7_rate_scale from the cross section li7_rate_value |
-| `scale_be9_rate1` | `lxbe91` | `scale_be9_rate1` | buffer | - | read | logical | `.false.` | live | Take be9_pg_rate_scale from the cross section be9_rate_value1 |
-| `scale_be9_rate2` | `lxbe92` | `scale_be9_rate2` | buffer | - | read | logical | `.false.` | live | Take be9_pd_rate_scale from the cross section be9_rate_value2 |
-| `scale_be9_rate3` | `lxbe93` | `scale_be9_rate3` | buffer | - | read | logical | `.false.` | live | Take be9_palpha_rate_scale from the cross section be9_rate_value3 |
-| `li6_rate_scale` | `sli6` | `li6_rate_scale` | physics | - | run | real | `1.0d0` | live | Li6 burning rate scale (scale_li6_rate with li6_rate_value overrides it) |
-| `li7_rate_scale` | `sli7` | `li7_rate_scale` | physics | - | run | real | `1.0d0` | live | Li7 burning rate scale (scale_li7_rate with li7_rate_value overrides it) |
-| `be9_pg_rate_scale` | `sbe91` | `be9_pg_rate_scale` | physics | - | run | real | `1.0d0` | live | Scale of the Be9(p,g) rate (scale_be9_rate1 with be9_rate_value1 overrides it) |
-| `be9_pd_rate_scale` | `sbe92` | `be9_pd_rate_scale` | physics | - | run | real | `1.0d0` | live | Scale of the Be9(p,d) rate (scale_be9_rate2 with be9_rate_value2 overrides it) |
-| `be9_palpha_rate_scale` | `sbe93` | `be9_palpha_rate_scale` | physics | - | run | real | `1.0d0` | live | Scale of the Be9(p,a) rate (scale_be9_rate3 with be9_rate_value3 overrides it) |
-| `use_new_nuclear_rates` | `lnewnuc` | `use_new_nuclear_rates` | buffer | - | read | logical | `.false.` | live | Take the cross sections from the s0_* controls (Adelberger et al. 2011 defaults) instead of the ratios to Bahcall & Ulrich (1988) |
-| `spot_filling_factor` | `spotf` | `spot_filling_factor` | physics | - | run | real | `0.00d0` | live | Starspots: the filling factor |
-| `spot_temp_contrast` | `spotx` | `spot_temp_contrast` | physics | - | run | real | `1.00d0` | live | Starspots: the spot temperature contrast (with spot_filling_factor > 0; 0.85 is typical of sunspots) |
-| `spot_depth_varies` | `lsdepth` | `spot_depth_varies` | physics | - | run | logical | `.false.` | live | Starspots: decrease the spot contrast with depth, at constant B |
-| `s0_pp` | `s0_1_1` | `s0_pp` | buffer | - | read | real | `4.01d-22` | live | S-factor of p+p (keV b), used with use_new_nuclear_rates |
-| `s0_he3he3` | `s0_3_3` | `s0_he3he3` | buffer | - | read | real | `5.21d3` | live | S-factor of He3+He3 (keV b), used with use_new_nuclear_rates |
-| `s0_he3he4` | `s0_3_4` | `s0_he3he4` | buffer | - | read | real | `5.6d-1` | live | S-factor of He3+He4 (keV b), used with use_new_nuclear_rates |
-| `s0_p_c12` | `s0_1_12` | `s0_p_c12` | buffer | - | read | real | `1.34d0` | live | S-factor of p+C12 (keV b), used with use_new_nuclear_rates |
-| `s0_p_c13` | `s0_1_13` | `s0_p_c13` | buffer | - | read | real | `7.6d0` | live | S-factor of p+C13 (keV b), used with use_new_nuclear_rates |
-| `s0_p_n14` | `s0_1_14` | `s0_p_n14` | buffer | - | read | real | `1.66d0` | live | S0 of N14(p,g)O15 (keV b), with use_new_nuclear_rates |
-| `s0_p_o16` | `s0_1_16` | `s0_p_o16` | buffer | - | read | real | `1.06d1` | live | S0 of O16(p,g)F17 (keV b), with use_new_nuclear_rates |
-| `s0_pep` | `s0_pep` | `s0_pep` | buffer | - | read | real | `3.5734d-6` | live | The pep rate relative to pp, with use_new_nuclear_rates |
-| `s0_be7_electron` | `s0_1_be7e` | `s0_be7_electron` | buffer | - | read | real | `1.7709d-10` | live | The constant of the linear term of Be7 electron capture, with use_new_nuclear_rates |
-| `s0_be7_p` | `s0_1_be7p` | `s0_be7_p` | buffer | - | read | real | `0.0208d0` | live | S0 of Be7(p,g)B8 (keV b), with use_new_nuclear_rates |
-| `s0_hep` | `s0_hep` | `s0_hep` | buffer | - | read | real | `8.6d-20` | live | S0 of He3(p,e+ nu)He4 (keV b), with use_new_nuclear_rates |
-| `s0_n15_p_c12_branch` | `s0_1_15_c12alp` | `s0_n15_p_c12_branch` | buffer | - | read | real | `7.3d4` | live | S0 of N15(p,a)C12 (keV b), which sets the N15 + p branching |
-| `s0_n15_p_o16_branch` | `s0_1_15_o16` | `s0_n15_p_o16_branch` | buffer | - | read | real | `3.6d1` | live | S0 of N15(p,g)O16 (keV b), which sets the N15 + p branching |
-| `s0p_pp` | `s0p_1_1` | `s0p_pp` | buffer | - | read | real | `4.49d-24` | live | dS/dE of H1(p,e+ nu)H2 (b), with use_new_nuclear_rates |
-| `s0p_he3he3` | `s0p_3_3` | `s0p_he3he3` | buffer | - | read | real | `-4.9d0` | live | dS/dE of He3(He3,2p)He4 (b), with use_new_nuclear_rates |
-| `s0p_he3he4` | `s0p_3_4` | `s0p_he3he4` | buffer | - | read | real | `-3.6d-4` | live | dS/dE of He3(a,g)Be7 (b), with use_new_nuclear_rates |
-| `s0p_p_c12` | `s0p_1_12` | `s0p_p_c12` | buffer | - | read | real | `2.6d-3` | live | dS/dE of C12(p,g)N13 (b), with use_new_nuclear_rates |
-| `s0p_p_c13` | `s0p_1_13` | `s0p_p_c13` | buffer | - | read | real | `-7.83d-3` | live | dS/dE of C13(p,g)N14 (b), with use_new_nuclear_rates |
-| `s0p_p_n14` | `s0p_1_14` | `s0p_p_n14` | buffer | - | read | real | `-3.3d-3` | live | dS/dE of N14(p,g)O15 (b), with use_new_nuclear_rates |
-| `s0p_p_o16` | `s0p_1_16` | `s0p_p_o16` | buffer | - | read | real | `-5.4d-2` | live | dS/dE of O16(p,g)F17 (b), with use_new_nuclear_rates |
-| `s0pp_p_c12` | `s0pp_1_12` | `s0pp_p_c12` | buffer | - | read | real | `8.3d-5` | live | d2S/dE2 of C12(p,g)N13 (b/keV), with use_new_nuclear_rates |
-| `s0pp_p_c13` | `s0pp_1_13` | `s0pp_p_c13` | buffer | - | read | real | `7.29d-4` | live | d2S/dE2 of C13(p,g)N14 (b/keV), with use_new_nuclear_rates |
-| `s0pp_p_o16` | `s0pp_1_16` | `s0pp_p_o16` | buffer | - | read | real | `0.0d0` | live | d2S/dE2 of O16(p,g)F17 (b/keV), with use_new_nuclear_rates |
-| `s0p_be7_p` | `s0p_1_be7p` | `s0p_be7_p` | buffer | - | read | real | `-3.12d-5` | live | dS/dE of Be7(p,g)B8 (b), with use_new_nuclear_rates |
-| `s0pp_be7_p` | `s0pp_1_be7p` | `s0pp_be7_p` | buffer | - | read | real | `-2.288d-7` | live | d2S/dE2 of Be7(p,g)B8 (b/keV), with use_new_nuclear_rates |
-| `flag_dx` | `flag_dx` | `flag_dx` | buffer | - | read | real | `0.05d0` | live | Zoning: an X jump between shells larger than this flags a shell |
-| `flag_dw` | `flag_dw` | `flag_dw` | buffer | - | read | real | `0.10d0` | live | Zoning: the largest log-omega spacing (rotating models) |
-| `flag_dz` | `flag_dz` | `flag_dz` | buffer | - | read | real | `0.05d0` | live | Zoning: a Z jump between shells larger than this flags a shell |
-| `lstruct_time` | `lstruct_time` | `use_structure_time_limits` | buffer | - | read | logical | `.false.` | live | With use_new_rate_variables: limit the timestep by the structure changes time_dt..time_dl (switched off once nuclear burning dominates) |
-| `time_core_min` | `time_core_min` | `time_core_min` | buffer | - | read | real | `1.0d-3` | live | With use_new_rate_variables: the smallest central X or Y for the core-burning timestep criteria |
-| `time_dl` | `time_dl` | `time_dl` | buffer | - | read | real | `2.0d-2` | live | With use_new_rate_variables: the largest change of L at any point per step (pre-main sequence) |
-| `time_dp` | `time_dp` | `time_dp` | buffer | - | read | real | `4.0d-2` | live | With use_new_rate_variables: the largest change of P at any point per step (pre-main sequence) |
-| `time_dr` | `time_dr` | `time_dr` | buffer | - | read | real | `2.0d-2` | live | With use_new_rate_variables: the largest change of r at any point per step (pre-main sequence) |
-| `time_dt` | `time_dt` | `time_dt` | buffer | - | read | real | `2.0d-2` | live | With use_new_rate_variables: the largest change of T at any point per step (pre-main sequence) |
-| `time_dw_global` | `time_dw_global` | `time_dw_global` | buffer | - | read | real | `8.0d-2` | live | With use_new_rate_variables: the largest change of omega per step |
-| `time_dw_mix` | `time_dw_mix` | `time_dw_mix` | buffer | - | read | real | `8.0d-2` | live | With use_new_rate_variables: the largest change of omega per rotational-mixing sub-step |
-| `time_dx_core_frac` | `time_dx_core_frac` | `time_dx_core_frac` | buffer | - | read | real | `0.5d0` | live | With use_new_rate_variables: the largest fraction of the central X burned per step |
-| `time_dx_core_tot` | `time_dx_core_tot` | `time_dx_core_tot` | buffer | - | read | real | `2.0d-2` | live | With use_new_rate_variables: the largest change of the central X per step |
-| `time_dx_shell` | `time_dx_shell` | `time_dx_shell` | buffer | - | read | real | `0.1d0` | live | With use_new_rate_variables: the largest fraction of X burned in the shell per step |
-| `time_dx_total` | `time_dx_total` | `time_dx_total` | buffer | - | read | real | `1.5d-3` | live | With use_new_rate_variables: the largest mass of hydrogen burned per step (Msun) |
-| `time_dy_core_frac` | `time_dy_core_frac` | `time_dy_core_frac` | buffer | - | read | real | `0.5d0` | live | With use_new_rate_variables: the largest fraction of the central Y burned per step |
-| `time_dy_core_tot` | `time_dy_core_tot` | `time_dy_core_tot` | buffer | - | read | real | `2.0d-2` | live | With use_new_rate_variables: the largest change of the central Y per step |
-| `time_dy_shell` | `time_dy_shell` | `time_dy_shell` | buffer | - | read | real | `0.1d0` | live | With use_new_rate_variables: the largest fraction of Y burned in the shell per step |
-| `time_dy_total` | `time_dy_total` | `time_dy_total` | buffer | - | read | real | `1.5d-3` | live | With use_new_rate_variables: the largest mass of helium burned per step (Msun) |
-| `tol_czbase_fine_width` | `tol_czbase_fine_width` | `tol_czbase_fine_width` | buffer | - | read | real | `0.0d0` | live | With use_new_rate_variables: the width in log P of the finely zoned region at the base of the convection zone |
-| `tol_dl_max` | `tol_dl_max` | `tol_dl_max` | buffer | - | read | real | `0.02d0` | live | With use_new_rate_variables: the largest spacing in L/L_surface between points |
-| `tol_dm_max` | `tol_dm_max` | `tol_dm_max` | buffer | - | read | real | `0.08d0` | live | With use_new_rate_variables: the largest spacing in log m between points |
-| `tol_dm_min` | `tol_dm_min` | `tol_dm_min` | buffer | - | read | real | `1.0d-8` | live | With use_new_rate_variables: the smallest spacing in log m between points |
-| `tol_dp_core_max` | `tol_dp_core_max` | `tol_dp_core_max` | buffer | - | read | real | `0.05d0` | live | With use_new_rate_variables: the largest spacing in log P below the surface convection zone |
-| `tol_dp_czbase_max` | `tol_dp_czbase_max` | `tol_dp_czbase_max` | buffer | - | read | real | `0.05d0` | live | With use_new_rate_variables: the largest spacing in log P near the base of the surface convection zone |
-| `tol_dp_env_max` | `tol_dp_env_max` | `tol_dp_env_max` | buffer | - | read | real | `0.05d0` | live | With use_new_rate_variables: the largest spacing in log P in the surface convection zone |
-| `tol_dx_max` | `tol_dx_max` | `tol_dx_max` | buffer | - | read | real | `1.0d0` | live | With use_new_rate_variables: the largest spacing in X between points (usually off) |
-| `tol_dz_max` | `tol_dz_max` | `tol_dz_max` | buffer | - | read | real | `1.0d0` | live | With use_new_rate_variables: the largest spacing in Z between points (usually off) |
-| `time_max_dt_frac` | `time_max_dt_frac` | `time_max_dt_frac` | buffer | - | read | real | `1.5d0` | live | With use_new_rate_variables: the largest factor by which the timestep changes from one model to the next |
-| `use_new_rate_variables` | `lnewvars` | `use_new_rate_variables` | buffer | - | read | logical | `.false.` | live | Take the zoning and timestep tolerances from the named tol_*, flag_* and time_* controls (and use_structure_time_limits) instead of zoning_tolerances and timestep_factors; nothing to do with reaction rates |
-| `calc_envelope_flag` | `lcalcenv` | `calc_envelope_flag` | physics | - | run | logical | `.true.` | live | Integrate the full envelope (false: the atmosphere to the photosphere only) |
-| `profile_data_prefix` | `profile_data_prefix` | `profile_data_prefix` | physics | - | run | string | `'profile'` | live | Profile/pulse file name prefix: <prefix><N>.data[.GYRE/.FGONG/.GSM] in the output directory |
-| `star_history_name` | `-` | `star_history_name` | physics | - | run | string | `'history.data'` | live | The history file's name, in the output directory |
-| `terminal_interval` | `terminal_interval` | `terminal_interval` | physics | - | run | integer | `50` | live | Print the compact per-model progress line (terminal + run log) every N models; 0 = off; the final model always prints |
-| `nu_max_sun` | `nu_max_sun` | `nu_max_sun` | physics | - | run | real | `3090.0d0` | live | Solar nu_max [uHz] for the scaling relation (Huber et al. 2011) |
-| `delta_nu_sun` | `delta_nu_sun` | `delta_nu_sun` | physics | - | run | real | `135.1d0` | live | Solar delta_nu [uHz] for the mean-density scaling relation (Huber et al. 2011) |
-| `Teff_sun` | `Teff_sun` | `teff_sun` | physics | - | run | real | `5772.0d0` | live | Solar effective temperature [K] for the nu_max scaling relation (IAU nominal value) |
-| `report_solver_diagnostics` | `report_solver_diagnostics` | `report_solver_diagnostics` | buffer | - | read | logical | `.false.` | live | Write the solver forensics to the run log (Henyey iteration trace, envelope and atmosphere integration statistics, triangle and rezoning bookkeeping); the read installs it as run_messages' gate, solver_diagnostics(), which the run asks |
-| `profile_interval` | `-` | `profile_interval` | physics | - | run | integer | `50` | live | Write profile{N}.data every N converged models (0 = off); the history's profile_number column maps models to profiles |
-| `pulse_format` | `-` | `pulse_format` | physics | - | run | string | `'GYRE'` | live | The pulsation files' format (GYRE text, FGONG, or GSM = GYRE HDF5 [needs make USE_HDF5=1]), written beside each profile as profile{N}.data.{format} |
-| `write_profile_flag` | `-` | `write_profile_flag` | physics | - | run | logical | `.false.` | live | Write the profile{N}.data files (every profile_interval models) |
-| `write_pulse_flag` | `-` | `write_pulse_flag` | physics | - | run | logical | `.false.` | live | Write a pulsation file (pulse_format) with each profile |
-| `compute_neutrino_fluxes` | `-` | `compute_neutrino_fluxes` | physics | - | run | logical | `.false.` | live | Diagnostic: write the per-zone solar neutrino production table (fluxes per shell, normalized profiles, Bahcall-Pinsonneault layout) to the run log at the start of each run |
+| inlist name | legacy name | code name | home | run copy | settings | used | type | default | status | description |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `log_output_file` | `fshort` | `log_output_file` | physics | - | - | run | path | `'{YREC_OUTPUT}/run.log'` | live | Run log path; its directory part defines the output directory (legacy FSHORT) |
+| `atm_step_min` | `atmmin` | `atm_step_min` | physics | - | - | run | real | `1.0d-1` | live | The atmosphere integration's smallest step (in log tau) |
+| `atm_step_begin` | `atmbeg` | `atm_step_begin` | physics | - | - | run | real | `1.0d-1` | live | Atmosphere integration: the first step |
+| `atm_error_tol` | `atmerr` | `atm_error_tol` | physics | - | - | run | real | `3.0d-4` | live | Atmosphere integration: error tolerance |
+| `atm_step_max` | `atmmax` | `atm_step_max` | physics | - | - | run | real | `5.0d-1` | live | The atmosphere integration's largest step (in log tau) |
+| `atm_step_initial` | `atmd0` | `atm_step_initial` | physics | - | - | run | real | `1.0d-10` | live | Atmosphere integration: the starting density (g/cm^3) at optical depth near zero; divided by 10 on each retry |
+| `change_species_name` | `anewcp` | `change_species_name` | buffer | - | - | read | string | `'   '` | live | Element id whose abundance to override in the start model (with change_species_value) |
+| `new_species_value_mode` | `atmp` | `new_species_value_mode` | buffer | - | - | read | string | `''` | live | With rescale_species_active: 'ABS' makes new_species_value an absolute mass fraction; anything else, relative to hydrogen |
+| `fpft_average_weight` | `acfpft` | `fpft_average_weight` | physics | - | `rotation_settings%shape_tolerance` | run | real | `1.0d-36` | live | The rotating star's shape: the relative tolerance on r0^3 of the equipotential radius iteration (its cube root that on r0 and eta2); not a weight |
+| `timestep_factors` | `atime` | `timestep_factors` | physics | - | - | run | real(14) | `1.0d-3, 2.0d-2, 5.0d-1, 2.0d-2, 3.0d-1, 1.5d-3, 1.0d-1, 2.0d-2, 4.0d-2, 2.0d-2, 2.0d-2, 0.25d0, 1.5d0, 0.25d0` | live | The timestep limits, slot by slot as the time_* controls (itime_* in state/control_slots.f90): time_core_min, time_dx_core_tot, time_dx_core_frac, time_dy_core_tot, time_dy_core_frac, time_dx_total, time_dx_shell, time_dt, time_dp, time_dr, time_dl, time_dy_shell, time_max_dt_frac, time_dy_total; used unless use_new_rate_variables, which takes the named controls instead |
+| `overshoot_alpha_core` | `alphac` | `overshoot_alpha_core` | physics | - | `convection_settings%overshoot_alpha_core` | run | real | `0.0d0` | live | Core overshoot extent in pressure scale heights |
+| `overshoot_alpha_envelope` | `alphae` | `overshoot_alpha_envelope` | physics | - | `convection_settings%overshoot_alpha_envelope`, `rotation_settings%overshoot_alpha_envelope` | run | real | `0.0d0` | live | Envelope overshoot extent in pressure scale heights |
+| `wind_law_index` | `alfa` | `wind_law_index` | physics | - | - | run | real | `1.5d0` | live | Kawaler wind law: the index n (Jdot ~ Omega**(1+4n/3) ...); K97 takes m = n/3 |
+| `overshoot_alpha_min` | `alpham` | `overshoot_alpha_min` | physics | - | `convection_settings%overshoot_alpha_intermediate` | run | real | `0.0d0` | live | Overshoot of intermediate convection zones (intermediate_overshoot_active), in pressure scale heights |
+| `atm_step_size` | `atmstp` | `atm_step_size` | physics | - | - | run | real | `0.5d0` | live | Envelope generation: the atmosphere step size |
+| `absolute_tolerance` | `abstol` | `absolute_tolerance` | physics | - | - | run | real | `1.0d-5` | live | Burning network: absolute tolerance |
+| `overshoot_beta_core` | `betac` | `overshoot_beta_core` | physics | - | `convection_settings%core_overshoot_limit` | run | real | `0.15d0` | live | With overshoot_max_extent_flag: the core overshoot extent is capped at this fraction of the core radius |
+| `min_abundance` | `cmin` | `min_abundance` | physics | - | - | run | real | `1.0d-20` | live | Burning network: abundances below this are treated as zero |
+| `solar_luminosity_cgs` | `clsun` | `solar_luminosity_cgs` | physics | - | - | run | real | `3.8515d33` | live | Solar luminosity (erg/s) |
+| `solar_radius_cgs` | `crsun` | `solar_radius_cgs` | physics | - | - | run | real | `6.9598d10` | live | The solar radius (cm) used for the tracks and the output |
+| `solar_mass_cgs` | `solar_mass_cgs` | `solar_mass_cgs` | physics | - | - | run | real | `1.9891d33` | live | Solar mass (g), which converts Msun to grams everywhere (the rescaling, log g, the seismic scalings) |
+| `G_cgs` | `G_cgs` | `g_cgs` | physics | - | `convection_settings%log10_gravitational_constant`, `rotation_settings%log10_gravitational_constant` | run | real | `-1.0d0` | live | Newton's G (cgs). Negative (the default) keeps YREC's log10 G = -7.17571 (G = 6.6726e-8) bit for bit; a positive value (e.g. 6.6743d-8, CODATA 2018) replaces it |
+| `envelope_logP_step` | `dpenv` | `envelope_logp_step` | physics | - | - | run | real | `1.0d0` | live | Deep mixing: below 1, the composition step mixes every shell from the centre out to the mass envelope_logp_step times the star's (a mass fraction, whatever the name says); 1 or more is off |
+| `diffusion_timestep_factor` | `dtdif` | `diffusion_timestep_factor` | physics | - | `rotation_settings%diffusion_timestep_factor` | run | real | `1.0d-2` | live | Sub-timestep factor for rotation diffusion |
+| `max_domega_global` | `dtwind` | `max_domega_global` | physics | - | `rotation_settings%max_domega_global` | run | real | `1.0d1` | live | Timestep limit: the largest fractional change of omega per step |
+| `convergence_tolerance` | `djok` | `convergence_tolerance` | physics | - | `rotation_settings%convergence_tolerance` | run | real | `1.0d-4` | live | Angular momentum transport: the convergence tolerance of the transport iterations |
+| `settling_timestep_fraction` | `dt_gs` | `settling_timestep_fraction` | physics | - | `rotation_settings%settling_timestep_fraction` | run | real | `0.1d0` | live | Gravitational settling: sub-timestep as a fraction of the timestep |
+| `env_error_tol` | `enverr` | `env_error_tol` | physics | - | - | run | real | `3.0d-4` | live | Envelope integration: error tolerance |
+| `env_step_max` | `envmax` | `env_step_max` | physics | - | - | run | real | `5.0d-1` | live | The envelope integration's largest step (in log P) |
+| `env_step_min` | `envmin` | `env_step_min` | physics | - | - | run | real | `1.0d-1` | live | Envelope integration: minimum step |
+| `env_step_begin` | `envbeg` | `env_step_begin` | physics | - | - | run | real | `1.0d-1` | live | Envelope integration: first step |
+| `envelope_step_size` | `envstp` | `envelope_step_size` | physics | - | - | run | real | `0.5d0` | live | Envelope generation: the envelope step size |
+| `debye_huckel_eta_min` | `etadh0` | `debye_huckel_eta_min` | physics | - | `eos_settings%debye_huckel_eta_min` | run | real | `-1.0d0` | live | Debye-Hueckel correction: the lower degeneracy (eta) bound of its domain |
+| `debye_huckel_eta_max` | `etadh1` | `debye_huckel_eta_max` | physics | - | `eos_settings%debye_huckel_eta_max` | run | real | `1.0d0` | live | Debye-Hueckel correction: the upper degeneracy (eta) bound of its domain |
+| `solver_underrelax_start` | `fcorr0` | `solver_underrelax_start` | physics | - | - | run | real | `0.8d0` | live | Henyey under-relaxation: each step starts with the correction factor \|solver_underrelax_start\| - solver_underrelax_increment; a positive value lets it grow each iteration |
+| `solver_underrelax_increment` | `fcorri` | `solver_underrelax_increment` | physics | - | - | run | real | `0.1d0` | live | Henyey under-relaxation: the correction factor grows by this each corrector pass, up to 1 |
+| `wind_law_constant` | `fk` | `wind_law_constant` | physics | - | - | run | real | `1.0d0` | live | The constant factor of both wind laws (1 reproduces the solar angular momentum loss) |
+| `difad_velocity_scale` | `fw` | `difad_velocity_scale` | physics | - | `rotation_settings%difad_velocity_scale` | run | real | `1.0d0` | live | Scale of the angular momentum diffusion coefficients in the diffusion-advection transport |
+| `mixing_velocity_scale` | `fc` | `mixing_velocity_scale` | physics | - | `rotation_settings%mixing_velocity_scale` | run | real | `1.0d0` | live | Ratio of the chemical mixing to the angular momentum diffusion coefficients (calibrated to Li depletion) |
+| `coupling_factor` | `fo` | `coupling_factor` | buffer | - | - | none | real | `1.0d0` | live | Inert: read and used nowhere (the F77 code only echoed it, as COUPLING, in the run log's header) |
+| `(legacy only)` | `fmu` | `mu_gradient_scale` | buffer | - | - | none | real | `1.0d0` | unused | Unused: read from the legacy decks and ignored (the mu-gradient scale had no effect, docs/bug_sweep.md O15; dropped from the inlist format) |
+| `es_velocity_scale` | `fes` | `es_velocity_scale` | physics | - | `rotation_settings%velocity_scale(i_mech_eddington_sweet)` | run | real | `1.0d0` | live | Scale of the Eddington-Sweet circulation velocity in the angular momentum transport |
+| `core_mass_reduction_factor` | `fcore` | `core_mass_reduction_factor` | physics | `core_mass_reduction` | - | run | real | `1.0d0` | live | With extend_core_inward: the factor by which the innermost mass is reduced |
+| `gsf_velocity_scale` | `fgsf` | `gsf_velocity_scale` | physics | - | `rotation_settings%velocity_scale(i_mech_gsf)` | run | real | `1.0d0` | live | Scale of the GSF and ABCD instability velocities in the angular momentum transport |
+| `secular_shear_velocity_scale` | `fss` | `secular_shear_velocity_scale` | physics | - | `rotation_settings%velocity_scale(i_mech_shear)` | run | real | `1.0d0` | live | Scale of the secular shear instability velocity in the angular momentum transport |
+| `es_mixing_scale` | `fesc` | `es_mixing_scale` | physics | - | `rotation_settings%mixing_scale(i_mech_eddington_sweet)` | run | real | `1.0d0` | live | Scale of the Eddington-Sweet circulation's chemical mixing relative to its angular momentum transport |
+| `secular_shear_mixing_scale` | `fssc` | `secular_shear_mixing_scale` | physics | - | `rotation_settings%mixing_scale(i_mech_shear)` | run | real | `1.0d0` | live | Scale of the secular shear's chemical mixing relative to its angular momentum transport |
+| `gsf_mixing_scale` | `fgsfc` | `gsf_mixing_scale` | physics | - | `rotation_settings%mixing_scale(i_mech_gsf)` | run | real | `1.0d0` | live | Scale of the GSF instability's chemical mixing relative to its angular momentum transport |
+| `solberg_hoiland_velocity_scale` | `solberg_hoiland_velocity_scale` | `solberg_hoiland_velocity_scale` | physics | - | `rotation_settings%velocity_scale(i_mech_solberg_hoiland)` | run | real | `0.0d0` | live | Rotational transport: the Solberg-Hoiland instability's velocity scale (0 = off; it can act only where the dynamical shear does; MESA D_SH_factor) |
+| `solberg_hoiland_mixing_scale` | `solberg_hoiland_mixing_scale` | `solberg_hoiland_mixing_scale` | physics | - | `rotation_settings%mixing_scale(i_mech_solberg_hoiland)` | run | real | `1.0d0` | live | Rotational mixing: the Solberg-Hoiland instability's mixing efficiency |
+| `settling_y_factor` | `fgry` | `settling_y_factor` | physics | - | `diffusion_settings%fgry` | run | real | `1.0d0` | live | Gravitational settling: the factor on helium's settling coefficients |
+| `settling_z_factor` | `fgrz` | `settling_z_factor` | physics | `settling_z_factor_in_use` | - | run | real | `1.0d0` | live | Gravitational settling: the factor on the metals' settling coefficients (a Monte-Carlo run samples it) |
+| `settling_tolerance` | `grtol` | `settling_tolerance` | physics | - | `diffusion_settings%settling_tolerance` | run | real | `1.0d-8` | live | Gravitational settling: solver tolerance |
+| `solver_tolerances` | `htoler` | `solver_tolerances` | physics | - | - | run | real(5,2) | `6.0d-5, 4.5d-5, 3.0d-5, 9.0d-5, 3.0d-5, 9.0d-1, 5.0d-1, 5.0d-1, 2.0d0, 2.5d-6` | live | The Henyey thresholds: rows 1-4 the per-variable convergence (column 1) and correction-too-large (column 2) limits, row 5 the level-5 residual test |
+| `zoning_tolerances` | `hpttol` | `chi_grid_scale` | physics | - | `rotation_settings%chi_luminosity_scale`, `rotation_settings%chi_mass_scale`, `rotation_settings%chi_pressure_scale` | run | real(12) | `1.0d-8, 8.0d-2, 5.0d-2, 5.0d-2, 1.0d0, 1.0d0, 0.0d0, 5.0d-2, 2.0d-2, 5.0d-2, 5.0d-2, 1.0d-1` | live | The zoning tolerances, slot by slot as the tol_*/flag_* controls (ichi_* in state/control_slots.f90): tol_dm_min, tol_dm_max, flag_dx, flag_dz, tol_dx_max, tol_dz_max, tol_czbase_fine_width, tol_dp_env_max, tol_dl_max, tol_dp_czbase_max, tol_dp_core_max, flag_dw; used unless use_new_rate_variables, which takes the named controls instead |
+| `fpft_iter1` | `itfp1` | `fpft_iter1` | physics | - | `rotation_settings%shape_outer_iterations` | run | integer | `5` | live | The rotating star's shape: the most iterations of eta2 and r0 in turn |
+| `fpft_iter2` | `itfp2` | `fpft_iter2` | physics | - | `rotation_settings%shape_inner_iterations` | run | integer | `20` | live | The rotating star's shape: the most Newton steps of each r0 solve |
+| `max_stage_index` | `imax` | `max_stage_index` | physics | - | - | run | integer | `11` | live | The Bulirsch-Stoer integrator (envelope and atmosphere): the number of stages, 1 to 11 |
+| `num_rotation_structure_iters` | `itdif1` | `num_rotation_structure_iters` | physics | `num_rotation_structure_passes` | - | run | integer | `1` | live | The passes of the structure-rotation iteration per step (each pass converges the structure, mixes the convection zones and updates the angular momentum and the shape); 1 without rotation |
+| `max_diffusion_iters` | `itdif2` | `max_diffusion_iters` | physics | - | `rotation_settings%max_diffusion_iters` | run | integer | `10` | live | The most iterations of each angular momentum transport sub-step (1 to 16; the controls read rejects a rotating run outside that) |
+| `(legacy only)` | `ies` | `enable_eddington_sweet` | buffer | - | - | none | integer | `1` | unused | Unused: read by the legacy reader and ignored |
+| `gsf_inhibition_mode` | `igsf` | `gsf_inhibition_mode` | physics | - | `rotation_settings%gsf_inhibition_mode` | run | integer | `1` | live | The stability condition of the GSF and ABCD instabilities (1 is recommended) |
+| `(legacy only)` | `imu` | `enable_mu_gradient` | buffer | - | - | none | integer | `1` | unused | Unused: read by the legacy reader and ignored |
+| `coulomb_log_choice` | `ilambda` | `coulomb_log_choice` | physics | - | `diffusion_settings%coulomb_log_choice` | run | integer | `1` | live | The Coulomb logarithm of the settling coefficients (4, a constant 2.2, is recommended) |
+| `atm_choice` | `kttau` | `atm_choice` | physics | `atm_choice_in_use` | `atm_settings%atm_choice` | run | integer | `0` | live | Surface boundary condition: 0 Eddington gray T(tau), 1 Krishna-Swamy T(tau), 2 Harvard-Smithsonian atmosphere, 3 Kurucz tables, 4 Allard tables, 5 Kurucz/Castelli tables |
+| `max_burn_iterations` | `kemmax` | `max_burn_iterations` | physics | - | - | run | integer | `50` | live | The burning network solver's largest number of iterations |
+| `velocity_form_correction` | `lvfc` | `velocity_form_correction` | physics | - | `rotation_settings%use_zahn_coupling_factor` | run | logical | `.false.` | live | Rotational mixing: scale the composition diffusion coefficient by the Zahn (1992) coupling factor (D_mix = D_omega f_Zahn) instead of the fixed efficiencies (mixing_velocity_scale and the per-mechanism mixing scales) |
+| `use_diffusion_advection_transport` | `ldifad` | `use_diffusion_advection_transport` | physics | - | `rotation_settings%use_diffusion_advection_transport` | run | logical | `.false.` | live | Treat meridional circulation as diffusion plus advection (Zahn) instead of diffusion (stops a rotating run: the path is commented out) |
+| `no_am_transport_in_core` | `lnoj` | `no_am_transport_in_core` | physics | - | `rotation_settings%no_am_transport_in_core` | run | logical | `.false.` | live | No angular momentum transport in the convective core |
+| `use_new_diffusion_routines` | `lnewdif` | `use_new_diffusion_routines` | physics | - | `diffusion_settings%use_new_diffusion_routines` | run | logical | `.false.` | live | Use the new diffusion routines |
+| `diffuse_helium_active` | `ldify` | `diffuse_helium_active` | physics | - | - | run | logical | `.false.` | live | Gravitational settling of helium (and hydrogen) |
+| `use_diffusion_z` | `ldifz` | `use_diffusion_z` | physics | - | `diffusion_settings%use_diffusion_z`, `eos_settings%use_diffusion_z`, `kap_settings%use_two_z_tables` | run | logical | `.false.` | live | Gravitational settling of the metals (implies helium settling and the Thoul et al. routines) |
+| `diffuse_lithium` | `ldifli` | `diffuse_lithium` | physics | - | `diffusion_settings%diffuse_lithium` | run | logical | `.false.` | live | Include Li/Be in gravitational settling |
+| `calc_neutrinos` | `lsnu` | `calc_neutrinos` | physics | - | `net_settings%calc_neutrinos` | run | logical | `.false.` | live | Compute solar neutrino fluxes |
+| `use_debye_huckel_correction` | `ldh` | `use_debye_huckel_correction` | physics | - | `eos_settings%use_debye_huckel_correction` | run | logical | `.false.` | live | Apply the Debye-Hueckel correction to the simplified EOS |
+| `rescale_species_active` | `lnewcp` | `rescale_species_active` | physics | - | - | run | logical | `.false.` | live | Set one species of the starting model (change_species_name) to new_species_value |
+| `helium_flash_active` | `lkuthe` | `helium_flash_active` | physics | - | - | run | logical | `.false.` | live | Helium flash run: no rezoning, the starting model written to the .mod file for timestep cuts, and flash-specific solver handling |
+| `core_overshoot_active` | `lovstc` | `core_overshoot_active` | physics | - | `convection_settings%core_overshoot` | run | logical | `.false.` | live | Enable convective-core overshoot |
+| `envelope_overshoot_active` | `lovste` | `envelope_overshoot_active` | physics | - | `convection_settings%envelope_overshoot` | run | logical | `.false.` | live | Overshoot below the surface convection zone, by overshoot_alpha_envelope pressure scale heights |
+| `intermediate_overshoot_active` | `lovstm` | `intermediate_overshoot_active` | physics | - | `convection_settings%intermediate_overshoot`, `rotation_settings%intermediate_overshoot` | run | logical | `.false.` | live | Overshoot at intermediate convection zones (neither the core nor the surface convection zone), by overshoot_alpha_min |
+| `overshoot_max_extent_flag` | `lovmax` | `overshoot_max_extent_flag` | physics | - | `convection_settings%limit_core_overshoot` | run | logical | `.false.` | live | Cap the core overshoot extent at overshoot_beta_core times the core radius |
+| `use_extended_composition` | `lexcom` | `use_extended_composition` | physics | - | `convection_settings%use_extended_composition`, `rotation_settings%use_extended_composition` | run | logical | `.false.` | live | Extended composition: also follow H2, Li6, Li7 and Be9 (15 species) |
+| `rotation_flag` | `lrot` | `rotation_active` | physics | - | `convection_settings%rotation_active` | run | logical | `.false.` | live | Rotation: evolve the rotation curve and the angular momentum transport |
+| `new_triangle_init_flag` | `lnew0` | `new_triangle_init_flag` | physics | - | - | run | logical | `.false.` | live | Force a fresh envelope-fit triangle at run start |
+| `instability_transport_active` | `linstb` | `instability_transport_active` | physics | - | `convection_settings%instability_transport_active`, `rotation_settings%instability_transport_active` | run | logical | `.false.` | live | Rotationally induced mixing and hydrodynamic angular momentum transport |
+| `set_initial_omega` | `lwnew` | `set_initial_omega` | physics | - | - | run | logical | `.false.` | live | Initialize solid-body rotation at omega = initial_omega |
+| `use_wind_torque` | `ljdot0` | `use_wind_torque` | physics | - | `rotation_settings%use_wind_torque` | run | logical | `.true.` | live | Apply magnetic wind angular-momentum loss |
+| `use_structure_dt_limits` | `lptime` | `use_structure_dt_limits` | physics | `structure_dt_limits_active` | - | run | logical | `.true.` | live | Limit the timestep by the structure changes (time_dt, time_dp, time_dr, time_dl) |
+| `adiabatic_overshoot_active` | `ladov` | `adiabatic_overshoot_active` | physics | - | `convection_settings%adiabatic_overshoot` | run | logical | `.false.` | live | The overshoot region below the surface convection zone is adiabatic: its radiative points take the adiabatic gradient |
+| `use_envelope_triangle_dt` | `ltrist` | `use_envelope_triangle_dt` | physics | - | - | run | logical | `.false.` | live | Limit the timestep by the envelope-fit triangle |
+| `envelope_generation_flag` | `lenvg` | `envelope_generation_flag` | buffer | - | - | none | logical | `.false.` | live | Inert: read and stored, used nowhere (the outer layers are built by stitched_model) |
+| `use_itoh_neutrino_loss` | `lnulos1` | `use_itoh_neutrino_loss` | physics | - | `net_settings%use_itoh_neutrino_loss` | run | logical | `.false.` | live | Neutrino losses from Itoh et al. (1996) |
+| `use_thoul_diffusion` | `lthoul` | `use_thoul_diffusion` | physics | - | `diffusion_settings%use_thoul_diffusion` | run | logical | `.false.` | live | Thoul et al. diffusion coefficients |
+| `use_thoul_fit` | `lthoulfit` | `use_thoul_fit` | physics | - | `diffusion_settings%use_thoul_fit` | run | logical | `.false.` | live | Use the published fit to the Thoul et al. settling coefficients instead of the full solution (not recommended) |
+| `use_opal95_eos` | `lopale` | `use_opal95_eos` | buffer | - | - | read | logical | `.false.` | live | Use the OPAL 1995 EOS (a newer OPAL EOS selected wins) |
+| `use_mhd_eos` | `lmhd` | `use_mhd_eos` | physics | - | `eos_settings%use_mhd_eos` | run | logical | `.false.` | live | Use the MHD EOS |
+| `extend_core_inward` | `lcore` | `extend_core_inward` | physics | - | - | run | logical | `.false.` | live | Add shells inward of the starting model's innermost shell |
+| `use_semiconvection` | `lsemic` | `use_semiconvection` | physics | - | - | run | logical | `.false.` | live | Semiconvection treatment (conflicts with core overshoot) |
+| `improved_first_guess_flag` | `lnews` | `improved_first_guess_flag` | physics | - | - | run | logical | `.false.` | live | Use stored structure changes for the next model's first guess |
+| `num_core_shells_added` | `mcore` | `num_core_shells_added` | physics | `num_core_points_added` | - | run | integer | `0` | live | With extend_core_inward: the number of points added inward (recomputed from core_mass_reduction_factor) |
+| `max_iter_level1` | `niter1` | `max_iter_level1` | physics | - | - | run | integer | `2` | live | Henyey iteration limit, level 1 (fresh surface BC) |
+| `max_iter_level2` | `niter2` | `max_iter_level2` | physics | - | - | run | integer | `20` | live | Henyey iteration limit, level 2 |
+| `max_iter_level3` | `niter3` | `max_iter_level3` | physics | - | - | run | integer | `2` | live | Henyey iteration limit, level 3 |
+| `max_iter_level4` | `niter4` | `max_iter_level4` | physics | - | - | run | integer | `0` | live | Henyey iteration limit, level 4 (high precision) |
+| `extrap_order` | `nuse` | `extrap_order` | physics | - | - | run | integer | `7` | live | The Bulirsch-Stoer integrator (envelope and atmosphere): the extrapolation order, 2 to 7 and at most max_stage_index |
+| `settling_num_iterations` | `niter_gs` | `settling_num_iterations` | physics | - | `diffusion_settings%settling_num_iterations` | run | integer | `10` | live | Settling: the largest number of iterations of the abundance-change solver |
+| `metal_fraction_match_tolerance` | `optol` | `metal_fraction_match_tolerance` | physics | - | `kap_settings%metal_fraction_match_tolerance` | run | real | `1.0d-8` | live | Opacity tables: tolerance for matching the model's metallicity to a table's |
+| `critical_reynolds` | `rcrit` | `critical_reynolds` | physics | - | `rotation_settings%critical_reynolds` | run | real | `1.0d3` | live | Critical Reynolds number for the onset of the secular shear instability |
+| `relative_tolerance` | `reltol` | `relative_tolerance` | physics | - | - | run | real | `1.0d-4` | live | The burning network solver's relative tolerance |
+| `tolerance_fraction` | `stolr0` | `tolerance_fraction` | physics | - | - | run | real | `1.0d-3` | live | The envelope integration stops when log(m/M) is within this fraction of senv (also the atmosphere integration's step tolerance) |
+| `nuclear_logT_cutoffs` | `tcut` | `nuclear_logt_cutoffs` | physics | - | `net_settings%logt_cutoffs` | run | real(5) | `6.5d0, 6.5d0, 6.82d0, 7.7d0, 7.5d0` | live | log T cutoffs (5) below which burning groups are switched off |
+| `saha_log10t_cutoff` | `tscut` | `saha_log10t_cutoff` | physics | - | `eos_settings%saha_log10t_cutoff` | run | real | `6.0d0` | live | log10 T above which the default EOS assumes full ionization |
+| `rezone_env_logT0` | `tenv0` | `rezone_env_logt0` | physics | - | - | run | real | `3.0d0` | live | The rezone keeps the outermost interior point hotter than this log10 T: cooler outer points are deleted |
+| `rezone_env_logT1` | `tenv1` | `rezone_env_logt1` | physics | - | - | run | real | `9.0d0` | live | The rezone adds a point outside the outermost interior point when that point is hotter than this log10 T (at the stored envelope state) |
+| `gradient_logT_cutoff` | `tgcut` | `gradient_logt_cutoff` | physics | - | `convection_settings%log10_t_cut` | run | real | `6.9d0` | live | Above this log10 T a convective point takes the adiabatic gradient without the mixing-length theory (deep convective cores) |
+| `tri_delta_teffl` | `tridt` | `tri_delta_teffl` | physics | - | - | run | real | `1.0d-2` | live | Envelope-fit triangle: size in log Teff |
+| `tri_delta_logl` | `tridl` | `tri_delta_logl` | physics | - | - | run | real | `8.0d-2` | live | Envelope-fit triangle: size in log L |
+| `laol_z_tolerance` | `tollaol` | `laol_extrapolation_tolerance` | physics | - | `kap_settings%laol_extrapolation_tolerance` | run | real | `10.0d0` | live | The LAOL 1989 interpolators extrapolate linearly within log10(laol_extrapolation_tolerance) of a table edge |
+| `mixture_weights_seed` | `vnew` | `mixture_weights_seed` | physics | - | - | run | real(12) | `0.001999d0, 0.003238d0, 0.037573d0, 0.071794d0, 0.040520d0, 0.173285d0, 0.000000d0, 0.482273d0, 0.053152d0, 0.005379d0, 0.098668d0, 0.000000d0` | live | The surface mixture's relative mass fractions, one per slot of state/composition_layout.f90 (Na, Al, Mg, Fe, Si, C, H, O, N, Ar, Ne, He; H and He are set from the envelope X and Z): the starting model's envelope number fractions and the EOS mixture are made from the ten metals' |
+| `cz_rotation_law_exponent` (`new_zone_omega_weight`) | `walpcz` | `cz_rotation_law_exponent` | physics | - | `rotation_settings%cz_rotation_law_exponent` | run | real | `0.0d0` | live | Exponent alpha of the surface convection zone's rotation law omega ~ r^alpha (0 or above: solid body; -2 or below: constant specific angular momentum); also gives the omega of shells added at the surface and the specific angular momentum the wind removes |
+| `initial_omega` | `wnew` | `initial_omega` | physics | - | - | run | real | `0.0d0` | live | Initial rotation rate when set_initial_omega |
+| `weak_screening_threshold` | `weakscreening` | `weak_screening_threshold` | physics | - | `net_settings%weak_screening_threshold` | run | real | `0.03d0` | live | Threshold of the screening parameter below which nuclear rates use weak screening |
+| `change_species_value` | `xnewcp` | `new_species_value` | physics | - | - | run | real | `1.3d1` | live | New abundance for change_species_name |
+| `hydrogen_diffusion_floor` | `xmin` | `hydrogen_diffusion_floor` | physics | - | `diffusion_settings%hydrogen_diffusion_floor`, `rotation_settings%hydrogen_diffusion_floor` | run | real | `1.0d-3` | live | Settling stops (for the rest of the run card) once the central X falls below this |
+| `helium_diffusion_min` | `ymin` | `helium_diffusion_min` | physics | - | `diffusion_settings%helium_diffusion_min`, `rotation_settings%helium_diffusion_min` | run | real | `1.0d-3` | live | Settling's outer boundary moves inward to the first zone where Y exceeds this |
+| `molecular_opacity_logt_min` | `tmolmin` | `molecular_opacity_logt_min` | physics | - | `kap_settings%molecular_opacity_logt_min` | run | real | `4.0d0` | live | log10 T below which only the molecular opacities are used |
+| `molecular_opacity_logt_max` | `tmolmax` | `molecular_opacity_logt_max` | physics | - | `kap_settings%molecular_opacity_logt_max` | run | real | `4.1d0` | live | log10 T above which only the atomic opacities are used (a ramp joins the two) |
+| `monte_carlo_active` | `lmonte` | `monte_carlo_active` | physics | - | - | run | logical | `.false.` | live | Monte-Carlo multi-realization mode |
+| `mc_run_start` | `imbeg` | `mc_run_start` | physics | `first_mc_run` | - | run | integer | `1` | live | First Monte-Carlo realization index |
+| `mc_run_end` | `imend` | `mc_run_end` | physics | `last_mc_run` | - | run | integer | `1` | live | Last Monte-Carlo realization index |
+| `(legacy only)` | `sstandard` | `cross_section_ratios` | buffer | - | - | read | real(num_sstandard) | `0.9828d0, 1.0485d0, 0.9815d0, 0.9241d0, 1.3818d0, 1.0542d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0108d0, 0.7819d0, 0.2875d0` | legacy | The cross sections as ratios to Bahcall & Ulrich (1988), one per slot of the legacy SSTANDARD array, used without use_new_nuclear_rates |
+| `use_scv_eos` | `lscv` | `use_scv_eos` | physics | - | `eos_settings%use_scv_eos` | run | logical | `.false.` | live | Use the SCV EOS where it is valid and the OPAL EOS is not |
+| `disk_locking_active` | `ldisk` | `disk_locking_active` | physics | - | `rotation_settings%disk_locking_active` | run | logical | `.false.` | live | Disk locking: hold the surface rotation at disk_omega_rad_s until disk_locking_age_gyr |
+| `disk_locking_age_gyr` | `tdisk` | `disk_locking_age_gyr` | physics | - | `rotation_settings%disk_locking_age_gyr` | run | real | `0.0d0` | live | Disk locking: the age (Gyr) up to which the surface rotation is held at disk_omega_rad_s (some older deck comments give it in yr, which the code never read) |
+| `disk_omega_rad_s` | `pdisk` | `disk_omega_rad_s` | physics | - | `rotation_settings%disk_omega_rad_s` | run | real | `7.2722d-6` | live | Disk locking: the surface angular velocity (rad/s) held until disk_locking_age_gyr (some older deck comments call it a period in days, which the code never read) |
+| `wind_saturation_omega` | `wmax` | `wind_saturation_omega` | physics | - | - | run | real | `3.0d-4` | live | Saturation angular velocity of the wind law (rad/s); solar_omega_sat below 1000 overrides it in solar units |
+| `force_solid_body_rotation` | `lsolid` | `force_solid_body_rotation` | physics | - | `rotation_settings%force_solid_body_rotation`, `rotation_settings%solid_body_mode_flag` | run | logical | `.false.` | live | Force solid-body rotation (sets solid_body_mode_flag = 1) |
+| `solid_body_mode_flag` | `impjmod` | `solid_body_mode_flag` | physics | - | `rotation_settings%solid_body_mode_flag` | run | integer | `0` | live | Angular momentum coupling: 0 none, 1 solid body everywhere, 2 solid-body core with a decoupled convection zone, 3 solid-body core coupled at the base of the convection zone |
+| `mass_change` | `dmdt0` | `mass_accretion_rate` | physics | - | - | run | real | `-1.0d-14` | live | Mass change rate (Msun/yr; negative for loss) when use_mass_change is set |
+| `accretion_cz_fraction` | `fczdmdt` | `accretion_cz_fraction` | physics | - | - | run | real | `0.1d0` | live | Mass change: the timestep changes the surface convection zone's mass by at most this fraction |
+| `accretion_total_fraction` | `ftotdmdt` | `accretion_total_fraction` | physics | - | - | run | real | `1.0d-2` | live | Mass change: the timestep changes the star's mass by at most this fraction |
+| `accreted_composition` | `compacc` | `accreted_composition` | physics | - | - | run | real(15) | `0.71668d0, 0.265721d0, 0.01757d0, 2.9d-5, 3.013d-3, 3.385d-5, 9.346d-4, 0.0d0, 8.462d-3, 0.0d0, 1.696d-5, 0.0d0, 2.0d-9, 2.0d-9, 3.0d-11` | live | Mass fractions of the accreted material (star%xa layout) |
+| `reimers_scaling_factor` | `creim` | `reimers_scaling_factor` | physics | - | - | run | real | `-4.0d-13` | live | Reimers mass-loss efficiency eta |
+| `use_reimers_wind` | `lreimer` | `use_reimers_wind` | physics | - | - | run | logical | `.false.` | live | Enable Reimers red-giant mass loss |
+| `use_mass_change` | `lmdot` | `use_mass_accretion` | physics | `mass_change_active` | - | run | logical | `.false.` | live | Mass change: a constant rate (mass_accretion_rate) or the Reimers wind; switched off for the run when the disk is exhausted |
+| `use_opal2001_eos` | `lopale01` | `use_opal2001_eos` | buffer | - | - | read | logical | `.false.` | live | Use the OPAL 2001 EOS (the 2006 EOS, if also selected, wins) |
+| `use_conductive_opacity` | `lcondopacp` | `use_conductive_opacity` | physics | - | `kap_settings%use_conductive_opacity` | run | logical | `.false.` | live | Use the conductive opacity tables (conductive_opacity_table_file) |
+| `use_opal2006_eos` | `lopale06` | `use_opal2006_eos` | buffer | - | - | read | logical | `.false.` | live | Use the OPAL 2006 EOS |
+| `use_numerical_derivatives` | `lnumderiv` | `use_numerical_derivatives` | physics | - | `eos_settings%use_numerical_derivatives` | run | logical | `.false.` | live | Use numerical derivatives of the EOS instead of analytic ones (much slower) |
+| `allard_target_feh` | `alatm_feh` | `allard_target_feh` | physics | - | `atm_settings%allard_target_feh` | run | real | `0d0` | live | Allard atmosphere tables: [Fe/H] |
+| `allard_target_alpha` | `alatm_alpha` | `allard_target_alpha` | physics | - | `atm_settings%allard_target_alpha` | run | real | `0d0` | live | Allard atmosphere tables: [alpha/Fe] |
+| `allard_use_tau100` | `laltptau100` | `allard_use_tau100` | physics | - | `atm_settings%allard_use_tau100` | run | logical | `.false.` | live | Allard atmosphere tables: the boundary at tau = 100 instead of the photosphere |
+| `constant_mixing_coeff` | `cstmixing` | `constant_mixing_coeff` | physics | - | `diffusion_settings%constant_mixing_coeff` | run | real | `1.0d0` | live | Constant added diffusion coefficient (mixing) |
+| `constant_settling_reduction` | `cstdiffmix` | `constant_settling_reduction` | physics | - | `diffusion_settings%constant_settling_reduction` | run | real | `1.0d0` | live | Constant coefficient mimicking mixing to reduce settling |
+| `use_rotation_scaled_solar_wind` | `lsolwind` | `use_rotation_scaled_solar_wind` | buffer | - | - | none | logical | `.false.` | live | Inert: the rotation-scaled solar wind is commented out (core/step/mass_change.f90); the controls read warns when it is set |
+| `use_pmm_wind_law` | `lmwind` | `use_pmm_wind_law` | physics | - | `rotation_settings%use_pmm_wind_law` | run | logical | `.false.` | live | Use the Matt et al. (2012) magnetized wind law (wind_law_name) instead of the Kawaler law |
+| `scale_by_rossby_number` | `lrossby` | `scale_by_rossby_number` | physics | - | `rotation_settings%scale_by_rossby_number` | run | logical | `.true.` | live | Matt wind law: scale the loss rate with the Rossby number (use with a saturation threshold) |
+| `use_pmm_wind` | `lpmm` | `use_pmm_wind` | buffer | - | - | none | logical | `.false.` | live | Inert: read and used nowhere (the Matt law is use_pmm_wind_law); the controls read warns when it is set |
+| `scale_by_b_field` | `lbscale` | `scale_by_b_field` | physics | - | - | run | logical | `.false.` | live | Matt wind law: scale the field with the equipartition B (set by wind_law_name for K97 and V13) |
+| `wind_law_name` | `awind` | `wind_law_name` | physics | - | - | run | string | `'K97'` | live | Matt wind law: V13 (van Saders & Pinsonneault 2013), K97 (Krishnamurthi et al. 1997), or CUS (the pmm_exponent_* as given) |
+| `pmm_exponent_a` | `pmma` | `pmm_exponent_a` | physics | - | - | run | real | `2.0d0` | live | PMM wind law: exponent a (Lx/Lbol ~ omega**a); K97 and V13 set it |
+| `pmm_exponent_b` | `pmmb` | `pmm_exponent_b` | physics | - | - | run | real | `1.0d0` | live | PMM wind law: exponent b, with Bmag ~ (omega R**c)**b; K97 and V13 set it |
+| `pmm_exponent_c` | `pmmc` | `pmm_exponent_c` | physics | - | - | run | real | `2.0d0` | live | PMM wind law: exponent c, with Bmag ~ (omega R**c)**b; K97 and V13 set it |
+| `pmm_exponent_d` | `pmmd` | `pmm_exponent_d` | physics | - | - | run | real | `0.0d0` | live | Matt wind law: exponent d of the convective turnover time in Bmag (CUS only; K97 and V13 set it) |
+| `pmm_exponent_m` | `pmmm` | `pmm_exponent_m` | physics | - | - | run | real | `0.5d0` | live | Matt wind law: exponent m of the torque (CUS only; K97 and V13 set it) |
+| `pmm_norm_jdot` | `pmmjd` | `pmm_norm_jdot` | physics | - | - | run | real | `1.32d30` | live | Matt wind law: the solar wind torque (cgs), the zero point of the loss rate (adjust with wind_law_constant) |
+| `pmm_norm_mdot` | `pmmmd` | `pmm_norm_mdot` | buffer | - | - | none | real | `1.27d12` | live | Matt wind law: the solar mass-loss rate (g/s), its zero point |
+| `pmm_omega_sat` | `pmmwmax` | `pmm_omega_sat` | buffer | - | - | none | real | `0` | live | Inert: read and used nowhere (the saturation is wind_saturation_omega or solar_omega_sat); the controls read warns when it is set |
+| `pmm_solar_pressure` | `pmmsolp` | `pmm_solar_pressure` | physics | - | `rotation_settings%pmm_solar_pressure` | run | real | `4.9304d0` | live | Matt wind law: log10 of the solar photospheric pressure (dyn/cm^2), the zero point of the field strength |
+| `pmm_solar_omega` | `pmmsolw` | `pmm_solar_omega` | physics | - | `rotation_settings%pmm_solar_omega` | run | real | `2.836d-6` | live | Matt wind law: the solar angular velocity (rad/s), the zero point of the torque |
+| `pmm_solar_turnover_timescale` | `pmmsoltau` | `pmm_solar_turnover_timescale` | physics | - | `rotation_settings%pmm_solar_turnover_timescale` | run | real | `9.4805d5` | live | Matt wind law: the solar convective turnover time (s), the zero point of the Rossby number |
+| `use_constant_background_diffusion` | `lcodm` | `use_constant_background_diffusion` | physics | - | `rotation_settings%use_constant_background_diffusion` | run | logical | `.false.` | live | Add a constant background diffusion (constant_background_diffusion_coeff) to the angular momentum transport |
+| `constant_background_diffusion_coeff` | `codm` | `constant_background_diffusion_coeff` | physics | - | `rotation_settings%constant_background_diffusion_coeff` | run | real | `2.5d4` | live | Constant background diffusion coefficient for angular momentum (cm^2/s) |
+| `solar_omega_sat` | `wmax_sun` | `solar_omega_sat` | physics | - | - | run | real | `1000.0d0` | live | The wind's saturation omega in units of the solar omega (pmm_solar_omega); below 1000 it overrides wind_saturation_omega |
+| `li6_rate_value` | `xsli6` | `li6_rate_value` | buffer | - | - | read | real | `5.5d3` | live | The Li6 burning cross section (keV b): with scale_li6_rate, li6_rate_scale is this over li6_reference_xs (5.5e3) |
+| `li7_rate_value` | `xsli7` | `li7_rate_value` | buffer | - | - | read | real | `5.2d1` | live | The Li7 burning cross section (keV b): with scale_li7_rate, li7_rate_scale is this over li7_reference_xs (52) |
+| `be9_rate_value1` | `xsbe91` | `be9_rate_value1` | buffer | - | - | read | real | `1.1d0` | live | The Be9(p,g) cross section (keV b): with scale_be9_rate1, be9_pg_rate_scale is this over be9_pg_reference_xs (1.1) |
+| `be9_rate_value2` | `xsbe92` | `be9_rate_value2` | buffer | - | - | read | real | `1.5d4` | live | The Be9(p,d) cross section (keV b): with scale_be9_rate2, be9_pd_rate_scale is this over be9_pd_reference_xs (1.5e4) |
+| `be9_rate_value3` | `xsbe93` | `be9_rate_value3` | buffer | - | - | read | real | `1.5d4` | live | The Be9(p,a) cross section (keV b): with scale_be9_rate3, be9_palpha_rate_scale is this over be9_palpha_reference_xs (1.5e4) |
+| `scale_li6_rate` | `lxli6` | `scale_li6_rate` | buffer | - | - | read | logical | `.false.` | live | Take li6_rate_scale from the cross section li6_rate_value |
+| `scale_li7_rate` | `lxli7` | `scale_li7_rate` | buffer | - | - | read | logical | `.false.` | live | Take li7_rate_scale from the cross section li7_rate_value |
+| `scale_be9_rate1` | `lxbe91` | `scale_be9_rate1` | buffer | - | - | read | logical | `.false.` | live | Take be9_pg_rate_scale from the cross section be9_rate_value1 |
+| `scale_be9_rate2` | `lxbe92` | `scale_be9_rate2` | buffer | - | - | read | logical | `.false.` | live | Take be9_pd_rate_scale from the cross section be9_rate_value2 |
+| `scale_be9_rate3` | `lxbe93` | `scale_be9_rate3` | buffer | - | - | read | logical | `.false.` | live | Take be9_palpha_rate_scale from the cross section be9_rate_value3 |
+| `li6_rate_scale` | `sli6` | `li6_rate_scale` | physics | - | `net_settings%li6_rate_scale` | run | real | `1.0d0` | live | Li6 burning rate scale (scale_li6_rate with li6_rate_value overrides it) |
+| `li7_rate_scale` | `sli7` | `li7_rate_scale` | physics | - | `net_settings%li7_rate_scale` | run | real | `1.0d0` | live | Li7 burning rate scale (scale_li7_rate with li7_rate_value overrides it) |
+| `be9_pg_rate_scale` | `sbe91` | `be9_pg_rate_scale` | physics | - | `net_settings%be9_pg_rate_scale` | run | real | `1.0d0` | live | Scale of the Be9(p,g) rate (scale_be9_rate1 with be9_rate_value1 overrides it) |
+| `be9_pd_rate_scale` | `sbe92` | `be9_pd_rate_scale` | physics | - | `net_settings%be9_pd_rate_scale` | run | real | `1.0d0` | live | Scale of the Be9(p,d) rate (scale_be9_rate2 with be9_rate_value2 overrides it) |
+| `be9_palpha_rate_scale` | `sbe93` | `be9_palpha_rate_scale` | physics | - | `net_settings%be9_palpha_rate_scale` | run | real | `1.0d0` | live | Scale of the Be9(p,a) rate (scale_be9_rate3 with be9_rate_value3 overrides it) |
+| `use_new_nuclear_rates` | `lnewnuc` | `use_new_nuclear_rates` | buffer | - | - | read | logical | `.false.` | live | Take the cross sections from the s0_* controls (Adelberger et al. 2011 defaults) instead of the ratios to Bahcall & Ulrich (1988) |
+| `spot_filling_factor` | `spotf` | `spot_filling_factor` | physics | - | `convection_settings%spot_filling_factor` | run | real | `0.00d0` | live | Starspots: the filling factor |
+| `spot_temp_contrast` | `spotx` | `spot_temp_contrast` | physics | - | `convection_settings%spot_temp_contrast` | run | real | `1.00d0` | live | Starspots: the spot temperature contrast (with spot_filling_factor > 0; 0.85 is typical of sunspots) |
+| `spot_depth_varies` | `lsdepth` | `spot_depth_varies` | physics | - | `convection_settings%spot_depth_varies` | run | logical | `.false.` | live | Starspots: decrease the spot contrast with depth, at constant B |
+| `s0_pp` | `s0_1_1` | `s0_pp` | buffer | - | - | read | real | `4.01d-22` | live | S-factor of p+p (keV b), used with use_new_nuclear_rates |
+| `s0_he3he3` | `s0_3_3` | `s0_he3he3` | buffer | - | - | read | real | `5.21d3` | live | S-factor of He3+He3 (keV b), used with use_new_nuclear_rates |
+| `s0_he3he4` | `s0_3_4` | `s0_he3he4` | buffer | - | - | read | real | `5.6d-1` | live | S-factor of He3+He4 (keV b), used with use_new_nuclear_rates |
+| `s0_p_c12` | `s0_1_12` | `s0_p_c12` | buffer | - | - | read | real | `1.34d0` | live | S-factor of p+C12 (keV b), used with use_new_nuclear_rates |
+| `s0_p_c13` | `s0_1_13` | `s0_p_c13` | buffer | - | - | read | real | `7.6d0` | live | S-factor of p+C13 (keV b), used with use_new_nuclear_rates |
+| `s0_p_n14` | `s0_1_14` | `s0_p_n14` | buffer | - | - | read | real | `1.66d0` | live | S0 of N14(p,g)O15 (keV b), with use_new_nuclear_rates |
+| `s0_p_o16` | `s0_1_16` | `s0_p_o16` | buffer | - | - | read | real | `1.06d1` | live | S0 of O16(p,g)F17 (keV b), with use_new_nuclear_rates |
+| `s0_pep` | `s0_pep` | `s0_pep` | buffer | - | - | read | real | `3.5734d-6` | live | The pep rate relative to pp, with use_new_nuclear_rates |
+| `s0_be7_electron` | `s0_1_be7e` | `s0_be7_electron` | buffer | - | - | read | real | `1.7709d-10` | live | The constant of the linear term of Be7 electron capture, with use_new_nuclear_rates |
+| `s0_be7_p` | `s0_1_be7p` | `s0_be7_p` | buffer | - | - | read | real | `0.0208d0` | live | S0 of Be7(p,g)B8 (keV b), with use_new_nuclear_rates |
+| `s0_hep` | `s0_hep` | `s0_hep` | buffer | - | - | read | real | `8.6d-20` | live | S0 of He3(p,e+ nu)He4 (keV b), with use_new_nuclear_rates |
+| `s0_n15_p_c12_branch` | `s0_1_15_c12alp` | `s0_n15_p_c12_branch` | buffer | - | - | read | real | `7.3d4` | live | S0 of N15(p,a)C12 (keV b), which sets the N15 + p branching |
+| `s0_n15_p_o16_branch` | `s0_1_15_o16` | `s0_n15_p_o16_branch` | buffer | - | - | read | real | `3.6d1` | live | S0 of N15(p,g)O16 (keV b), which sets the N15 + p branching |
+| `s0p_pp` | `s0p_1_1` | `s0p_pp` | buffer | - | - | read | real | `4.49d-24` | live | dS/dE of H1(p,e+ nu)H2 (b), with use_new_nuclear_rates |
+| `s0p_he3he3` | `s0p_3_3` | `s0p_he3he3` | buffer | - | - | read | real | `-4.9d0` | live | dS/dE of He3(He3,2p)He4 (b), with use_new_nuclear_rates |
+| `s0p_he3he4` | `s0p_3_4` | `s0p_he3he4` | buffer | - | - | read | real | `-3.6d-4` | live | dS/dE of He3(a,g)Be7 (b), with use_new_nuclear_rates |
+| `s0p_p_c12` | `s0p_1_12` | `s0p_p_c12` | buffer | - | - | read | real | `2.6d-3` | live | dS/dE of C12(p,g)N13 (b), with use_new_nuclear_rates |
+| `s0p_p_c13` | `s0p_1_13` | `s0p_p_c13` | buffer | - | - | read | real | `-7.83d-3` | live | dS/dE of C13(p,g)N14 (b), with use_new_nuclear_rates |
+| `s0p_p_n14` | `s0p_1_14` | `s0p_p_n14` | buffer | - | - | read | real | `-3.3d-3` | live | dS/dE of N14(p,g)O15 (b), with use_new_nuclear_rates |
+| `s0p_p_o16` | `s0p_1_16` | `s0p_p_o16` | buffer | - | - | read | real | `-5.4d-2` | live | dS/dE of O16(p,g)F17 (b), with use_new_nuclear_rates |
+| `s0pp_p_c12` | `s0pp_1_12` | `s0pp_p_c12` | buffer | - | - | read | real | `8.3d-5` | live | d2S/dE2 of C12(p,g)N13 (b/keV), with use_new_nuclear_rates |
+| `s0pp_p_c13` | `s0pp_1_13` | `s0pp_p_c13` | buffer | - | - | read | real | `7.29d-4` | live | d2S/dE2 of C13(p,g)N14 (b/keV), with use_new_nuclear_rates |
+| `s0pp_p_o16` | `s0pp_1_16` | `s0pp_p_o16` | buffer | - | - | read | real | `0.0d0` | live | d2S/dE2 of O16(p,g)F17 (b/keV), with use_new_nuclear_rates |
+| `s0p_be7_p` | `s0p_1_be7p` | `s0p_be7_p` | buffer | - | - | read | real | `-3.12d-5` | live | dS/dE of Be7(p,g)B8 (b), with use_new_nuclear_rates |
+| `s0pp_be7_p` | `s0pp_1_be7p` | `s0pp_be7_p` | buffer | - | - | read | real | `-2.288d-7` | live | d2S/dE2 of Be7(p,g)B8 (b/keV), with use_new_nuclear_rates |
+| `flag_dx` | `flag_dx` | `flag_dx` | buffer | - | - | read | real | `0.05d0` | live | Zoning: an X jump between shells larger than this flags a shell |
+| `flag_dw` | `flag_dw` | `flag_dw` | buffer | - | - | read | real | `0.10d0` | live | Zoning: the largest log-omega spacing (rotating models) |
+| `flag_dz` | `flag_dz` | `flag_dz` | buffer | - | - | read | real | `0.05d0` | live | Zoning: a Z jump between shells larger than this flags a shell |
+| `lstruct_time` | `lstruct_time` | `use_structure_time_limits` | buffer | - | - | read | logical | `.false.` | live | With use_new_rate_variables: limit the timestep by the structure changes time_dt..time_dl (switched off once nuclear burning dominates) |
+| `time_core_min` | `time_core_min` | `time_core_min` | buffer | - | - | read | real | `1.0d-3` | live | With use_new_rate_variables: the smallest central X or Y for the core-burning timestep criteria |
+| `time_dl` | `time_dl` | `time_dl` | buffer | - | - | read | real | `2.0d-2` | live | With use_new_rate_variables: the largest change of L at any point per step (pre-main sequence) |
+| `time_dp` | `time_dp` | `time_dp` | buffer | - | - | read | real | `4.0d-2` | live | With use_new_rate_variables: the largest change of P at any point per step (pre-main sequence) |
+| `time_dr` | `time_dr` | `time_dr` | buffer | - | - | read | real | `2.0d-2` | live | With use_new_rate_variables: the largest change of r at any point per step (pre-main sequence) |
+| `time_dt` | `time_dt` | `time_dt` | buffer | - | - | read | real | `2.0d-2` | live | With use_new_rate_variables: the largest change of T at any point per step (pre-main sequence) |
+| `time_dw_global` | `time_dw_global` | `time_dw_global` | buffer | - | - | read | real | `8.0d-2` | live | With use_new_rate_variables: the largest change of omega per step |
+| `time_dw_mix` | `time_dw_mix` | `time_dw_mix` | buffer | - | - | read | real | `8.0d-2` | live | With use_new_rate_variables: the largest change of omega per rotational-mixing sub-step |
+| `time_dx_core_frac` | `time_dx_core_frac` | `time_dx_core_frac` | buffer | - | - | read | real | `0.5d0` | live | With use_new_rate_variables: the largest fraction of the central X burned per step |
+| `time_dx_core_tot` | `time_dx_core_tot` | `time_dx_core_tot` | buffer | - | - | read | real | `2.0d-2` | live | With use_new_rate_variables: the largest change of the central X per step |
+| `time_dx_shell` | `time_dx_shell` | `time_dx_shell` | buffer | - | - | read | real | `0.1d0` | live | With use_new_rate_variables: the largest fraction of X burned in the shell per step |
+| `time_dx_total` | `time_dx_total` | `time_dx_total` | buffer | - | - | read | real | `1.5d-3` | live | With use_new_rate_variables: the largest mass of hydrogen burned per step (Msun) |
+| `time_dy_core_frac` | `time_dy_core_frac` | `time_dy_core_frac` | buffer | - | - | read | real | `0.5d0` | live | With use_new_rate_variables: the largest fraction of the central Y burned per step |
+| `time_dy_core_tot` | `time_dy_core_tot` | `time_dy_core_tot` | buffer | - | - | read | real | `2.0d-2` | live | With use_new_rate_variables: the largest change of the central Y per step |
+| `time_dy_shell` | `time_dy_shell` | `time_dy_shell` | buffer | - | - | read | real | `0.1d0` | live | With use_new_rate_variables: the largest fraction of Y burned in the shell per step |
+| `time_dy_total` | `time_dy_total` | `time_dy_total` | buffer | - | - | read | real | `1.5d-3` | live | With use_new_rate_variables: the largest mass of helium burned per step (Msun) |
+| `tol_czbase_fine_width` | `tol_czbase_fine_width` | `tol_czbase_fine_width` | buffer | - | - | read | real | `0.0d0` | live | With use_new_rate_variables: the width in log P of the finely zoned region at the base of the convection zone |
+| `tol_dl_max` | `tol_dl_max` | `tol_dl_max` | buffer | - | - | read | real | `0.02d0` | live | With use_new_rate_variables: the largest spacing in L/L_surface between points |
+| `tol_dm_max` | `tol_dm_max` | `tol_dm_max` | buffer | - | - | read | real | `0.08d0` | live | With use_new_rate_variables: the largest spacing in log m between points |
+| `tol_dm_min` | `tol_dm_min` | `tol_dm_min` | buffer | - | - | read | real | `1.0d-8` | live | With use_new_rate_variables: the smallest spacing in log m between points |
+| `tol_dp_core_max` | `tol_dp_core_max` | `tol_dp_core_max` | buffer | - | - | read | real | `0.05d0` | live | With use_new_rate_variables: the largest spacing in log P below the surface convection zone |
+| `tol_dp_czbase_max` | `tol_dp_czbase_max` | `tol_dp_czbase_max` | buffer | - | - | read | real | `0.05d0` | live | With use_new_rate_variables: the largest spacing in log P near the base of the surface convection zone |
+| `tol_dp_env_max` | `tol_dp_env_max` | `tol_dp_env_max` | buffer | - | - | read | real | `0.05d0` | live | With use_new_rate_variables: the largest spacing in log P in the surface convection zone |
+| `tol_dx_max` | `tol_dx_max` | `tol_dx_max` | buffer | - | - | read | real | `1.0d0` | live | With use_new_rate_variables: the largest spacing in X between points (usually off) |
+| `tol_dz_max` | `tol_dz_max` | `tol_dz_max` | buffer | - | - | read | real | `1.0d0` | live | With use_new_rate_variables: the largest spacing in Z between points (usually off) |
+| `time_max_dt_frac` | `time_max_dt_frac` | `time_max_dt_frac` | buffer | - | - | read | real | `1.5d0` | live | With use_new_rate_variables: the largest factor by which the timestep changes from one model to the next |
+| `use_new_rate_variables` | `lnewvars` | `use_new_rate_variables` | buffer | - | - | read | logical | `.false.` | live | Take the zoning and timestep tolerances from the named tol_*, flag_* and time_* controls (and use_structure_time_limits) instead of zoning_tolerances and timestep_factors; nothing to do with reaction rates |
+| `calc_envelope_flag` | `lcalcenv` | `calc_envelope_flag` | physics | - | - | run | logical | `.true.` | live | Integrate the full envelope (false: the atmosphere to the photosphere only) |
+| `profile_data_prefix` | `profile_data_prefix` | `profile_data_prefix` | physics | - | - | run | string | `'profile'` | live | Profile/pulse file name prefix: <prefix><N>.data[.GYRE/.FGONG/.GSM] in the output directory |
+| `star_history_name` | `-` | `star_history_name` | physics | - | - | run | string | `'history.data'` | live | The history file's name, in the output directory |
+| `terminal_interval` | `terminal_interval` | `terminal_interval` | physics | - | - | run | integer | `50` | live | Print the compact per-model progress line (terminal + run log) every N models; 0 = off; the final model always prints |
+| `nu_max_sun` | `nu_max_sun` | `nu_max_sun` | physics | - | - | run | real | `3090.0d0` | live | Solar nu_max [uHz] for the scaling relation (Huber et al. 2011) |
+| `delta_nu_sun` | `delta_nu_sun` | `delta_nu_sun` | physics | - | - | run | real | `135.1d0` | live | Solar delta_nu [uHz] for the mean-density scaling relation (Huber et al. 2011) |
+| `Teff_sun` | `Teff_sun` | `teff_sun` | physics | - | - | run | real | `5772.0d0` | live | Solar effective temperature [K] for the nu_max scaling relation (IAU nominal value) |
+| `report_solver_diagnostics` | `report_solver_diagnostics` | `report_solver_diagnostics` | buffer | - | - | read | logical | `.false.` | live | Write the solver forensics to the run log (Henyey iteration trace, envelope and atmosphere integration statistics, triangle and rezoning bookkeeping); the read installs it as run_messages' gate, solver_diagnostics(), which the run asks |
+| `profile_interval` | `-` | `profile_interval` | physics | - | - | run | integer | `50` | live | Write profile{N}.data every N converged models (0 = off); the history's profile_number column maps models to profiles |
+| `pulse_format` | `-` | `pulse_format` | physics | - | - | run | string | `'GYRE'` | live | The pulsation files' format (GYRE text, FGONG, or GSM = GYRE HDF5 [needs make USE_HDF5=1]), written beside each profile as profile{N}.data.{format} |
+| `write_profile_flag` | `-` | `write_profile_flag` | physics | - | - | run | logical | `.false.` | live | Write the profile{N}.data files (every profile_interval models) |
+| `write_pulse_flag` | `-` | `write_pulse_flag` | physics | - | - | run | logical | `.false.` | live | Write a pulsation file (pulse_format) with each profile |
+| `compute_neutrino_fluxes` | `-` | `compute_neutrino_fluxes` | physics | - | - | run | logical | `.false.` | live | Diagnostic: write the per-zone solar neutrino production table (fluxes per shell, normalized profiles, Bahcall-Pinsonneault layout) to the run log at the start of each run |
 
 ## Members no deck sets
 
 The read derives them from the controls a deck sets (or, for the deck's
 file names, from the command line). Each is in the group of its topic.
 
-| code name | group | home | run copy | used | type | default | description |
-|---|---|---|---|---|---|---|---|
-| `opal_eos_table_path` | physics | physics | - | run | path | `''` | The OPAL EOS table the run reads: the newest vintage selected (use_opal2006_eos, use_opal2001_eos, use_opal95_eos), blank for none (set by derive_controls) |
-| `opal_eos_vintage` | physics | physics | - | run | integer | `0` | The OPAL EOS vintage the run uses: 0 none, 1 1995, 2 2001, 3 2006 (eos_lib's opal_vintage_*), the newest selected (set by derive_controls) |
-| `end_age_stop_active` | control | control | `card_stops_active` | run | logical(max_runs) | `.false.` | Per card: an evolving card has a stop armed (max_age or a central-abundance stop positive); derived by the run plan (interpret_kind_cards) |
-| `timestep_override_active` | control | control | `card_fixed_timestep_active` | run | logical(max_runs) | `.false.` | Per card: an evolving card takes the fixed timestep timestep_override (positive); derived by the run plan |
-| `rescale_params` | control | control | `card_rescale_targets` | run | real(4,max_runs) | `0.0d0` | Per card: a rescaling card's targets M, X, Z and core mass (rescale_mass, rescale_x, rescale_z, rescale_core_mass); derived by the run plan |
-| `rescale_kind` | control | control | `card_kind` | run | integer(max_runs) | `0` | Per card: evolve, rescale or both (run_kind for the cards the deck runs, 0 beyond); derived by the run plan |
-| `new_species_index` | physics | physics | - | run | integer | `0` | With rescale_species_active: the composition slot of change_species_name (set by the reader) |
-| `value_relative_to_h` | physics | physics | - | run | logical | `.false.` | With rescale_species_active: new_species_value is relative to hydrogen (from new_species_value_mode) |
-| `cross_section_scale` | physics | physics | `cross_section_scale_in_use` | run | real(num_reactions) | `1.0d0` | Each reaction's cross-section (S0) scale against Bahcall & Ulrich (1988), by reaction slot r_*: from the S-factor inputs (use_new_nuclear_rates) or from cross_section_ratios |
-| `extra_cross_section_scale` | physics | physics | `extra_cross_section_scale_in_use` | run | real(num_extra_scales) | `1.0d0` | The scales of the rates outside the reaction table, by extra slot xs_* (pep, Be7 + e, Be7 + p, hep): from the S-factor inputs (use_new_nuclear_rates) or from cross_section_ratios |
-| `s_prime_scale` | physics | physics | - | run | real(num_reactions) | `1.0d0` | Each reaction's S'/S scale against Solar Fusion I, by reaction slot (1 without use_new_nuclear_rates) |
-| `s_double_prime_scale` | physics | physics | - | run | real(num_reactions) | `1.0d0` | Each reaction's S''/S scale against Solar Fusion I, by reaction slot (1 without use_new_nuclear_rates) |
-| `be7p_s_prime_scale` | physics | physics | - | run | real | `1.0d0` | Be7 + p's S'/S scale against Solar Fusion I |
-| `be7p_s_double_prime_scale` | physics | physics | - | run | real | `1.0d0` | Be7 + p's S''/S scale against Solar Fusion I |
-| `n15_pg_scale` | physics | physics | - | run | real | `1.0d0` | The N15(p,gamma)O16 branch's scale (s0_n15_p_o16_branch over net's reference) |
-| `n15_pa_scale` | physics | physics | - | run | real | `1.0d0` | The N15(p,alpha)C12 branch's scale (s0_n15_p_c12_branch over net's reference) |
-| `envelope_store_log_temperature` | physics | physics | - | run | real | `0.0d0` | The log T at which an envelope integration stores its state for the surface boundary: the mean of rezone_env_logT0 and rezone_env_logT1 |
-| `change_cno_mixture_active` | control | control | - | run | logical | `.false.` | The starting model's CNO mixture is changed (mixture_change_mode = 1 and a valid mixture) |
-| `change_isotope_ratios_active` | control | control | - | run | logical | `.false.` | The starting model's isotope ratios are changed (isotope_change_mode = 1 and a valid mixture) |
-| `control_nml_file` | control | control | - | run | path | `''` | The deck's file: the single-file inlist, or the legacy pair's CONTROL namelist (.nml1); read_input finds it (the first command-line argument, default yrec8.nml1, or an embedding host's override) |
-| `physics_nml_file` | control | control | - | run | path | `''` | The legacy pair's PHYSICS namelist (.nml2; the second command-line argument, default yrec8.nml2), or the inlist again |
+| code name | group | home | run copy | settings | used | type | default | description |
+|---|---|---|---|---|---|---|---|---|
+| `opal_eos_table_path` | physics | physics | - | `eos_table_paths%opal` | run | path | `''` | The OPAL EOS table the run reads: the newest vintage selected (use_opal2006_eos, use_opal2001_eos, use_opal95_eos), blank for none (set by derive_controls) |
+| `opal_eos_vintage` | physics | physics | - | `eos_settings%opal_vintage` | run | integer | `0` | The OPAL EOS vintage the run uses: 0 none, 1 1995, 2 2001, 3 2006 (eos_lib's opal_vintage_*), the newest selected (set by derive_controls) |
+| `end_age_stop_active` | control | control | `card_stops_active` | - | run | logical(max_runs) | `.false.` | Per card: an evolving card has a stop armed (max_age or a central-abundance stop positive); derived by the run plan (interpret_kind_cards) |
+| `timestep_override_active` | control | control | `card_fixed_timestep_active` | - | run | logical(max_runs) | `.false.` | Per card: an evolving card takes the fixed timestep timestep_override (positive); derived by the run plan |
+| `rescale_params` | control | control | `card_rescale_targets` | - | run | real(4,max_runs) | `0.0d0` | Per card: a rescaling card's targets M, X, Z and core mass (rescale_mass, rescale_x, rescale_z, rescale_core_mass); derived by the run plan |
+| `rescale_kind` | control | control | `card_kind` | - | run | integer(max_runs) | `0` | Per card: evolve, rescale or both (run_kind for the cards the deck runs, 0 beyond); derived by the run plan |
+| `new_species_index` | physics | physics | - | - | run | integer | `0` | With rescale_species_active: the composition slot of change_species_name (set by the reader) |
+| `value_relative_to_h` | physics | physics | - | - | run | logical | `.false.` | With rescale_species_active: new_species_value is relative to hydrogen (from new_species_value_mode) |
+| `cross_section_scale` | physics | physics | `cross_section_scale_in_use` | - | run | real(num_reactions) | `1.0d0` | Each reaction's cross-section (S0) scale against Bahcall & Ulrich (1988), by reaction slot r_*: from the S-factor inputs (use_new_nuclear_rates) or from cross_section_ratios |
+| `extra_cross_section_scale` | physics | physics | `extra_cross_section_scale_in_use` | - | run | real(num_extra_scales) | `1.0d0` | The scales of the rates outside the reaction table, by extra slot xs_* (pep, Be7 + e, Be7 + p, hep): from the S-factor inputs (use_new_nuclear_rates) or from cross_section_ratios |
+| `s_prime_scale` | physics | physics | - | `net_settings%s_prime_scale` | run | real(num_reactions) | `1.0d0` | Each reaction's S'/S scale against Solar Fusion I, by reaction slot (1 without use_new_nuclear_rates) |
+| `s_double_prime_scale` | physics | physics | - | `net_settings%s_double_prime_scale` | run | real(num_reactions) | `1.0d0` | Each reaction's S''/S scale against Solar Fusion I, by reaction slot (1 without use_new_nuclear_rates) |
+| `be7p_s_prime_scale` | physics | physics | - | `net_settings%be7p_s_prime_scale` | run | real | `1.0d0` | Be7 + p's S'/S scale against Solar Fusion I |
+| `be7p_s_double_prime_scale` | physics | physics | - | `net_settings%be7p_s_double_prime_scale` | run | real | `1.0d0` | Be7 + p's S''/S scale against Solar Fusion I |
+| `n15_pg_scale` | physics | physics | - | `net_settings%n15_pg_scale` | run | real | `1.0d0` | The N15(p,gamma)O16 branch's scale (s0_n15_p_o16_branch over net's reference) |
+| `n15_pa_scale` | physics | physics | - | `net_settings%n15_pa_scale` | run | real | `1.0d0` | The N15(p,alpha)C12 branch's scale (s0_n15_p_c12_branch over net's reference) |
+| `envelope_store_log_temperature` | physics | physics | - | - | run | real | `0.0d0` | The log T at which an envelope integration stores its state for the surface boundary: the mean of rezone_env_logT0 and rezone_env_logT1 |
+| `change_cno_mixture_active` | control | control | - | - | run | logical | `.false.` | The starting model's CNO mixture is changed (mixture_change_mode = 1 and a valid mixture) |
+| `change_isotope_ratios_active` | control | control | - | - | run | logical | `.false.` | The starting model's isotope ratios are changed (isotope_change_mode = 1 and a valid mixture) |
+| `control_nml_file` | control | control | - | - | run | path | `''` | The deck's file: the single-file inlist, or the legacy pair's CONTROL namelist (.nml1); read_input finds it (the first command-line argument, default yrec8.nml1, or an embedding host's override) |
+| `physics_nml_file` | control | control | - | - | run | path | `''` | The legacy pair's PHYSICS namelist (.nml2; the second command-line argument, default yrec8.nml2), or the inlist again |

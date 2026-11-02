@@ -58,6 +58,17 @@ Columns:
                  separated; a live control whose proposed_name replaced a
                  misleading one). An alias counts, element by element, where
                  a deck sets it and not the inlist name.
+  settings       the settings fields a domain's builder in setup/ sets from
+                 the control: each field a builder assigns in a statement
+                 that names the control (on its right-hand side or in its
+                 condition), as <record>%<field> (the record the builder
+                 returns: rotation_settings%max_diffusion_iters,
+                 kap_table_paths%conductive), comma separated; blank for a
+                 control no builder statement names (core reads it, or a
+                 builder derives from it through a local, as the wind law
+                 from its inputs). tools/check_boundaries.py checks it
+                 against the builders (builder_copies) and prints the cell
+                 to write.
 """
 import pathlib
 import re
@@ -66,7 +77,7 @@ SRC = pathlib.Path(__file__).resolve().parent.parent
 REG = SRC / "defaults" / "controls_registry.tsv"
 
 COLUMNS = ["group", "legacy", "type", "proposed_name", "status", "mesa_note",
-           "canonical", "home", "run_copy", "used", "aliases"]
+           "canonical", "home", "run_copy", "used", "aliases", "settings"]
 STATUSES = {"live", "legacy", "unused", "derived"}
 DEAD = {"unused", "legacy"}       # read from the legacy decks only
 GROUPS = {"control", "physics"}
@@ -86,6 +97,9 @@ CELLS_GUIDE = """How to fill a registry row (tools/controls_registry.py describe
       (read or none with home buffer); run_copy and aliases empty.
   an inlist name other than the code name (my_table_file for my_table_path):
       proposed_name the inlist name, canonical the code name; the rest as above.
+  a control a domain reads: as above, and settings its settings field as
+      record%field (rotation_settings%my_scale; check_boundaries prints the
+      cell once the builder copies it).
   a control the run changes: as above, and run_copy the star member the run
       changes (state/README.md, "Add a value the run changes").
   a table path (or any file the run reads or writes): as above, type path (the read
@@ -424,6 +438,68 @@ def check_rows_against_buffer(rs, members):
     problems += [f"{m['name']}: a controls_buffer member without a registry row"
                  for m in members if m["name"] not in named]
     return problems
+
+
+SETUP = SRC / "setup"
+
+
+def _builder_statements(text):
+    """a builder file's statements: comments dropped, &-continuations
+    joined"""
+    out, buf = [], ""
+    for raw in text.splitlines():
+        code = raw.split("!")[0].rstrip()
+        if buf:
+            code = code.lstrip().lstrip("&")
+        buf += code
+        if buf.endswith("&"):
+            buf = buf[:-1]
+            continue
+        if buf.strip():
+            out.append(buf)
+        buf = ""
+    return out
+
+
+def builder_copies():
+    """{control (lower case): sorted [record%field, ...]}: each field of a
+    record a builder in setup/ returns (result(settings), result(paths),
+    declared type(<record>_t)) that the builder assigns in a statement
+    naming the control, s%physics%<c> or s%control%<c>, on its right-hand
+    side or in its one-line condition; a subscript is kept
+    (rotation_settings%mixing_scale(i_mech_gsf))"""
+    copies = {}
+    for f in sorted(SETUP.glob("*.f90")):
+        statements = _builder_statements(f.read_text(errors="replace"))
+        record, result = None, None
+        for st in statements:
+            m = re.match(r"(?i)^\s*(?:(?:pure|elemental|impure|recursive)\s+)*function\s+\w+\s*\([^)]*\)"
+                         r"\s*result\s*\(\s*(\w+)\s*\)", st)
+            if m:
+                record, result = None, m.group(1).lower()
+                continue
+            if re.match(r"(?i)^\s*end\s*function\b", st):
+                record, result = None, None
+                continue
+            if result is None:
+                continue
+            m = re.match(r"(?i)^\s*type\s*\(\s*(\w+?)_t\s*\)\s*::\s*(\w+)\s*$", st)
+            if m and m.group(2).lower() == result:
+                record = m.group(1).lower()
+                continue
+            m = re.match(r"(?i)^\s*(?:if\s*\((?P<cond>.*)\)\s*)?(?P<r>\w+)%(?P<field>\w+(?:\s*\([^=]*?\))?)"
+                         r"\s*=(?!=)(?P<rhs>.*)$", st)
+            if record and m and m.group("r").lower() == result:
+                name = re.sub(r"\s+", "", m.group("field")).lower()
+                field = f"{record}%{name}"
+                for c in re.findall(r"(?i)\bs%(?:physics|control)%(\w+)", (m.group("cond") or "") + m.group("rhs")):
+                    copies.setdefault(c.lower(), set()).add(field)
+    return {c: sorted(fs) for c, fs in copies.items()}
+
+
+def settings_cell(fields):
+    """a registry settings cell for these fields"""
+    return ",".join(sorted(fields))
 
 
 # the run cards' capacity, state/control_slots.f90's max_runs (its one

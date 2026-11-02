@@ -583,6 +583,25 @@ def check_max_runs(src_root):
     return []
 
 
+def check_settings_column(src_root):
+    """Each control's registry settings cell names the settings fields
+    the builders in setup/ set from it (controls_registry.builder_copies:
+    a statement that assigns a field of the record a builder returns and
+    names the control): a copy the cell leaves out, or a field it names
+    that no builder sets from the control, is a problem, which names the
+    cell to write"""
+    import controls_registry
+    copies = controls_registry.builder_copies()
+    problems = []
+    for r in controls_registry.rows():
+        want = controls_registry.settings_cell(copies.get(r["canonical"].lower(), []))
+        if r["settings"] != want:
+            problems.append(f"{r['canonical']}: registry settings {r['settings'] or '(blank)'}, but the "
+                            f"builders in setup/ set {want or 'nothing'} from it: write "
+                            f"{want or 'a blank cell'}")
+    return problems
+
+
 def check_control_records(src_root):
     """Every control is in the record of its registry group: the
     registry's home is the group (or buffer), and the generated component
@@ -1130,7 +1149,9 @@ def main():
                            "of its registry group):"),
                           (check_control_copies, "CONTROL COPIES (a star member that copies a control "
                            "says so, where it is set):"),
-                          (check_max_runs, "MAX_RUNS (state/control_slots.f90 is the one source):")):
+                          (check_max_runs, "MAX_RUNS (state/control_slots.f90 is the one source):"),
+                          (check_settings_column, "CONTROLS REGISTRY SETTINGS (the settings fields "
+                           "each control's builder copies set from it, defaults/controls_registry.tsv):")):
         found = check(SRC)
         if found:
             print(header)
