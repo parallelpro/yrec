@@ -63,7 +63,7 @@ module history_output
 ! One job's history file: its path, its unit once the first row has
 ! opened it, and the selected columns (indices into history_columns).
       type :: history_file
-         character(len=256) :: path = ' '
+         character(len=:), allocatable :: path
          integer :: unit = 0
          logical :: is_open = .false.
          integer :: nsel = 0

@@ -63,7 +63,10 @@ subroutine read_controls(s, ierr)
       call read_input(ierr)
       if (ierr /= 0) return
       call map_user_inputs
-      call expand_paths
+! (a path that does not fit its control stops the read; the run log's
+! path may be the one, so no run log is opened for it)
+      call expand_paths(ierr)
+      if (ierr /= 0) return
 ! the errors, the inert legacy controls, the derived controls, the run
 ! plan
       call check_controls(ierr)
@@ -170,8 +173,9 @@ end subroutine read_inlist
 ! ---------------------------------------------------------------
 ! The {YREC_INPUT}, {YREC_START} and {YREC_OUTPUT} placeholders in
 ! every path control, expanded: the generated expand_paths.inc calls
-! run_files' expand_value on each control whose registry type is path.
-subroutine expand_paths
+! run_files' expand_value on each control whose registry type is path,
+! naming it by its inlist name; one that does not fit returns ierr = 1.
+subroutine expand_paths(ierr)
       include 'expand_paths.inc'
 end subroutine expand_paths
 

@@ -60,7 +60,8 @@ subroutine write_profile(s, profiles, out_dir, iprof, ierr)
       integer, intent(in) :: iprof
       integer, intent(inout) :: ierr
       type(output_column) :: cols(n_prof_cols)
-      character(len=256) :: path, msg
+      character(len=:), allocatable :: path
+      character(len=256) :: msg
       character(len=12) :: numstr
       integer :: u, i, k, kz, ios
       real(dp) :: v

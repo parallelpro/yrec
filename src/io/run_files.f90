@@ -68,7 +68,8 @@ end subroutine assign_unit_numbers
 subroutine open_run_files(s, ierr)
       type(star_info), intent(in) :: s
       integer, intent(inout) :: ierr
-      character(len=256) :: msg, inlist_copy, output_dir
+      character(len=256) :: msg, output_dir
+      character(len=:), allocatable :: inlist_copy
       integer :: ios
 
       call start_run_log(s%physics%log_output_file, ierr)
@@ -76,10 +77,10 @@ subroutine open_run_files(s, ierr)
       output_dir = output_directory(s)
       write(terminal_unit,*) "OUTPUT placed in :  ",trim(output_dir)
       write(terminal_unit,*) ''
-      inlist_copy = s%control%inlist_used_file
-      if (len_trim(inlist_copy) == 0) inlist_copy = trim(output_dir) // 'inlist_used'
+      inlist_copy = trim(s%control%inlist_used_file)
+      if (len(inlist_copy) == 0) inlist_copy = trim(output_dir) // 'inlist_used'
       call copy_inlists_used([s%control%control_nml_file, s%control%physics_nml_file], &
-           trim(inlist_copy), ierr)
+           inlist_copy, ierr)
       if (ierr /= 0) return
 
       call close_run_files
@@ -178,12 +179,13 @@ end function output_directory
 subroutine open_run_log(log_output_file, ierr)
       character(len=*), intent(in) :: log_output_file
       integer, intent(inout) :: ierr
-      character(len=256) :: log_path, msg
+      character(len=:), allocatable :: log_path
+      character(len=256) :: msg
       integer :: n, ios
 
       n = len_trim(log_output_file)
       if (n >= 4 .and. log_output_file(max(1,n-3):n) == '.log') then
-         log_path = log_output_file
+         log_path = trim(log_output_file)
       else
          n = index(log_output_file, '.short')
          if (n > 0) then
@@ -298,22 +300,44 @@ end subroutine copy_inlists_used
 ! replaced by that environment variable's value, or by its default
 ! (relative to the deck's directory) when the variable is unset or
 ! empty. A value that itself starts with a later placeholder is
-! expanded again.
-subroutine expand_value(path_value)
+! expanded again. An expansion longer than path_value holds (a path
+! control's 256 characters), or a variable longer than the 1024 read
+! here, is an error naming the control, name (ierr = 1; path_value is
+! left as it was before that placeholder).
+subroutine expand_value(path_value, name, ierr)
+      use run_messages, only: report_error
       character(len=*), intent(inout) :: path_value
+      character(len=*), intent(in) :: name
+      integer, intent(inout) :: ierr
       character(len=*), parameter :: placeholders(3) = [character(len=13) :: &
            '{YREC_INPUT}', '{YREC_START}', '{YREC_OUTPUT}']
       character(len=*), parameter :: defaults(3) = [character(len=17) :: &
            '../../input', '../../startmodels', 'output']
       character(len=1024) :: value
-      integer :: i, n, value_len, status
+      character(len=24) :: lengths
+      integer :: i, n, value_len, status, expanded_len
 
       do i = 1, size(placeholders)
          n = len_trim(placeholders(i))
          if (len(path_value) < n) cycle
          if (path_value(1:n) /= placeholders(i)(1:n)) cycle
          call get_environment_variable(placeholders(i)(2:n-1), value, value_len, status)
+         if (status == -1) then
+            call report_error(name // ': the environment variable ' // placeholders(i)(2:n-1) // &
+                 ' is longer than 1024 characters')
+            ierr = 1
+            return
+         end if
          if (status == 1 .or. len_trim(value) == 0) value = defaults(i)
+         expanded_len = len_trim(value) + len_trim(path_value(n+1:))
+         if (expanded_len > len(path_value)) then
+            write(lengths,'(i0,a,i0)') expanded_len, ' > ', len(path_value)
+            call report_error(name // ': ' // placeholders(i)(1:n) // ' expands to a path ' // &
+                 'longer than the control holds (' // trim(lengths) // ' characters): ' // &
+                 trim(value) // trim(path_value(n+1:)))
+            ierr = 1
+            return
+         end if
          path_value = trim(value) // path_value(n+1:)
       end do
 end subroutine expand_value

@@ -469,3 +469,19 @@ def test_a_deck_without_a_description_writes_a_clean_run_log(tmp_path):
     lines = log.decode().splitlines()
     k = lines.index(" description: ")
     assert not lines[k + 1].startswith(" " * 14), lines[k:k + 2]
+
+
+def test_a_path_that_does_not_fit_its_control_is_an_error(tmp_path):
+    """A {YREC_INPUT} that expands past a path control's 256 characters (a
+    long scratch tree) stops the read with ierr = 1 and a message naming
+    the control, instead of a path cut short without a word."""
+    if not BINARY.exists():
+        pytest.skip("src/test_controls not built (run `make tests` in src/)")
+    deck = REPO / "examples" / "run_config_matrix" / "cm_base.inlist"
+    long_input = "/" + "x" * 250
+    r = subprocess.run([str(BINARY), str(deck)], cwd=deck.parent, capture_output=True,
+                       env=dict(os.environ, YREC_OUTPUT=str(tmp_path), YREC_INPUT=long_input))
+    stdout = r.stdout.decode("latin-1")
+    assert "ierr = 1" in stdout.splitlines()
+    assert "{YREC_INPUT} expands to a path longer than the control holds" in stdout
+    assert "_file: {YREC_INPUT}" in stdout or "_files: {YREC_INPUT}" in stdout

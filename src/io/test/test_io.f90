@@ -357,17 +357,23 @@ subroutine unset_env(name)
       rc = c_unsetenv(name // c_null_char)
 end subroutine unset_env
 
-! expand_value of value, compared with the expected result
+! expand_value of value, compared with the expected result (and no
+! error)
 logical function expands_to(value, expected)
       character(len=*), intent(in) :: value, expected
       character(len=256) :: v
+      integer :: ierr
       v = value
-      call expand_value(v)
-      expands_to = v == expected
+      ierr = 0
+      call expand_value(v, 'test_path', ierr)
+      expands_to = v == expected .and. ierr == 0
 end function expands_to
 
 subroutine paths_check()
       character(len=2) :: short_value
+      character(len=256) :: v
+      character(len=250) :: long_dir
+      integer :: ierr
       logical :: ok
 
       call set_env('YREC_INPUT', '/data/in')
@@ -384,8 +390,9 @@ subroutine paths_check()
       call report("paths: {YREC_INPUT} unset becomes ../../input", &
            expands_to('{YREC_INPUT}/kap', '../../input/kap'))
       short_value = 'ab'
-      call expand_value(short_value)
-      ok = short_value == 'ab'
+      ierr = 0
+      call expand_value(short_value, 'test_path', ierr)
+      ok = short_value == 'ab' .and. ierr == 0
       call report("paths: no leading placeholder, the value unchanged", ok .and. &
            expands_to('plain/{YREC_INPUT}/x', 'plain/{YREC_INPUT}/x') .and. &
            expands_to('rel/path.dat', 'rel/path.dat') .and. &
@@ -394,6 +401,19 @@ subroutine paths_check()
       call unset_env('YREC_OUTPUT')
       call report("paths: an expansion to a later placeholder is expanded again", &
            expands_to('{YREC_INPUT}/x', 'output/in/x'))
+! an expansion longer than the control holds: an error naming it, the
+! value left unexpanded; one that just fits is no error
+      long_dir = '/' // repeat('d', 249)
+      call set_env('YREC_INPUT', long_dir)
+      v = '{YREC_INPUT}/eos/x.dat'
+      ierr = 0
+      call expand_value(v, 'eos_table_file', ierr)
+      call report("paths: an expansion longer than the control is an error", ierr == 1 .and. &
+           v == '{YREC_INPUT}/eos/x.dat' .and. &
+           captured(terminal_file, 'eos_table_file: {YREC_INPUT} expands to a path longer ' // &
+           'than the control holds (260 > 256 characters)'))
+      call report("paths: an expansion that just fits is not", expands_to('{YREC_INPUT}/abcde', &
+           trim(long_dir) // '/abcde'))
       call unset_env('YREC_INPUT')
 end subroutine paths_check
 
@@ -411,6 +431,9 @@ end subroutine directories_check
 subroutine fields_check()
       character(len=6) :: i6
       character(len=3) :: i3
+      character(len=300) :: long_dir
+      type(history_file) :: history
+      integer :: ierr
 
       write(i6,'(i6)') 400
       write(i3,'(i3)') -12
@@ -419,6 +442,15 @@ subroutine fields_check()
            integer_field(999999, 6) == '999999')
       call report("fields: a wider one in full after a blank, no asterisks", &
            integer_field(1000000, 6) == ' 1000000' .and. integer_field(-123, 3) == ' -123')
+      long_dir = repeat('d', 299) // '/'
+      history = history_file()
+      s%physics%star_history_name = 'history.data'
+      s%control%history_columns_file = ' '
+      ierr = 0
+      call history_output_init(s, history, long_dir, ierr)
+      call report("fields: an output path is built in full, however long", ierr == 0 .and. &
+           history%path == long_dir // 'history.data' .and. &
+           len(interior_gyre_path(long_dir, 'profile', 7)) == 300 + 22)
       call report("fields: the interior GYRE file's model number, 5 digits or all", &
            interior_gyre_path('out/', 'profile', 42) == 'out/profile00042.data.GYRE' .and. &
            interior_gyre_path('', 'p', 99999) == 'p99999.data.GYRE' .and. &

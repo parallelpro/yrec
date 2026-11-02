@@ -228,7 +228,7 @@ subroutine write_interior_gyre(s, output, ierr)
       type(star_info), intent(in) :: s
       type(output_state), intent(in) :: output
       integer, intent(inout) :: ierr
-      character(len=320) :: path
+      character(len=:), allocatable :: path
 
       path = interior_gyre_path(output%out_dir, s%physics%profile_data_prefix, s%model_number)
       call write_gyre_pulse(s%nz, s%stitched%pulse(:,1:s%nz), s%stitched%pulse(ipul_m,s%nz), &
@@ -293,7 +293,7 @@ subroutine write_pulse(s, output, iprof, ierr)
       type(output_state), intent(in) :: output
       integer, intent(in) :: iprof
       integer, intent(inout) :: ierr
-      character(len=256) :: path
+      character(len=:), allocatable :: path
       character(len=12) :: numstr
       real(dp) :: mstar_g, rstar_cm, lstar_cgs
       integer :: n
@@ -309,13 +309,13 @@ subroutine write_pulse(s, output, iprof, ierr)
       select case (output%pulse_format)
       case (pulse_fgong)
          call write_fgong_pulse(s, n, s%stitched%pulse(:,1:n), mstar_g, rstar_cm, &
-              lstar_cgs, trim(path) // '.FGONG', ierr)
+              lstar_cgs, path // '.FGONG', ierr)
       case (pulse_gsm)
          call write_gsm_pulse(n, s%stitched%pulse(:,1:n), mstar_g, rstar_cm, &
-              lstar_cgs, trim(path) // '.GSM', ierr)
+              lstar_cgs, path // '.GSM', ierr)
       case default
          call write_gyre_pulse(n, s%stitched%pulse(:,1:n), mstar_g, rstar_cm, &
-              lstar_cgs, trim(path) // '.GYRE', ierr)
+              lstar_cgs, path // '.GYRE', ierr)
       end select
 end subroutine write_pulse
 

@@ -4,6 +4,8 @@ paths: {YREC_OUTPUT} empty becomes output                              ok
 paths: {YREC_INPUT} unset becomes ../../input                          ok
 paths: no leading placeholder, the value unchanged                     ok
 paths: an expansion to a later placeholder is expanded again           ok
+paths: an expansion longer than the control is an error                ok
+paths: an expansion that just fits is not                              ok
 directories: the path up to its last '/'                               ok
 directories: blank for a bare file name                                ok
 pulse format: GYRE, FGONG, GSM in any case                             ok
@@ -11,6 +13,7 @@ pulse format: leading and trailing blanks ignored                      ok
 pulse format: any other name unknown                                   ok
 fields: a number that fits is an I<width> field                        ok
 fields: a wider one in full after a blank, no asterisks                ok
+fields: an output path is built in full, however long                  ok
 fields: the interior GYRE file's model number, 5 digits or all         ok
 columns: a blank file name selects the defaults, in order              ok
 columns: a file selects its names in order, past comments              ok

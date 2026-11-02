@@ -291,17 +291,20 @@ def main():
     paths = [r for r in deck_rows if r["type"].startswith("path")]
     ex = HEAD + ["! expand_paths' body (io/controls_reader.f90): every path control a deck",
                  "! may set (the registry's type path), its {YREC_INPUT}, {YREC_START} or",
-                 "! {YREC_OUTPUT} placeholder expanded (run_files' expand_value). A derived",
+                 "! {YREC_OUTPUT} placeholder expanded (run_files' expand_value), named by",
+                 "! its inlist name in the error when the expansion does not fit. A derived",
                  "! path (opal_eos_table_path) is made from expanded ones."]
     ex += wrapped("      use controls_buffer, only: ", [r["code"] for r in paths], cont="           ")
+    ex.append("      integer, intent(inout) :: ierr")
     if any(by_name[r["code"]]["dims"] for r in paths):
         ex.append("      integer :: i")
     for r in paths:
         if by_name[r["code"]]["dims"]:
-            ex += [f"      do i = 1, size({r['code']})", f"         call expand_value({r['code']}(i))",
+            ex += [f"      do i = 1, size({r['code']})",
+                   f"         call expand_value({r['code']}(i), '{r['inlist']}', ierr)",
                    "      end do"]
         else:
-            ex.append(f"      call expand_value({r['code']})")
+            ex.append(f"      call expand_value({r['code']}, '{r['inlist']}', ierr)")
     emit(SRC / "io" / "expand_paths.inc", "\n".join(ex) + "\n")
 
     # ---- the documents ----
