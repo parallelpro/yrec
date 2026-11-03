@@ -67,31 +67,24 @@ PUBLIC = SRC / "io" / "controls_buffer_public.inc"
 def homes(members):
     """({member: 'control', 'physics' or 'buffer'}, {member: its run copy}),
     by the members' lower-case names, from the registry, which must give
-    every buffer member a row of its declared type"""
-    rows = [r for r in controls_registry.rows() if r["home"]]
-    home, copy, problems = {}, {}, []
+    every buffer member a row of its declared type and every row a buffer
+    member (controls_registry.check_rows_against_buffer, which gen_inlist
+    runs too); a refusal names each problem and prints the cells guide"""
+    rows = controls_registry.rows()
+    problems = controls_registry.check_rows_against_buffer(rows, members)
+    home, copy = {}, {}
     for m in members:
-        name = m["name"]
-        mine = [r for r in rows if r["canonical"] == name]
+        mine = [r for r in rows if r["canonical"].lower() == m["name"]]
         if not mine:
-            problems.append(f"{m['spelled']}: no registry row (canonical column)")
             continue
-        for r in mine:
-            if controls_registry.declared_type(r["type"]) != m["type"]:
-                problems.append(f"{m['spelled']}: registry type {r['type']} ({r['legacy']}), "
-                                f"declared {m['type']}")
         if len({r["home"] for r in mine}) > 1 or len({r["run_copy"] for r in mine}) > 1:
             problems.append(f"{m['spelled']}: two homes or run copies in the registry")
-        home[name] = mine[0]["home"]
+        home[m["name"]] = mine[0]["home"]
         if mine[0]["run_copy"]:
-            copy[name] = mine[0]["run_copy"]
-    known = {m["name"] for m in members}
-    for r in rows:
-        if r["canonical"] not in known:
-            problems.append(f"registry row {r['legacy']}: canonical {r['canonical']} is not in controls_buffer")
+            copy[m["name"]] = mine[0]["run_copy"]
     if problems:
         raise SystemExit("gen_controls_state: the registry and controls_buffer disagree:\n  "
-                         + "\n  ".join(problems))
+                         + "\n  ".join(problems) + "\n" + controls_registry.CELLS_GUIDE)
     return home, copy
 
 
