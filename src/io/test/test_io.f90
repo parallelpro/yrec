@@ -90,6 +90,9 @@
 !                file at their write and the run log at check_run_log (a
 !                run log rewound and written again, shorter, is not cut
 !                short);
+!                another run's open of a file this run keeps open
+!                makes a new file, so this run's checks see its own
+!                lines (M174's window);
 !                two runs that write one path (M174) are not a full
 !                disk: a history file that another run truncates in
 !                place after this run's last row (the C library's fopen
@@ -230,11 +233,18 @@ program test_io
 
       type(star_info), save :: s, s2
       integer :: failures
+! the mode named on the command line (copy, history)
+      character(len=16) :: mode
 ! the file-size limit the program started with (limit_file_size)
       type(file_size_limits) :: starting_limits
 
       if (command_argument_count() == 4) then
-         call copy_deck_repeatedly()
+         call get_command_argument(1, mode)
+         if (mode == 'history') then
+            call open_repeatedly()
+         else
+            call copy_deck_repeatedly()
+         end if
          stop
       end if
 
@@ -354,6 +364,42 @@ subroutine copy_deck_repeatedly()
          end if
       end do
 end subroutine copy_deck_repeatedly
+
+! ---------------------------------------------------------------
+! test_io history <path> <times> <rows>: a file kept open for the run
+! opened at path (open_output_file, as the history is) times times over,
+! each time written rows lines, each flushed and checked on disk
+! (flush_output_file, as a history row is), and closed; status 1 at the
+! first open or check that fails, its message on stderr: one of the two
+! runs test_io.py starts at once on one path, as the decks of one
+! directory all write output/history.data (M174)
+subroutine open_repeatedly()
+      character(len=256) :: path, times_text, rows_text, msg
+      integer :: times, rows, i, k, u, ierr, ios
+
+      call get_command_argument(2, path)
+      call get_command_argument(3, times_text)
+      call get_command_argument(4, rows_text)
+      read(times_text, *) times
+      read(rows_text, *) rows
+      do i = 1, times
+         ierr = 0
+         call open_output_file(trim(path), u, ierr)
+         if (ierr == 0) then
+            ios = 0
+            do k = 1, rows
+               write(u, '(a,i0,a,i0)', iostat=ios, iomsg=msg) 'open ', i, ' row ', k
+               call flush_output_file(u, trim(path), ios, msg, ierr)
+               if (ierr /= 0) exit
+            end do
+            close(u)
+         end if
+         if (ierr /= 0) then
+            write(*,'(a,i0,a,i0,a)') 'open ', i, ' of ', times, ' failed'
+            stop 1
+         end if
+      end do
+end subroutine open_repeatedly
 
 ! ---------------------------------------------------------------
 ! a text file of the given lines, replacing any file of that name
@@ -1326,7 +1372,7 @@ subroutine writes_check()
       character(len=200) :: deck_lines(100)
       character(len=256) :: msg
       character(len=8) :: lines(3)
-      integer :: u, ierr, i, j, ios, row_ierr, test_log_unit
+      integer :: u, v, ierr, i, j, ios, row_ierr, test_log_unit
 
       call fill_mod_model(s)
       do j = 1, n_points
@@ -1508,6 +1554,27 @@ subroutine writes_check()
       call close_history(history, ierr)
       call report("writes: a history file another run replaced is not a full disk", ierr == 0 .and. &
            .not. captured(terminal_file, 'replaced_history.data'))
+! Another run that opens the path of a file this run keeps open, as a
+! deck that shares output/history.data does when it starts
+! (open_output_file), makes a new file there: this run's checks see its
+! own lines, not a file cut under it, and the path holds the other run's.
+      ierr = 0
+      call open_output_file('shared_open.txt', u, ierr)
+      do i = 1, 20
+         write(u, '(a,i0)') 'this run''s line ', i
+         call flush_output_file(u, 'shared_open.txt', 0, ' ', ierr)
+      end do
+      row_ierr = 0
+      call open_output_file('shared_open.txt', v, row_ierr)
+      if (row_ierr == 0) write(v, '(a)') 'the other run''s line'
+      if (row_ierr == 0) call flush_output_file(v, 'shared_open.txt', 0, ' ', row_ierr)
+      call flush_output_file(u, 'shared_open.txt', 0, ' ', ierr)
+      close(u)
+      if (row_ierr == 0) close(v)
+      call report("writes: another run's open of a file kept open makes a new one", &
+           ierr == 0 .and. row_ierr == 0 .and. .not. captured(terminal_file, 'shared_open.txt') .and. &
+           count_lines_starting('shared_open.txt', 'the other run') == 1 .and. &
+           count_lines_starting('shared_open.txt', 'this run') == 0)
 ! a file io closes, its path taken by another file before the close:
 ! the file measured is the one this unit wrote
       ierr = 0

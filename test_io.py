@@ -22,7 +22,10 @@ the header of src/io/test/test_io.f90).
 test_two_runs_copy_their_decks_to_one_path runs two copies of the binary
 at once, each copying its own deck to one inlist_used many times over,
 as the decks of one directory all write output/inlist_used when they
-start (docs/bug_sweep.md M177).
+start (docs/bug_sweep.md M177). test_two_runs_write_one_history_path
+runs two at once on one history path, one writing many rows into one
+open while the other opens the path anew many times, as the decks of one
+directory all write output/history.data (M174).
 """
 import pathlib
 import subprocess
@@ -90,3 +93,34 @@ def test_two_runs_copy_their_decks_to_one_path(tmp_path):
     assert partial == 0, f"the path held a partial copy {partial} times while the runs wrote it"
     assert dest.read_text() in whole, "the copy left at the path is not one run's whole copy"
     assert sorted(p.name for p in out.iterdir()) == ["inlist_used"], sorted(p.name for p in out.iterdir())
+
+
+# one run's rows into one open of the path, and the other run's opens of it
+# (the code before the fix failed the first run with "is the disk full?" in
+# five runs of five, within half a second)
+ROWS, OPENS = 20000, 4000
+
+
+def test_two_runs_write_one_history_path(tmp_path):
+    """Two runs that keep one path open for writing at once, as the decks of
+    one directory all write output/history.data (M174): one writes many rows
+    into one open, each flushed and checked on disk as a history row is,
+    while the other opens the path anew many times. Both succeed: each open
+    makes a new file (output_files' open_output_file removes the path
+    first), so the first run's checks see its own rows and never a file cut
+    under it; and the path holds one open's whole file, nothing beside it."""
+    if not BINARY.exists():
+        pytest.skip("src/test_io not built (run `make tests` in src/)")
+    out = tmp_path / "output"
+    out.mkdir()
+    runs = [subprocess.Popen([str(BINARY), "history", "output/history.data", times, rows],
+                             cwd=tmp_path, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            for times, rows in (("1", str(ROWS)), (str(OPENS), "3"))]
+    results = [r.communicate(timeout=300) for r in runs]
+    for k, (r, (stdout, stderr)) in enumerate(zip(runs, results), 1):
+        assert r.returncode == 0, f"run {k}: {stdout}{stderr}"
+    lines = (out / "history.data").read_text().splitlines()
+    opens = {l.split()[1] for l in lines}
+    assert len(opens) == 1 and [l.split()[3] for l in lines] == [str(k) for k in range(1, len(lines) + 1)] \
+        and len(lines) in (3, ROWS), lines[:5]
+    assert sorted(p.name for p in out.iterdir()) == ["history.data"], sorted(p.name for p in out.iterdir())

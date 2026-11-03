@@ -4,8 +4,9 @@
 ! The files io writes, opened, flushed and closed in one way, with a
 ! failure reported through run_messages' check_io ("ERROR: cannot write
 ! <path>: <reason>", ierr = 1, which stops the run with exit 1):
-!   open_output_file   a new file at path (any old one replaced), for
-!                      writing
+!   open_output_file   a new file at path, for writing: a file at path
+!                      that the run may write is removed first
+!                      (remove_file), so the open creates a new one
 !   flush_output_file  the writes so far handed to the system: the first
 !                      failed write reported, and the file's size on
 !                      disk checked
@@ -43,13 +44,18 @@
 ! Another run may write the same path (several decks in one directory
 ! all write output/history.data; M174). So the file measured is the
 ! unit's own, not the one the path names now, which the other run may
-! have put there. And it is measured right after the flush that hands
-! the bytes over, not later: the other run's open with status='replace'
-! truncates the same file in place (gfortran opens an existing file with
-! O_TRUNC, keeping its inode), so a check long after this run's last
-! write would see that run's truncation as this run's write failing.
-! That is why the history, open for the run, is checked at each row and
-! not again at its close.
+! have put there. And a file kept open for the run is created new at its
+! open: open_output_file removes the file at the path first, when the
+! run may write it (a read-only file stays, and the open fails as
+! before). An open with status='replace' alone would truncate an
+! existing file in place (gfortran opens it with O_TRUNC, keeping its
+! inode), cutting the file another run is writing under it, and that
+! run's next measure, between its flush and its lseek, would take the
+! cut for its own write failing. With the path removed first, the other
+! run keeps writing its own file, now nameless, and the path holds the
+! last run to open it. The file is still measured right after each
+! flush, and the history is checked at each row and not again at its
+! close, since another writer may still truncate it in place.
 !
 ! A file written in one go is shared the same way (the decks of one
 ! directory all copy themselves to output/inlist_used as they start, and
@@ -70,11 +76,13 @@ module output_files
       private
       public :: open_output_file, flush_output_file, close_output_file, &
            open_replacement_file, close_replacement_file, replacement_path, &
-           finish_replacement_file
+           finish_replacement_file, remove_file
 
 ! lseek's whence: from the start, from the current offset, from the end
 ! (the same values on macOS and Linux)
       integer(c_int), parameter :: seek_set = 0, seek_cur = 1, seek_end = 2
+! access's mode for writing (the same value on macOS and Linux)
+      integer(c_int), parameter :: w_ok = 2
 
       interface
 ! off_t lseek(int fd, off_t offset, int whence); off_t is 64 bits on
@@ -98,12 +106,27 @@ module output_files
             import :: c_int, c_char
             character(kind=c_char), intent(in) :: path(*)
          end function c_remove
+! int unlink(const char *path): a file's name removed (not a directory)
+         integer(c_int) function c_unlink(path) bind(c, name='unlink')
+            import :: c_int, c_char
+            character(kind=c_char), intent(in) :: path(*)
+         end function c_unlink
+! int access(const char *path, int mode): 0 when the process may, with
+! mode w_ok, write the file
+         integer(c_int) function c_access(path, mode) bind(c, name='access')
+            import :: c_int, c_char
+            character(kind=c_char), intent(in) :: path(*)
+            integer(c_int), value :: mode
+         end function c_access
       end interface
 
 contains
 
 ! ---------------------------------------------------------------
-! A new formatted file at path on unit u (newunit), for writing.
+! A new formatted file at path on unit u (newunit), for writing: a file at
+! path that the run may write is removed first, so that another run
+! writing the old one keeps it whole (the module header); a read-only one
+! stays, and the open reports it.
 subroutine open_output_file(path, u, ierr)
       character(len=*), intent(in) :: path
       integer, intent(out) :: u
@@ -111,10 +134,24 @@ subroutine open_output_file(path, u, ierr)
       character(len=256) :: msg
       integer :: ios
 
+      call remove_file(path)
       open(newunit=u, file=path, status='REPLACE', action='WRITE', form='FORMATTED', &
            iostat=ios, iomsg=msg)
       call check_io(ios, msg, 'write', path, ierr)
 end subroutine open_output_file
+
+! ---------------------------------------------------------------
+! The file at path removed, if there is one and this process may write
+! it: its name unlinked, so that a run that has it open keeps writing it.
+! A read-only file and a directory are left alone, and a path that
+! cannot be removed is left to the open that follows to report.
+subroutine remove_file(path)
+      character(len=*), intent(in) :: path
+      integer(c_int) :: rc
+
+      if (c_access(trim(path) // c_null_char, w_ok) /= 0) return
+      rc = c_unlink(trim(path) // c_null_char)
+end subroutine remove_file
 
 ! ---------------------------------------------------------------
 ! The writes so far on unit u (the file at path) handed to the system:
