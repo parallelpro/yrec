@@ -23,8 +23,10 @@
 ! terminal's unit (nothing writes to an unconnected unit). A test program
 ! may point them elsewhere (test_atm, test_element_diffusion):
 !   run_log_unit    -- the run log (log_output_file, default run.log)
-!   terminal_unit   -- stdout (always 6; kept as a named unit only
-!                      because ~20 files write through it)
+!   terminal_unit   -- the terminal: stdout (6) from the read on
+!                      (assign_unit_numbers), standard error before it;
+!                      a named unit, so that a test can point it at its
+!                      log (test_atm)
 ! The solver diagnostics' gate: the control report_solver_diagnostics, as
 ! the controls read installs it (set_solver_diagnostics).
 ! A run-log write that fails (a full disk) does not stop the run here:

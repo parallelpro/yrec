@@ -19,14 +19,13 @@
 ! needs.
 !
 ! The members of star_info are grouped by lifetime, longest-lived first:
-! per run (the controls, the constants set at setup), per Monte-Carlo run
-! (the Monte-Carlo runs, the run plan), per run card
-! (bookkeeping), per model (the model, its rotation state and regions),
-! per step (control, the start-of-step snapshot, working state), per
-! Newton iteration (the solve, the diagnostics written during it), then
-! the diagnostics written once per converged model, and last the members
-! one module alone uses. Each
-! class opens with a banner,
+! per run (the controls, the constants set at setup), per Monte-Carlo
+! run (the Monte-Carlo runs, the run plan), per run card (bookkeeping),
+! per model (the model, its rotation state and regions), per step
+! (control, the start-of-step snapshot, working state), per Newton
+! iteration (the solve, the diagnostics written during it), then the
+! diagnostics written once per converged model, and last the members one
+! module alone uses. Each class opens with a banner,
 !   ! ==== <class> ====
 ! and a paragraph on what it holds, ending with "Valid:" and when its
 ! values can be trusted. Each member has a comment directly above it,
@@ -208,11 +207,12 @@ module star_info_lib
 ! the solar luminosity with its two logarithms. Each run starts with
 ! monte_carlo's begin_monte_carlo_run, the per-run hook (the first call
 ! in run_yrec's Monte-Carlo loop): it re-arms every run copy of a control
-! from its control, so each run starts from the deck's values, clears the
-! state the previous run left that the next would read
-! (clear_previous_run_state), and then sets these values from the run's
-! sample. Without Monte Carlo they keep
-! the controls' values (the solar luminosity as run_setup copies it).
+! from its control, so each run starts from the deck's values; clears
+! the members found so far that a run leaves and the next would read
+! before writing them (clear_previous_run_state; not a complete list:
+! state/README.md section 7); and then sets these values from the run's
+! sample. Without Monte Carlo they keep the controls' values (the solar
+! luminosity as run_setup copies it).
 ! Valid: the range and the samples from prepare_run on; a run's values
 ! from its begin_monte_carlo_run to its end.
 
@@ -424,8 +424,9 @@ module star_info_lib
             real(dp) :: calibration_target_radius_rsun
 
 ! mixing-length parameter of the current run card [-]; run_driver. From
-! card_mixing_length_alpha(current_card) at each card start (the solar calibration
-! changes the later cards' entries); in .mod; 1.4 before the first card.
+! card_mixing_length_alpha(current_card) at each card start (the solar
+! calibration changes the later cards' entries); in .mod; 1.4 before the
+! first card.
             real(dp) :: mixing_length_alpha = 1.4d0
 ! star_mass at the start of the card, for the profile and pulsation
 ! headers [Msun]; run_driver
@@ -675,9 +676,10 @@ module star_info_lib
             integer :: envelope_cz_bottom_index
 ! first point of the overshoot region below the surface convection zone
 ! (-1: none) [-]; composition_step, rezoning, starting_model,
-! evolve_rotation. From find_convection_zones; with physics%adiabatic_overshoot_active the
-! radiative points envelope_overshoot_bottom_index to
-! envelope_overshoot_top_index take the adiabatic gradient.
+! evolve_rotation. From find_convection_zones; with
+! physics%adiabatic_overshoot_active the radiative points
+! envelope_overshoot_bottom_index to envelope_overshoot_top_index take
+! the adiabatic gradient.
             integer :: envelope_overshoot_bottom_index
 ! last point of that overshoot region (-1: none) [-]; composition_step,
 ! rezoning, starting_model, evolve_rotation
@@ -871,8 +873,8 @@ module star_info_lib
 ! region, the turnover time, the shell physics that rotation uses, the
 ! outer layers of the latest envelope integration, the last rotation
 ! sub-step's omega and time fraction, the step's changes of log P and
-! log T, the accreted mass, the disk-locking gate. A few are printed too (the history prints the
-! turnover time and the photospheric pressure).
+! log T, the accreted mass, the disk-locking gate. A few are printed too
+! (the history prints the turnover time and the photospheric pressure).
 ! Valid: from the stage that writes them; each member says which.
 
 ! d log T/dt over the last step, for the next step's first guess [1/s];
@@ -886,7 +888,11 @@ module star_info_lib
 ! d log r/dt over the last step [1/s]; step_driver, rezoning, run_driver
             real(dp) :: dlog_radius_dt(json)
 ! age of the last converged model, for the disk-locking tests [Gyr];
-! step_driver
+! step_driver. Written after each converged step only (legacy SAGE, as
+! the F77 did): the first step of a run reads 0, and the first step of a
+! later Monte-Carlo run, or of a card that starts again from the starting
+! model, reads the previous run's or card's last age
+! (docs/bug_sweep.md, section 13; open, the authors' decision).
             real(dp) :: disk_gate_age_gyr
 ! convective turnover time one pressure scale height above the base of
 ! the surface convection zone [s]; turnover_timescale, run_driver,
@@ -1256,9 +1262,9 @@ end module star_info_lib
 ! pulse) were then folded in as flat members, and the computed values
 ! once kept in the controls buffer moved here. The module-level star was
 ! removed in 2026-10. The members' F77 homes:
-!   /calsun/    dlum_dx, drad_dx, dlum_dalpha, drad_dalpha, log_l_lsun_prev_check,
-!               log_r_rsun_prev_check, delta_x, delta_alpha,
-!               solar_calibration_converged
+!   /calsun/    dlum_dx, drad_dx, dlum_dalpha, drad_dalpha,
+!               log_l_lsun_prev_check, log_r_rsun_prev_check, delta_x,
+!               delta_alpha, solar_calibration_converged
 !   /cent/      central_log10_temperature, central_log10_pressure,
 !               central_log10_density, envelope_mass_msun, envelope_radius_rsun
 !   /comp2/     envelope_helium_fraction, envelope_he3_fraction
@@ -1296,24 +1302,14 @@ end module star_info_lib
 ! CRRECT and GETROT, so the Newton iterations treated every zone as
 ! radiative.
 !
-! Renamed in 2026-10 (old name first): gravitational_luminosity ->
-! eps_grav; temperature_, pressure_, luminosity_, radius_entropy_term ->
-! dlog_temperature_dt, dlog_pressure_dt, dln_luminosity_dt,
-! dlog_radius_dt; pressure_scale_height_start, _end ->
-! envelope_overshoot_depth_start, _end; trial_log_temperature,
-! trial_log_luminosity, trial_sign_flag -> triangle_log_teff,
-! triangle_log_l, triangle_orientation; istore_flag ->
-! stored_vertex_index; log_r_prev_model -> r_rsun_prev_model (it is
-! linear); solar_calibration_active -> solar_calibration_converged; dage
-! -> age_gyr; accreted_mass_fraction -> accreted_mass (it is a mass);
-! omega_mid (rot_scr%omega_mid before) -> omega_substep (2026-10-28);
-! pulse_dlneps_dlnrho, _dlnt -> pulse_deps_dlnrho, _dlnt (absolute
-! derivatives); mean_molecular_weight -> mu; the module variables
-! env_struct, atmo_struct and observables' ksaha_center -> env_points,
-! atm_points and central_saha_state; es_circulation_velocity,
-! gsf_circulation_velocity, secular_shear_velocity -> the slots of
-! mechanism_velocity. state/README.md section 4 lists the members
-! removed in 2026-10.
+! The members took their readable names in 2026-10: b3a6675b
+! (2026-10-13, the misleading ones), a568e084 (2026-10-29, one convention
+! for earlier values, <member>_start, _prev, _iteration_start) and
+! 0197827c (2026-10-30, the unit suffixes and the names at the star's
+! edge). state/README.md section 5 lists the renames that invited a
+! wrong reading, docs/GLOSSARY.md each member's legacy F77 name, and
+! `git log -S'<old name>' -- src/state/star_info_lib.f90` finds any
+! other; section 4 of the README lists the members removed.
 !
 ! The rotation-scaled solar wind of core/step/mass_change.f90, commented
 ! out on 2026-10-12, read four members that were removed with it: its
@@ -1322,74 +1318,4 @@ end module star_info_lib
 ! precision), and its switch use_rotation_scaled_solar_wind (logical).
 ! Reviving it means declaring them again, in the constants set at setup,
 ! and filling them from the controls.
-!
-! Renamed after the 2026-10-29 review (old name first; the earlier values
-! as <member>_start / _prev, the legacy names, the unit suffixes):
-! old_omega -> omega_start,
-! old_specific_angular_momentum -> j_rot_start,
-! old_hg -> mean_gravity_start, old_mean_radius -> mean_radius_start,
-! old_eta_squared -> eta_squared_start, old_gradT -> gradT_start,
-! old_grada -> grada_start, old_gradr -> gradr_start,
-! old_mu -> mu_start, old_opacity -> opacity_zone_start,
-! old_cp -> cp_start, old_qdt -> dlnrho_dlnt_start,
-! old_conv_vel -> conv_vel_start, old_visc -> kinematic_viscosity_start,
-! old_thdif -> thermal_diffusivity_start,
-! old_eps_total -> eps_total_start,
-! old_eps_plus_neu_grav -> eps_plus_neu_grav_start,
-! kinetic_energy_rot_old -> kinetic_energy_rot_start,
-! convective_turnover_timescale_old -> convective_turnover_timescale_prev,
-! pphot0 -> photosphere_logP_prev,
-! orig_specific_angular_momentum -> j_rot_iteration_start,
-! orig_composition -> xa_iteration_start,
-! jcz -> envelope_cz_bottom_index_start,
-! iov1 -> envelope_overshoot_bottom_index,
-! iov2 -> envelope_overshoot_top_index, vfc -> zahn_coupling,
-! qdt -> dlnrho_dlnt, thdif -> thermal_diffusivity,
-! visc -> kinematic_viscosity, xnew -> surface_hydrogen_fraction,
-! znew -> surface_metal_fraction, senv -> log_fit_point_mass_fraction,
-! zenvm -> envelope_metals_no_cno,
-! amuenv -> envelope_inverse_atomic_weight,
-! fxenv -> envelope_number_fractions, pphot -> photosphere_logP,
-! tenv -> envelope_store_log_temperature, atm_hras -> hsra_log_t_offset,
-! fracstep -> substep_time_fraction,
-! h_shell_zone_begin -> h_shell_bot_index,
-! h_shell_midpoint_zone -> h_shell_mid_index,
-! h_shell_end_index -> h_shell_top_index,
-! envelope_mass -> envelope_mass_msun,
-! core_cz_mass -> core_cz_mass_msun,
-! h_shell_bot_mass -> h_shell_bot_mass_msun,
-! h_shell_mid_mass -> h_shell_mid_mass_msun,
-! h_shell_top_mass -> h_shell_top_mass_msun,
-! envelope_radius -> envelope_radius_rsun,
-! log_R_surface -> log_R_surface_rsun, nu_max -> nu_max_uhz,
-! delta_nu -> delta_nu_uhz, delta_nu_rho -> delta_nu_rho_uhz,
-! age_prev_model -> age_gyr_prev_model,
-! age_at_target_radius -> age_gyr_at_target_radius,
-! log_l_at_target_radius -> log_l_lsun_at_target_radius,
-! log_l_at_target_radius_prev_run -> log_l_lsun_at_target_radius_prev_run,
-! log_l_prev_model -> log_l_lsun_prev_model,
-! log_l_prev -> log_l_lsun_prev_check,
-! log_r_prev -> log_r_rsun_prev_check,
-! luminosity_breakdown -> luminosity_breakdown_lsun,
-! log_L -> log_L_lsun, triangle_log_l -> triangle_log_l_lsun
-! and stotal, a copy of log_total_mass, merged into it.
-!
-! Renamed in the second 2026-10-29 review (old name first): the unit
-! suffixes and one meaning of _prev:
-! h_shell_bot_radius -> h_shell_bot_radius_fraction,
-! h_shell_mid_radius -> h_shell_mid_radius_fraction,
-! h_shell_top_radius -> h_shell_top_radius_fraction,
-! fit_point_pressure -> fit_point_logP,
-! fit_point_temperature -> fit_point_logT,
-! fit_point_radius -> fit_point_logR,
-! neutrino_flux_total -> neutrino_flux_total_e10_per_cm2_s,
-! neutrino_flux_zone -> neutrino_flux_zone_e10_per_cm2_s,
-! cz_base_radius_prev -> cz_base_radius_last_call,
-! envelope_cz_base_zone_prev -> envelope_cz_base_zone_last_call.
-! The envelope kernel's configuration took the members' names
-! (cfg%senv, tenv, atm_hras -> log_fit_point_mass_fraction,
-! envelope_store_log_temperature, hsra_log_t_offset), and so did
-! rotation's sub-step physics (visc, thdif, qdt -> kinematic_viscosity,
-! thermal_diffusivity, dlnrho_dlnt); i_eps_he3, the triple-alpha slot,
-! became i_eps_3alpha.
 !======================================================================

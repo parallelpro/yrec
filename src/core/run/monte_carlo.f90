@@ -10,9 +10,9 @@
 !    read from the sample file (once, from prepare_run);
 !  * begin_monte_carlo_run -- the start of every Monte-Carlo run, the
 !    per-run hook: every run copy of a control re-armed from its control,
-!    the state the previous run left that the next would read cleared
-!    (clear_previous_run_state), then the run's sampled values
-!    (apply_monte_carlo_parameters); a value the run changes per
+!    the other state found so far that a run leaves and the next would
+!    read cleared (clear_previous_run_state), then the run's sampled
+!    values (apply_monte_carlo_parameters); a value the run changes per
 !    Monte-Carlo run is set here;
 !  * write_run_summaries -- the end-of-run bookkeeping, including the
 !    Monte-Carlo model summary (write_monte_carlo_model, legacy
@@ -93,16 +93,17 @@ end subroutine set_monte_carlo_range
 ! and mass-change latches, the atmosphere the surface boundary switched
 ! to, the core extension's factor. The run range, re-armed with them, is
 ! derived again as setup_monte_carlo_runs derived it (the loop's bounds
-! were fixed when it began). The state the previous run left on the star
-! that the next would read before writing it is cleared
-! (clear_previous_run_state). Then the run's samples are applied
+! were fixed when it began). The other state found so far that a run
+! leaves on the star and the next would read before writing it is
+! cleared (clear_previous_run_state). Then the run's samples are applied
 ! (apply_monte_carlo_parameters). On the first run the re-arm and the
 ! clearing change nothing: no run copy but the range is written between
 ! the controls read and the loop, and the cleared state is still the
 ! template star's. A value the run changes per Monte-Carlo run is a
 ! star member of the Monte-Carlo runs class, set here from the run's
 ! sample (as settling_z_factor_in_use); state/README.md, "Add a value
-! the run changes per Monte-Carlo run".
+! the run changes per Monte-Carlo run". The contract below covers this
+! body alone: what the run starts from is its four callees' contracts.
 !   star reads: none
 !   star writes: none
 subroutine begin_monte_carlo_run(s, monte_carlo_run_number, &
@@ -119,9 +120,14 @@ subroutine begin_monte_carlo_run(s, monte_carlo_run_number, &
 end subroutine begin_monte_carlo_run
 
 ! ---------------------------------------------------------------
-! The state a run leaves on the star, other than the run copies, that
-! the next run would read before writing it, put back to its value at
-! the start of the first run (the template star's zero): the
+! The members found so far that a run leaves on the star, other than
+! the run copies, and that the next run would read before writing them,
+! put back to their value at the start of the first run (the template
+! star's zero). The list is what a bisection of the star's classes on
+! four two-run decks found (M169), not one shown to be complete:
+! disk_gate_age_gyr, the disk-locking tests' age, is known to carry over
+! too and is left as it is, the authors' decision (state/README.md
+! section 7; docs/bug_sweep.md section 13). The members: the
 ! start-of-step deuterium rates. compute_burn_rates stores them only in
 ! the zones above the burning cutoff (and while there is deuterium to
 ! burn), and burn_deuterium averages them over a mixed region, the
@@ -147,8 +153,9 @@ end subroutine clear_previous_run_state
 ! cross-section scales r_pp, r_he3he3, r_he3he4 and the extra scale
 ! xs_be7p), each times the factor that takes the code's reference S0 to
 ! the Bahcall & Pinsonneault (1996) value; the metal settling factor;
-! the solar luminosity; and the age scale factor. Outside Monte Carlo it
-! only sets age_scale_factor = 1.
+! the solar luminosity; and the age scale factor. It also sets cards 2
+! and 3's stop ages, which no sample gives (below). Outside Monte Carlo
+! it only sets age_scale_factor = 1.
 !   star reads: mc_samples, physics%monte_carlo_active
 !   star writes: card_max_age_yr, cross_section_scale_in_use,
 !     extra_cross_section_scale_in_use, ln10_over_lsun,
@@ -189,9 +196,15 @@ subroutine apply_monte_carlo_parameters(s, monte_carlo_run_number, &
          s%log10_solar_luminosity = log10(s%solar_luminosity_cgs)
          s%ln10_over_lsun = ln10/s%solar_luminosity_cgs
          age_scale_factor = s%mc_samples%age_factor(monte_carlo_run_number)
-! Stop ages of cards 2 and 3 for a solar age of 4.57 Gyr. With the
-! solar calibration on, setup_solar_calibration overwrites both, with
-! 1e8 yr and target_solar_age times age_scale_factor.
+! Stop ages of cards 2 and 3 for a solar age of 4.57 Gyr, the F77's
+! (main.f:243-244), in every Monte-Carlo run whether or not it
+! calibrates, whatever the deck's max_age: neither sampled nor scaled by
+! the age factor. With the solar calibration on, setup_solar_calibration
+! overwrites both, with 1e8 yr and target_solar_age times
+! age_scale_factor; without it they stand (cm_monte_carlo's card 2 asks
+! 4.568e9 yr and runs with 1e8, stopping at its 10 models first).
+! Whether they stay is the authors' decision (docs/bug_sweep.md
+! section 13).
          s%card_max_age_yr(2)=1.0D8
          s%card_max_age_yr(3)=4.57D9
       else

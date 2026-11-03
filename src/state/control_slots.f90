@@ -30,10 +30,11 @@ module control_slots
 ! fails on a registry cell or a generated per-run size that is not it.
       integer, parameter, public :: max_runs = 50
 
-! Slot names for atime (the per-phase timestep-control factors). The
-! meaning of each slot is fixed by io/user_inputs.f90, which
-! fills it from the like-named time_* namelist inputs when lnewvars
-! is set; readers subscript with these names.
+! Slot names for timestep_factors (legacy atime), the per-phase
+! timestep-control factors. The meaning of each slot is fixed by
+! io/user_inputs.f90, which fills it from the like-named time_* controls
+! when use_new_rate_variables (legacy lnewvars) is set; readers subscript
+! with these names.
       integer, parameter, public :: &
            itime_core_min = 1, &      ! time_core_min: min central abundance for the core-burning criterion
            itime_dx_core_tot = 2, &   ! time_dx_core_tot: max absolute delta-X burned in core per step
@@ -51,9 +52,9 @@ module control_slots
            itime_dy_total = 14        ! time_dy_total: max Msun of Y burned in the shell per step
 
 ! Slot names for chi_grid_scale, the zoning tolerances: the deck's
-! hpttol (zoning_tolerances), or, when lnewvars is set, the like-named
-! tol_*/flag_* controls (io/user_inputs.f90); readers subscript with
-! these names.
+! zoning_tolerances (legacy hpttol), or, when use_new_rate_variables is
+! set, the like-named tol_*/flag_* controls (io/user_inputs.f90);
+! readers subscript with these names.
       integer, parameter, public :: &
            ichi_dm_min = 1, &            ! tol_dm_min: min log-m spacing
            ichi_dm_max = 2, &            ! tol_dm_max: max log-m spacing
