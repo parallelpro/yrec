@@ -10,6 +10,7 @@
 ! star%physics%log_output_file), so nothing here keeps state from the
 ! read.
 module run_files
+      use, intrinsic :: iso_fortran_env, only: output_unit
       use run_messages, only: terminal_unit, run_log_unit, check_io, flush_pending_log
       use star_info_lib, only: star_info
       implicit none
@@ -36,6 +37,12 @@ module run_files
       integer :: starting_model_unit = -1, dynamics_unit = -1, &
            mc_summary_unit = -1, mc_model_unit = -1, isochrone_unit = -1
 
+! The fixed units, which assign_unit_numbers installs: the terminal is
+! standard output; the final model and the run log keep the F77's
+! numbers (PARMIN's ILAST and ISHORT).
+      integer, parameter :: terminal_output_unit = output_unit, &
+           last_model_file_unit = 11, run_log_file_unit = 20
+
 contains
 
 ! ---------------------------------------------------------------
@@ -43,9 +50,9 @@ contains
 ! (run_messages'), and the final model; the read calls this first,
 ! before its paths are expanded.
 subroutine assign_unit_numbers
-      terminal_unit = 6
-      last_model_unit = 11
-      run_log_unit = 20
+      terminal_unit = terminal_output_unit
+      last_model_unit = last_model_file_unit
+      run_log_unit = run_log_file_unit
 end subroutine assign_unit_numbers
 
 ! ---------------------------------------------------------------
@@ -84,11 +91,12 @@ subroutine open_run_files(s, ierr)
       if (ierr /= 0) return
 
       call close_run_files
-      open(newunit=starting_model_unit, file=s%control%first_model_file, form='FORMATTED', status='OLD', &
-           iostat=ios, iomsg=msg)
+      open(newunit=starting_model_unit, file=s%control%first_model_file, form='FORMATTED', &
+           status='OLD', iostat=ios, iomsg=msg)
       call check_io(ios, msg, 'open the starting model', s%control%first_model_file, ierr)
       if (ierr /= 0) return
-      open(unit=last_model_unit,file=s%control%last_model_file,form='FORMATTED',status='UNKNOWN', iostat=ios, iomsg=msg)
+      open(unit=last_model_unit, file=s%control%last_model_file, form='FORMATTED', &
+           status='UNKNOWN', iostat=ios, iomsg=msg)
       call check_io(ios, msg, 'open the final model file', s%control%last_model_file, ierr)
       if (ierr /= 0) return
       if (s%physics%monte_carlo_active) then
@@ -96,12 +104,12 @@ subroutine open_run_files(s, ierr)
               iostat=ios, iomsg=msg)
          call check_io(ios, msg, 'open the Monte Carlo dynamics file', s%control%dynamics_file, ierr)
          if (ierr /= 0) return
-         open(newunit=mc_summary_unit, file=s%control%monte_carlo_file1_path, status='UNKNOWN', form='FORMATTED', &
-              iostat=ios, iomsg=msg)
+         open(newunit=mc_summary_unit, file=s%control%monte_carlo_file1_path, status='UNKNOWN', &
+              form='FORMATTED', iostat=ios, iomsg=msg)
          call check_io(ios, msg, 'open the Monte Carlo summary file', s%control%monte_carlo_file1_path, ierr)
          if (ierr /= 0) return
-         open(newunit=mc_model_unit, file=s%control%monte_carlo_file2_path, status='UNKNOWN', form='FORMATTED', &
-              iostat=ios, iomsg=msg)
+         open(newunit=mc_model_unit, file=s%control%monte_carlo_file2_path, status='UNKNOWN', &
+              form='FORMATTED', iostat=ios, iomsg=msg)
          call check_io(ios, msg, 'open the Monte Carlo model file', s%control%monte_carlo_file2_path, ierr)
          if (ierr /= 0) return
       end if

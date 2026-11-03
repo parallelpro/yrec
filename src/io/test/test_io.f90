@@ -544,9 +544,12 @@ subroutine fields_check()
            interior_gyre_path('d/', 'x', -3) == 'd/x-3.data.GYRE')
       call report("fields: a profile's pulsation file, MESA's name", &
            profile_pulse_path('out/', 'profile', 7, pulse_gyre, .true.) == 'out/profile7.data.GYRE' .and. &
-           profile_pulse_path('out/', 'profile', 9999, pulse_gyre, .true.) == 'out/profile9999.data.GYRE' .and. &
-           profile_pulse_path('out/', 'profile', 12345, pulse_gyre, .false.) == 'out/profile12345.data.GYRE' .and. &
-           profile_pulse_path('out/', 'profile', 12345, pulse_fgong, .true.) == 'out/profile12345.data.FGONG' .and. &
+           profile_pulse_path('out/', 'profile', 9999, pulse_gyre, .true.) == &
+           'out/profile9999.data.GYRE' .and. &
+           profile_pulse_path('out/', 'profile', 12345, pulse_gyre, .false.) == &
+           'out/profile12345.data.GYRE' .and. &
+           profile_pulse_path('out/', 'profile', 12345, pulse_fgong, .true.) == &
+           'out/profile12345.data.FGONG' .and. &
            profile_pulse_path('out/', 'p', 3, pulse_gsm, .true.) == 'out/p3.data.GSM')
       call report("fields: a profile's GYRE file never an interior file's name", &
            profile_pulse_path('out/', 'profile', 12345, pulse_gyre, .true.) == &
@@ -985,8 +988,9 @@ subroutine yrec7_check()
            s%log_L_lsun == through('(F8.5)', 0.0123d0) .and. &
            s%log_total_mass == through('(F14.10)', 33.2d0) .and. &
            s%age_gyr == through('(F13.9)', 4.567d0) .and. h%timestep_yr == 1.0d6 .and. &
-           h%rotation_active .and. h%use_extended_composition .and. h%core_cz_top_index == y7_jcore .and. h%envelope_cz_bottom_index == y7_jenv &
-           .and. h%mixing_length == through('(F7.3)', 1.875d0)
+           h%rotation_active .and. h%use_extended_composition .and. &
+           h%core_cz_top_index == y7_jcore .and. h%envelope_cz_bottom_index == y7_jenv .and. &
+           h%mixing_length == through('(F7.3)', 1.875d0)
       call report("YREC7: the header and the flags", ok)
       ok = h%eos_code == '    ? ' .and. h%atm_code == '  ? ' .and. h%alok_code == '  ? ' &
            .and. h%hik_code == '  ? ' .and. .not. (h%use_diffusion_y .or. h%use_diffusion_z &

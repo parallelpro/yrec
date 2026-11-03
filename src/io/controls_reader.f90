@@ -97,7 +97,8 @@ subroutine read_input(ierr)
       call assign_unit_numbers
 
       print *,''
-      print *,'Yale Rotating Evolution Code - YREC, v',yrec_version_string(1:len_trim(yrec_version_string)),' (',git_hash_string(1:len_trim(git_hash_string)),')'
+      print *,'Yale Rotating Evolution Code - YREC, v', trim(yrec_version_string), &
+           ' (', trim(git_hash_string), ')'
 
 ! The deck: the first command-line argument (default yrec8.nml1), or
 ! the override an embedding host (pyyrec) sets, since argv is the host's.
