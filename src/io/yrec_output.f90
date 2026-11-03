@@ -10,7 +10,10 @@
 !                              profile layout, zone 1 the surface
 !                              (profile_output), with the pulsation file
 !                              in pulse_format beside it
-!                              (pulsation_output).
+!                              (pulsation_output; profile_pulse_path).
+!   <profile_data_prefix><model>.data.GYRE  the interior GYRE file,
+!                              every pulse_gyre_interval models
+!                              (interior_gyre_path).
 !   the .mod model             every model (model_files).
 ! The run log (run_files opens it) gets the progress line every
 ! terminal_interval models (run_log).
@@ -40,12 +43,21 @@ module yrec_output
       public :: output_state, output_open, output_close, output_run_header, &
            output_write_model, output_final_model_line
       public :: pulse_format_code, unknown_pulse_format, pulse_gyre, pulse_fgong, &
-           pulse_gsm, interior_gyre_path
+           pulse_gsm, interior_gyre_path, profile_pulse_path
 
 ! The pulsation file formats pulse_format names (case-insensitive);
 ! unknown_pulse_format for any other name.
       integer, parameter :: unknown_pulse_format = 0, pulse_gyre = 1, &
            pulse_fgong = 2, pulse_gsm = 3
+
+! The interior GYRE file's model number has at least this many digits
+! (zero-padded below); from the first number of as many digits,
+! first_shared_profile, a profile's number has as many too, so that is
+! the first profile whose GYRE file could take an interior file's name
+! (profile_pulse_path).
+      integer, parameter :: interior_model_digits = 5, first_shared_profile = 10000
+! the zero-padded edit of interior_model_digits digits
+      character(len=*), parameter :: interior_model_format = '(i5.5)'
 
 ! One job's output state: the output directory, the profile counter
 ! (the N of profile<N>.data), the pulse format, the history file, the
@@ -237,8 +249,9 @@ end subroutine write_interior_gyre
 
 ! ---------------------------------------------------------------
 ! The interior GYRE file's path: the output directory, the profiles'
-! prefix, the model number zero-padded to five digits (as it is written
-! in full from model 100000 on, and for a negative one), '.data.GYRE'.
+! prefix, the model number zero-padded to interior_model_digits digits
+! (written in full from model 100000 on, and for a negative one),
+! '.data.GYRE'.
 pure function interior_gyre_path(out_dir, prefix, model_number) result(path)
       character(len=*), intent(in) :: out_dir, prefix
       integer, intent(in) :: model_number
@@ -246,7 +259,8 @@ pure function interior_gyre_path(out_dir, prefix, model_number) result(path)
       character(len=24) :: model_text
 
       write(model_text,'(i0)') model_number
-      if (model_number >= 0 .and. len_trim(model_text) < 5) write(model_text,'(i5.5)') model_number
+      if (model_number >= 0 .and. len_trim(model_text) < interior_model_digits) &
+           write(model_text, interior_model_format) model_number
       path = trim(out_dir) // trim(prefix) // trim(model_text) // '.data.GYRE'
 end function interior_gyre_path
 
@@ -283,9 +297,9 @@ end function profile_write_due
 ! .GSM, over the whole extended model (s%stitched's pulse points).
 ! M_star, R_star and L_star refer to the photosphere (atmosphere points
 ! sit above R_star, as in MESA's add_atmosphere).
-!   star reads: log10_solar_radius, log_L_lsun, log_R_surface_rsun,
-!     log_total_mass, physics%profile_data_prefix, solar_luminosity_cgs,
-!     stitched
+!   star reads: control%pulse_gyre_interval, log10_solar_radius,
+!     log_L_lsun, log_R_surface_rsun, log_total_mass,
+!     physics%profile_data_prefix, solar_luminosity_cgs, stitched
 !   star writes: none
 subroutine write_pulse(s, output, iprof, ierr)
       use star_info_lib, only: star_info
@@ -294,7 +308,6 @@ subroutine write_pulse(s, output, iprof, ierr)
       integer, intent(in) :: iprof
       integer, intent(inout) :: ierr
       character(len=:), allocatable :: path
-      character(len=12) :: numstr
       real(dp) :: mstar_g, rstar_cm, lstar_cgs
       integer :: n
 
@@ -302,22 +315,51 @@ subroutine write_pulse(s, output, iprof, ierr)
       rstar_cm = exp(ln10*(s%log_R_surface_rsun + s%log10_solar_radius))
       lstar_cgs = exp(ln10*s%log_L_lsun)*s%solar_luminosity_cgs
 
-      write(numstr, '(i0)') iprof
-      path = trim(output%out_dir) // trim(s%physics%profile_data_prefix) // trim(numstr) // '.data'
+      path = profile_pulse_path(output%out_dir, s%physics%profile_data_prefix, iprof, &
+           output%pulse_format, s%control%pulse_gyre_interval > 0)
       n = s%stitched%n_ext
 ! (output_open has rejected any other format)
       select case (output%pulse_format)
       case (pulse_fgong)
          call write_fgong_pulse(s, n, s%stitched%pulse(:,1:n), mstar_g, rstar_cm, &
-              lstar_cgs, path // '.FGONG', ierr)
+              lstar_cgs, path, ierr)
       case (pulse_gsm)
          call write_gsm_pulse(n, s%stitched%pulse(:,1:n), mstar_g, rstar_cm, &
-              lstar_cgs, path // '.GSM', ierr)
+              lstar_cgs, path, ierr)
       case default
          call write_gyre_pulse(n, s%stitched%pulse(:,1:n), mstar_g, rstar_cm, &
-              lstar_cgs, path // '.GYRE', ierr)
+              lstar_cgs, path, ierr)
       end select
 end subroutine write_pulse
+
+! ---------------------------------------------------------------
+! The pulsation file of profile iprof: the profile's path and the
+! format's name, profile<N>.data.GYRE, .FGONG or .GSM (MESA's names).
+! The one exception: in a run that also writes interior GYRE files
+! (interior_files, pulse_gyre_interval positive), from profile
+! first_shared_profile on a profile's number has the digits of an
+! interior file's model number, so its GYRE file would take the name of
+! model N's interior file and one would replace the other; it is
+! profile<N>.data.profile.GYRE instead.
+pure function profile_pulse_path(out_dir, prefix, iprof, pulse_format, interior_files) result(path)
+      character(len=*), intent(in) :: out_dir, prefix
+      integer, intent(in) :: iprof, pulse_format
+      logical, intent(in) :: interior_files
+      character(len=:), allocatable :: path
+      character(len=12) :: numstr
+
+      write(numstr, '(i0)') iprof
+      path = trim(out_dir) // trim(prefix) // trim(numstr) // '.data'
+      select case (pulse_format)
+      case (pulse_fgong)
+         path = path // '.FGONG'
+      case (pulse_gsm)
+         path = path // '.GSM'
+      case default
+         if (interior_files .and. iprof >= first_shared_profile) path = path // '.profile'
+         path = path // '.GYRE'
+      end select
+end function profile_pulse_path
 
 ! ---------------------------------------------------------------
 ! At the start of each run card: the card's line on the terminal, and

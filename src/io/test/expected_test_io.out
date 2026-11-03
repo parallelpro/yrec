@@ -17,6 +17,8 @@ fields: a number that fits is an I<width> field                        ok
 fields: a wider one in full after a blank, no asterisks                ok
 fields: an output path is built in full, however long                  ok
 fields: the interior GYRE file's model number, 5 digits or all         ok
+fields: a profile's pulsation file, MESA's name                        ok
+fields: a profile's GYRE file never an interior file's name            ok
 columns: a blank file name selects the defaults, in order              ok
 columns: a file selects its names in order, past comments              ok
 columns: an unknown name is an error                                   ok

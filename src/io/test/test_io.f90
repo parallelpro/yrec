@@ -22,7 +22,10 @@
 !   fields       integer_field: a number that fits is right-justified in
 !                its width, as an I<width> edit writes it; a wider one
 !                (a million models in a field of 6) is written in full
-!                after a blank; interior_gyre_path: the model number
+!                after a blank; profile_pulse_path: a profile's
+!                pulsation file under MESA's name, and from profile 10000
+!                on, in a run that writes interior files, a GYRE name no
+!                interior file has; interior_gyre_path: the model number
 !                zero-padded to five digits, in full from 100000 on;
 !   columns      parse_columns on a four-column table: a blank file name
 !                selects the default names, in their order; a columns
@@ -132,7 +135,8 @@ program test_io
       use run_files, only: expand_value, directory_of, run_log_path, copy_inlists_used, &
            isochrone_unit, check_run_log
       use yrec_output, only: pulse_format_code, unknown_pulse_format, &
-           pulse_gyre, pulse_fgong, pulse_gsm, output_run_header, interior_gyre_path
+           pulse_gyre, pulse_fgong, pulse_gsm, output_run_header, interior_gyre_path, &
+           profile_pulse_path
       use run_cards, only: card_evolve
       use output_columns, only: output_column, real_column, integer_column, &
            parse_columns, max_cols, column_name_len, hist_default_names, &
@@ -538,7 +542,31 @@ subroutine fields_check()
            interior_gyre_path('', 'p', 99999) == 'p99999.data.GYRE' .and. &
            interior_gyre_path('out/', 'profile', 123456) == 'out/profile123456.data.GYRE' .and. &
            interior_gyre_path('d/', 'x', -3) == 'd/x-3.data.GYRE')
+      call report("fields: a profile's pulsation file, MESA's name", &
+           profile_pulse_path('out/', 'profile', 7, pulse_gyre, .true.) == 'out/profile7.data.GYRE' .and. &
+           profile_pulse_path('out/', 'profile', 9999, pulse_gyre, .true.) == 'out/profile9999.data.GYRE' .and. &
+           profile_pulse_path('out/', 'profile', 12345, pulse_gyre, .false.) == 'out/profile12345.data.GYRE' .and. &
+           profile_pulse_path('out/', 'profile', 12345, pulse_fgong, .true.) == 'out/profile12345.data.FGONG' .and. &
+           profile_pulse_path('out/', 'p', 3, pulse_gsm, .true.) == 'out/p3.data.GSM')
+      call report("fields: a profile's GYRE file never an interior file's name", &
+           profile_pulse_path('out/', 'profile', 12345, pulse_gyre, .true.) == &
+           'out/profile12345.data.profile.GYRE' .and. no_shared_name())
 end subroutine fields_check
+
+! No profile's GYRE file, in a run that writes interior files, has the
+! name of a model's interior file, for numbers about the digits' edges.
+logical function no_shared_name()
+      integer, parameter :: numbers(9) = [1, 42, 9999, 10000, 12345, 99999, 100000, &
+           123456, 1234567]
+      integer :: i, j
+      no_shared_name = .true.
+      do i = 1, size(numbers)
+         do j = 1, size(numbers)
+            if (profile_pulse_path('out/', 'profile', numbers(i), pulse_gyre, .true.) == &
+                 interior_gyre_path('out/', 'profile', numbers(j))) no_shared_name = .false.
+         end do
+      end do
+end function no_shared_name
 
 ! ---------------------------------------------------------------
 subroutine pulse_format_check()
