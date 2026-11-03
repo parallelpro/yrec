@@ -486,7 +486,15 @@ The generator keeps the count of never-referenced members at zero.
 
 ## 5. Names
 
-Renamed in 2026-10 (the old name in parentheses), because each invited a wrong reading: `eps_grav` (`gravitational_luminosity`; eps_grav in erg/(g s), not a luminosity); `dlog_temperature_dt`, `dlog_pressure_dt`, `dln_luminosity_dt`, `dlog_radius_dt` (the four `*_entropy_term`; rates of change for the next step's first guess); `envelope_overshoot_depth_start`, `_end` (`pressure_scale_height_start`, `_end`; alpha_ov H_P in cm); `triangle_log_teff`, `triangle_log_l_lsun`, `triangle_orientation` (`trial_log_temperature`, `trial_log_luminosity`, `trial_sign_flag`); `stored_vertex_index` (`istore_flag`); `r_rsun_prev_model` (`log_r_prev_model`; linear R/R☉); `solar_calibration_converged` (`solar_calibration_active`); `age_gyr` (`dage`). `star_info_lib.f90`'s Sources section names the commits of the other renames and where each old name is found, and lists the members' F77 homes.
+Renamed in 2026-10 (the old name in parentheses), because each invited a wrong reading:
+- `eps_grav` (`gravitational_luminosity`; eps_grav in erg/(g s), not a luminosity);
+- `dlog_temperature_dt`, `dlog_pressure_dt`, `dln_luminosity_dt`, `dlog_radius_dt` (the four `*_entropy_term`; rates of change for the next step's first guess);
+- `envelope_overshoot_depth_start`, `_end` (`pressure_scale_height_start`, `_end`; alpha_ov H_P in cm);
+- `triangle_log_teff`, `triangle_log_l_lsun`, `triangle_orientation` (`trial_log_temperature`, `trial_log_luminosity`, `trial_sign_flag`);
+- `stored_vertex_index` (`istore_flag`); `r_rsun_prev_model` (`log_r_prev_model`; linear R/R☉);
+- `solar_calibration_converged` (`solar_calibration_active`); `age_gyr` (`dage`).
+
+`star_info_lib.f90`'s Sources section names the commits of the other renames and where each old name is found, and lists the members' F77 homes.
 
 Still to watch:
 
@@ -518,7 +526,10 @@ Each was confirmed on a mutated copy of `star_info_lib.f90` or of this README.
 - the old record names `ctrl` and `job` appear nowhere in `src/`;
 - nothing but `io/controls_sync.f90` assigns `star%control` or `star%physics` (an assignment, a `read` target, an `intent(out)`/`intent(inout)` actual argument), and each record's generated component list holds exactly the controls of its registry group; rotation reads neither record;
 - every run copy is declared with its control's type and shape, its comment names the control and `controls_sync`, and `arm_run_copies` alone sets it from the control;
-- `max_runs` (`state/control_slots.f90`) is the one size of the run cards (`check_max_runs`): every per-run control's registry type cell names `max_runs` (`real(max_runs)`), and every run-card size the generated files give (the records' declarations, the inlist's and the legacy pair's, the controls dump's loops) equals its value. And no dimension of a buffer member or of a registry type cell equals `max_runs`' value without spelling `max_runs` (`literal_run_sizes`), so a new per-run control declared `foo(50)` with a cell `real(50)` cannot pass as an ordinary array. Confirmed on a cell spelled `real(50)`, `max_runs` changed without regenerating, a stale size in each of the four generated files, a new buffer member `foo(50)`, and `rescale_x(50)` or `rescale_params(4,50)` in the buffer with `real(50)` or `real(4,50)` in the registry (the last two passed before), and not tripped by a member of another literal size;
+- `max_runs` (`state/control_slots.f90`) is the one size of the run cards (`check_max_runs`):
+  - every per-run control's registry type cell names `max_runs` (`real(max_runs)`), and every run-card size the generated files give (the records' declarations, the inlist's and the legacy pair's, the controls dump's loops) equals its value;
+  - no dimension of a buffer member or of a registry type cell equals `max_runs`' value without spelling `max_runs` (`literal_run_sizes`), so a new per-run control declared `foo(50)` with a cell `real(50)` cannot pass as an ordinary array;
+  - confirmed on a cell spelled `real(50)`, `max_runs` changed without regenerating, a stale size in each of the four generated files, a new buffer member `foo(50)`, and `rescale_x(50)` or `rescale_params(4,50)` in the buffer with `real(50)` or `real(4,50)` in the registry (the last two passed before), and not tripped by a member of another literal size;
 - any other copy of a control into a star member is in a module its comment names, with the control named: outside the read `s%m = s%<group>%x`; in the read's own files (`CONTROLS_READ_FILES` but `controls_sync`) `s%m = x`, from the control's buffer or legacy name, where a run copy may not be set at all.
 
 These were confirmed on 20 planted violations, among them a copy in an undocumented module, a run copy of another shape, a test's star under another name, and inside the read a run copy set from the legacy name, a copy into a member whose comment does not name the control, and one in a module the comment does not name.
