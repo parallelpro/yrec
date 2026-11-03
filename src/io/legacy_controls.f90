@@ -46,7 +46,6 @@ module legacy_controls
            &    nu_max_sun, delta_nu_sun, Teff_sun, &
            &    inlist_used_file, profile_data_prefix, &
            &    lzramp, lteff, lcalst, lpurez, &
-! MHP 9/24 add LCALSOLZX to namelist
            &    liso, lrwsh, lsenv0a,lcals,lcalsolzx, &
            &    llaol89,lopal92,lopal95,lkur90,lalex95, &
            &    npenv, numrun, nmodls, &
@@ -59,16 +58,11 @@ module legacy_controls
            &    zlaol1,zlaol2,zopal1,zopal2, zopal951, &
            &    zopal952, zalex1, zalex2, zkur1, zkur2, &
            &      fopale01,fcondopacp,fopale06,falex06,lalex06, &
-! MHP 10/24 ADDED END_DCEN,END_XCEN,END_YCEN VECTORS TO NML1, USED IN MAIN
-! MHP 10/24 ADDED HEAVY ELEMENT MIXTURE CONTROLS TO NML1,USED IN STARIN
            &  end_dcen,end_xcen,end_ycen,isetmix,isetiso, &
            &  amix,aiso,frac_c,frac_n,frac_o,r12_13,r14_15,r16_17,r16_18,zxmix, &
            &  xh2_ini,xhe3_ini,xli6_ini,xli7_ini,xbe9_ini,xb10_ini,xb11_ini, &
-! new (2026): GYRE-format periodic pulsation output interval, additive
-! only -- absent from every existing *.nml1 file, so it simply keeps
-! its default (off) there.
            &  pulse_gyre_interval
-!
+
       namelist /physics/ &
            &    atmmin, atmbeg, atmerr, atmmax, atmd0, anewcp, atmp, acfpft, &
            &    atime, alphac, alphae, alfa, alpham, atmstp, abstol, betac, &
@@ -99,22 +93,18 @@ module legacy_controls
            &    xnewcp, xmin, &
            &    ymin, tmolmin,tmolmax, &
            &    lmonte,imbeg,imend,sstandard,lscv, &
-           &    ldisk,tdisk,pdisk,wmax,lsolid,impjmod,  &  !JNT 09/2025 FOR 05/15
+           &    ldisk,tdisk,pdisk,wmax,lsolid,impjmod,  &
            &    dmdt0,fczdmdt,ftotdmdt,compacc,creim,lreimer,lmdot, &
            &    lopale01,lcondopacp,lopale06,lnumderiv, &
-           &    alatm_feh,alatm_alpha,laltptau100, &  ! For new Allard Atmospheres
-           &    cstmixing, cstdiffmix,       &  !CFD oct2009 To mimic mixing(reduce settling)
+           &    alatm_feh,alatm_alpha,laltptau100, &
+           &    cstmixing, cstdiffmix,       &
            &    lsolwind,lmwind,lrossby,lpmm,lbscale, &
            &    awind,pmma,pmmb,pmmc,pmmd,pmmm,pmmjd,pmmmd,pmmwmax, &
-! MHP 8/17 ADDED WMAX_SUN
            &    pmmsolp,pmmsolw,pmmsoltau,lcodm,codm,wmax_sun, &
-! G Somers 6/14
            &    xsli6,xsli7,xsbe91,xsbe92,xsbe93, &
            &    lxli6,lxli7,lxbe91,lxbe92,lxbe93, &
            &    sli6,sli7,sbe91,sbe92,sbe93,lnewnuc, &
            &    spotf, spotx, lsdepth, &
-! G Somers END
-! MHP 09/14 ADDED CROSS SECTIONS
            &    s0_1_1,s0_3_3,s0_3_4,s0_1_12,s0_1_13,s0_1_14,s0_1_16, &
            &    s0_pep,s0_1_be7e,s0_1_be7p,s0_hep,s0_1_15_c12alp,s0_1_15_o16, &
            &    s0p_1_1,s0p_3_3,s0p_3_4,s0p_1_12,s0p_1_13,s0p_1_14, &
@@ -161,3 +151,19 @@ subroutine read_legacy_deck(control_file, physics_file, ierr)
 end subroutine read_legacy_deck
 
 end module legacy_controls
+
+! Sources. The two groups are the F77 PARMIN's CONTROL and PHYSICS
+! namelists (6cd56739, src/parmin.f), whose comments recorded who added
+! which names, and two later additions:
+! - /control/: lcalsolzx (MHP, 9/24); end_dcen, end_xcen and end_ycen, the
+!   card's central-composition stops, and the heavy-element mixture controls
+!   isetmix to xb11_ini (MHP, 10/24); pulse_gyre_interval (2026, the
+!   periodic interior GYRE file: no shipped .nml1 sets it, so it keeps its
+!   default, off).
+! - /physics/: alatm_feh, alatm_alpha and laltptau100 (the newer Allard
+!   atmospheres); cstmixing and cstdiffmix, a mixing that mimics reduced
+!   settling (CFD, 10/2009); wmax_sun (MHP, 8/17); the light-element rate
+!   controls xsli6 to lnewnuc and the star spots spotf, spotx and lsdepth
+!   (G. Somers, 6/14); the S-factors s0_1_1 to s0pp_1_be7p (MHP, 9/14);
+!   impjmod, after the disk locking's ldisk to lsolid (JNT, d91c3a81,
+!   2025-09-04, "for 05/15").
