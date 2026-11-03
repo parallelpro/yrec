@@ -36,6 +36,17 @@ contains
 ! NOTE: this routine is only reached inside an IF(LROT) gate; within
 ! it, whether secular_transport (the rotation-diffusion instability
 ! solver) is called is gated by instability_transport_active (LINSTB).
+!   star reads: convective_turnover_timescale,
+!     convective_turnover_timescale_prev, disk_gate_age_gyr, dm, fp_rot,
+!     ft_rot, grada, gradr, log_L_lsun, log_mass, log_Teff,
+!     log_total_mass, logP, logR, logRho, logT, luminosity_lsun, m, mu,
+!     mu_start, nz, omega_start, photosphere_logP,
+!     photosphere_logP_prev, rate_be9, rate_li6, rate_li7, star_mass
+!   star writes: convective_flag, envelope_overshoot_bottom_index,
+!     envelope_overshoot_depth_end, envelope_overshoot_depth_start,
+!     envelope_overshoot_top_index, eta_squared, i_rot, j_rot,
+!     mean_radius, omega, omega_substep, rate_be9_start, rate_li6_start,
+!     rate_li7_start, substep_time_fraction, xa, xa_start
 subroutine evolve_angular_momentum(s, full_timestep, max_domega_step, wind_loss_active, &
      envelope_boundary_zone_prev, ierr)
       use am_regions, only: am_convective_regions
@@ -444,6 +455,8 @@ end subroutine evolve_angular_momentum
 ! momentum; the history writes these for the model the step ends with
 ! (docs/bug_sweep.md O26). Each zone's E_i, which the structure
 ! equations read, is left to the Henyey pass and the rezone.
+!   star reads: dm, j_rot, nz, omega
+!   star writes: total_angular_momentum, total_rotational_ke
 subroutine total_rotation_state(s)
       use star_info_lib, only: star_info
       type(star_info), intent(inout) :: s

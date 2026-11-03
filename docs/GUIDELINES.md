@@ -258,10 +258,13 @@ docs/TARGET_ARCHITECTURE.md section 4.2.
    `tools/check_star_contracts.py` checks every declared list against the
    code (run by `test_boundaries.py`) and `--fix` rewrites them; write the
    two lines with `none` and let `--fix` fill them in. In `core/`,
-   `setup/` and `io/` every procedure that takes the star
+   `setup/`, `io/` and `rotation/` every procedure that takes the star
    declares them, and the check fails on one that does not (its
-   `REQUIRED_DIRS`; the generated `io/controls_sync.f90` is exempt). The lists cover the
-   procedure's own body; a `star%` field passed to an `intent(inout)`
+   `REQUIRED_DIRS`; the generated `io/controls_sync.f90` is exempt). The
+   lists cover the procedure's own body, not its reach: a call that
+   passes the star whole carries the callee's own contract, so a driver
+   whose callees re-arm the run copies (`begin_monte_carlo_run`) can say
+   `star writes: none`. A `star%` field passed to an `intent(inout)`
    dummy counts as written, so a loose intent in a callee shows up here --
    tighten it rather than editing the list.
 5. **Diagnostics are written once, after convergence; scratch stays

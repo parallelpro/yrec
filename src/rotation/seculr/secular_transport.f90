@@ -99,6 +99,8 @@ contains
 ! omega_surface and cz_moment_of_inertia of the surface convection zone;
 ! star%am_diffusion_coeff and star%mixing_diffusion_coeff for the
 ! profile. A nonzero ierr stops the run.
+!   star reads: disk_gate_age_gyr, nz, omega_substep
+!   star writes: xa
 subroutine apply_secular_transport(s, sub_model, sub_physics, stab, chi_grid, circ_scr, &
      sub_timestep, specific_angular_momentum_saved, &
      zone_min, zone_max, redo_flag, cut_count, &
@@ -292,6 +294,8 @@ end subroutine restore_end_zone_flags
 ! sub-step's omega; and the quadrupole moment of the distorted star, for
 ! the correction of the Eddington-Sweet circulation (compute_quadrupole,
 ! which sets ierr on a zero pivot).
+!   star reads: m, nz, omega_substep
+!   star writes: none
 subroutine set_up_interfaces(s, sub_model, sub_physics, stab, zone_min, zone_max, ierr)
       use stability_coefficients, only: rotation_stability_setup
       use circulation, only: compute_quadrupole
@@ -318,6 +322,8 @@ end subroutine set_up_interfaces
 ! and stab. Under use_zahn_coupling_factor (legacy LVFC), also the Zahn
 ! (1992) coupling factor circ_scr%zahn_coupling, by which diffusion_velocity_scales
 ! scales D_mix (gated on LVFC as in the F77 seculr.f, not on LDIFAD).
+!   star reads: nz, omega_substep, solar_luminosity_cgs
+!   star writes: mechanism_velocity
 subroutine compute_velocities(s, sub_model, sub_physics, stab, circ_scr, &
      zone_min, zone_max, iteration, total_velocity, transport_active)
       use circulation, only: circulation_velocities, zahn_coupling_factor
@@ -348,6 +354,8 @@ end subroutine compute_velocities
 ! sub_model%composition_snapshot, and the convection zones are remixed
 ! to their proper depth (MHP 10/91): otherwise a deepening convection
 ! zone takes the local abundance at its old base.
+!   star reads: dm, nz
+!   star writes: j_rot, omega_substep, xa
 subroutine restart_iteration(s, sub_model, sub_physics, stab, circ_scr, &
      zone_min, zone_max, iteration, omega_start, specific_angular_momentum_saved, &
      total_velocity, transport_active)
@@ -391,6 +399,9 @@ end subroutine restart_iteration
 !    (solid_body_mode_flag = 1 acts like force_solid_body_rotation),
 !    with the caller's cz_moment_of_inertia; omega and the shape are
 !    then recomputed. This branch does not test disk locking.
+!   star reads: disk_gate_age_gyr, dm, log_L_lsun, log_mass, log_Teff,
+!     log_total_mass, nz, star_mass
+!   star writes: j_rot, omega_substep
 subroutine spin_down_uncoupled_surface(s, sub_model, wind, zone_max, cz_uncoupled, &
      sub_timestep, cz_mass_bottom, cz_mass_top, omega_surface, cz_moment_of_inertia, ierr)
       use magnetic_braking, only: brake_convection_zone
@@ -436,6 +447,8 @@ end subroutine spin_down_uncoupled_surface
 ! (diffusion_velocity_scales, with circ_scr's Zahn coupling factor):
 ! D_omega (am_diffusion_coeff, legacy COD) and D_mix
 ! (mixing_diffusion_coeff), copied to the star for the profile.
+!   star reads: mechanism_velocity, nz
+!   star writes: am_diffusion_coeff, mixing_diffusion_coeff
 subroutine set_diffusion_coefficients(s, stab, circ_scr, am_diffusion_coeff, mixing_diffusion_coeff)
       use circulation, only: diffusion_velocity_scales
       type(star_info), intent(inout) :: s
@@ -469,6 +482,9 @@ end subroutine set_diffusion_coefficients
 ! species that set the gradient of the mean molecular weight. A region
 ! of a single unstable interface (chi_grid%single_interface, legacy
 ! LDUM2) is skipped.
+!   star reads: dm, log_L_lsun, log_mass, log_Teff, log_total_mass, m,
+!     nz, omega_substep, star_mass
+!   star writes: j_rot
 subroutine transport_unstable_regions(s, sub_model, sub_physics, stab, chi_grid, wind, &
      zone_min, zone_max, iteration, sub_timestep, total_velocity, &
      am_diffusion_coeff, mixing_diffusion_coeff, omega_start, &
@@ -550,6 +566,8 @@ end subroutine transport_unstable_regions
 ! mean molecular weight. Mixing without angular momentum transport
 ! (no_am_transport_in_core; diffusion_velocity_scales zeros D_omega)
 ! accepts the first iteration (MHP 9/93).
+!   star reads: dm, log_mass, nz
+!   star writes: j_rot, omega_substep, xa
 subroutine check_iterate(s, sub_model, sub_physics, iteration, &
      specific_angular_momentum_prev, specific_angular_momentum_saved, &
      sub_timestep, cut_count, diffusion_solve_ok, redo_flag, ierr)
@@ -584,6 +602,8 @@ end subroutine check_iterate
 ! zone_end, on its grid, during the iterations; across every region,
 ! which the driver rescans (setting zone_begin and zone_end), once
 ! diffusion_solve_ok is set.
+!   star reads: dm, log_mass, log_total_mass, m, nz
+!   star writes: xa
 subroutine mix_composition(s, sub_model, sub_physics, chi_grid, sub_timestep, &
      mixing_diffusion_coeff, total_velocity, zone_min, zone_max, &
      zone_begin, zone_end, diffusion_solve_ok, species_begin, species_end, ierr)
@@ -610,6 +630,10 @@ end subroutine mix_composition
 ! ---------------------------------------------------------------
 ! The step's state the wind laws read: tau_cz and log P_phot at the
 ! start and the end of the step, and the fraction of it elapsed.
+!   star reads: convective_turnover_timescale,
+!     convective_turnover_timescale_prev, photosphere_logP,
+!     photosphere_logP_prev, substep_time_fraction
+!   star writes: none
 function wind_now(s) result(conditions)
       type(star_info), intent(in) :: s
       type(wind_conditions) :: conditions

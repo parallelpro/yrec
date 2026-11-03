@@ -40,6 +40,20 @@ contains
 ! surface convection zone (surface_cz_active, cz_mass_bottom and
 ! cz_mass_top in g, moment_of_inertia_cz in g cm^2); the radiative and
 ! convective zone tables. A nonzero ierr stops the run.
+!   star reads: accreted_mass, conv_vel, conv_vel_start,
+!     convective_flag, convective_flag_start, cp, cp_start,
+!     deuterium_burning_rate, deuterium_burning_rate_start,
+!     disk_gate_age_gyr, dlnrho_dlnt, dlnrho_dlnt_start, dm,
+!     eps_channels, eps_plus_neu_grav_start, eps_total, eps_total_start,
+!     grada, grada_start, gradr, gradr_start, gradT, gradT_start,
+!     kinematic_viscosity, kinematic_viscosity_start, log_mass,
+!     log_total_mass, logP, logP_start, logR, logR_start, logRho,
+!     logRho_start, logT, logT_start, luminosity_lsun,
+!     luminosity_lsun_start, mean_gravity, mean_gravity_start, mu,
+!     mu_start, nz, opacity_zone, opacity_zone_start, solar_mass_cgs,
+!     thermal_diffusivity, thermal_diffusivity_start, xa_start
+!   star writes: envelope_overshoot_bottom_index,
+!     envelope_overshoot_top_index, j_rot, m, omega_substep, xa
 subroutine advance_rotation_substep(s, sub_model, sub_physics, &
      full_timestep, sub_timestep, time_fraction, first_call, &
      moment_of_inertia_cz, cz_mass_bottom, cz_mass_top, &
@@ -383,6 +397,8 @@ end subroutine advance_rotation_substep
 ! 2. While star%settling_active, settle helium (settle_helium).
 ! 3. Clip and renormalize the abundances (renormalize_composition).
 ! A nonzero ierr stops the run.
+!   star reads: none
+!   star writes: settling_active, settling_suspended_reported
 subroutine burn_and_settle(s, sub_physics, timestep, composition, shell_mass, log_temperature, &
      rate_by_zone, num_zones, radiative_zone_bounds, convective_zone_bounds, &
      num_radiative_zones, num_convective_zones, log_total_mass, &
