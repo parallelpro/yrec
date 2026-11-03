@@ -79,8 +79,9 @@ io/default_columns.inc: defaults/history_columns.list \
 # (each control's declaration, default and description) and the registry
 # defaults/controls_registry.tsv (its names, group, home, run copy):
 # make reruns the three controls generators when either, or what they
-# read, changes. A generator rewrites only the files whose text changes
-# (tools/generated_files.py), so only their users recompile. The files
+# read, changes, and when one of the files is missing. A generator
+# rewrites only the files whose text changes (tools/generated_files.py),
+# so only their users recompile. The files
 # stay committed, and test_generated_files.py checks them (--check). The
 # stamp .controls_generated records the last run.
 CONTROLS_INPUTS := io/controls_buffer.f90 defaults/controls_registry.tsv \
@@ -102,6 +103,11 @@ CONTROLS_GENERATED := state/control_group_def.inc state/physics_group_def.inc \
 	python3 tools/gen_controls_dump.py
 	@touch $@
 $(CONTROLS_GENERATED): .controls_generated ;
+# A generated file that is missing (deleted by hand) makes the stamp stale,
+# so the generators run again and write it.
+ifneq ($(filter-out $(wildcard $(CONTROLS_GENERATED)),$(CONTROLS_GENERATED)),)
+CONTROLS_STAMP_REMOVED := $(shell rm -f .controls_generated)
+endif
 MODULE_OBJS := $(patsubst %.f90,%.o,$(MODULE_SRCS))
 
 $(filter-out $(MODULE_OBJS),$(OBJS)): | $(MODULE_OBJS)

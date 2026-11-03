@@ -41,7 +41,7 @@ Every io procedure that touches the star takes it as an argument, `s` (`type(sta
 
 The test programs and their pinned outputs are in `io/test/` (§4).
 
-**Generated files** (committed; `make` reruns the three controls generators when `controls_buffer.f90`, the registry or what they read changes, and `gen_default_columns.py` when a `.list` does, and a generator rewrites only the files whose text changes, so only their users recompile; `test_generated_files.py` checks they are current; each generator takes `--check`; CI runs all six, §4):
+**Generated files** (committed; `make` reruns the three controls generators when `controls_buffer.f90`, the registry or what they read changes, or one of their files is missing, and `gen_default_columns.py` when a `.list` does, and a generator rewrites only the files whose text changes, so only their users recompile; `test_generated_files.py` checks they are current; each generator takes `--check`; CI runs all six, §4):
 
 | File | Generator | From |
 |---|---|---|
