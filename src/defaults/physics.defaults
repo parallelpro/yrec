@@ -242,7 +242,7 @@
       ! (legacy name: igsf)
       gsf_inhibition_mode = 1
 
-      ! The Coulomb logarithm of the settling coefficients (4, a constant 2.2, is recommended)
+      ! The Coulomb logarithm of the original settling routines: 2 Noerdlinger's formula, 3 Loeb's, any other value a constant 2.2; with 4, the full Thoul et al. solution takes each pair of species' own logarithm (the shipped decks recommend 4). The read sets it to 4 when diffuse_lithium is on, whatever the deck sets.
       ! (legacy name: ilambda)
       coulomb_log_choice = 1
 
@@ -266,19 +266,19 @@
       ! (legacy name: lnoj)
       no_am_transport_in_core = .false.
 
-      ! Use the new diffusion routines
+      ! Use the new diffusion routines, the only ones that settle Li and Be (off: the original ones). The read turns it on when diffuse_lithium is on, whatever the deck sets.
       ! (legacy name: lnewdif)
       use_new_diffusion_routines = .false.
 
-      ! Gravitational settling of helium (and hydrogen)
+      ! Gravitational settling of helium (and hydrogen). The read turns it on when use_diffusion_z or diffuse_lithium is on, whatever the deck sets.
       ! (legacy name: ldify)
       diffuse_helium_active = .false.
 
-      ! Gravitational settling of the metals (implies helium settling and the Thoul et al. routines)
+      ! Gravitational settling of the metals. When it is on, the read also turns on diffuse_helium_active and use_thoul_diffusion; and the read turns it on when diffuse_lithium is on, whatever the deck sets.
       ! (legacy name: ldifz)
       use_diffusion_z = .false.
 
-      ! Include Li/Be in gravitational settling
+      ! Gravitational settling of Li and Be (by the new diffusion routines). When it is on, the read sets, whatever the deck sets: use_diffusion_z on (so the metals settle too), diffuse_helium_active, use_thoul_diffusion and use_new_diffusion_routines on, use_thoul_fit off and coulomb_log_choice 4.
       ! (legacy name: ldifli)
       diffuse_lithium = .false.
 
@@ -322,7 +322,7 @@
       ! (legacy name: lrot)
       rotation_flag = .false.
 
-      ! Force a fresh envelope-fit triangle at run start
+      ! A new envelope-fit triangle at each model's first iteration, rather than the previous model's (a rotating run needs it). The read turns it on in a rotating run (rotation_flag), whatever the deck sets.
       ! (legacy name: lnew0)
       new_triangle_init_flag = .false.
 
@@ -358,11 +358,11 @@
       ! (legacy name: lnulos1)
       use_itoh_neutrino_loss = .false.
 
-      ! Thoul et al. diffusion coefficients
+      ! The Thoul et al. diffusion coefficients, in the original settling routines. The read turns it on when use_diffusion_z or diffuse_lithium is on, whatever the deck sets.
       ! (legacy name: lthoul)
       use_thoul_diffusion = .false.
 
-      ! Use the published fit to the Thoul et al. settling coefficients instead of the full solution (not recommended)
+      ! Use the published fit to the Thoul et al. settling coefficients instead of the full solution (not recommended), in the original settling routines. The read turns it off when diffuse_lithium is on, whatever the deck sets.
       ! (legacy name: lthoulfit)
       use_thoul_fit = .false.
 

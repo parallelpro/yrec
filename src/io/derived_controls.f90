@@ -2,13 +2,15 @@
 ! derived_controls
 !----------------------------------------------------------------------
 ! The controls computed from the ones read: the light-element rate
-! scales, one OPAL EOS and one low-temperature opacity source, a fresh
-! envelope triangle for rotating runs, the starting model's mixture
-! changes, the switches that diffusion options imply and the envelope's
-! storage temperature; and it writes the run log's header. Its messages go to the terminal and the run log
-! through run_messages (report_warning, report_note); the errors are
-! controls_check's. Everything here works on the controls' code names,
-! in the read's buffer (controls_buffer).
+! scales, one OPAL EOS and one low-temperature opacity source, a new
+! envelope triangle at every model of a rotating run, the starting
+! model's mixture changes, the switches that the settling options imply
+! and the envelope's storage temperature; and it writes the run log's
+! header. Several of these overwrite what the deck set, without a message
+! (each control's description says so). Its messages go to the terminal
+! and the run log through run_messages (report_warning, report_note); the
+! errors are controls_check's. Everything here works on the controls'
+! code names, in the read's buffer (controls_buffer).
 module derived_controls
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use yrec_version, only: yrec_version_string, git_hash_string
@@ -155,9 +157,10 @@ subroutine select_eos_and_opacity_tables
 end subroutine select_eos_and_opacity_tables
 
 ! ---------------------------------------------------------------
-! Rotating runs start with a fresh envelope-fit triangle. (The wind
-! law's coefficients, the cz_rotation_law_exponent clamp and the solid-body flag are the
-! rotation settings builder's, setup/rotation_settings_builder.f90.)
+! A rotating run computes a new envelope-fit triangle at every model,
+! whatever the deck sets. (The wind law's coefficients, the
+! cz_rotation_law_exponent clamp and the solid-body flag are the rotation
+! settings builder's, setup/rotation_settings_builder.f90.)
 subroutine derive_rotation_controls
       new_triangle_init_flag = .true.
 end subroutine derive_rotation_controls
@@ -289,8 +292,12 @@ subroutine select_isotope_mixture
 end subroutine select_isotope_mixture
 
 ! ---------------------------------------------------------------
-! Metal diffusion needs helium diffusion and the Thoul et al. routines;
-! lithium diffusion needs all of the new diffusion routines.
+! The settling switches the options imply, whatever the deck sets (as
+! PARMIN did): metal settling turns on helium settling and the Thoul et al.
+! coefficients; Li/Be settling turns on metal and helium settling, the
+! Thoul et al. coefficients and the new diffusion routines (the only ones
+! that settle Li and Be), turns the Thoul et al. fit off and takes Coulomb
+! logarithm 4. The last three are read only by the original routines.
 subroutine derive_diffusion_switches
       if (use_diffusion_z) then
          diffuse_helium_active = .true.

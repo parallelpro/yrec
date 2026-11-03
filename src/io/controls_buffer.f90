@@ -886,7 +886,9 @@ module controls_buffer
       real(dp) :: tri_delta_teffl = 1.0d-2
 ! Envelope-fit triangle: size in log L
       real(dp) :: tri_delta_logl = 8.0d-2
-! Force a fresh envelope-fit triangle at run start
+! A new envelope-fit triangle at each model's first iteration, rather than the
+! previous model's (a rotating run needs it). The read turns it on in a
+! rotating run (rotation_flag), whatever the deck sets.
       logical :: new_triangle_init_flag = .false.
 ! Envelope generation: the atmosphere step size
       real(dp) :: atm_step_size = 0.5d0
@@ -1109,19 +1111,29 @@ module controls_buffer
 
 ! ---- Gravitational settling and element diffusion
 
-! Gravitational settling of helium (and hydrogen)
+! Gravitational settling of helium (and hydrogen). The read turns it on when
+! use_diffusion_z or diffuse_lithium is on, whatever the deck sets.
       logical :: diffuse_helium_active = .false.
-! Gravitational settling of the metals (implies helium settling and the Thoul
-! et al. routines)
+! Gravitational settling of the metals. When it is on, the read also turns on
+! diffuse_helium_active and use_thoul_diffusion; and the read turns it on when
+! diffuse_lithium is on, whatever the deck sets.
       logical :: use_diffusion_z = .false.
-! Include Li/Be in gravitational settling
+! Gravitational settling of Li and Be (by the new diffusion routines). When it
+! is on, the read sets, whatever the deck sets: use_diffusion_z on (so the
+! metals settle too), diffuse_helium_active, use_thoul_diffusion and
+! use_new_diffusion_routines on, use_thoul_fit off and coulomb_log_choice 4.
       logical :: diffuse_lithium = .false.
-! Thoul et al. diffusion coefficients
+! The Thoul et al. diffusion coefficients, in the original settling routines.
+! The read turns it on when use_diffusion_z or diffuse_lithium is on, whatever
+! the deck sets.
       logical :: use_thoul_diffusion = .false.
 ! Use the published fit to the Thoul et al. settling coefficients instead of
-! the full solution (not recommended)
+! the full solution (not recommended), in the original settling routines. The
+! read turns it off when diffuse_lithium is on, whatever the deck sets.
       logical :: use_thoul_fit = .false.
-! Use the new diffusion routines
+! Use the new diffusion routines, the only ones that settle Li and Be (off: the
+! original ones). The read turns it on when diffuse_lithium is on, whatever the
+! deck sets.
       logical :: use_new_diffusion_routines = .false.
 ! Gravitational settling: the factor on helium's settling coefficients
       real(dp) :: settling_y_factor = 1.0d0
@@ -1134,8 +1146,11 @@ module controls_buffer
       integer :: settling_num_iterations = 10
 ! Gravitational settling: sub-timestep as a fraction of the timestep
       real(dp) :: settling_timestep_fraction = 0.1d0
-! The Coulomb logarithm of the settling coefficients (4, a constant 2.2, is
-! recommended)
+! The Coulomb logarithm of the original settling routines: 2 Noerdlinger's
+! formula, 3 Loeb's, any other value a constant 2.2; with 4, the full Thoul et
+! al. solution takes each pair of species' own logarithm (the shipped decks
+! recommend 4). The read sets it to 4 when diffuse_lithium is on, whatever the
+! deck sets.
       integer :: coulomb_log_choice = 1
 ! Settling stops (for the rest of the run card) once the central X falls below
 ! this
