@@ -27,7 +27,7 @@
 
 module controls_buffer
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use control_slots, only: max_runs
+      use control_slots, only: max_runs, n_rescale_targets
       use reaction_layout, only: num_reactions, num_extra_scales, num_sstandard
       implicit none
 ! The buffer is the read's shared state: every member, and the named
@@ -92,8 +92,9 @@ module controls_buffer
 ! beyond); derived by the run plan
       integer :: rescale_kind(max_runs)
 ! Per card: a rescaling card's targets M, X, Z and core mass (rescale_mass,
-! rescale_x, rescale_z, rescale_core_mass); derived by the run plan
-      real(dp) :: rescale_params(4,max_runs)
+! rescale_x, rescale_z, rescale_core_mass), by control_slots' rows
+! i_target_*; derived by the run plan
+      real(dp) :: rescale_params(n_rescale_targets,max_runs)
 ! Starting hydrogen mass fraction X, per run card
       real(dp) :: initial_x_array(max_runs) = 0
 ! Starting metal mass fraction Z, per run card

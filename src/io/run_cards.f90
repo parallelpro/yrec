@@ -8,6 +8,8 @@ module run_cards
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use run_messages, only: terminal_unit, log_line
       use output_columns, only: integer_field
+      use control_slots, only: i_target_mass, i_target_x, i_target_z, &
+           i_target_core_mass, n_rescale_targets
       use controls_buffer, only: num_runs, run_kind, num_models, target_end_age, &
            timestep_override, central_deuterium_stop, central_hydrogen_stop, &
            central_helium_stop, rescale_mass, rescale_x, rescale_z, rescale_core_mass, &
@@ -62,8 +64,12 @@ subroutine interpret_kind_cards
       do n = 1, num_runs
          rescale_kind(n) = run_kind(n)
          if (evolves(n)) call set_stop_flags(n)
-         if (rescales(n)) rescale_params(:,n) = [rescale_mass(n), rescale_x(n), &
-              rescale_z(n), rescale_core_mass(n)]
+         if (rescales(n)) then
+            rescale_params(i_target_mass,n) = rescale_mass(n)
+            rescale_params(i_target_x,n) = rescale_x(n)
+            rescale_params(i_target_z,n) = rescale_z(n)
+            rescale_params(i_target_core_mass,n) = rescale_core_mass(n)
+         end if
          call echo_card(n)
       end do
 end subroutine interpret_kind_cards
@@ -126,7 +132,8 @@ subroutine echo_card(n)
       end select
       call echo(line)
       if (rescales(n)) then
-         write(line,targets_format) integer_field(num_models(n), 3), (rescale_params(i,n), i = 1,4)
+         write(line,targets_format) integer_field(num_models(n), 3), &
+              (rescale_params(i,n), i = 1, n_rescale_targets)
          call echo(line)
       end if
       if (evolves(n) .and. (end_age_stop_active(n) .or. timestep_override_active(n))) then

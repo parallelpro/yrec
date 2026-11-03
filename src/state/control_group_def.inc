@@ -8,7 +8,7 @@
             logical :: first_call_flag(max_runs) = .true.
             integer :: set_initial_model_number = 1
             integer :: rescale_kind(max_runs) = 0
-            real(dp) :: rescale_params(4,max_runs) = 0.0d0
+            real(dp) :: rescale_params(n_rescale_targets,max_runs) = 0.0d0
             real(dp) :: initial_x_array(max_runs) = 0
             real(dp) :: initial_z_array(max_runs) = 0
             real(dp) :: mixing_length_array(max_runs) = 0

@@ -388,7 +388,7 @@ physics	-	logical	write_pulse_flag	live		write_pulse_flag	physics		run
 physics	-	logical	compute_neutrino_fluxes	live		compute_neutrino_fluxes	physics		run		
 control	-	logical(max_runs)	end_age_stop_active	derived		end_age_stop_active	control	card_stops_active	run		
 control	-	logical(max_runs)	timestep_override_active	derived		timestep_override_active	control	card_fixed_timestep_active	run		
-control	-	real(4,max_runs)	rescale_params	derived		rescale_params	control	card_rescale_targets	run		
+control	-	real(n_rescale_targets,max_runs)	rescale_params	derived		rescale_params	control	card_rescale_targets	run		
 control	-	integer(max_runs)	rescale_kind	derived		rescale_kind	control	card_kind	run		
 physics	-	integer	new_species_index	derived		new_species_index	physics		run		
 physics	-	logical	value_relative_to_h	derived		value_relative_to_h	physics		run		

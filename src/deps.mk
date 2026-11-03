@@ -427,7 +427,7 @@ io/output_columns.o: run_messages.mod
 io/output_files.o: run_messages.mod
 io/profile_output.o: output_columns.mod output_files.mod star_info_lib.mod stitched_model.mod
 io/pulsation_output.o: math_lib.mod output_files.mod physical_constants.mod run_messages.mod star_info_lib.mod stitched_model.mod
-io/run_cards.o: controls_buffer.mod output_columns.mod run_messages.mod
+io/run_cards.o: control_slots.mod controls_buffer.mod output_columns.mod run_messages.mod
 io/run_files.o: output_files.mod run_messages.mod star_info_lib.mod
 io/run_log.o: run_messages.mod star_info_lib.mod
 io/test/test_controls.o: controls_buffer.mod controls_reader.mod controls_sync.mod run_files.mod run_messages.mod star_info_lib.mod
