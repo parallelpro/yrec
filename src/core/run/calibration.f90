@@ -7,6 +7,7 @@
 ! trial (check_solar_calibration, check_star_calibration).
 module calibration
       use star_info_lib, only: star_info
+      use control_slots, only: i_target_x, i_target_z
       implicit none
       private
       public :: check_solar_calibration, check_star_calibration, setup_solar_calibration, setup_star_calibration
@@ -116,31 +117,31 @@ subroutine check_solar_calibration(s, log_l_lsun, log_r_rsun, run_index, current
          s%card_mixing_length_alpha(run_index+3) = s%card_mixing_length_alpha(run_index+1)
 ! Z/X calibration: Z_new = Z_old (Z/X)_target / (Z/X)_current.
          if(s%control%calibrate_solar_zx)then
-            s%card_rescale_targets(3,run_index+1) = &
-                 s%card_rescale_targets(3,run_index-2)*s%control%target_solar_zx/current_zx
-            delta_z = s%card_rescale_targets(3,run_index+1) - &
-                 s%card_rescale_targets(3,run_index-2)
-            s%card_initial_z(run_index+1) = s%card_rescale_targets(3,run_index+1)
-            s%card_initial_z(run_index+2) = s%card_rescale_targets(3,run_index+1)
-            s%card_initial_z(run_index+3) = s%card_rescale_targets(3,run_index+1)
+            s%card_rescale_targets(i_target_z,run_index+1) = &
+                 s%card_rescale_targets(i_target_z,run_index-2)*s%control%target_solar_zx/current_zx
+            delta_z = s%card_rescale_targets(i_target_z,run_index+1) - &
+                 s%card_rescale_targets(i_target_z,run_index-2)
+            s%card_initial_z(run_index+1) = s%card_rescale_targets(i_target_z,run_index+1)
+            s%card_initial_z(run_index+2) = s%card_rescale_targets(i_target_z,run_index+1)
+            s%card_initial_z(run_index+3) = s%card_rescale_targets(i_target_z,run_index+1)
          endif
-         s%card_rescale_targets(2,run_index+1) = s%card_rescale_targets(2,run_index-2)+s%delta_x
-         s%card_initial_x(run_index+1) = s%card_rescale_targets(2,run_index+1)
-         s%card_initial_x(run_index+2) = s%card_rescale_targets(2,run_index+1)
-         s%card_initial_x(run_index+3) = s%card_rescale_targets(2,run_index+1)
+         s%card_rescale_targets(i_target_x,run_index+1) = s%card_rescale_targets(i_target_x,run_index-2)+s%delta_x
+         s%card_initial_x(run_index+1) = s%card_rescale_targets(i_target_x,run_index+1)
+         s%card_initial_x(run_index+2) = s%card_rescale_targets(i_target_x,run_index+1)
+         s%card_initial_x(run_index+3) = s%card_rescale_targets(i_target_x,run_index+1)
          write(terminal_unit,*) "New BL, Old BL, Delta BL: ", &
              log_l_lsun, s%log_l_lsun_prev_check, log_l_lsun-s%log_l_lsun_prev_check
          write(terminal_unit,*) "New RL, Old RL, Delta RL: ", &
              log_r_rsun, s%log_r_rsun_prev_check, log_r_rsun-s%log_r_rsun_prev_check
          write(terminal_unit,*) "New X, Old X, DX: ", &
-             s%card_rescale_targets(2,run_index+1), s%card_rescale_targets(2,run_index-2), &
+             s%card_rescale_targets(i_target_x,run_index+1), s%card_rescale_targets(i_target_x,run_index-2), &
              s%delta_x
          write(terminal_unit,*) "New A, Old A, DA: ", &
              s%card_mixing_length_alpha(run_index+1), &
              s%card_mixing_length_alpha(run_index-2), s%delta_alpha
          if(s%control%calibrate_solar_zx)then
             write(terminal_unit,*) "New Z, Old Z, DZ: ", &
-             s%card_rescale_targets(3,run_index+1), s%card_rescale_targets(3,run_index-2), &
+             s%card_rescale_targets(i_target_z,run_index+1), s%card_rescale_targets(i_target_z,run_index-2), &
              delta_z
          endif
          s%log_l_lsun_prev_check = log_l_lsun
@@ -212,7 +213,7 @@ subroutine check_star_calibration(s, log_l_lsun, log_teff, current_age, run_inde
 !   star%log_l_lsun_at_target_radius           log(L/Lsun) at R*
 !   star%log_l_lsun_at_target_radius_prev_run  the same, from the previous run
 !   prev_x                                X of the previous run,
-!                                         card_rescale_targets(2, run_index-1)
+!                                         card_rescale_targets(i_target_x, run_index-1)
 !
 ! Has the track crossed R*? R/Rsun = sqrt(L/(4 pi sigma))/(Teff^2 Rsun).
 ! If it has not, store this model's L, age and R and return.
@@ -256,10 +257,10 @@ subroutine check_star_calibration(s, log_l_lsun, log_teff, current_age, run_inde
            (r_rsun_current-s%r_rsun_prev_model)
       s%age_gyr_at_target_radius = current_age + &
            dage_dlogr*(s%calibration_target_radius_rsun-r_rsun_current)
-      write(*,*) ' X, LogL/Lsun at R* =', s%card_rescale_targets(2,run_index-1), &
+      write(*,*) ' X, LogL/Lsun at R* =', s%card_rescale_targets(i_target_x,run_index-1), &
            s%log_l_lsun_at_target_radius
       write(run_log_unit,*) '#X, LogL/Lsun at R* =', &
-           s%card_rescale_targets(2,run_index-1), s%log_l_lsun_at_target_radius
+           s%card_rescale_targets(i_target_x,run_index-1), s%log_l_lsun_at_target_radius
       if (abs(exp10(s%log_l_lsun_at_target_radius)-s%control%target_luminosity_lsun) &
            .le. s%control%target_star_luminosity_tolerance) then
 ! The track passes through the target L and R. Do one more run with the
@@ -270,8 +271,8 @@ subroutine check_star_calibration(s, log_l_lsun, log_teff, current_age, run_inde
        s%card_max_age_yr(run_index+1) = s%age_gyr_at_target_radius*1.0d9
        s%card_stops_active(run_index+2) = .true.
        s%card_max_age_yr(run_index+2) = s%age_gyr_at_target_radius*1.0d9
-       s%card_rescale_targets(2,run_index+1) = s%card_rescale_targets(2,run_index-1)
-       s%card_initial_x(run_index+1) = s%card_rescale_targets(2,run_index+1)
+       s%card_rescale_targets(i_target_x,run_index+1) = s%card_rescale_targets(i_target_x,run_index-1)
+       s%card_initial_x(run_index+1) = s%card_rescale_targets(i_target_x,run_index+1)
        s%card_initial_x(run_index+2) = s%card_initial_x(run_index+1)
 !
       write(*,*) ' Have hit R* & L*, prepare final run to age:', &
@@ -284,9 +285,9 @@ subroutine check_star_calibration(s, log_l_lsun, log_teff, current_age, run_inde
 ! First pass: save log L at R*, lower X by x_calibration_step (Y up by
 ! the same at fixed Z), and start the next run.
             s%log_l_lsun_at_target_radius_prev_run = s%log_l_lsun_at_target_radius
-          prev_x = s%card_rescale_targets(2,run_index-1)
+          prev_x = s%card_rescale_targets(i_target_x,run_index-1)
           new_x = prev_x - x_calibration_step
-          s%card_rescale_targets(2,run_index+1) = new_x
+          s%card_rescale_targets(i_target_x,run_index+1) = new_x
           s%card_initial_x(run_index+1) = new_x
           s%card_initial_x(run_index+2) = new_x
 !
@@ -298,11 +299,11 @@ subroutine check_star_calibration(s, log_l_lsun, log_teff, current_age, run_inde
 ! the previous run's X and log L at R*,
 !   dX/dlog L = (X_n - X_n-1)/(log L(R*)_n - log L(R*)_n-1),
 !   X_new = X_n + (dX/dlog L) (log L* - log L(R*)_n),
-! with X_n = card_rescale_targets(2, run_index-1) and
-! X_n-1 = card_rescale_targets(2, run_index-3).
+! with X_n = card_rescale_targets(i_target_x, run_index-1) and
+! X_n-1 = card_rescale_targets(i_target_x, run_index-3).
 ! Save log L(R*) and start the next run.
-            new_x = s%card_rescale_targets(2, run_index-1)
-          prev_x = s%card_rescale_targets(2, run_index-3)
+            new_x = s%card_rescale_targets(i_target_x, run_index-1)
+          prev_x = s%card_rescale_targets(i_target_x, run_index-3)
             dx_dlogl = (new_x-prev_x)/ &
                  (s%log_l_lsun_at_target_radius-s%log_l_lsun_at_target_radius_prev_run)
           new_x = dx_dlogl*(log10(s%control%target_luminosity_lsun)- &
@@ -311,7 +312,7 @@ subroutine check_star_calibration(s, log_l_lsun, log_teff, current_age, run_inde
       write(*,*) ' Setup next run, NK, X =', run_index, new_x
       write(run_log_unit, *) ' Setup next run, NK, X =', run_index, new_x
           s%log_l_lsun_at_target_radius_prev_run = s%log_l_lsun_at_target_radius
-          s%card_rescale_targets(2,run_index+1) = new_x
+          s%card_rescale_targets(i_target_x,run_index+1) = new_x
           s%card_initial_x(run_index+1) = new_x
           s%card_initial_x(run_index+2) = new_x
        end if

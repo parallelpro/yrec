@@ -7,6 +7,7 @@
 ! (prepare_run).
 module run_setup
       use star_info_lib, only: star_info
+      use control_slots, only: i_target_z
       implicit none
       private
       public :: prepare_run, set_up_constants_and_tables
@@ -60,8 +61,8 @@ subroutine set_run_plan_envelope_z(s)
       integer :: n
 
       do n = 1, s%num_cards
-         if (s%card_rescale_targets(3,n) > 0.0d0) &
-              s%envelope_metal_fraction = s%card_rescale_targets(3,n)
+         if (s%card_rescale_targets(i_target_z,n) > 0.0d0) &
+              s%envelope_metal_fraction = s%card_rescale_targets(i_target_z,n)
       end do
       call install_surface_z_settings(s)
 end subroutine set_run_plan_envelope_z

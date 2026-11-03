@@ -18,6 +18,7 @@ lines don't trip the check.
 Exit status: 0 if the observed cross-domain surface is a subset of the
 allowlist; 1 otherwise, listing each violation.
 """
+import os
 import re
 import sys
 import pathlib
@@ -330,16 +331,35 @@ def check_install_sites(src_root):
 # The builders are setup/'s functions that return a record of a
 # *_settings_t or *_table_paths_t type (`type(<t>) :: settings`, or
 # `:: paths`, the function's result); a field is set when the function
-# assigns settings%<field> (paths%<field>, or an element of it). Every
-# builder is a pure function, so that the compiler rejects a side effect
-# (setup/README.md §3). A field that is deliberately left at its default
-# is listed here, with the reason.
+# assigns settings%<field> (paths%<field>). An array field is set when
+# the builder assigns it whole, or every one of its slots: element by
+# element, each subscript a literal or a named slot (an integer parameter
+# of state/ or a domain: rotation's velocity_scale(i_mech_*) are four
+# statements, and one forgotten would leave that mechanism at the type's
+# default). Every builder is a pure function, so that the compiler
+# rejects a side effect (setup/README.md §3). A field that is
+# deliberately left at its default is listed here, with the reason.
 SETTINGS_DEFAULT_ONLY = {}
 SETTINGS_TYPE = r"\w+_(?:settings|table_paths)_t"
 
+def top_level_items(text):
+    """a declaration's entity list split at its top-level commas"""
+    items, depth, cur = [], 0, ""
+    for ch in text:
+        if ch in "([":
+            depth += 1
+        elif ch in ")]":
+            depth -= 1
+        if ch == "," and depth == 0:
+            items.append(cur)
+            cur = ""
+        else:
+            cur += ch
+    return items + [cur]
+
 def settings_type_fields(src_root):
-    """{type name: [field, ...]} for the *_settings_t and *_table_paths_t
-    types the domains declare"""
+    """{type name: {field: its dimensions as declared, '' for a scalar}}
+    for the *_settings_t and *_table_paths_t types the domains declare"""
     out = {}
     for d in DOMAINS:
         for f in sorted((src_root / d).rglob("*.f90")):
@@ -348,25 +368,68 @@ def settings_type_fields(src_root):
             code = "\n".join(join_continuations(strip_comments(f.read_text(errors="replace"))))
             for m in re.finditer(r"(?ims)^\s*type\s*(?:,\s*public\s*)?(?:::)?\s*(" + SETTINGS_TYPE +
                                  r")\s*$(.*?)^\s*end\s*type\b", code):
-                fields = []
+                fields = {}
                 for line in m.group(2).splitlines():
                     if "::" not in line:
                         continue
-                    decl = line.split("::", 1)[1]
-                    while re.search(r"\([^()]*\)", decl):
-                        decl = re.sub(r"\([^()]*\)", "", decl)
-                    decl = re.sub(r"\[[^\]]*\]", "", decl)
-                    for item in decl.split(","):
-                        name = item.split("=")[0].strip().lower()
-                        if re.match(r"^\w+$", name):
-                            fields.append(name)
+                    for item in top_level_items(line.split("::", 1)[1]):
+                        em = re.match(r"^\s*(\w+)\s*(?:\(([^=]*)\))?\s*(?:=.*)?$", item, re.S)
+                        if em:
+                            fields[em.group(1).lower()] = (em.group(2) or "").replace(" ", "").lower()
                 out[m.group(1).lower()] = fields
     return out
 
+def integer_parameters(src_root):
+    """{name: value} of the integer parameters that state/ and the domains
+    give by a literal (the slots and sizes: i_mech_gsf = 2,
+    n_transport_mechanisms = 4); a name given two values maps to None"""
+    out = {}
+    for d in ["state"] + DOMAINS:
+        for f in sorted((src_root / d).rglob("*.f90")):
+            parts = f.relative_to(src_root).parts
+            if "test" in parts or "retired" in parts:
+                continue
+            for stmt in join_continuations(strip_comments(f.read_text(errors="replace"))):
+                m = re.match(r"(?i)^\s*integer\s*,\s*parameter\b[^:]*::\s*(.*)$", stmt)
+                if not m:
+                    continue
+                for item in top_level_items(m.group(1)):
+                    em = re.match(r"^\s*(\w+)\s*=\s*(\d+)\s*$", item)
+                    if em:
+                        name, value = em.group(1).lower(), int(em.group(2))
+                        out[name] = value if out.get(name, value) == value else None
+    return out
+
+def unset_slots(dims, subscripts, params):
+    """why an array field of dimensions dims, assigned element by element
+    at subscripts, leaves a slot unset; '' when every slot is set"""
+    if "," in dims or ":" in dims:
+        return f"it has the dimensions ({dims}): assign it whole"
+    extent = int(dims) if dims.isdigit() else params.get(dims)
+    if extent is None:
+        return f"its size {dims} is not an integer parameter of state/ or a domain: assign it whole"
+    values = set()
+    for sub in subscripts:
+        v = int(sub) if sub.isdigit() else params.get(sub)
+        if v is None:
+            return f"the subscript {sub} is neither a literal nor a named slot: assign it whole or slot by slot"
+        values.add(v)
+    missing = sorted(set(range(1, extent + 1)) - values)
+    if not missing:
+        return ""
+    # name a missing slot by the named slots' common prefix (i_mech_)
+    named = [s for s in subscripts if not s.isdigit()]
+    prefix = os.path.commonprefix(named) if len(named) > 1 else ""
+    def label(k):
+        names = sorted(n for n, v in params.items() if v == k and prefix and n.startswith(prefix))
+        return f"{k} ({', '.join(names)})" if names else str(k)
+    return (f"slot{'s' if len(missing) > 1 else ''} {', '.join(label(k) for k in missing)} "
+            f"of {extent} ({dims}) not set")
+
 def settings_builders(src_root):
-    """{type name: (function, prefixes, {assigned field, ...})} for setup/'s
-    functions whose result (settings or paths) is a settings or paths
-    record"""
+    """{type name: (function, prefixes, {assigned field: {subscript, ...}})}
+    for setup/'s functions whose result (settings or paths) is a settings
+    or paths record; a whole-field assignment's subscript is ''"""
     built = {}
     for f in sorted((src_root / "setup").glob("*.f90")):
         code = "\n".join(join_continuations(strip_comments(f.read_text(errors="replace"))))
@@ -376,13 +439,17 @@ def settings_builders(src_root):
             t = re.search(r"(?im)^\s*type\s*\(\s*(" + SETTINGS_TYPE + r")\s*\)\s*::\s*" + result + r"\s*$",
                           m.group(4))
             if t:
-                built[t.group(1).lower()] = (m.group(2), m.group(1).lower().split(), {a.lower() for a in re.findall(
-                    r"(?im)^\s*(?:if\s*\(.*\)\s*)?" + result + r"%(\w+)(?:\s*\([^=]*\))?\s*=(?!=)", m.group(4))})
+                assigned = collections.defaultdict(set)
+                for a, sub in re.findall(r"(?im)^\s*(?:if\s*\(.*\)\s*)?" + result +
+                                         r"%(\w+)(?:\s*\(([^=]*)\))?\s*=(?!=)", m.group(4)):
+                    assigned[a.lower()].add(sub.replace(" ", "").lower())
+                built[t.group(1).lower()] = (m.group(2), m.group(1).lower().split(), dict(assigned))
     return built
 
 def check_settings_fields(src_root):
     types = settings_type_fields(src_root)
     built = settings_builders(src_root)
+    params = integer_parameters(src_root)
     problems = []
     for t, fields in sorted(types.items()):
         if t not in built:
@@ -392,10 +459,67 @@ def check_settings_fields(src_root):
         if "pure" not in prefixes:
             problems.append(f"{t}: its builder {name} is not a pure function (setup/README.md §3: "
                             "declare it `pure function`)")
-        for fld in fields:
-            if fld not in assigned and fld not in SETTINGS_DEFAULT_ONLY.get(t, {}):
+        for fld, dims in fields.items():
+            if fld in SETTINGS_DEFAULT_ONLY.get(t, {}):
+                continue
+            if fld not in assigned:
                 problems.append(f"{t}%{fld}: {name} does not set it (copy its control, or list it "
                                 "in SETTINGS_DEFAULT_ONLY with the reason)")
+            elif dims and "" not in assigned[fld]:
+                why = unset_slots(dims, assigned[fld], params)
+                if why:
+                    problems.append(f"{t}%{fld}: {name} sets it slot by slot, and {why}")
+    return problems
+
+
+# A builder is installed at least as often as the star members it copies
+# change (setup/README.md §3, "Installed as often as what it copies"), so
+# that a domain never runs on a record that holds an earlier Monte-Carlo
+# run's or card's value: each install procedure of settings_install.f90
+# with the lifetime classes of state/star_info_lib.f90 (its banners)
+# whose members a builder it calls may copy. The controls never change
+# after the read, so any install may copy them. A member of any other
+# class (the model, a step's values) changes within a card: a domain
+# takes it as an argument, or through a per-surface-mixture setter.
+INSTALL_LIFETIMES = {
+    "install_run_settings": {"Constants set at setup"},
+    "install_monte_carlo_settings": {"Constants set at setup", "Monte-Carlo runs"},
+    "install_card_settings": {"Constants set at setup", "Monte-Carlo runs", "Run plan",
+                              "Run and card bookkeeping"},
+}
+
+def check_settings_lifetimes(src_root):
+    sys.path.insert(0, str(src_root / "tools"))
+    import gen_star_docs
+    _, members, _ = gen_star_docs.parse_star_info(src_root / "state" / "star_info_lib.f90")
+    class_of = {m["name"].lower(): m["cls"] for m in members}
+    bodies = {}
+    for f in sorted((src_root / "setup").glob("*.f90")):
+        code = "\n".join(join_continuations(strip_comments(f.read_text(errors="replace"))))
+        for m in re.finditer(r"(?ims)^[ \t]*(?:\w+[ \t]+)*function[ \t]+(\w+_from_star)\b(.*?)"
+                             r"^\s*end\s*function\b", code):
+            bodies[m.group(1).lower()] = (f.relative_to(src_root).as_posix(), m.group(2))
+    install = strip_comments((src_root / INSTALL_FILES[0]).read_text(errors="replace"))
+    problems = []
+    for m in re.finditer(r"(?ims)^\s*subroutine\s+(\w+)\b(.*?)^\s*end\s*subroutine\b", install):
+        proc = m.group(1).lower()
+        for builder in sorted({b.lower() for b in re.findall(r"(?i)\b(\w+_from_star)\s*\(", m.group(2))}):
+            if proc not in INSTALL_LIFETIMES:
+                problems.append(f"{INSTALL_FILES[0]}: {proc} installs {builder}: give {proc} its "
+                                "lifetime in INSTALL_LIFETIMES")
+                continue
+            if builder not in bodies:
+                problems.append(f"{INSTALL_FILES[0]}: {proc} calls {builder}, which no file of setup/ defines")
+                continue
+            rel, body = bodies[builder]
+            for member in sorted({x.lower() for x in re.findall(r"(?i)(?<![\w%])s%(\w+)", body)}
+                                 - {"control", "physics"}):
+                cls = class_of.get(member)
+                if cls is not None and cls not in INSTALL_LIFETIMES[proc]:
+                    where = [p for p, ok in INSTALL_LIFETIMES.items() if cls in ok]
+                    fix = (f"install it in {' or '.join(where)}" if where else
+                           "no install may copy it (it changes within a card): pass it to the domain as an argument")
+                    problems.append(f"{rel}: {builder} copies {member} (class {cls}), but {proc} installs it; {fix}")
     return problems
 
 
@@ -596,7 +720,13 @@ def check_controls_writer(src_root):
 # (a generator that wrote a stale or a literal size, or a max_runs
 # changed without regenerating, fails here). GENERATED_PER_RUN lists the
 # generated files that hold per-run sizes; each must yield some, so that
-# a scan that finds nothing fails rather than passing.
+# a scan that finds nothing fails rather than passing. And no dimension
+# of a buffer member or of a registry type cell may equal max_runs' value
+# without spelling max_runs (literal_run_sizes): a per-run control
+# declared foo(50), with a cell real(50), would otherwise count as an
+# ordinary array, pass every check above, and stay at 50 when max_runs
+# changes. (No other named size equals max_runs; one that ever does is
+# spelled by its own name, which this allows.)
 GENERATED_PER_RUN = ["state/control_group_def.inc", "io/inlist_decl.inc",
                      "io/legacy_decl.inc", "io/test/controls_dump.inc"]
 
@@ -659,6 +789,23 @@ def generated_per_run_sizes(text, names):
                 out.append((ref.group(1), extent[idx[pos]]))
     return out
 
+def literal_run_sizes(value):
+    """the buffer members and registry type cells with a dimension equal
+    to max_runs' value (a string of digits) that is not spelled max_runs"""
+    import controls_registry
+    problems = []
+    def literal(dims):
+        return [d for d in (x.strip().lower() for x in dims.split(",")) if d == value]
+    for m in controls_registry.buffer_members():
+        for d in literal(m["dims"].strip("()")):
+            problems.append(f"io/controls_buffer.f90: {m['name']}({m['dims'].strip('()')}) has the size {d}, "
+                            f"max_runs' value: a run-card array is dimensioned max_runs, by name")
+    for r in controls_registry.rows():
+        for d in literal(r["type"].partition("(")[2].rstrip(")")):
+            problems.append(f"defaults/controls_registry.tsv: {r['canonical'] or r['legacy']} has the type "
+                            f"{r['type']}: write max_runs, not {d}")
+    return problems
+
 def check_max_runs(src_root):
     import controls_registry
     m = re.search(r"(?im)^\s*integer\s*,\s*parameter\s*,\s*public\s*::\s*max_runs\s*=\s*(\d+)",
@@ -667,6 +814,7 @@ def check_max_runs(src_root):
         return ["state/control_slots.f90: no max_runs parameter"]
     value = m.group(1)
     names, problems = per_run_controls()
+    problems += literal_run_sizes(value)
     sizes = controls_registry.named_sizes()
     for rel in GENERATED_PER_RUN:
         found = generated_per_run_sizes((src_root / rel).read_text(), names)
@@ -677,6 +825,36 @@ def check_max_runs(src_root):
                 problems.append(f"{rel}: {name}'s run-card size is {size}, not max_runs = {value} "
                                 "(state/control_slots.f90; regenerate)")
     return sorted(set(problems))
+
+
+# Arrays whose rows are named slots (docs/GUIDELINES.md, Code style rule
+# 4: "slots and species are named"), with where the names are: a
+# subscript whose row is an integer literal (card_rescale_targets(3,n))
+# is refused in every source and include file, tests too, retired/ aside.
+# A declaration's dimensions are sizes, not rows, and are left alone. Add
+# an array here once its literal rows are gone.
+NAMED_ROWS = {
+    "card_rescale_targets": "i_target_* (state/control_slots.f90)",
+    "rescale_params": "i_target_* (state/control_slots.f90)",
+}
+NAMED_ROW_RE = re.compile(r"(?i)(?<![\w])(" + "|".join(NAMED_ROWS) + r")\s*\(\s*(\d+\s*(?::\s*\d*\s*)?),")
+DECLARATION_RE = re.compile(r"(?i)^\s*(?:double\s+precision|real|integer|logical|character|"
+                            r"type\s*\()[^=]*::")
+
+def check_named_rows(src_root):
+    problems = []
+    for p in sorted(src_root.rglob("*")):
+        if p.suffix not in (".f90", ".inc") or "retired" in p.relative_to(src_root).parts:
+            continue
+        rel = p.relative_to(src_root).as_posix()
+        code = "\n".join(mask_strings(l) for l in p.read_text(errors="replace").splitlines())
+        for stmt in join_continuations(code):
+            if DECLARATION_RE.match(stmt):
+                continue
+            for m in NAMED_ROW_RE.finditer(stmt):
+                problems.append(f"{rel}: {m.group(1)}({m.group(2).strip()},...): name the row, "
+                                f"{NAMED_ROWS[m.group(1).lower()]}")
+    return problems
 
 
 def check_settings_column(src_root):
@@ -1247,7 +1425,11 @@ def main():
                            "says so, where it is set):"),
                           (check_max_runs, "MAX_RUNS (state/control_slots.f90 is the one source):"),
                           (check_settings_column, "CONTROLS REGISTRY SETTINGS (the settings fields "
-                           "each control's builder copies set from it, defaults/controls_registry.tsv):")):
+                           "each control's builder copies set from it, defaults/controls_registry.tsv):"),
+                          (check_named_rows, "NAMED ROWS (a row of these arrays is subscripted by "
+                           "its slot name, NAMED_ROWS):"),
+                          (check_settings_lifetimes, "SETTINGS LIFETIMES (a builder is installed as "
+                           "often as the star members it copies change, INSTALL_LIFETIMES):")):
         found = check(SRC)
         if found:
             print(header)

@@ -65,6 +65,8 @@ contains
 !   redo_flag : false: a negative j stops the run rather than asking
 !      for a redo (see reject_negative_j).
 !   ierr : nonzero stops the run.
+!   star reads: disk_gate_age_gyr
+!   star writes: none
 subroutine check_angular_momentum(s, log_density, specific_angular_momentum_prev, &
      specific_angular_momentum_start, log_radius, log_mass, shell_mass, &
      iteration_number, &
@@ -275,6 +277,10 @@ end subroutine check_angular_momentum
 !   sub_physics%mu : the new mean molecular weight (from the second
 !      iteration on).
 !   ierr : nonzero stops the run.
+!   star reads: envelope_he3_fraction, envelope_helium_fraction,
+!     envelope_hydrogen_fraction, envelope_inverse_atomic_weight,
+!     envelope_metal_fraction
+!   star writes: none
 subroutine check_composition(s, sub_physics, composition, iteration_number, num_zones, &
      dt, cut_count, converged_flag, redo_flag, ierr)
       use rotation_scratch_lib, only: substep_physics_state
