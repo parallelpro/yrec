@@ -17,6 +17,8 @@ ZAHB and TAHB chains) stops inside read_controls; its hash records that. Then it
     the pristine dump, with src/io/test/expected_controls/hashes.txt. A
     control added at its default then moves pristine.txt and nothing else;
     a deck's hash moves only when what the deck reads changes.
+A row of hashes.txt whose deck is gone, and an expected file that no
+representative deck writes, fail too (nothing would check them).
 Regenerate the expected files with YREC_REGEN_CONTROLS=1 after a deliberate
 change, and check which lines moved.
 """
@@ -105,21 +107,31 @@ def test_controls_every_deck():
     all_decks = decks()
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
         dumps = list(pool.map(lambda d: run(d[1]), all_decks))
-    hashes = []
+    hashes, written = [], {"pristine.txt", "hashes.txt"}
     for (name, _), dump in zip(all_decks, dumps):
         own = differing(dump, pristine)
         hashes.append(f"{hashlib.sha256(chr(10).join(own).encode()).hexdigest()}  {name}")
         if representative(name):
             fname = name.replace("/", "__") + ".txt"
+            written.add(fname)
             if not expect(EXPECTED / fname, own):
                 failures.append(name)
     if not expect(EXPECTED / "hashes.txt", hashes):
         old = dict(l.split("  ", 1)[::-1] for l in (EXPECTED / "hashes.txt").read_text().splitlines()) \
             if (EXPECTED / "hashes.txt").exists() else {}
-        for line in hashes:
-            h, name = line.split("  ", 1)
-            if old.get(name) != h:
-                failures.append(name)
+        moved = [name for h, name in (line.split("  ", 1) for line in hashes) if old.get(name) != h]
+        # a row whose deck is gone (removed or renamed): nothing checks it
+        names = {name for name, _ in all_decks}
+        stale = [f"{name} (a hashes.txt row, no such deck)" for name in old if name not in names]
+        failures += moved + stale or ["hashes.txt (its rows' order or layout)"]
+    # an expected file that no representative deck writes (its deck removed,
+    # renamed or no longer representative): nothing checks it; a regeneration
+    # removes it
+    for orphan in sorted(p.name for p in EXPECTED.iterdir() if p.name not in written):
+        if REGEN:
+            (EXPECTED / orphan).unlink()
+        else:
+            failures.append(f"{orphan} (an expected file no deck writes)")
     assert not failures, f"controls differ for {len(failures)} deck(s): {failures[:10]}"
 
 

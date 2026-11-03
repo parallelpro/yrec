@@ -156,6 +156,7 @@ Each of these checks was confirmed to fail under a mutation of the code it cover
 - the pristine dump (the declared defaults, the run copies armed from them as a read arms them), `pristine.txt`;
 - the representative decks' (the configuration matrix's and the legacy pairs') lines that differ from it, one file each;
 - for every deck, a hash of the same lines, `hashes.txt`. So a control added at its default, with or without a run copy, moves `pristine.txt` alone (one line per element), and a deck's hash moves only when what that deck reads changes.
+- nothing else: a row of `hashes.txt` whose deck is gone (removed or renamed), and an expected file that no representative deck writes, fail too, since nothing would check them (a regeneration removes such a file).
 
 Any change to the read shows up here; regenerate with `YREC_REGEN_CONTROLS=1` after a deliberate change and check which lines moved. The same file checks, each against a mutation that breaks it:
 - a deck setting nothing reads exactly the declared defaults, the buffer-only members included, and arms each run copy at its control's default (the members the read derives, by their registry status, and their copies aside);
