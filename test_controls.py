@@ -8,7 +8,9 @@ from its own directory (some name inputs relative to it) with YREC_OUTPUT a
 scratch directory. Each dump is normalized: the YREC_OUTPUT, YREC_INPUT and
 YREC_START directories become placeholders and NUL bytes are escaped. A deck
 whose starting model is another run's output (the testsuite's HeIgnite,
-ZAHB and TAHB chains) stops inside read_controls; its hash records that. Then it compares
+ZAHB and TAHB chains) stops in open_run_files, which cannot open it (the
+read itself opens no file of the run): its dump says ierr = 1, and its
+hash records that. Then it compares
   * the pristine dump with src/io/test/expected_controls/pristine.txt;
   * for the representative decks (the legacy pairs and the configuration
     matrix), the lines that differ from pristine with

@@ -6,14 +6,16 @@ the unified output contract (use_legacy_output is retired):
   mesa     (converter output)                    -- default run
   custom   (+ history_columns_file)              -- column selection
 
-Assertions: MESA mode writes exactly {history.data, profile*.data,
-CASE.log}; the history file has MESA's layout (data from line 7,
-names on line 6) with rows matching the legacy .short per-model
-blocks numerically; profiles appear every profile_interval
-models with zone 1 = the surface and num_zones rows; the history
-profile_number column maps models to profiles (YREC's replacement
-for profiles.index); a history_columns_file selects exactly the
-requested columns in the requested order.
+Assertions: a run with profiles on writes exactly {CASE.log, CASE.mod,
+history.data, inlist_used, profile*.data}; the history file has MESA's
+layout (data from line 7, names on line 6) with rows matching the run
+log's progress lines numerically; profiles appear every
+profile_interval models with zone 1 = the surface and num_zones rows;
+the history profile_number column maps models to profiles (YREC's
+replacement for profiles.index); a history_columns_file selects
+exactly the requested columns in the requested order; FGONG files'
+globals 4-6 match the history header; GSM files (YREC_TEST_HDF5=1, an
+HDF5 build) are written and renamed into place.
 
 Local test: needs the full input/ tree.
 """
