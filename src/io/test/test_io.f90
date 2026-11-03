@@ -14,6 +14,9 @@
 !                to a later placeholder is expanded again;
 !   directories  directory_of: the path up to and including its last
 !                '/', blank for a bare file name;
+!   run log      run_log_path: a name ending in .log kept, a .short
+!                ending made .log, .log appended to any other name; a
+!                .short elsewhere in the path stays as written;
 !   pulse format pulse_format_code: GYRE, FGONG and GSM in any case and
 !                with blanks around them; anything else is unknown;
 !   fields       integer_field: a number that fits is right-justified in
@@ -126,8 +129,8 @@ program test_io
            i_c12, i_c13, i_n14, i_n15, i_o16, i_o17, i_o18, i_h2, i_li6, i_li7, &
            i_be9
       use run_messages, only: run_log_unit, terminal_unit, log_line
-      use run_files, only: expand_value, directory_of, copy_inlists_used, isochrone_unit, &
-           check_run_log
+      use run_files, only: expand_value, directory_of, run_log_path, copy_inlists_used, &
+           isochrone_unit, check_run_log
       use yrec_output, only: pulse_format_code, unknown_pulse_format, &
            pulse_gyre, pulse_fgong, pulse_gsm, output_run_header, interior_gyre_path
       use run_cards, only: card_evolve
@@ -236,6 +239,7 @@ program test_io
 
       call paths_check()
       call directories_check()
+      call run_log_path_check()
       call pulse_format_check()
       call fields_check()
       call columns_check()
@@ -490,6 +494,20 @@ subroutine directories_check()
       call report("directories: blank for a bare file name", &
            directory_of('run.log') == ' ' .and. directory_of('') == '')
 end subroutine directories_check
+
+! ---------------------------------------------------------------
+subroutine run_log_path_check()
+      call report("run log: a .log name kept, .log added to another", &
+           run_log_path('output/run.log') == 'output/run.log' .and. &
+           run_log_path('output/cm_base ') == 'output/cm_base.log' .and. &
+           run_log_path('my.shorthand') == 'my.shorthand.log' .and. &
+           run_log_path('a.log.d/cm') == 'a.log.d/cm.log')
+      call report("run log: only a .short ending becomes .log", &
+           run_log_path('output/cm_base.short') == 'output/cm_base.log' .and. &
+           run_log_path('runs.short_tests/cm.short') == 'runs.short_tests/cm.log' .and. &
+           run_log_path('runs.short_tests/cm') == 'runs.short_tests/cm.log' .and. &
+           run_log_path('x.short') == 'x.log')
+end subroutine run_log_path_check
 
 ! ---------------------------------------------------------------
 subroutine fields_check()

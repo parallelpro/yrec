@@ -8,6 +8,8 @@ paths: an expansion longer than the control is an error                ok
 paths: an expansion that just fits is not                              ok
 directories: the path up to its last '/'                               ok
 directories: blank for a bare file name                                ok
+run log: a .log name kept, .log added to another                       ok
+run log: only a .short ending becomes .log                             ok
 pulse format: GYRE, FGONG, GSM in any case                             ok
 pulse format: leading and trailing blanks ignored                      ok
 pulse format: any other name unknown                                   ok

@@ -15,8 +15,8 @@ module run_files
       implicit none
       private
       public :: assign_unit_numbers, open_run_files, expand_value, &
-           output_directory, directory_of, copy_inlists_used, open_run_log_after_error, &
-           check_run_log
+           output_directory, directory_of, run_log_path, copy_inlists_used, &
+           open_run_log_after_error, check_run_log
       public :: last_model_unit, starting_model_unit, dynamics_unit, mc_summary_unit, &
            mc_model_unit, isochrone_unit
 
@@ -173,32 +173,47 @@ function output_directory(s) result(dir)
 end function output_directory
 
 ! ---------------------------------------------------------------
-! The run log on run_log_unit, from log_output_file: an explicit .log
-! name is kept, a legacy .short name becomes .log, and .log is appended
-! to any other (so the default run.log stays run.log).
+! The run log on run_log_unit, at run_log_path(log_output_file).
 subroutine open_run_log(log_output_file, ierr)
       character(len=*), intent(in) :: log_output_file
       integer, intent(inout) :: ierr
       character(len=:), allocatable :: log_path
       character(len=256) :: msg
-      integer :: n, ios
+      integer :: ios
 
-      n = len_trim(log_output_file)
-      if (n >= 4 .and. log_output_file(max(1,n-3):n) == '.log') then
-         log_path = trim(log_output_file)
-      else
-         n = index(log_output_file, '.short')
-         if (n > 0) then
-            log_path = log_output_file(1:n) // 'log'
-         else
-            log_path = trim(log_output_file) // '.log'
-         end if
-      end if
+      log_path = run_log_path(log_output_file)
       open(run_log_unit, file=log_path, form='FORMATTED', &
            status='REPLACE', iostat=ios, iomsg=msg)
       call check_io(ios, msg, 'open the run log', log_path, ierr)
       if (ierr == 0) call flush_pending_log
 end subroutine open_run_log
+
+! ---------------------------------------------------------------
+! The run log's path from log_output_file: a name that ends in .log is
+! kept, a legacy .short ending becomes .log, and .log is appended to any
+! other name (so the default run.log stays run.log). Only the ending
+! counts: a .short elsewhere in the path (runs.short_tests/cm.short, a
+! name my.shorthand) stays as written.
+pure function run_log_path(log_output_file) result(log_path)
+      character(len=*), intent(in) :: log_output_file
+      character(len=:), allocatable :: log_path
+      integer :: n
+
+      n = len_trim(log_output_file)
+      if (ends_with('.log')) then
+         log_path = log_output_file(1:n)
+      else if (ends_with('.short')) then
+         log_path = log_output_file(1:n-len('short')) // 'log'
+      else
+         log_path = log_output_file(1:n) // '.log'
+      end if
+contains
+pure logical function ends_with(suffix)
+      character(len=*), intent(in) :: suffix
+      ends_with = .false.
+      if (n >= len(suffix)) ends_with = log_output_file(n-len(suffix)+1:n) == suffix
+end function ends_with
+end function run_log_path
 
 ! ---------------------------------------------------------------
 ! The run log's lines so far handed to the system and its size on disk

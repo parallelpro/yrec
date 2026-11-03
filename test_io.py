@@ -5,8 +5,8 @@ where it writes every file it reads (no deck, no tables), and compares
 its stdout with the pinned src/io/test/expected_test_io.out: the list
 of checks, each `ok`. The binary exits nonzero when a check fails. It
 checks the path placeholders' expansion (expand_value, with the
-environment set through the C library), directory_of,
-pulse_format_code, the columns-file selection (parse_columns) and its
+environment set through the C library), directory_of, the run log's
+path (run_log_path: only a .short ending becomes .log), pulse_format_code, the columns-file selection (parse_columns) and its
 errors, nml_file_has_group, a bit-exact .mod write and read with its
 replace/append modes, an unknown global and the reader's errors, the
 model files' format tag, synthetic YREC7 and MODEL2 starting models
