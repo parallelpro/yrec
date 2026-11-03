@@ -679,6 +679,36 @@ def check_max_runs(src_root):
     return sorted(set(problems))
 
 
+# Arrays whose rows are named slots (docs/GUIDELINES.md, Code style rule
+# 4: "slots and species are named"), with where the names are: a
+# subscript whose row is an integer literal (card_rescale_targets(3,n))
+# is refused in every source and include file, tests too, retired/ aside.
+# A declaration's dimensions are sizes, not rows, and are left alone. Add
+# an array here once its literal rows are gone.
+NAMED_ROWS = {
+    "card_rescale_targets": "i_target_* (state/control_slots.f90)",
+    "rescale_params": "i_target_* (state/control_slots.f90)",
+}
+NAMED_ROW_RE = re.compile(r"(?i)(?<![\w])(" + "|".join(NAMED_ROWS) + r")\s*\(\s*(\d+\s*(?::\s*\d*\s*)?),")
+DECLARATION_RE = re.compile(r"(?i)^\s*(?:double\s+precision|real|integer|logical|character|"
+                            r"type\s*\()[^=]*::")
+
+def check_named_rows(src_root):
+    problems = []
+    for p in sorted(src_root.rglob("*")):
+        if p.suffix not in (".f90", ".inc") or "retired" in p.relative_to(src_root).parts:
+            continue
+        rel = p.relative_to(src_root).as_posix()
+        code = "\n".join(mask_strings(l) for l in p.read_text(errors="replace").splitlines())
+        for stmt in join_continuations(code):
+            if DECLARATION_RE.match(stmt):
+                continue
+            for m in NAMED_ROW_RE.finditer(stmt):
+                problems.append(f"{rel}: {m.group(1)}({m.group(2).strip()},...): name the row, "
+                                f"{NAMED_ROWS[m.group(1).lower()]}")
+    return problems
+
+
 def check_settings_column(src_root):
     """Each control's registry settings cell names the settings fields
     the builders in setup/ set from it (controls_registry.builder_copies:
@@ -1247,7 +1277,9 @@ def main():
                            "says so, where it is set):"),
                           (check_max_runs, "MAX_RUNS (state/control_slots.f90 is the one source):"),
                           (check_settings_column, "CONTROLS REGISTRY SETTINGS (the settings fields "
-                           "each control's builder copies set from it, defaults/controls_registry.tsv):")):
+                           "each control's builder copies set from it, defaults/controls_registry.tsv):"),
+                          (check_named_rows, "NAMED ROWS (a row of these arrays is subscripted by "
+                           "its slot name, NAMED_ROWS):")):
         found = check(SRC)
         if found:
             print(header)
