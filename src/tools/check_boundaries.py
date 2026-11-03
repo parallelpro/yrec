@@ -596,7 +596,13 @@ def check_controls_writer(src_root):
 # (a generator that wrote a stale or a literal size, or a max_runs
 # changed without regenerating, fails here). GENERATED_PER_RUN lists the
 # generated files that hold per-run sizes; each must yield some, so that
-# a scan that finds nothing fails rather than passing.
+# a scan that finds nothing fails rather than passing. And no dimension
+# of a buffer member or of a registry type cell may equal max_runs' value
+# without spelling max_runs (literal_run_sizes): a per-run control
+# declared foo(50), with a cell real(50), would otherwise count as an
+# ordinary array, pass every check above, and stay at 50 when max_runs
+# changes. (No other named size equals max_runs; one that ever does is
+# spelled by its own name, which this allows.)
 GENERATED_PER_RUN = ["state/control_group_def.inc", "io/inlist_decl.inc",
                      "io/legacy_decl.inc", "io/test/controls_dump.inc"]
 
@@ -659,6 +665,23 @@ def generated_per_run_sizes(text, names):
                 out.append((ref.group(1), extent[idx[pos]]))
     return out
 
+def literal_run_sizes(value):
+    """the buffer members and registry type cells with a dimension equal
+    to max_runs' value (a string of digits) that is not spelled max_runs"""
+    import controls_registry
+    problems = []
+    def literal(dims):
+        return [d for d in (x.strip().lower() for x in dims.split(",")) if d == value]
+    for m in controls_registry.buffer_members():
+        for d in literal(m["dims"].strip("()")):
+            problems.append(f"io/controls_buffer.f90: {m['name']}({m['dims'].strip('()')}) has the size {d}, "
+                            f"max_runs' value: a run-card array is dimensioned max_runs, by name")
+    for r in controls_registry.rows():
+        for d in literal(r["type"].partition("(")[2].rstrip(")")):
+            problems.append(f"defaults/controls_registry.tsv: {r['canonical'] or r['legacy']} has the type "
+                            f"{r['type']}: write max_runs, not {d}")
+    return problems
+
 def check_max_runs(src_root):
     import controls_registry
     m = re.search(r"(?im)^\s*integer\s*,\s*parameter\s*,\s*public\s*::\s*max_runs\s*=\s*(\d+)",
@@ -667,6 +690,7 @@ def check_max_runs(src_root):
         return ["state/control_slots.f90: no max_runs parameter"]
     value = m.group(1)
     names, problems = per_run_controls()
+    problems += literal_run_sizes(value)
     sizes = controls_registry.named_sizes()
     for rel in GENERATED_PER_RUN:
         found = generated_per_run_sizes((src_root / rel).read_text(), names)
