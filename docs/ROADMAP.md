@@ -3751,3 +3751,219 @@ which needs a push; and the flat star type (Phase 5's typed parts).
   kept by earlier measurements, and the full set gave the result it
   gave before. Tools a round depends on belong in the tree, or at
   least outside /tmp.
+
+### Sixth-evaluation pass: io and state/setup (yrec-next, 2026-11-02/03)
+
+**Why.** The sixth evaluation (at 2632f06c,
+audit/module-evaluation-6-2026-11-02/SUMMARY.md, out of 10 against
+rotation/'s bar) put io at 8.9 (9 / 9 / 9 / 9 / 8.5), state at 8.9
+(9 / 9 / 9 / 9 / 8.5) and setup at 9.2 (9.5 / 9 / 9 / 9.5 / 9): the
+cleanup round had done the fifth reports' lists, and docs accuracy held
+io and state just below 9. Its new findings: in io, `diffuse_lithium`
+turning metal settling on in 169 shipped decks that set it off, which
+its description did not say; descriptions naming other controls in two
+name spaces; make's first refusal of a bad registry row without the
+cells guide; the run log's name cut at a `.short` anywhere in its path;
+GSM written in place; a GYRE name collision from 10,000 profiles; two
+test holes and stale text. In state and setup: the disk-locking age
+carried from one Monte Carlo run, or card, to the next; a contract
+overclaim in state/README; the rescale targets' rows as literal 1-4 at
+58 places; check_max_runs blind to a literal size in the buffer; Monte
+Carlo setting cards 2 and 3's stop ages without the calibration; stale
+sentences. The owner asked for io and state/setup past 9 with no
+results-changing commit at all: three behaviour questions
+(`diffuse_lithium`'s overrides, the disk-locking age, the Monte Carlo
+stop ages) are the authors' to decide, so they were documented and
+their options measured, not changed.
+
+**How.** Two packages from 0ef46d4e (the cleanup round and the
+evaluation), each in its own worktree with the files it owned: io
+(m8-io: io/, defaults/, the controls generators and the registry,
+test_controls, test_io, test_mesa_output, test_generated_files) and
+state/setup (m8-state: state/, setup/, the star tools, the contract
+lines in core/ and rotation/, the rescale targets' subscripts in core/,
+the Monte Carlo range). Every commit was built and checked
+(check_boundaries, the star contracts and docs, the six generators'
+--check, the pytest files it touches), every new check was confirmed to
+fail under a mutation of what it covers (33 cases in state/setup's
+tools alone), and each package ended with the unit tests and the
+56-deck set against a snapshot of 0ef46d4e's outputs, ALL IDENTICAL.
+This time the packages were merged, not cherry-picked: m8-io
+fast-forwarded onto 0ef46d4e, then m8-state merged (860052a7), so the
+hashes their docs and bug_sweep cite are the branch's own. Only
+bug_sweep conflicted (section 13's header, intro and summary rows,
+which both wrote); deps.mk, state/README's tables and the contracts
+merged as their generators write them.
+
+#### io (m8-io, 14 commits)
+
+- **Docs accuracy** (819c55a9, 06e9e578, b676fce0): the settling
+  controls' descriptions state what the read overwrites
+  (`diffuse_lithium` turns on metal settling and five other switches,
+  PARMIN's LDIFLI block; `use_diffusion_z` two; a rotating run
+  `new_triangle_init_flag`), and two wrong descriptions are corrected
+  (`new_triangle_init_flag`'s "at run start", `coulomb_log_choice`'s);
+  counted on all 515 shipped decks from what the read gives them, the
+  override changes `use_diffusion_z` in 169 (M181, below), and M129's
+  reach is 355 decks, not 186. GSM is written under the run's own name
+  and renamed, as the other pulsation files are (M183; run on an HDF5
+  build). The stale count, generator claim, docstrings and output-file
+  recipe line (M189); M130's calibration note; the eight README
+  paragraphs over 1,000 characters as lists.
+- **Readability and organization** (ba1f6ef5, 5c9d9dc5, 99d3908d): one
+  naming rule for descriptions, the inlist name, which gen_inlist
+  enforces (M188; it found a seventh case the evaluation's scan
+  missed); legacy_controls' 13 history comments as a Sources note; the
+  banner line; no io line over 110 characters; the run's fixed units 6,
+  11 and 20 are named parameters.
+- **Tools and tests** (a3221e06, a7ddf92c, f673c59f, 9b226d04): make's
+  first refusal of a bad registry row carries the cells guide, a 3-D
+  control builds test_controls, and a deleted generated file is remade
+  (M185); test_controls fails on a stale hashes.txt row, an orphan
+  expected file or reordered rows (M186); test_io fills its lines
+  before the run-log checks log them (M187).
+- **Latent bugs** (0a9c34ac, 9666cf52): only a `.short` ending makes the
+  run log's name `.log` (M182); from profile 10000 on, in a run that
+  also writes interior GYRE files, a profile's GYRE file takes its own
+  name (M184; no shipped deck writes either, and no name changes below
+  10,000 profiles).
+- **M174's remaining window** (609c66c3): the state/setup package's
+  measurement of an option saw one false "disk full" stop: a deck that
+  starts in the directory of a running one opened the shared
+  history.data with `status='replace'`, which truncated the file the
+  running deck was writing. The open now removes a writable file at the
+  path first, so the second deck writes a new file (a read-only history
+  stays, and test_error_exit's case still exits 1). test_io's check and
+  test_io.py's two-process test fail with the old open (5 runs of 5,
+  pytest 3 of 3).
+- **bug_sweep** (7e6eeadb): M181-M189, M181's decision, and M174, M177
+  and M129 brought up to date.
+
+#### state/ and setup/ (m8-state, 9 commits)
+
+- **Named rows** (6c8f57b2, cb57b0ad): the rows of a rescale card's
+  targets are control_slots' `i_target_*` at every core/ subscript (57
+  lines), and check_named_rows refuses a literal row of
+  `card_rescale_targets` or `rescale_params` anywhere (NAMED_ROWS lists
+  the arrays).
+- **Checks that close gaps** (7ac8009e, 79c54d0b; M192, M193):
+  check_max_runs refuses a run-card size written as 50 in the buffer or
+  the registry; check_settings_fields counts an array field as set only
+  when the builder sets it whole or every slot; check_settings_lifetimes
+  holds each builder to an install at least as frequent as the star
+  members it copies change (INSTALL_LIFETIMES, by the star's lifetime
+  classes).
+- **Contracts** (b621c57e; M194): rotation's 16 star-taking procedures
+  declare theirs and rotation/ is required (148 of 151 declared,
+  controls_sync's 3 exempt); state/README and GUIDELINES say a contract
+  covers the procedure's own body, not its reach.
+- **Texts** (dfdff68a, 48604587, e482bf43; M195): the per-run reset is
+  "the members found so far", with a stated home for state a run leaves
+  that is not a run copy; Monte Carlo's fixed stop ages and the solar
+  luminosity's place outside the run-copy mechanism are documented;
+  four stale statements fixed; the run_messages row split; the setup
+  README's long rules and recipe steps as lists, and "Add a field"
+  starting with its control; the Sources section's rename lists
+  replaced by their commits.
+- **bug_sweep** (0166c3b5): M190-M195, two of them the authors'
+  decisions (M190, M191) with their measured options.
+
+#### After the merge
+
+- **io's last reliance on the rows' order** (2b2f7975): run_cards stores
+  each rescale target in its named row and echoes rows 1 to
+  `n_rescale_targets`; `rescale_params` is declared
+  `(n_rescale_targets,max_runs)` in the buffer and the registry, so the
+  generated declaration spells it too.
+- **The Monte Carlo range as functions** (0ec5ed1d; the fifth
+  evaluation's state item 9, from the state/setup package's tested
+  patch): `first_mc_run` and `last_mc_run`, run copies that the read
+  armed, every run re-armed and `set_monte_carlo_range` clamped, are
+  `monte_carlo`'s pure functions of the controls, run_yrec's loop
+  bounds; the two star members, `set_monte_carlo_range` and the
+  registry's two run_copy cells are gone, and pristine.txt loses its
+  two lines (no hash moved, no value changed).
+- This documentation.
+
+**Verification of the merged tree.** At the merge (860052a7): make,
+check_boundaries, the star contracts (148 declared), gen_star_docs
+--check and the generators' output (regenerating deps.mk, state/README's
+tables and the contracts changed nothing), and bug_sweep's 2170 links;
+the unit tests 88 passed, 1 skipped (HDF5); check.py --set all at 8
+jobs, the 56 decks identical in every per-deck file to the 0ef46d4e
+snapshot and the 35 pinned logs OK. After 2b2f7975 the same 56-deck
+result, with test_controls' dumps and hashes unchanged. After 0ec5ed1d:
+test_controls regenerated moves pristine.txt's two lines only (no hash),
+test_monte_carlo passes, and three Monte Carlo decks (the shipped
+cm_monte_carlo, a two-run copy of it and a two-run solar calibration)
+are identical in every output file to 0ef46d4e's binary. On the final
+tree: make, check_boundaries, the star contracts (149 declared:
+set_monte_carlo_range gone, the two functions added), gen_star_docs
+--check and the six generators' --check; the unit tests 88 passed, 1
+skipped; check.py --set all, the 56 decks identical and the 35 pinned
+logs OK; every changed Markdown file passes the table and link checks,
+and every commit bug_sweep links is on the branch. No pin was reseeded:
+no pinned file moved.
+
+**Measured for the authors' decisions** (bug_sweep section 1,
+"Decisions needed"):
+
+- **M181, `diffuse_lithium`'s overrides.** Of the 515 shipped decks
+  (511 inlists, 4 legacy pairs), 354 run with `diffuse_lithium` on, and
+  the override changes one value, `use_diffusion_z` off to on, in 169
+  (84 of run_from_seed_to_start, 78 of run_from_start_to_dbl, the five
+  rotating configuration-matrix decks, two settling solar pairs); the
+  other five switches are already as forced wherever it is on. The
+  options: keep and document it, as now (nothing moves); let it touch
+  only Li and Be, keeping the new routines and helium settling but not
+  metal settling (moves the 169 decks, 9 of them pinned, and
+  test_mesa_baselines' Test_solar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10
+  files); or warn when the override changes a value (a line in the same
+  169 run logs, 9 pinned; nothing else moves).
+- **M190, the disk-locking age across Monte Carlo runs and cards.**
+  Setting it from the model's age at every model read makes a two-run
+  accreting, disk-locked reproducer's runs identical (today run 2 steps
+  back in age and never accretes), and on the 56-deck set moves one
+  deck, Test_solarGS98_difrotmixper18p4d0p1, through run 1's first step
+  (it starts past its t_disk; at 4.568 Gyr log L -0.000082 to
+  -0.000026, X_c 0.355855 to 0.355795), so its pin would be reseeded;
+  of the 539 shipped inlists with disk locking, no other starts past
+  its t_disk. A snapshot of the star at the first Monte Carlo run ends
+  the hand-made reset list for runs (not for cards) and moves no
+  shipped deck. Leaving it moves nothing.
+- **M191, Monte Carlo's stop ages of cards 2 and 3.** Dropping the two
+  lines and limiting them to the solar calibration gave the same results
+  on every deck measured: the shipped cm_monte_carlo, a two-run copy and
+  a two-run solar calibration identical to today; cm_monte_carlo with
+  card 2 allowed 3000 models stops at 1e8 yr today and runs to the
+  deck's 4.568e9 yr under either. No shipped deck moves.
+
+**Still open.** The three decisions above (M181, M190, M191).
+controls_check's two capitalized messages ("SEMI-CONVECTION and
+overshoot are both on", "... is NOT applied"): the second is in 35
+pinned run logs and the first is what test_error_exit asserts, so
+rewording them belongs to a re-pin round (the io package's notes hold
+the text). CI's first GitHub run, which needs a push. The run's unit
+numbers (run_files' public variables) and the solver-diagnostics gate
+in a record run_yrec owns, and the read's buffer as module state
+(TARGET_ARCHITECTURE 4.6). M176; M85 and M96's shared recompute; M112's
+direct run-log writes outside io; the star snapshot for Monte Carlo
+runs (M190's second option); gen_inlist's `--new` mode; the optional
+`star calls:` contract line (not added: 54 procedures, 10 of them in
+io/); and Phase 5's typed parts of the star.
+
+#### Learned
+
+- Merging the packages rather than cherry-picking them kept every hash
+  their docs cite: the links name commits on the branch, and nothing
+  needed remapping.
+- A count by deck text is not a count of what the decks run with:
+  M129's "186 inlists with diffusion of Z" is 355 decks once the read's
+  overrides are applied (M181). The io package counted by running the
+  real read on every deck, with and without the overrides.
+- A measurement in one package found a bug in the other's files: the
+  state/setup package's option run hit M174's remaining window once,
+  and the io package closed it with a test that races two processes.
+- The scratchpad lost about half its entries at midnight again (the doc
+  checkers among them); both packages rebuilt the checkers from their
+  docstrings. Tools a round depends on belong in the tree.
