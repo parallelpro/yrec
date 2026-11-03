@@ -1403,6 +1403,11 @@ subroutine writes_check()
       s%control%isochrone_output_active = .false.
       call report("writes: an isochrone file cut short by a full disk is an error", ierr == 1 .and. &
            captured(terminal_file, 'cannot write full.iso'))
+! the lines of a deck of some kilobytes, which the run-log checks log and
+! the copy-of-the-deck checks copy
+      do i = 1, size(deck_lines)
+         write(deck_lines(i), '(a,i0,a)') ' line_', i, ' = 1  ! a line of a deck of some kilobytes'
+      end do
       test_log_unit = run_log_unit
       open(newunit=run_log_unit, file='full_run.log', status='replace', action='write')
       ierr = 0
@@ -1434,9 +1439,6 @@ subroutine writes_check()
            .not. captured(terminal_file, 'rewound_run.log'))
 
 ! the copy of the deck (an inlist: one file, copied once)
-      do i = 1, size(deck_lines)
-         write(deck_lines(i), '(a,i0,a)') ' line_', i, ' = 1  ! a line of a deck of some kilobytes'
-      end do
       call write_text_file('big_deck.nml', deck_lines)
       ierr = 0
       call limit_file_size(limit_bytes)
