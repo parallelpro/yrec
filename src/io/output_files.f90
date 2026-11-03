@@ -16,6 +16,12 @@
 !                      of the deck, a profile, a pulsation file): the
 !                      writes go to this run's own file beside path,
 !                      which the close checks and renames over path
+!   replacement_path, finish_replacement_file
+!                      the same for a file a library writes itself (GSM,
+!                      through HDF5): it creates the file under this
+!                      run's own name, and finish_replacement_file
+!                      renames that over path, or removes it after a
+!                      failure
 ! A writer writes with iostat=ios and iomsg=msg and skips every write
 ! after the first that fails (`if (ios == 0) write ...`); the failure is
 ! reported once, by flush_output_file. A file written in one go opens
@@ -63,7 +69,8 @@ module output_files
       implicit none
       private
       public :: open_output_file, flush_output_file, close_output_file, &
-           open_replacement_file, close_replacement_file
+           open_replacement_file, close_replacement_file, replacement_path, &
+           finish_replacement_file
 
 ! lseek's whence: from the start, from the current offset, from the end
 ! (the same values on macOS and Linux)
@@ -182,32 +189,43 @@ end subroutine open_replacement_file
 ! ---------------------------------------------------------------
 ! The file open_replacement_file opened for path on unit u, written: ios
 ! and msg are its writes' status (the first failed write's, or 0). It is
-! checked and closed (close_output_file), then renamed over path. A file
-! that failed is removed and path left as it was; a failed rename is
-! reported too.
+! checked and closed (close_output_file), then renamed over path
+! (finish_replacement_file). A file that failed is removed and path left
+! as it was; a failed rename is reported too.
 subroutine close_replacement_file(u, path, ios, msg, ierr)
       integer, intent(in) :: u, ios
       character(len=*), intent(in) :: path, msg
       integer, intent(inout) :: ierr
-      character(len=:), allocatable :: own_path
       integer :: close_ierr
+
+      close_ierr = 0
+      call close_output_file(u, path, ios, msg, close_ierr)
+      call finish_replacement_file(path, close_ierr == 0, close_ierr)
+      if (close_ierr /= 0) ierr = close_ierr
+end subroutine close_replacement_file
+
+! ---------------------------------------------------------------
+! This run's own file for path (replacement_path), written and closed:
+! when written, renamed over path, which replaces the file there in one
+! step (a failed rename is reported, ierr = 1, and the file removed);
+! otherwise (its writer has reported the failure) removed, path left as
+! it was.
+subroutine finish_replacement_file(path, written, ierr)
+      character(len=*), intent(in) :: path
+      logical, intent(in) :: written
+      integer, intent(inout) :: ierr
+      character(len=:), allocatable :: own_path
       integer(c_int) :: rc
 
       own_path = replacement_path(path)
-      close_ierr = 0
-      call close_output_file(u, path, ios, msg, close_ierr)
-      if (close_ierr == 0) then
-         if (c_rename(own_path // c_null_char, trim(path) // c_null_char) /= 0) then
-            call report_error('cannot write ' // trim(path) // ': ' // own_path // &
-                 ' could not be renamed to it')
-            close_ierr = 1
-         end if
+      if (written) then
+         if (c_rename(own_path // c_null_char, trim(path) // c_null_char) == 0) return
+         call report_error('cannot write ' // trim(path) // ': ' // own_path // &
+              ' could not be renamed to it')
+         ierr = 1
       end if
-      if (close_ierr /= 0) then
-         rc = c_remove(own_path // c_null_char)
-         ierr = close_ierr
-      end if
-end subroutine close_replacement_file
+      rc = c_remove(own_path // c_null_char)
+end subroutine finish_replacement_file
 
 ! ---------------------------------------------------------------
 ! This run's own name for the file at path: <path>.<process id>.tmp, in

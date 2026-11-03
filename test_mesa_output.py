@@ -268,7 +268,8 @@ def test_gsm_pulse_output(tmp_path):
     """GSM (GYRE-HDF5) pulse output -- opt-in: needs an HDF5-enabled
     build (`make USE_HDF5=1` in src/) and YREC_TEST_HDF5=1 in the
     environment, since the default build compiles the GSM writer as a
-    reporting stub."""
+    reporting stub. Each file is written under the run's own name and
+    renamed to its path, so none of the run's own (*.tmp) is left."""
     if os.environ.get("YREC_TEST_HDF5") != "1":
         pytest.skip("set YREC_TEST_HDF5=1 (and build with USE_HDF5=1)")
     if not YREC.exists() or not (REPO / "input").exists():
@@ -287,6 +288,7 @@ def test_gsm_pulse_output(tmp_path):
     out = _run(tmp_path / "gsm", text)
     gsms = sorted(out.glob("profile*.data.GSM"))
     assert gsms, "no GSM files written"
+    assert not sorted(out.glob("*.tmp")), sorted(p.name for p in out.glob("*.tmp"))
     blob = gsms[0].read_bytes()[:4]
     assert blob == b"\x89HDF", blob
     try:

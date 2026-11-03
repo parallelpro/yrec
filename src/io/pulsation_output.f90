@@ -155,12 +155,17 @@ end subroutine write_fgong_pulse
 ! GSM, the GYRE Stellar Model HDF5 format (v1.10): root attributes n,
 ! M_star, R_star, L_star and version, and one double dataset per column,
 ! the same 18 columns as the GYRE text file from the same point set.
+! HDF5 creates the file under this run's own name beside pulse_path
+! (replacement_path), which is renamed over pulse_path when every call
+! succeeded and removed otherwise (finish_replacement_file), as the
+! files io writes itself in one go are.
 #ifdef YREC_USE_HDF5
 subroutine write_gsm_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
      pulse_path, ierr)
       use hdf5
       use h5lt
       use stitched_model, only: ipul_gyre_last
+      use output_files, only: replacement_path, finish_replacement_file
 
       integer, intent(in) :: n
       real(dp), intent(in) :: pts(:,:)
@@ -176,6 +181,7 @@ subroutine write_gsm_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
       integer, parameter :: gyre_schema = 110
       integer :: i, herr, close_err
       integer(hid_t) :: file_id
+      character(len=:), allocatable :: own_path
       integer(hsize_t) :: dims1(1)
       character(len=12) :: dset_names(18)
 
@@ -190,10 +196,12 @@ subroutine write_gsm_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
       call h5open_f(herr)
       call check_io(herr, 'HDF5 could not start', 'write', pulse_path, ierr)
       if (ierr /= 0) return
-      call h5fcreate_f(trim(pulse_path), H5F_ACC_TRUNC_F, file_id, herr)
+      own_path = replacement_path(pulse_path)
+      call h5fcreate_f(own_path, H5F_ACC_TRUNC_F, file_id, herr)
       if (herr /= 0) then
          call h5close_f(close_err)
          call check_io(herr, 'HDF5 could not create the file', 'write', pulse_path, ierr)
+         call finish_replacement_file(pulse_path, .false., ierr)
          return
       end if
 
@@ -220,6 +228,7 @@ subroutine write_gsm_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
       call h5close_f(close_err)
       if (herr == 0) herr = close_err
       call check_io(herr, 'HDF5 could not write the file', 'write', pulse_path, ierr)
+      call finish_replacement_file(pulse_path, herr == 0, ierr)
 end subroutine write_gsm_pulse
 #else
 subroutine write_gsm_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, &
