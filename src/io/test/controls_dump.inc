@@ -590,8 +590,6 @@ subroutine dump_controls(star, u)
       write(u,'(a," = ",i0)') 'star%atm_choice_in_use', star%atm_choice_in_use
       write(u,'(a," = ",l1)') 'star%structure_dt_limits_active', star%structure_dt_limits_active
       write(u,'(a," = ",i0)') 'star%num_core_points_added', star%num_core_points_added
-      write(u,'(a," = ",i0)') 'star%first_mc_run', star%first_mc_run
-      write(u,'(a," = ",i0)') 'star%last_mc_run', star%last_mc_run
       write(u,'(a," = ",l1)') 'star%mass_change_active', star%mass_change_active
       do i1 = 1, 50
       write(u,'(a," = ",l1)') 'star%card_stops_active('//itoa(i1)//')', star%card_stops_active(i1)

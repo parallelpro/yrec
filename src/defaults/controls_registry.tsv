@@ -242,8 +242,8 @@ physics	ymin	real	helium_diffusion_min	live		helium_diffusion_min	physics		run		
 physics	tmolmin	real	molecular_opacity_logt_min	live		molecular_opacity_logt_min	physics		run		kap_settings%molecular_opacity_logt_min
 physics	tmolmax	real	molecular_opacity_logt_max	live		molecular_opacity_logt_max	physics		run		kap_settings%molecular_opacity_logt_max
 physics	lmonte	logical	monte_carlo_active	live		monte_carlo_active	physics		run		
-physics	imbeg	integer	mc_run_start	live		mc_run_start	physics	first_mc_run	run		
-physics	imend	integer	mc_run_end	live		mc_run_end	physics	last_mc_run	run		
+physics	imbeg	integer	mc_run_start	live		mc_run_start	physics		run		
+physics	imend	integer	mc_run_end	live		mc_run_end	physics		run		
 physics	sstandard	real(num_sstandard)	cross_section_ratios	legacy		cross_section_ratios	buffer		read		
 physics	lscv	logical	use_scv_eos	live		use_scv_eos	physics		run		eos_settings%use_scv_eos
 physics	ldisk	logical	disk_locking_active	live		disk_locking_active	physics		run		rotation_settings%disk_locking_active

@@ -293,8 +293,8 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `molecular_opacity_logt_min` | `tmolmin` | `molecular_opacity_logt_min` | physics | - | `kap_settings%molecular_opacity_logt_min` | run | real | `4.0d0` | live | log10 T below which only the molecular opacities are used |
 | `molecular_opacity_logt_max` | `tmolmax` | `molecular_opacity_logt_max` | physics | - | `kap_settings%molecular_opacity_logt_max` | run | real | `4.1d0` | live | log10 T above which only the atomic opacities are used (a ramp joins the two) |
 | `monte_carlo_active` | `lmonte` | `monte_carlo_active` | physics | - | - | run | logical | `.false.` | live | Monte-Carlo multi-realization mode |
-| `mc_run_start` | `imbeg` | `mc_run_start` | physics | `first_mc_run` | - | run | integer | `1` | live | First Monte-Carlo realization index |
-| `mc_run_end` | `imend` | `mc_run_end` | physics | `last_mc_run` | - | run | integer | `1` | live | Last Monte-Carlo realization index |
+| `mc_run_start` | `imbeg` | `mc_run_start` | physics | - | - | run | integer | `1` | live | First Monte-Carlo realization index |
+| `mc_run_end` | `imend` | `mc_run_end` | physics | - | - | run | integer | `1` | live | Last Monte-Carlo realization index |
 | `(legacy only)` | `sstandard` | `cross_section_ratios` | buffer | - | - | read | real(num_sstandard) | `0.9828d0, 1.0485d0, 0.9815d0, 0.9241d0, 1.3818d0, 1.0542d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0d0, 1.0108d0, 0.7819d0, 0.2875d0` | legacy | The cross sections as ratios to Bahcall & Ulrich (1988), one per slot of the legacy SSTANDARD array, used without use_new_nuclear_rates |
 | `use_scv_eos` | `lscv` | `use_scv_eos` | physics | - | `eos_settings%use_scv_eos` | run | logical | `.false.` | live | Use the SCV EOS where it is valid and the OPAL EOS is not |
 | `disk_locking_active` | `ldisk` | `disk_locking_active` | physics | - | `rotation_settings%disk_locking_active` | run | logical | `.false.` | live | Disk locking: hold the surface rotation at disk_omega_rad_s until disk_locking_age_gyr |

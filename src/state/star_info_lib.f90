@@ -198,10 +198,9 @@ module star_info_lib
 
 ! ==== Monte-Carlo runs =================================================
 ! The Monte-Carlo runs of one run_yrec call, and the values fixed within
-! a run that may differ from run to run: the range (first_mc_run to
-! last_mc_run; the single run 1 without Monte Carlo), the samples read
-! from the sample file, one entry per run (mc_samples), and what a run
-! takes from its sample: the metal settling factor
+! a run that may differ from run to run: the samples read from the
+! sample file, one entry per run (mc_samples), and what a run takes from
+! its sample: the metal settling factor
 ! (settling_z_factor_in_use), the cross-section scales (the run copies of
 ! physics%cross_section_scale and physics%extra_cross_section_scale), and
 ! the solar luminosity with its two logarithms. Each run starts with
@@ -213,17 +212,11 @@ module star_info_lib
 ! state/README.md section 7); and then sets these values from the run's
 ! sample. Without Monte Carlo they keep the controls' values (the solar
 ! luminosity as run_setup copies it).
-! Valid: the range and the samples from prepare_run on; a run's values
-! from its begin_monte_carlo_run to its end.
+! (The range of runs is no member: monte_carlo's first_mc_run(s) and
+! last_mc_run(s) derive it from the controls.)
+! Valid: the samples from prepare_run on; a run's values from its
+! begin_monte_carlo_run to its end.
 
-! the first Monte-Carlo run of the process [-]; controls_sync,
-! monte_carlo. From physics%mc_run_start; set_monte_carlo_range makes it 1
-! without Monte Carlo.
-            integer :: first_mc_run
-! the last Monte-Carlo run of the process [-]; controls_sync,
-! monte_carlo. From physics%mc_run_end; set_monte_carlo_range clamps it to
-! max_mc_runs, or makes it 1 without Monte Carlo.
-            integer :: last_mc_run
 ! the metal settling factor this Monte-Carlo run uses [-]; controls_sync,
 ! monte_carlo. From physics%settling_z_factor; with Monte Carlo,
 ! begin_monte_carlo_run sets it to the run's mc_samples%settling_z_factor.

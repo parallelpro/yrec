@@ -6,8 +6,10 @@
 ! and age factors from the sample file (control%dynamics_file; the
 ! fields of star%mc_samples, state/README.md):
 !
-!  * setup_monte_carlo_runs -- the run range, and each run's samples
-!    read from the sample file (once, from prepare_run);
+!  * first_mc_run, last_mc_run -- the run range, functions of the
+!    controls (run_yrec's loop bounds);
+!  * setup_monte_carlo_runs -- each run's samples read from the sample
+!    file (once, from prepare_run);
 !  * begin_monte_carlo_run -- the start of every Monte-Carlo run, the
 !    per-run hook: every run copy of a control re-armed from its control,
 !    the other state found so far that a run leaves and the next would
@@ -32,26 +34,45 @@ module monte_carlo
       use output_files, only: flush_output_file
       implicit none
       private
-      public :: setup_monte_carlo_runs, begin_monte_carlo_run, &
-           write_run_summaries
+      public :: first_mc_run, last_mc_run, setup_monte_carlo_runs, &
+           begin_monte_carlo_run, write_run_summaries
 
 contains
 
 ! ---------------------------------------------------------------
-! Set the run range and, for a Monte-Carlo job, read each run's samples
-! from the sample file (opened on dynamics_unit with the run's files):
-! the S11, S33, S34 and S17 factors, Z/X, the metal settling factor, and
-! the luminosity and age factors. Only the records up to last_mc_run (at
-! most max_mc_runs) are read (MHP 3/96).
-!   star reads: last_mc_run, physics%monte_carlo_active
+! The run range: the first and the last Monte-Carlo run, from the
+! controls mc_run_start and mc_run_end (legacy IMBEG, IMEND), the last
+! clamped to max_mc_runs; without Monte Carlo the single run 1.
+!   star reads: physics%mc_run_start, physics%monte_carlo_active
+!   star writes: none
+pure integer function first_mc_run(s)
+      type(star_info), intent(in) :: s
+      first_mc_run = 1
+      if (s%physics%monte_carlo_active) first_mc_run = s%physics%mc_run_start
+end function first_mc_run
+
+!   star reads: physics%mc_run_end, physics%monte_carlo_active
+!   star writes: none
+pure integer function last_mc_run(s)
+      type(star_info), intent(in) :: s
+      last_mc_run = 1
+      if (s%physics%monte_carlo_active) last_mc_run = min(s%physics%mc_run_end, max_mc_runs)
+end function last_mc_run
+
+! ---------------------------------------------------------------
+! For a Monte-Carlo job, read each run's samples from the sample file
+! (opened on dynamics_unit with the run's files): the S11, S33, S34 and
+! S17 factors, Z/X, the metal settling factor, and the luminosity and
+! age factors. Only the records up to last_mc_run (at most max_mc_runs)
+! are read (MHP 3/96).
+!   star reads: physics%monte_carlo_active
 !   star writes: mc_samples
 subroutine setup_monte_carlo_runs(s)
       type(star_info), intent(inout) :: s
       integer :: i
-      call set_monte_carlo_range(s)
       if (s%physics%monte_carlo_active) then
 ! Read the samples, one two-line record per run.
-         do i = 1,s%last_mc_run
+         do i = 1,last_mc_run(s)
             read(dynamics_unit,1511)s%mc_samples%s11_factor(i),s%mc_samples%s33_factor(i), &
                  s%mc_samples%s34_factor(i),s%mc_samples%s17_factor(i),s%mc_samples%metal_to_h_ratio(i), &
                  s%mc_samples%settling_z_factor(i),s%mc_samples%luminosity_factor(i), &
@@ -66,22 +87,6 @@ subroutine setup_monte_carlo_runs(s)
 end subroutine setup_monte_carlo_runs
 
 ! ---------------------------------------------------------------
-! The run range: first_mc_run and last_mc_run, the star's copies of the
-! controls mc_run_start and mc_run_end (legacy IMBEG, IMEND), with the
-! last clamped to max_mc_runs; without Monte Carlo the single run 1.
-!   star reads: physics%monte_carlo_active
-!   star writes: first_mc_run, last_mc_run
-subroutine set_monte_carlo_range(s)
-      type(star_info), intent(inout) :: s
-      if (s%physics%monte_carlo_active) then
-         s%last_mc_run = min(s%last_mc_run,max_mc_runs)
-      else
-         s%first_mc_run = 1
-         s%last_mc_run = 1
-      endif
-end subroutine set_monte_carlo_range
-
-! ---------------------------------------------------------------
 ! The start of every Monte-Carlo run (and of the one run without Monte
 ! Carlo): the per-run hook, the first call of run_yrec's Monte-Carlo
 ! loop. Each Monte-Carlo run is the deck's run again with other samples,
@@ -91,19 +96,17 @@ end subroutine set_monte_carlo_range
 ! stops init_stop_conditions disarmed, the solar calibration's
 ! age-scaled fixed timesteps and laid-out cycles, the structure-timestep
 ! and mass-change latches, the atmosphere the surface boundary switched
-! to, the core extension's factor. The run range, re-armed with them, is
-! derived again as setup_monte_carlo_runs derived it (the loop's bounds
-! were fixed when it began). The other state found so far that a run
+! to, the core extension's factor. The other state found so far that a run
 ! leaves on the star and the next would read before writing it is
 ! cleared (clear_previous_run_state). Then the run's samples are applied
 ! (apply_monte_carlo_parameters). On the first run the re-arm and the
-! clearing change nothing: no run copy but the range is written between
-! the controls read and the loop, and the cleared state is still the
+! clearing change nothing: no run copy is written between the controls
+! read and the loop, and the cleared state is still the
 ! template star's. A value the run changes per Monte-Carlo run is a
 ! star member of the Monte-Carlo runs class, set here from the run's
 ! sample (as settling_z_factor_in_use); state/README.md, "Add a value
 ! the run changes per Monte-Carlo run". The contract below covers this
-! body alone: what the run starts from is its four callees' contracts.
+! body alone: what the run starts from is its three callees' contracts.
 !   star reads: none
 !   star writes: none
 subroutine begin_monte_carlo_run(s, monte_carlo_run_number, &
@@ -113,7 +116,6 @@ subroutine begin_monte_carlo_run(s, monte_carlo_run_number, &
       integer, intent(in) :: monte_carlo_run_number
       double precision, intent(out) :: age_scale_factor
       call arm_run_copies(s)
-      call set_monte_carlo_range(s)
       call clear_previous_run_state(s)
       call apply_monte_carlo_parameters(s, monte_carlo_run_number, &
            age_scale_factor)

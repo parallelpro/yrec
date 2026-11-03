@@ -916,8 +916,6 @@ subroutine arm_run_copies(s)
       s%settling_z_factor_in_use = s%physics%settling_z_factor
       s%num_core_points_added = s%physics%num_core_shells_added
       s%core_mass_reduction = s%physics%core_mass_reduction_factor
-      s%first_mc_run = s%physics%mc_run_start
-      s%last_mc_run = s%physics%mc_run_end
 end subroutine arm_run_copies
 
 end module controls_sync

@@ -45,14 +45,13 @@ contains
 !     card_initial_z, card_log_fit_point_mass_fraction,
 !     card_mixing_length_alpha, card_moves_fit_point, card_num_models,
 !     control%calibrate_solar_model, control%calibrate_star_flag,
-!     control%set_initial_model_number, convective_flag, first_mc_run,
-!     last_mc_run, log10_solar_luminosity, log10_solar_radius,
-!     log_L_lsun, log_Teff, logP, logR, logRho, logT,
-!     luminosity_breakdown_lsun, luminosity_lsun, m, num_cards, nz,
-!     omega, physics%atm_choice, physics%compute_neutrino_fluxes,
-!     physics%diffuse_helium_active, physics%helium_flash_active,
-!     physics%use_structure_dt_limits, solar_calibration_converged,
-!     star_found_flag, star_mass, xa
+!     control%set_initial_model_number, convective_flag,
+!     log10_solar_luminosity, log10_solar_radius, log_L_lsun, log_Teff,
+!     logP, logR, logRho, logT, luminosity_breakdown_lsun,
+!     luminosity_lsun, m, num_cards, nz, omega, physics%atm_choice,
+!     physics%compute_neutrino_fluxes, physics%diffuse_helium_active,
+!     physics%helium_flash_active, physics%use_structure_dt_limits,
+!     solar_calibration_converged, star_found_flag, star_mass, xa
 !   star writes: atm_choice_in_use, convective_turnover_timescale,
 !     core_cz_top_index, current_card, current_card_envelope_x,
 !     current_card_envelope_z, dln_luminosity_dt, dlog_pressure_dt,
@@ -79,8 +78,8 @@ subroutine run_yrec(ierr)
       use model_files, only: write_mod_model
       use physical_constants
       use yrec_reset, only: yrec_run_prologue
-      use monte_carlo, only: begin_monte_carlo_run, &
-           write_run_summaries
+      use monte_carlo, only: first_mc_run, last_mc_run, &
+           begin_monte_carlo_run, write_run_summaries
       use stop_conditions, only: step_kind_card_done, &
            step_leave_run_loop, init_stop_conditions, &
            check_rotation_initialised
@@ -150,7 +149,7 @@ subroutine run_yrec(ierr)
 ! that are silently inert or cancel each other.
       call warn_inconsistent_controls(s)
 
-      do monte_carlo_run_number = s%first_mc_run,s%last_mc_run
+      do monte_carlo_run_number = first_mc_run(s),last_mc_run(s)
 ! Per-run setup: the start of the Monte-Carlo run (begin_monte_carlo_run,
 ! the per-run hook: this run's samples), then the network settings
 ! (which take the Monte-Carlo rate factors), then the calibration

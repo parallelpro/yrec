@@ -3,7 +3,7 @@
 !----------------------------------------------------------------------
 ! The setup before the run cards: the run plan's envelope Z, the
 ! physical constants and the microphysics tables
-! (set_up_constants_and_tables), and the Monte-Carlo run range
+! (set_up_constants_and_tables), and the Monte-Carlo samples
 ! (prepare_run).
 module run_setup
       use star_info_lib, only: star_info
@@ -21,8 +21,8 @@ contains
 ! The setup step before the run cards: the run plan's envelope Z
 ! (set_run_plan_envelope_z), the constants and the table loads
 ! (set_up_constants_and_tables, which passes ierr through the kap, eos
-! and atm initializations), then the Monte-Carlo run range and each
-! run's sampled parameters. Errors return through ierr.
+! and atm initializations), then each Monte-Carlo run's sampled
+! parameters. Errors return through ierr.
 !   star reads: none
 !   star writes: none
 subroutine prepare_run(s, ierr)
@@ -40,8 +40,7 @@ subroutine prepare_run(s, ierr)
 ! Set the constants and read the tables.
       call set_up_constants_and_tables(s, ierr)
       if (ierr /= 0) return
-! The Monte-Carlo run range and each run's sampled parameters
-! (core/run/monte_carlo.f90).
+! Each Monte-Carlo run's sampled parameters (core/run/monte_carlo.f90).
       call setup_monte_carlo_runs(s)
 
       return
