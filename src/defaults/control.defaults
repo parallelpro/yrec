@@ -213,7 +213,7 @@
       ! (legacy name: lkur90)
       use_kurucz90_tables = .false.
 
-      ! Use the Alexander & Ferguson 1994 low-temperature opacity tables (alex95_table_z_list)
+      ! Use the Alexander & Ferguson 1994 low-temperature opacity tables (alex95_opacity_table_files)
       ! (legacy name: lalex95)
       use_alex95_tables = .false.
 

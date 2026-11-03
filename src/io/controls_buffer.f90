@@ -314,7 +314,7 @@ module controls_buffer
 ! Use the Kurucz 1990 low-temperature opacity tables
       logical :: use_kurucz90_tables = .false.
 ! Use the Alexander & Ferguson 1994 low-temperature opacity tables
-! (alex95_table_z_list)
+! (alex95_opacity_table_files)
       logical :: use_alex95_tables = .false.
 ! Use the Ferguson et al. 2005 molecular opacity tables
 ! (alex06_opacity_table_file)
@@ -484,8 +484,8 @@ module controls_buffer
 ! Limit the timestep by the envelope-fit triangle
       logical :: use_envelope_triangle_dt = .false.
 ! Take the zoning and timestep tolerances from the named tol_*, flag_* and
-! time_* controls (and use_structure_time_limits) instead of
-! zoning_tolerances and timestep_factors; nothing to do with reaction rates
+! time_* controls (and lstruct_time) instead of zoning_tolerances and
+! timestep_factors; nothing to do with reaction rates
       logical :: use_new_rate_variables = .false.
 ! With use_new_rate_variables: limit the timestep by the structure changes
 ! time_dt..time_dl (switched off once nuclear burning dominates)
@@ -805,8 +805,8 @@ module controls_buffer
 ! log10 T above which only the atomic opacities are used (a ramp joins the
 ! two)
       real(dp) :: molecular_opacity_logt_max = 4.1d0
-! The LAOL 1989 interpolators extrapolate linearly within
-! log10(laol_extrapolation_tolerance) of a table edge
+! The LAOL 1989 interpolators extrapolate linearly up to a distance of log10
+! of this value from a table edge
       real(dp) :: laol_extrapolation_tolerance = 10.0d0
 ! Use the conductive opacity tables (conductive_opacity_table_file)
       logical :: use_conductive_opacity = .false.
@@ -1090,8 +1090,8 @@ module controls_buffer
 
 ! ---- Mass loss and accretion
 
-! Mass change: a constant rate (mass_accretion_rate) or the Reimers wind;
-! switched off for the run when the disk is exhausted
+! Mass change: a constant rate (mass_change) or the Reimers wind; switched off
+! for the run when the disk is exhausted
       logical :: use_mass_accretion = .false.
 ! Mass change rate (Msun/yr; negative for loss) when use_mass_change is set
       real(dp) :: mass_accretion_rate = -1.0d-14
@@ -1176,21 +1176,21 @@ module controls_buffer
             0.071794d0, 0.040520d0, 0.173285d0, 0.000000d0, 0.482273d0, 0.053152d0, &
             0.005379d0, 0.098668d0, 0.000000d0/)
 ! Set one species of the starting model (change_species_name) to
-! new_species_value
+! change_species_value
       logical :: rescale_species_active = .false.
 ! Element id whose abundance to override in the start model (with
 ! change_species_value)
       character(len=3) :: change_species_name = '   '
-! With rescale_species_active: 'ABS' makes new_species_value an absolute mass
-! fraction; anything else, relative to hydrogen
+! With rescale_species_active: 'ABS' makes change_species_value an absolute
+! mass fraction; anything else, relative to hydrogen
       character(len=3) :: new_species_value_mode = repeat(achar(0), 3)
 ! New abundance for change_species_name
       real(dp) :: new_species_value = 1.3d1
 ! With rescale_species_active: the composition slot of change_species_name
 ! (set by the reader)
       integer :: new_species_index
-! With rescale_species_active: new_species_value is relative to hydrogen (from
-! new_species_value_mode)
+! With rescale_species_active: change_species_value is relative to hydrogen
+! (from new_species_value_mode)
       logical :: value_relative_to_h
 ! Add shells inward of the starting model's innermost shell
       logical :: extend_core_inward = .false.

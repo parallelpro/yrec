@@ -34,7 +34,7 @@
       ! (legacy name: anewcp)
       change_species_name = '   '
 
-      ! With rescale_species_active: 'ABS' makes new_species_value an absolute mass fraction; anything else, relative to hydrogen
+      ! With rescale_species_active: 'ABS' makes change_species_value an absolute mass fraction; anything else, relative to hydrogen
       ! (legacy name: atmp)
       new_species_value_mode = ''
 
@@ -290,7 +290,7 @@
       ! (legacy name: ldh)
       use_debye_huckel_correction = .false.
 
-      ! Set one species of the starting model (change_species_name) to new_species_value
+      ! Set one species of the starting model (change_species_name) to change_species_value
       ! (legacy name: lnewcp)
       rescale_species_active = .false.
 
@@ -458,7 +458,7 @@
       ! (legacy name: tridl)
       tri_delta_logl = 8.0d-2
 
-      ! The LAOL 1989 interpolators extrapolate linearly within log10(laol_extrapolation_tolerance) of a table edge
+      ! The LAOL 1989 interpolators extrapolate linearly up to a distance of log10 of this value from a table edge
       ! (legacy name: tollaol)
       laol_z_tolerance = 10.0d0
 
@@ -563,7 +563,7 @@
       ! (legacy name: lreimer)
       use_reimers_wind = .false.
 
-      ! Mass change: a constant rate (mass_accretion_rate) or the Reimers wind; switched off for the run when the disk is exhausted
+      ! Mass change: a constant rate (mass_change) or the Reimers wind; switched off for the run when the disk is exhausted
       ! (legacy name: lmdot)
       use_mass_change = .false.
 
@@ -944,7 +944,7 @@
       ! With use_new_rate_variables: the largest factor by which the timestep changes from one model to the next
       time_max_dt_frac = 1.5d0
 
-      ! Take the zoning and timestep tolerances from the named tol_*, flag_* and time_* controls (and use_structure_time_limits) instead of zoning_tolerances and timestep_factors; nothing to do with reaction rates
+      ! Take the zoning and timestep tolerances from the named tol_*, flag_* and time_* controls (and lstruct_time) instead of zoning_tolerances and timestep_factors; nothing to do with reaction rates
       ! (legacy name: lnewvars)
       use_new_rate_variables = .false.
 

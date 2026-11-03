@@ -369,12 +369,16 @@ def _code_words():
 
 
 def description_problems(rs, members):
-    """the descriptions that name what the code does not: a lower-case
-    snake_case name that is no control's (code, inlist, alias, legacy or
-    run-copy name, or a MESA name of mesa_note) and nothing the Fortran
-    sources use; a prefix pattern (tol_*) that starts no such name; an F77
-    routine or a legacy name in lower case, unless written "legacy X" (a
-    path, with a / and an extension or a placeholder, is not checked)"""
+    """the descriptions that name what the code does not, or a control by
+    another name than its inlist name: a lower-case snake_case name that is
+    no control's (code, inlist, alias, legacy or run-copy name, or a MESA
+    name of mesa_note) and nothing the Fortran sources use; a control's
+    code name where its inlist name differs, or an alias (an older inlist
+    name), since a description names a control by its inlist name, the
+    name a deck sets and the .defaults files list; a prefix pattern (tol_*)
+    that starts no such name; an F77 routine or a legacy name in lower
+    case, unless written "legacy X" (a path, with a / and an extension or a
+    placeholder, is not checked)"""
     names, legacy = set(), set()
     for r in rs:
         names |= {r[k].lower() for k in ("proposed_name", "canonical", "run_copy") if r[k]}
@@ -383,6 +387,16 @@ def description_problems(rs, members):
         if r["legacy"] != "-":
             legacy.add(r["legacy"].lower())
     legacy -= names
+    # {a name that is not the control's inlist name: its inlist name}, for
+    # the controls a deck sets (the inlist names themselves excepted, where
+    # one control's code name is another's inlist name)
+    inlist = {r["proposed_name"].lower() for r in live(rs)}
+    other_name = {}
+    for r in live(rs):
+        for kind, n in [("its code name", r["canonical"])] + \
+                [("an older inlist name", a) for a in r["aliases"].split(",")]:
+            if n and n.lower() not in inlist:
+                other_name[n.lower()] = (kind, r["proposed_name"])
     f77 = set()
     for line in RENAME_MAP.read_text().splitlines():
         cells = line.split("\t")
@@ -406,6 +420,10 @@ def description_problems(rs, members):
             elif w == lw and "_" in w and lw not in known and lw not in legacy:
                 problems.append(f"{m['name']}: its description names {w}, which is no control "
                                 "and nothing the code uses")
+            elif w == lw and lw in other_name:
+                kind, name = other_name[lw]
+                problems.append(f"{m['name']}: its description names {w}, {kind}: a description "
+                                f"names a control by its inlist name, {name}")
             elif w == lw and lw in old and not re.search(r"legacy\s+" + re.escape(w) + r"\b", doc):
                 problems.append(f"{m['name']}: its description names {w}, an F77 or legacy name: "
                                 "say what the value means, in today's names (\"(legacy "
