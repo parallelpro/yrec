@@ -4198,7 +4198,7 @@ The io package's entries, M181-M189, link the current code at [99d3908d](https:/
 ### M192. check_max_runs passed a run-card control declared with a literal size
 
 - **Status:** fixed in [7ac8009e](https://github.com/parallelpro/yrec/commit/7ac8009e) (2026-11-02). Tools only.
-- **In the original F77?** No: the check came with the cleanup round ([269c32ea](https://github.com/parallelpro/yrec/commit/269c32ea), 2026-11-01).
+- **In the original F77?** No: the check came with the cleanup round ([462120b9](https://github.com/parallelpro/yrec/commit/462120b9), 2026-11-01).
 - **Now:** `literal_run_sizes`, called by `check_max_runs` ([check_boundaries.py:792-807](https://github.com/parallelpro/yrec/blob/48604587/src/tools/check_boundaries.py#L792-L807)).
 - **What was wrong:** a control counted as per-run only when its buffer dimensions spell `max_runs`, and `controls_registry.type_of` writes `max_runs` as its value before every type comparison. So a new per-run control declared `foo(50)` in `io/controls_buffer.f90`, with a registry cell `real(50)`, passed `check_max_runs`, `check_rows_against_buffer` and its run copy's type check, and would stay at 50 when `max_runs` changes, read out of bounds past card 50.
 - **Expected behaviour, and why:** `max_runs` (`state/control_slots.f90`) is the one source of the run cards' size; the one hand-written place a size is typed must spell it.
