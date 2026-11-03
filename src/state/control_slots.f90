@@ -1,15 +1,19 @@
 !----------------------------------------------------------------------
 ! control_slots
 !----------------------------------------------------------------------
-! The slot names of the controls that are vectors: timestep_factors
-! (itime_*, legacy atime), the timestep-control factors, and
-! chi_grid_scale(ichi_*), the zoning tolerances
-! (star%physics%timestep_factors, star%physics%chi_grid_scale); and
-! max_runs, the length of the run-card arrays. Constants only, so that
-! any module may use them; each user imports what it takes from here
-! (the controls buffer, io/controls_buffer.f90, imports only max_runs,
-! and nothing re-exports them). (They were the buffer's own until
-! 2026-10-29, max_runs until 2026-10-30.)
+! The slot names of the controls that are vectors, and the run cards'
+! capacity:
+!  - timestep_factors(itime_*) (legacy atime), the timestep-control
+!    factors, and chi_grid_scale(ichi_*), the zoning tolerances
+!    (star%physics%timestep_factors, star%physics%chi_grid_scale);
+!  - the rows of a rescale card's targets, i_target_*
+!    (star%control%rescale_params and its run copy, the run plan's
+!    card_rescale_targets);
+!  - max_runs, the length of the run-card arrays.
+! Constants only, so that any module may use them; each user imports
+! what it takes from here (the controls buffer, io/controls_buffer.f90,
+! imports only max_runs, and nothing re-exports them). (They were the
+! buffer's own until 2026-10-29, max_runs until 2026-10-30.)
 module control_slots
       implicit none
       private
@@ -63,5 +67,17 @@ module control_slots
            ichi_dp_czbase_max = 10, &    ! tol_dp_czbase_max: max log-P spacing near CZ base
            ichi_dp_core_max = 11, &      ! tol_dp_core_max: max log-P spacing, radiative interior
            ichi_flag_dw = 12             ! flag_dw: max log-omega spacing (rotating models)
+
+! Slot names for the rows of a rescale card's targets,
+! control%rescale_params(:,card) and its run copy, the run plan's
+! card_rescale_targets(:,card), which io/run_cards.f90 fills from the
+! like-named rescale_* controls; a target of 0 keeps the model's value
+! (core/model/model_rescaling.f90). Readers subscript with these names.
+      integer, parameter, public :: &
+           i_target_mass = 1, &       ! rescale_mass: the total mass [Msun]
+           i_target_x = 2, &          ! rescale_x: the surface X
+           i_target_z = 3, &          ! rescale_z: the surface Z
+           i_target_core_mass = 4, &  ! rescale_core_mass: the core mass [Msun]
+           n_rescale_targets = 4      ! the number of rows
 
 end module control_slots

@@ -57,8 +57,9 @@ module star_info_lib
       use transport_mechanism_layout
 ! the sizes of the reaction-rate scales
       use reaction_layout, only: num_reactions, num_extra_scales
-! the length of the run plan's per-card arrays
-      use control_slots, only: max_runs
+! the length of the run plan's per-card arrays, and the number of a
+! rescale card's targets
+      use control_slots, only: max_runs, n_rescale_targets
       use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
       private
@@ -299,11 +300,12 @@ module star_info_lib
 ! each card's fitting-point mass, log10(m_fit/M), made negative when the
 ! card starts [log10]; controls_sync, calibration. From control%senv0_array.
             real(dp) :: card_log_fit_point_mass_fraction(max_runs)
-! each rescale card's targets: the total mass, X, Z and the core mass,
-! 0 to keep one [Msun, -, -, Msun]; controls_sync, calibration. From
-! control%rescale_params (interpret_kind_cards); the solar calibration
-! writes its X and Z guesses here.
-            real(dp) :: card_rescale_targets(4,max_runs)
+! each rescale card's targets, by control_slots' rows i_target_*: the
+! total mass, X, Z and the core mass, 0 to keep one [Msun, -, -, Msun];
+! controls_sync, calibration. From control%rescale_params
+! (interpret_kind_cards); the solar calibration writes its X and Z
+! guesses here.
+            real(dp) :: card_rescale_targets(n_rescale_targets,max_runs)
 ! the Z ramp's core Z (with control%use_z_ramp: model_rescaling's
 ! ramp_interior_z) [-]; controls_sync, calibration. From
 ! control%rescale_core_z.

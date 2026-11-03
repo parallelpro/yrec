@@ -24,6 +24,7 @@
 module monte_carlo
       use star_info_lib, only: json, i_h1, i_he4, i_metals, i_lum_grav, &
            max_mc_runs, star_info
+      use control_slots, only: i_target_x, i_target_z
       use run_messages, only: run_log_unit, terminal_unit
       use run_files, only: last_model_unit, starting_model_unit, &
            dynamics_unit, mc_summary_unit, mc_model_unit
@@ -316,8 +317,8 @@ subroutine write_monte_carlo_model(s, local_log_radius, &
 ! Record 5: the number of shells, alpha, the initial Y and Z (from the
 ! triple's rescale card, current_card-2), and the final log(L/Lsun) and
 ! log(R/Rsun).
-      yini = 1.0d0 - s%card_rescale_targets(2,run_index-2) - s%card_rescale_targets(3,run_index-2)
-      zini = s%card_rescale_targets(3,run_index-2)
+      yini = 1.0d0 - s%card_rescale_targets(i_target_x,run_index-2) - s%card_rescale_targets(i_target_z,run_index-2)
+      zini = s%card_rescale_targets(i_target_z,run_index-2)
       if (ios == 0) write(mc_summary_unit,50,iostat=ios,iomsg=msg)s%nz,s%card_mixing_length_alpha(run_index),yini,zini, &
            s%log_L_lsun,local_log_radius
  50   format(I5,F7.4,2F8.5,1P2E10.3)
