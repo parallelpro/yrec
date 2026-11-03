@@ -9,8 +9,10 @@
 ! kap_update_surface_tables) is here, and tools/check_boundaries.py
 ! (INSTALL_FILES) keeps it so. Each procedure builds the records with
 ! setup/'s builders (<x>_settings_from_star, in <x>_settings_builder) or
-! takes the star's surface mixture, and installs them, in a fixed order, one procedure
-! (or, per surface mixture, three) per lifetime:
+! takes the star's surface mixture, and installs them in a fixed order,
+! one procedure (or, per surface mixture, three) per lifetime; a builder
+! is installed no less often than the star members it copies change
+! (check_boundaries' check_settings_lifetimes):
 !   install_run_settings              per run, after the controls read
 !                                     (run_setup's set_up_constants_and_tables):
 !                                     kap, eos and atm, with their tables
