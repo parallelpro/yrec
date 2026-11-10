@@ -80,7 +80,8 @@ Rotation calls back into core for two services: `shell_physics` (the per-shell E
 - magnetic braking, every law and branch;
 - the shape quadratures;
 - the angular momentum solve;
-- the rotating structure on a synthetic model: the moments of inertia, ω from J, the shape factors and the viscosity.
+- the rotating structure on a synthetic model: the moments of inertia, ω from J, the shape factors and the viscosity;
+- the secular transport on a synthetic model, case by case: the stability factors, the circulation and instability velocities and the diffusion coefficients; for the first iteration and the three shear bands the transport chain itself (the grid, the angular momentum solve, the map back, the mixing), with an ok/FAIL check that the solve conserves the region's J without a wind, |ΣdJ| < 10⁻¹² J (the sum is round-off, 3×10⁻¹⁷ to 2×10⁻¹⁴ of J, and differs between platforms, so its digits are not pinned; a failed check makes the program exit 1).
 
 `test_rotation_kernels` (`pytest test_rotation_kernels.py`) checks the kernels against the laws they keep, on a synthetic model:
 - the moments of inertia and the shape factors in the spherical limit, and their growth with ω (1 − fp as ω², 1 − ft as ω⁴);

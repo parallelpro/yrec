@@ -2,7 +2,11 @@
 
 Runs src/test_rotation (built by `make tests` in src/) and byte-compares
 its stdout with the pinned src/rotation/test/expected_test_rotation.out.
-See test_eos.py for the conventions.
+The secular-transport cases also check that the angular momentum solve
+conserves the region's J without a wind (|sum dJ| < 1e-12 J): the sum
+is round-off, so the pin keeps the check's ok, not its digits, and the
+binary exits nonzero when the check fails. See test_eos.py for the
+conventions.
 """
 import os
 import pathlib

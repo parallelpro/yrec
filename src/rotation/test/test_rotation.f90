@@ -14,7 +14,11 @@
 !   angular momentum, the shape factors fp and ft, and the viscosity
 !   and thermal diffusivity (viscos);
 !   the secular transport's stability factors, circulation and
-!   instability velocities and diffusion coefficients, case by case.
+!   instability velocities and diffusion coefficients, case by case;
+!   for four of the cases the transport chain itself, with an ok/FAIL
+!   check that the angular-momentum solve conserves the region's J
+!   without a wind (secular_case). A failed check makes the program
+!   stop with status 1.
 ! The braking entry points:
 !   brake_convection_zone       the spin-down of the convection zone
 !                               over a step: its j/m afterwards. The
@@ -53,6 +57,8 @@ program test_rotation
       double precision, parameter :: msun = 1.989d33
       double precision :: j(json), omega, dt, domega_start, domega_end
       integer :: ierr, k
+! the ok/FAIL checks that failed (the program then stops with status 1)
+      integer :: failures = 0
 
       star%solar_mass_cgs = msun
       star%solar_radius_cgs = 6.957d10
@@ -147,6 +153,10 @@ program test_rotation
       call angular_momentum_solve_check()
       call structure_check()
       call secular_check()
+      if (failures > 0) then
+         write(*,'(i0,a)') failures, " check(s) failed"
+         stop 1
+      end if
       write(*,'(a)') "test_rotation: done"
 
 contains
@@ -336,7 +346,8 @@ end subroutine structure_check
 ! shear bands the transport itself runs too, as apply_secular_transport
 ! does it for one unstable region: the equally spaced grid, the angular
 ! momentum diffusion and its solve, the map back to the model, and the
-! mixing of H, He3 and He4 (printed: the change of j/m, X and He4).
+! mixing of H, He3 and He4 (printed: the change of j/m, X and He4), with
+! the check that the solve conserves J without a wind.
 subroutine secular_check()
       write(*,'(a)') "# secular transport"
 ! the controls' defaults, as rotation_settings_from_star built them
@@ -388,7 +399,7 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
       integer :: zmin, zmax
       double precision :: log_m(json), dm(json), inertia(json), di_dw(json), jm(json), jm0(json), &
            eta2(json), xa(15,json), xa0(15,json), sub_diag(json), diag(json), super_diag(json), &
-           rhs(json), dj(json), solution(json), sum_dj, wind_term
+           rhs(json), dj(json), solution(json), sum_dj, wind_term, region_j
       logical :: mixed_ok
       integer :: zbeg, zend
       double precision :: log_rc, weight, lum_total, f, p
@@ -542,7 +553,19 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
               mixed_ok, n, xa, 1, 4, ierr)
          write(*,'(a,2i4,a,i5,a,l2,a,i2)') "region", zbeg, zend, "  grid points", chi_grid%num_eq_points, &
               "  one interface", chi_grid%single_interface, "  ierr", ierr
-         write(*,'(a,1pe24.15)') "sum dJ", sum_dj
+! Without a wind the solve conserves the region's angular momentum: the
+! changes of its grid points, dJ_i = I_i (omega_i at the end - omega_i
+! at the start), sum to zero but for round-off. Each dJ_i is a
+! difference of two values of I_i omega_i, so that round-off scales
+! with the region's J = sum I_i omega_i (the sum is 3e-17 to 2e-14 of J
+! in the four cases, and differs between platforms); 1e-12 J leaves a
+! margin of 50 over the largest and is far below what a broken
+! conservation gives (the points' |dJ| add up to 1e-5 to 0.1 of J here).
+! The sum's digits are round-off, so they are not printed.
+         region_j = sum(chi_grid%eq_moment_of_inertia(1:chi_grid%num_eq_points)* &
+              chi_grid%eq_omega(1:chi_grid%num_eq_points))
+         call check("J of the region conserved without a wind (|sum dJ| < 1e-12 J)", &
+              abs(sum_dj) < 1.0d-12*region_j)
          write(*,'(a)') "zone  d(j/m)/(j/m) dX dHe4"
          do s = 1, size(shown)
             i = shown(s)
@@ -551,5 +574,14 @@ subroutine secular_case(label, iterations, steep, zahn, chain)
          end do
       end if
 end subroutine secular_case
+
+! An ok/FAIL line; a failure is counted (the program then stops with
+! status 1).
+subroutine check(label, ok)
+      character(len=*), intent(in) :: label
+      logical, intent(in) :: ok
+      write(*,'(a,1x,a)') merge("ok  ", "FAIL", ok), label
+      if (.not. ok) failures = failures + 1
+end subroutine check
 
 end program test_rotation
