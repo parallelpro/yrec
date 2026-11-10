@@ -83,4 +83,7 @@ Bugs (no shipped deck is known to reach most of them; "F77" = inherited):
 CI's first GitHub run (42885208151, Linux) passed the build, the generators' checks, the library
 link check and 86 of 88 tests; it failed test_rotation:133 (`sum dJ`, a J-conservation residual at
 round-off) and test_eos:201 (a finite-difference relative error's fourth digit): both pins of
-round-off that another libm moves, not code defects. Making them ok/FAIL checks is in progress.
+round-off that another libm moves, not code defects. Both are now ok/FAIL checks (merge 942cd521),
+and the round-off columns CI had not yet reached (test_rotation's j/m, X and He4 changes,
+test_structure's finite-difference errors) have absolute bounds measured under crmath and +-4 ulp
+inputs, used in CI's tolerant mode only; local runs still compare byte for byte.
