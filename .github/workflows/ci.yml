@@ -36,7 +36,7 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           filter: blob:none
           sparse-checkout-cone-mode: false
@@ -140,7 +140,7 @@ jobs:
   solar-regression:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           filter: blob:none
           sparse-checkout-cone-mode: false
