@@ -2,7 +2,7 @@
 
 ## 1. About this report
 
-This report lists every defect found on the `yrec-next` branch after it diverged from `main` at [0ff84d7e](https://github.com/parallelpro/yrec/commit/0ff84d7e) (2026-09-03), up to [609c66c3](https://github.com/parallelpro/yrec/commit/609c66c3) (2026-11-03, the sixth-evaluation pass's last fix). There are 264 items: 183 fixed and 81 open. Bugs fixed before the divergence (bug-sweep batches 1-3, such as the CF88 deuterium rate) are in `docs/MODERNIZATION_CHANGES.md` and are not repeated here.
+This report lists every defect found on the `yrec-next` branch after it diverged from `main` at [0ff84d7e](https://github.com/parallelpro/yrec/commit/0ff84d7e) (2026-09-03), up to [609c66c3](https://github.com/parallelpro/yrec/commit/609c66c3) (2026-11-03, the sixth-evaluation pass's last fix). There are 264 items: 184 fixed and 80 open. Bugs fixed before the divergence (bug-sweep batches 1-3, such as the CF88 deuterium rate) are in `docs/MODERNIZATION_CHANGES.md` and are not repeated here.
 
 Each item answers the same questions:
 
@@ -38,8 +38,8 @@ Each item answers the same questions:
 
 | | In the F77 code | 2025-26 YREC-team commits | 2026 modernization | Total |
 |---|---|---|---|---|
-| Fixed | 99 | 4 (S5, L9, M21, M24) | 80 (N4, S13, L1, L4, L6, L7, L17, M7, M17, M18, M19, M22, M25, M26, M27, M35, M44, M45, M46, M47, M49-M53, M56, M57, M61, M62, M69, M70, M72, M78, M80, M82, M83, M98, M109, M110, M111, M116, M117, M120, M125, M130, M138, M140, M143, M149-M155, M161, M163-M168, M172-M174, M177, M179, M180, M182-M189, M192-M195) | 183 |
-| Open | 48 | 2 (O4, with a 2026 part; M84) | 31 (O5, O22, M33, M87, M92, M99, M100, M103-M105, M112, M114, M119, M122-M124, M132, M134, M139, M141, M142, M144, M145, M147, M148, M156-M160, M162) | 81 |
+| Fixed | 99 | 4 (S5, L9, M21, M24) | 81 (N4, S13, L1, L4, L6, L7, L17, M7, M17, M18, M19, M22, M25, M26, M27, M35, M44, M45, M46, M47, M49-M53, M56, M57, M61, M62, M69, M70, M72, M78, M80, M82, M83, M98, M109, M110, M111, M116, M117, M119, M120, M125, M130, M138, M140, M143, M149-M155, M161, M163-M168, M172-M174, M177, M179, M180, M182-M189, M192-M195) | 184 |
+| Open | 48 | 2 (O4, with a 2026 part; M84) | 30 (O5, O22, M33, M87, M92, M99, M100, M103-M105, M112, M114, M122-M124, M132, M134, M139, M141, M142, M144, M145, M147, M148, M156-M160, M162) | 80 |
 
 In addition, half of O10 (an overshoot gate) is a 2026 translation slip. M10's unguarded divisions are the F77's, and its guard on the last interval alone a 2025 YREC-team commit; M33's branch is the F77's, and its stale values the port's. Of section 8's items, M66, M73, M75 and M77 are counted with the F77 although each has a 2026 part (M66's form is M37's fix; M73's silent SCV spline and M75's read of unit 0 are 2026; M77's GYRE writer is 2026, its pairing the F77 pulse file's), and M57, M69 and M70 with the modernization although each has an F77 part (M57's underflow test, M69's reads without IOSTAT, M70's split between the envelope composition and the SCV table). Of section 9's, M102, M107 and M118 are counted with the F77 although each has a 2026 part (the network's message for `simeqc`'s bad input; every run's first SCV lookup since d8a034d8; net_configuration's comment), and M92, M100, M103-M105 and M110-M112 with the modernization although each has an F77 part (the mixing-entropy formula; the searches' asymmetry; hunt's behaviour; the saved guesses; the read-once guards; MODEL2's writes without IOSTAT; the isochrone record's I5; the F77's writes to the run log before its open). Of section 10's, M127, M131, M133, M135 and M146 are counted with the F77 although each has a 2026 part (net/README's "one edit" claim; the build-dependent `max` of the burn's convergence test; bsstep's success status; the README's claim that the preconditions are checked; the chain recipe that misses the limiter), and M134, M138-M140, M151, M156, M157 and M159 with the modernization although each has an F77 part (SPLINT's increasing-only bisection; the F77's writes without IOSTAT; ENGEB's LSNU gate on the fluxes; KTTAU0 beside KTTAU; the name FHE; the behaviour the statements describe; the MHD header; HUNT's out-of-range convention). M95, fixed in round 3, and M113, fixed in the cleanup round, are counted with the F77. Of section 11's, M169 and M171 are counted with the F77 although M169 was not run there (MAIN's one PARMIN call and the COMMON state it carries make it likely) and M171's field is the 2026 run plan's (PARMIN's I5 overflowed sooner), and M173 with the modernization although the F77's writes had no IOSTAT either. Of section 12's, M175 and M178 are counted with the F77 although each has a 2026 part (M175's Monte Carlo case, which came with M95's re-arm of the run copy alone; M178's NUL bytes as the declared default, where the F77's DESCRIP was undefined, zero bytes in practice), and M112, fixed in io and given its initializer in the cleanup round, stays open for the direct writes outside io. Of section 13's, M182 is counted with the modernization although the F77 had a part (PARMIN cut FSHORT, the run log's name, at its first `short` to name the acoustic-depth file; the run log's own cut came with [2b067d75](https://github.com/parallelpro/yrec/commit/2b067d75)).
 
@@ -274,7 +274,7 @@ Decided by default in the cleanup round (2026-11-01), revisable: M111 and M171 (
 | M116 | The star tools miss `case (k);` assignments and `real(dp) function` | No (2026) | Fixed, [d1d14a6b](https://github.com/parallelpro/yrec/commit/d1d14a6b) |
 | M117 | The registry calls the shape tolerance an averaging weight | No (2026) | Fixed (doc), [1bd2b554](https://github.com/parallelpro/yrec/commit/1bd2b554); the name stays |
 | M118 | At a cutoff exactly, the comparisons disagree; the helium comment | Yes (the comment: 2026) | Open |
-| M119 | test_eos's OPAL 2006 derivative check tests the 2001 table | No (2026) | Open (test) |
+| M119 | test_eos's OPAL 2006 derivative check tests the 2001 table | No (2026) | Fixed, [94e65af5](https://github.com/parallelpro/yrec/commit/94e65af5) |
 | M120 | test_controls dumps two unset fields and misses six scales | No (2026) | Fixed, [58f6648f](https://github.com/parallelpro/yrec/commit/58f6648f) |
 | M121 | The Sources' q7 formula has −ln S₀ | Yes | Open (doc) |
 | M122 | opal_vintage_conflict is produced by nothing | No (2026) | Open (doc) |
@@ -3181,12 +3181,12 @@ On 2026-10-30 the five reviews of sections 7 and 8 were repeated a third time, a
 
 ### M119. test_eos's "OPAL 2006's first derivatives" check tests the OPAL 2001 table
 
-- **Status:** open (test). The eos review's item.
+- **Status:** fixed in [94e65af5](https://github.com/parallelpro/yrec/commit/94e65af5) (2026-11-10). Test only. The eos review's item. The links below show the code before the fix.
 - **In the original F77?** No; the check came with [da05c29f](https://github.com/parallelpro/yrec/commit/da05c29f) (2026-10-29, round 2), already after the 2001 block.
 - **Now:** `check_derivatives`, [test_eos.f90:463-493](https://github.com/parallelpro/yrec/blob/6e058523/src/eos/test/test_eos.f90#L463-L493): the 2006 points at [:479-480](https://github.com/parallelpro/yrec/blob/6e058523/src/eos/test/test_eos.f90#L479-L480), then OPAL 1995's and 2001's ([:481-484](https://github.com/parallelpro/yrec/blob/6e058523/src/eos/test/test_eos.f90#L481-L484)), then the check ([:485-486](https://github.com/parallelpro/yrec/blob/6e058523/src/eos/test/test_eos.f90#L485-L486)); `eos/README.md` §6 repeats its label.
 - **What is wrong:** `derivative_points` resets `worst_first` for each configuration, so the check labelled OPAL 2006's judges the 2001 table's. 2001 and 2006 share the OPAL code, which is why the commit's mutation of OPAL's d ln ρ/d ln T could not show it.
 - **Expected behaviour, and why:** a check tests what its label says; the production configuration is OPAL 2006's.
-- **What we did:** recorded, not fixed. Proposed fix: move the check after line 480. The 2006 block's worst first derivative in the pinned output is 1.06e-3, so it still passes; the "ok" line moves in `expected_test_eos.out`.
+- **What we did:** recorded at first, then fixed with the derivative check's rework for CI (its relative differences, round-off where the derivatives are analytic, are judged and no longer printed): the check follows the 2006 block, where the worst first derivative is 1.06e-3, and the 2001 and 1995 tables have their own, to 3e-3 and 1e-2 (1.0e-3 and 2.6e-3 now). A 5% mutation of OPAL's d ln ρ/d ln T fails all three; one applied to the 1995 table alone fails its check alone.
 
 ### M120. test_controls dumps two fields the read does not set and misses six it does
 
