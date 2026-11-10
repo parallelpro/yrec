@@ -11,6 +11,11 @@ second-derivative quantities whose differencing amplifies platform ULP
 noise to ~1e-11 relative (worst observed across CI runs 4-5: 9.6e-12),
 so 1e-9 keeps two orders of margin over the noise while remaining far
 below anything a genuine physics or refactor defect would produce.
+Two values both below abs_floor count as equal (round-off around zero),
+and a test may give single tokens an absolute tolerance (abs_tol) where
+a printed number is a small change of an order-one quantity, so that
+its low digits are that quantity's round-off (test_rotation.py's
+composition and j/m changes).
 """
 import os
 import pathlib
@@ -34,10 +39,12 @@ def _to_float(tok):
         return None
 
 
-def compare_output(actual: str, expected: str, label: str, abs_floor: float = 0.0):
+def compare_output(actual: str, expected: str, label: str, abs_floor: float = 0.0,
+                   abs_tol=None):
     """Byte-compare, or (YREC_TEST_TOLERANT=1) compare numbers to REL_TOL;
     two numbers both below abs_floor in magnitude (round-off around zero)
-    count as equal."""
+    count as equal, and so do two within abs_tol[(line, token)] of each
+    other (line numbers from 1, tokens from 0, as split() gives them)."""
     if actual == expected:
         return
     if os.environ.get("YREC_TEST_TOLERANT") != "1":
@@ -55,7 +62,7 @@ def compare_output(actual: str, expected: str, label: str, abs_floor: float = 0.
             continue
         at, et = al.split(), el.split()
         assert len(at) == len(et), f"{label}:{ln}: token count differs\n{al}\n{el}"
-        for atok, etok in zip(at, et):
+        for tok, (atok, etok) in enumerate(zip(at, et)):
             if atok == etok:
                 continue
             af, ef = _to_float(atok), _to_float(etok)
@@ -63,6 +70,8 @@ def compare_output(actual: str, expected: str, label: str, abs_floor: float = 0.
                 f"{label}:{ln}: non-numeric difference {atok!r} vs {etok!r}"
             )
             if abs(af) < abs_floor and abs(ef) < abs_floor:
+                continue
+            if abs_tol and abs(af - ef) <= abs_tol.get((ln, tok), -1.0):
                 continue
             denom = max(abs(af), abs(ef), 1.0e-300)
             assert abs(af - ef) / denom <= REL_TOL, (

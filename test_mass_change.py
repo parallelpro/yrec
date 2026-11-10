@@ -30,4 +30,9 @@ def test_mass_change_conservation(tmp_path):
         [str(BINARY)], cwd=tmp_path, capture_output=True, text=True
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    compare_output(result.stdout, EXPECTED.read_text(), "test_mass_change")
+    # Every check's value is the residual of an identity the kernels
+    # keep (a sum, a scaling, a conservation law), zero but for
+    # round-off (at most 2e-15), and its digits may move on another
+    # platform: below 1e-12 two values count as equal (YREC_TEST_TOLERANT,
+    # conftest.py); the binary's own bounds judge them.
+    compare_output(result.stdout, EXPECTED.read_text(), "test_mass_change", abs_floor=1.0e-12)

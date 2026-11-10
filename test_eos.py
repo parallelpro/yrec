@@ -13,6 +13,11 @@ supplies tables (none ship with YREC); when tables are provided the
 output will differ from the pinned baseline, which only covers the
 shipped-data configuration.
 
+The derivative check prints each analytic derivative and its finite
+difference; their relative difference, whose leading digits are
+round-off where the two agree, is not printed but checked (ok/FAIL)
+where they must agree, and the binary exits nonzero when a check fails.
+
 To regenerate the baseline after a deliberate eos change: rebuild,
 run src/test_eos with YREC_INPUT set, review the diff like any other,
 and commit the new expected file.

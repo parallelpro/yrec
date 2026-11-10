@@ -450,39 +450,60 @@ contains
 ! The derivative check: at points in each regime, every configuration's
 ! analytic derivatives against centred finite differences of its own
 ! values (a step of 1e-4 in log T and in log P). Each row prints the
-! analytic value, the finite difference and their relative difference.
-! The second-derivative outputs are checked as
+! analytic value and the finite difference, to five digits. The
+! second-derivative outputs are checked as
 !   dlnrho_dlnt_dt   d(dln rho/dln T)/dln T
 !   dlnrho_dlnt_dp   d(dln rho/dln T)/dln P
 !   adiabatic_gradient_dt, _dp   dln grad_ad/dln T, dln grad_ad/dln P
 !   specific_heat_cp_dt, _dp     dln cp/dln T, dln cp/dln P
-! Table interpolation adds noise to finite differences, so agreement is
-! expected only where the values are analytic; the numbers are pinned
-! either way. log T = 5.8 lies in the ramp between the Saha and the
-! fully ionized solutions (saha_log10t_cutoff - 0.5 to the cutoff).
+! Their relative difference, (analytic - fd)/|fd|, is judged, not
+! printed. Where the derivatives are analytic it is the finite
+! difference's own error, truncation and round-off amplified by 1/h
+! (5e-12 to 7e-7 at the Saha points), and its leading digits differ
+! between platforms (grad_ad_dp at log T 3.9: -1.4137e-8 on macOS,
+! -1.4133e-8 on Linux). It is checked, ok or FAIL, where the two must
+! agree: the Saha solution's (log T 3.9 to 5.5), also with the
+! Debye-Hueckel correction on (which acts on the fully ionized gas);
+! the fully ionized gas's (6.9 and 7.161, through the Fermi table's
+! interpolation); the OPAL tables' first derivatives (through their
+! interpolation; the numerical configuration's are OPAL 2006's); and
+! the numerical second derivatives. Elsewhere no agreement is expected,
+! and the two printed columns pin what there is: table interpolation
+! adds noise to finite differences, the second derivatives inside a
+! table are the Yale solution's rather than the table's, the
+! Debye-Hueckel gas's eta ramp is not differentiated, and log T = 5.8
+! lies in the ramp between the Saha and the fully ionized solutions
+! (saha_log10t_cutoff - 0.5 to the cutoff), which blends derivatives
+! rather than differentiating the blend.
       subroutine check_derivatives()
          character(len=256) :: legacy
          legacy = trim(yrec_input)//"/eos/legacy/"
-         write(*,'(a)') "# test_eos: derivative check (analytic, finite difference, relative difference)"
+         write(*,'(a)') "# test_eos: derivative check (analytic, finite difference; ok/FAIL on their relative difference)"
          call configure_eos("yale_only")
          call derivative_points("yale_only")
-! the Saha solver's derivatives are analytic (log T 3.9 to 5.5), the
-! fully ionized gas's carry the Fermi table's interpolation (6.9 and
-! 7.161); the ramp (5.8) blends derivatives, not the derivative of the
-! blend, and is not checked
+! the Saha solver's derivatives are analytic (log T 3.9 to 5.5: 2e-8 in
+! the first, 7e-7 in the second now), the fully ionized gas's carry the
+! Fermi table's interpolation (6.9 and 7.161: 6e-4 and 0.04)
          call check("derivatives: the Saha solution's first and second, against finite differences", &
               all(worst_first(1:3) < 1.0d-6) .and. all(worst_second(1:3) < 1.0d-4))
          call check("derivatives: the fully ionized gas's first (1e-3) and second (0.1)", &
               all(worst_first(5:6) < 1.0d-3) .and. all(worst_second(5:6) < 0.1d0))
          call configure_eos("scv_only", scv=.true.)
          call derivative_points("scv_only")
+! the OPAL tables' first derivatives agree to 1e-3 (2006, 2001) and
+! 3e-3 (1995) now; a derivative bug (a sign, a factor ln 10, the wrong
+! variable) is of order one
          call configure_eos("production", opal2006=.true., scv=.true., file=opal06_path)
          call derivative_points("production")
+         call check("derivatives: OPAL 2006's first, against finite differences (3e-3)", &
+              all(worst_first < 3.0d-3))
          call configure_eos("opal95", opal95=.true., scv=.true., file=trim(legacy)//"opal/OPALeos.0188")
          call derivative_points("opal95")
+         call check("derivatives: OPAL 1995's first, against finite differences (1e-2)", &
+              all(worst_first < 1.0d-2))
          call configure_eos("opal2001", opal2001=.true., scv=.true., file=trim(legacy)//"opal2001/O01EOS0188z")
          call derivative_points("opal2001")
-         call check("derivatives: OPAL 2006's first, against finite differences (3e-3)", &
+         call check("derivatives: OPAL 2001's first, against finite differences (3e-3)", &
               all(worst_first < 3.0d-3))
          call configure_eos("numerical", opal2006=.true., scv=.true., numerical=.true., file=opal06_path)
          call derivative_points("numerical")
@@ -490,12 +511,15 @@ contains
               all(worst_second < 1.0d-4))
          call configure_eos("debye_huckel", debye_huckel=.true.)
          call derivative_points("debye_huckel")
+         call check("derivatives: the Saha solution's with the Debye-Hueckel correction on (1e-6, 1e-4)", &
+              all(worst_first(1:3) < 1.0d-6) .and. all(worst_second(1:3) < 1.0d-4))
       end subroutine check_derivatives
 
 ! Each point's analytic derivatives against centred differences, one
-! row each; the largest relative difference of the first and of the
-! second derivatives at each point stays in worst_first/worst_second
-! for the checks.
+! row each (the two values, not their relative difference: see
+! check_derivatives); the largest relative difference of the first and
+! of the second derivatives at each point stays in
+! worst_first/worst_second for the checks.
          subroutine derivative_points(label)
             character(len=*), intent(in) :: label
             double precision, parameter :: dlogt(nd) = [3.90d0, 4.50d0, 5.50d0, 5.80d0, 6.90d0, 7.161d0]
@@ -548,7 +572,7 @@ contains
             double precision, intent(inout) :: worst
             double precision :: rel
             rel = (analytic - fd)/max(abs(fd), 1.0d-30)
-            write(*,'(2x,a16,3(1pe13.4))') name, analytic, fd, rel
+            write(*,'(2x,a16,2(1pe13.4))') name, analytic, fd
             worst = max(worst, abs(rel))
          end subroutine row
 ! The MHD tables' (log P, log T) interpolation on a 7 (T) x 6 (rho) x 3

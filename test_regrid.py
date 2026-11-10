@@ -31,4 +31,10 @@ def test_regrid_conservation(tmp_path):
     assert result.returncode == 0, result.stdout[-3000:] + result.stderr
     report = result.stdout.split("test_regrid report\n", 1)[1]
     expected = REPO / "src" / "core" / "test" / "expected_test_regrid.out"
-    compare_output(report, expected.read_text(), "test_regrid")
+    # The checks of sums, rules and linear profiles print residuals that
+    # are zero but for round-off (at most 1.4e-15, against bounds of n eps
+    # to 1e-13), and their digits may move on another platform: below
+    # 1e-12 two values count as equal (YREC_TEST_TOLERANT, conftest.py);
+    # the binary's own bounds judge them. The relative changes of the
+    # species' masses, J and E_rot (1e-5 and up) are compared as before.
+    compare_output(report, expected.read_text(), "test_regrid", abs_floor=1.0e-12)
