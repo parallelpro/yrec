@@ -16,7 +16,12 @@
 # local gates. The standalone tests' printed baselines are also pinned on
 # macOS/arm64: YREC_TEST_TOLERANT=1 lets their numbers differ by 1e-9
 # relative (conftest.py), and a difference beyond that needs per-platform
-# baselines, not a looser local check.
+# baselines, not a looser local check. The exceptions are numbers whose
+# low digits are round-off of an order-one quantity: residuals, finite
+# differences' errors, and small changes of X or j. Each test compares
+# those to an absolute bound it states and measured (abs_floor and
+# abs_tol in conftest.py: test_rotation.py, test_structure.py,
+# test_mass_change.py, test_regrid.py).
 #
 # The test list and the sparse checkout below were derived by tracing
 # which files each test opens (2026-10-31; test_monte_carlo.py, added
