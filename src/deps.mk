@@ -353,7 +353,7 @@ convection/convection_zones.o: composition_layout.mod convection_configuration.m
 convection/overshoot.o: composition_layout.mod convection_configuration.mod convection_messages.mod eos_lib.mod math_lib.mod physical_constants.mod
 convection/semiconvection.o: composition_layout.mod convection_configuration.mod convection_messages.mod convection_zones.mod eos_lib.mod kap_lib.mod math_lib.mod physical_constants.mod temperature_gradients.mod
 convection/temperature_gradients.o: convection_configuration.mod convection_messages.mod eos_lib.mod kap_lib.mod math_lib.mod physical_constants.mod
-convection/test/test_convection.o: convection_lib.mod eos_lib.mod kap_lib.mod run_messages.mod star_info_lib.mod
+convection/test/test_convection.o: convection_lib.mod eos_lib.mod kap_lib.mod physical_constants.mod run_messages.mod star_info_lib.mod
 core/diagnostics/neutrino_flux_output.o: burn_step.mod math_lib.mod net_lib.mod observables.mod physical_constants.mod run_messages.mod star_info_lib.mod
 core/diagnostics/observables.o: convection_geometry.mod energy_sources.mod eos_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod structure_equations.mod turnover_timescale.mod
 core/diagnostics/stitched_model.o: envelope_integration.mod math_lib.mod output_columns.mod physical_constants.mod run_messages.mod star_info_lib.mod

@@ -1,11 +1,15 @@
-"""Standalone convection regression test.
+"""Standalone convection test.
 
-Runs src/test_convection (built by `make tests` in src/) and byte-compares
-its stdout with the pinned src/convection/test/expected_test_convection.out.
+Runs src/test_convection (built by `make tests` in src/), which exits 1
+when one of its ok/FAIL checks fails, and compares its stdout with the
+pinned src/convection/test/expected_test_convection.out: byte for byte,
+except that a check line's measured error is masked (only its label and
+its verdict are compared), since round-off differs between platforms.
 See test_eos.py for the conventions.
 """
 import os
 import pathlib
+import re
 import subprocess
 
 import pytest
@@ -26,4 +30,12 @@ def test_convection_standalone(tmp_path):
         [str(BINARY)], cwd=tmp_path, env=env, capture_output=True, text=True
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    compare_output(result.stdout, EXPECTED.read_text(), "test_convection")
+    check = re.compile(r"^(.*\S)\s+[-+0-9.Ee]+\s+(ok|FAIL)$")
+
+    def masked(text):
+        out = []
+        for line in text.splitlines():
+            m = check.match(line)
+            out.append(f"{m.group(1)} [{m.group(2)}]" if m else line)
+        return "\n".join(out) + "\n"
+    compare_output(masked(result.stdout), masked(EXPECTED.read_text()), "test_convection")
