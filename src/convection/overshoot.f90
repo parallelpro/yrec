@@ -6,7 +6,7 @@
 ! pressure_scale_height and envelope_overshoot_depth):
 !   pressure_scale_height     H_P = P r^2/(G m rho), cm
 !   envelope_overshoot_depth  alpha_env H_P below the surface convection
-!                             zone, cm (core's Li/Be burn and rezone)
+!                             zone, cm (core's Li/Be burn)
 !   extend_by_overshoot       moves the edges of the mixed regions by
 !                             alpha H_P (find_convection_zones)
 ! The switches and the alphas are convection_settings'. Two densities
@@ -153,7 +153,7 @@ end subroutine extend_by_overshoot
 ! deepest shell less than `distance` (cm) below it, or to the centre.
 ! In a rotating model with instability transport the edge moves at least
 ! one shell below edge_no_overshoot, so that the overshoot region holds
-! a radiative shell (MHP 11/91).
+! a radiative shell.
 pure subroutine extend_downward(log_radius, distance, edge_no_overshoot, edge)
       real(dp), intent(in) :: log_radius(:), distance
       integer, intent(in) :: edge_no_overshoot
@@ -194,9 +194,9 @@ pure subroutine extend_upward(log_radius, num_zones, distance, edge_no_overshoot
 end subroutine extend_upward
 
 !----------------------------------------------------------------------
-! edge_scale_height (formerly hsubp; PD 1984, MHP 1991): H_P (cm) at
-! shell `edge`, with the density the EOS gives for its log10 P and T and
-! its composition (seeded from the model's). ierr: the EOS's.
+! edge_scale_height (formerly hsubp): H_P (cm) at shell `edge`, with the
+! density the EOS gives for its log10 P and T and its composition
+! (seeded from the model's). ierr: the EOS's.
 subroutine edge_scale_height(composition, log_density, log_pressure, log_radius, &
      log_mass, log_temperature, edge, scale_height, ierr)
       real(dp), intent(in) :: composition(:,:), log_density(:), log_pressure(:), &
@@ -217,5 +217,13 @@ subroutine edge_scale_height(composition, log_density, log_pressure, log_radius,
       scale_height = pressure_scale_height(log_pressure(edge), log_radius(edge), &
            eos_res%log10_density, log_mass(edge))
 end subroutine edge_scale_height
+
+! Sources: OVERSH and HSUBP of the Yale code (HSUBP: PD, December 1984;
+! revised for YREC Mark 6, MHP 2/91). The rotating rule is MHP's
+! (11/91), the store of the region below the envelope for its adiabatic
+! gradient DBG's (8/94), and the limit for small cores JVS's (7/13),
+! after Woo & Demarque (2001). pressure_scale_height and
+! envelope_overshoot_depth were core's (convection_geometry, step_driver)
+! until 2026-11.
 
 end module overshoot

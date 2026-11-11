@@ -1,8 +1,8 @@
 !----------------------------------------------------------------------
 ! semiconvection
 !----------------------------------------------------------------------
-! Semiconvection at the edge of a mixed region (Castellani, Giannone &
-! Renzini 1971; formerly sconvec): extend_by_semiconvection widens the
+! Semiconvection at the edge of a mixed region (Castellani et al. 1971;
+! formerly sconvec): extend_by_semiconvection widens the
 ! first mixed region where the radiative gradient, with the composition
 ! of the region, exceeds the adiabatic one.
 module semiconvection
@@ -215,5 +215,10 @@ subroutine radiative_gradient_at(log_temperature, log_pressure, log_radius, log_
            dgrad_dt, dgrad_dp, dgrad_dr, convective_velocity, .false., is_convective, &
            1.0d0, 1.0d0, log_teff, .false., ierr)
 end subroutine radiative_gradient_at
+
+! Sources: SCONVEC of the Yale code, after Castellani et al. (1971,
+! Ap&SS 10, 340). The opacity call is DBG's (12/95) and the
+! radius's MHP's (10/02); the core-only switch is the YREC team's
+! (a8e60674, 2025-12-17), which removed the loop over every zone.
 
 end module semiconvection

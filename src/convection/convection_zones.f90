@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------
 ! convection_zones
 !----------------------------------------------------------------------
-! Where the model convects (formerly convec, oversh, hsubp and mixcz):
+! Where the model convects (formerly convec and mixcz):
 !   find_convection_zones        the mixed regions (the convection zones,
 !                                extended by overshoot) and the radiative
 !                                regions between them
@@ -62,9 +62,9 @@ contains
 !   ierr  convection_too_many_zones (logged) when the model has more
 !       convection zones than mixed_zone_bounds has rows; an EOS
 !       failure's code from the scale heights.
-! Without a convection zone, or for a fully convective model, it
-! returns before the overshoot, leaving mixed_zone_bounds and the
-! radiative list as the early return says.
+! Without a convection zone it writes no row of mixed_zone_bounds and
+! lists one radiative region, the model; a fully convective model has
+! no overshoot and no radiative region (num_radiative_zones = 0).
 subroutine find_convection_zones(composition, log_density, log_pressure, log_radius, &
      log_mass, log_temperature, convective_flag, num_zones, &
      radiative_zone_bounds, mixed_zone_bounds, &
@@ -89,7 +89,7 @@ subroutine find_convection_zones(composition, log_density, log_pressure, log_rad
       call list_convection_zones(convective_flag, num_zones, mixed_zone_bounds, &
            num_mixed_zones, ierr)
       if (ierr /= 0) return
-! No convection zone (MHP 5/91): one radiative region, the whole model.
+! No convection zone: one radiative region, the whole model.
       if (num_mixed_zones == 0) then
          core_cz_edge = 1
          envelope_cz_edge = num_zones
@@ -343,5 +343,13 @@ pure subroutine apply_composition_floors(composition, num_zones)
               (composition(i_metals,k) - convection_settings%envelope_metals_no_cno))
       end do
 end subroutine apply_composition_floors
+
+! Sources: CONVEC and MIXCZ of the Yale code. The early return without
+! a convection zone is MHP's (5/91). The F77 wrote the radiative region
+! above the last zone into the first region's row (MRZONE(1,2) = M),
+! which the 2026 audit fixed; MIXCZ's convective turnover time moved to
+! rotation (KC, 2025-05-31). The scans' limits, 11 zones in CONVEC and
+! 12 in MIXCZ, became the bounds array's rows (an error beyond them) and
+! none in 2026-11 (bug_sweep M248).
 
 end module convection_zones
