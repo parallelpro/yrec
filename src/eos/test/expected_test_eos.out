@@ -672,6 +672,9 @@ ok   SCV reader: after a re-read the envelope table waits for its rebuild
 ok   SCV reader: a missing table returns ierr = 1 and leaves no table open
 eos_init: an SCV table ends early or is corrupt, at T row 9; the H table: scv_truncated
 ok   SCV reader: a truncated table returns ierr = 1
+eos_init: an SCV table's grid (log T, point count or log P_gas) is not the H table's, at T row 1: scv_he_off_grid
+eos_init: an SCV table's grid (log T, point count or log P_gas) is not the H table's, at T row 2: scv_z_off_grid
+ok   SCV reader: a He or Z table on another grid than the H table's returns ierr = 1
 # test_eos: configuration scv_only
  eos_init: cannot open the Fermi-Dirac table fermi_missing
  eos_init: the Fermi-Dirac table ends early or is corrupt: fermi_truncated
@@ -684,5 +687,8 @@ OPALEOS/ESAC06: the OPAL EOS table ends early or is corrupt: X block 1, density 
 ok   OPAL 2006 table: a truncated table returns ierr = 1 on first use, its unit closed
  eos_init: cannot open the OPAL EOS table opal06_missing
 ok   OPAL 2006 table: a missing table returns ierr = 1 at eos_init
+# test_eos: configuration opal95
+READCO: Error:  56-th T6 value is zero
+ok   OPAL 1995 table: a zero T6 returns ierr = 1 on first use
 # test_eos: configuration production
 test_eos: done

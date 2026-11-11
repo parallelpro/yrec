@@ -943,7 +943,10 @@ end function gmass
 ! Reads the OPAL 1995 EOS data tables (one block per tabulated X
 ! value) into v (opal95) and derives the auxiliary grid-spacing arrays
 ! used by t6rinterp for interpolation. Called once from esac (guarded
-! by opal_shared%table_loaded_flag), on the unit eos_init opened.
+! by opal_shared%table_loaded_flag), on the unit eos_init opened. A read
+! that fails, a block out of its layout and a zero T6 in the first
+! density column (the T6 grid) are ierr = 1, with a message, the unit
+! closed.
 subroutine readco(v, ierr)
 
       type(opal_eos_vintage95), intent(inout) :: v
@@ -962,6 +965,8 @@ subroutine readco(v, ierr)
       character(len=message_length) :: eos_lines(4)
       integer :: ios
       logical :: layout_error
+! the first T6 row whose T6 is zero (0: none)
+      integer :: zero_t6_row
 
       ierr = 0
 
@@ -991,11 +996,25 @@ subroutine readco(v, ierr)
          return
       end if
       call read_table_blocks(ios, layout_error)
-      if (ios /= 0 .or. layout_error) then
+      zero_t6_row = 0
+      if (ios == 0 .and. .not. layout_error) then
+         do t6_scan_idx = 1, nt
+            if (v%t6_list(1,t6_scan_idx) == 0.0d0) then
+               zero_t6_row = t6_scan_idx
+               exit
+            end if
+            v%t6_grid(t6_scan_idx) = v%t6_list(1,t6_scan_idx)
+         end do
+      end if
+      if (ios /= 0 .or. layout_error .or. zero_t6_row /= 0) then
          if (ios /= 0) then
             eos_lines = unwritten_line
             write(eos_lines,'(a,i0,a,i0)') ' OPAL 1995 EOS: the table ends early or is corrupt: X block ', &
                  x_loop_index, ', density column ', density_row
+            call eos_report(eos_lines)
+         else if (zero_t6_row /= 0) then
+            eos_lines = unwritten_line
+            write(eos_lines,'("READCO: Error:",I4, "-th T6 value is zero")') zero_t6_row
             call eos_report(eos_lines)
          end if
          close (opal_shared%table_unit)
@@ -1003,11 +1022,6 @@ subroutine readco(v, ierr)
          ierr = 1
          return
       end if
-
-      do t6_scan_idx = 1, nt
-         if (v%t6_list(1,t6_scan_idx) == 0.0d0) exit
-         v%t6_grid(t6_scan_idx) = v%t6_list(1,t6_scan_idx)
-      end do
       do t6_idx = 2, nt
          v%t6_grid_spacing_inv(t6_idx) = 1.0d0/(v%t6_grid(t6_idx) - &
               v%t6_grid(t6_idx-1))

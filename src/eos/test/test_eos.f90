@@ -868,6 +868,16 @@ subroutine table_reader_checks()
       s = eos_settings
       call eos_init(s, paths, ierr_missing)
       call check("OPAL 2006 table: a missing table returns ierr = 1 at eos_init", ierr_missing == 1)
+! the OPAL 1995 table with its first density column's lowest T6 (row 56,
+! at line 14718 in the last X block, whose T6 column the grid keeps) made
+! zero: an error on first use, where the table was read before
+      call copy_editing(trim(yrec_input)//"/eos/legacy/opal/OPALeos.0188", "opal95_zero_t6", 14718, 1, &
+           "  0.0000")
+      call configure_eos("opal95", opal95=.true., scv=.true., file="opal95_zero_t6")
+      it = 0
+      r = eos_result()
+      call eos_get(5.0d0, 12.8d0, 0.70d0, 0.0188d0, r, .true., .false., it, ierr=ierr)
+      call check("OPAL 1995 table: a zero T6 returns ierr = 1 on first use", ierr == 1)
       call configure_eos("production", opal2006=.true., scv=.true., file=opal06_path)
       r = eos_result()
       call eos_get(5.0d0, 12.8d0, 0.70d0, 0.016492d0, r, .true., .false., it, ierr=ierr)
@@ -957,6 +967,19 @@ subroutine scv_reader_checks()
       paths%scv_h = "scv_truncated"
       call eos_init(s, paths, ierr)
       call check("SCV reader: a truncated table returns ierr = 1", ierr == 1)
+! the He table with its first row's log T (2.10) made 2.12, and the Z
+! table with the first point of its second row (listed last, its log P_gas
+! 4.00 at line 63) made 4.02: each is on another grid than the H table
+      paths = table_paths
+      call copy_editing(scvhe_path, "scv_he_off_grid", 1, 1, " 2.12")
+      paths%scv_he = "scv_he_off_grid"
+      call eos_init(s, paths, ierr1)
+      paths = table_paths
+      call copy_editing(scvz_path, "scv_z_off_grid", 63, 1, "  4.02")
+      paths%scv_z = "scv_z_off_grid"
+      call eos_init(s, paths, ierr2)
+      call check("SCV reader: a He or Z table on another grid than the H table's returns ierr = 1", &
+           ierr1 == 1 .and. ierr2 == 1)
       call configure_eos("scv_only", scv=.true.)
 end subroutine scv_reader_checks
 

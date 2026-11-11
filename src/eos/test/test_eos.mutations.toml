@@ -66,3 +66,26 @@ file = 'eos/eos_messages.f90'
 old = '''      if (warned(id)) return
       warned(id) = .true.'''
 new = '''      if (warned(id)) return'''
+
+[[mutation]]
+id = 'scv_reader-01'
+check = "SCV reader: a He or Z table on another grid than the H table's returns ierr = 1"
+file = 'eos/scv/scv_eos.f90'
+old = '''         off_grid = first_off_grid(copy_log10_t /= tlogx(t_idx) .or. copy_npts /= nptsx(t_idx))'''
+new = '''         off_grid = 0'''
+
+[[mutation]]
+id = 'scv_reader-02'
+check = "SCV reader: a He or Z table on another grid than the H table's returns ierr = 1"
+file = 'eos/scv/scv_eos.f90'
+old = '''              tablex(t_idx,1:nptsx(t_idx),iscv_log10_p)), any(tablez(t_idx,1:nptsx(t_idx),iscv_log10_p) /= &'''
+new = '''              tablex(t_idx,1:nptsx(t_idx),iscv_log10_p)), .false. .and. any(tablez(t_idx,1:nptsx(t_idx),iscv_log10_p) /= &'''
+
+[[mutation]]
+id = 'opal95_reader-01'
+check = 'OPAL 1995 table: a zero T6 returns ierr = 1 on first use'
+file = 'eos/opal/opal95_eos.f90'
+old = '''            if (v%t6_list(1,t6_scan_idx) == 0.0d0) then
+               zero_t6_row = t6_scan_idx'''
+new = '''            if (v%t6_list(1,t6_scan_idx) == -1.0d0) then
+               zero_t6_row = t6_scan_idx'''
