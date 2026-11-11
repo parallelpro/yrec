@@ -1,3 +1,5 @@
+# test_atm: before any table is read
+atm_get_surface_pt: a table atm_init did not read returns ierr 1                     0.00E+00  ok
 # test_atm: Kurucz (choice 3), surfp lookups
 krz  1   5.486473763888205E+00   3.600000000000000E+00
 krz  2   5.085189825482725E+00   3.700000000000000E+00
@@ -53,4 +55,93 @@ ttau 2   1.000000000000000E+01   3.923883912971334E+00
 # test_atm: error paths via ierr
 err out-of-table   ierr =    1
 err facade-success ierr =    0
+# test_atm: checks
+ttau eddington: T = Teff at tau = 2/3                                                3.16E-07  ok
+ttau krishna-swamy: T = Teff at its photospheric tau                                 3.16E-07  ok
+ttau hsra: T = Teff at tau = 2/3                                                     4.44E-16  ok
+ttau: the photosphere of Eddington and HSRA is log10 tau = log10(2/3)                5.57E-11  ok
+ttau: Eddington's and Krishna-Swamy's start is their T at tau -> 0                   7.55E-15  ok
+ttau eddington: T^4 is linear in tau + 2/3 (the gray law)                            8.33E-17  ok
+ttau: T rises with tau from 1e-3 to 10 in each relation                              0.00E+00  ok
+ttau hsra: the fit at tau = 1 (log Teff 3.762) is 3.786755164513735                  4.44E-16  ok
+ttau: a table's choice gives NaN, not a relation                                     0.00E+00  ok
+kurucz: exact at every node below log Teff 4.5                                       0.00E+00  ok
+kurucz: continuous across the log Teff rows (log g 4.37)                             2.09E-08  ok
+kurucz: a point more than a step above the table is refused (M232)                   0.00E+00  ok
+kurucz m50: exact at the last valid node of a row ending at log g 4 (M234)           0.00E+00  ok
+kurucz p01: a stencil on its all -999 row is refused (M234)                          0.00E+00  ok
+castelli: a stencil reaching its log-g-5-only last row is refused (M231)             0.00E+00  ok
+castelli grid: exact on a plane in log Teff and log g, every branch                  5.15E-14  ok
+castelli grid: a 3-point row without its top three columns is refused                0.00E+00  ok
+ atm_init: cannot open the atmosphere table no_such_table.tab
+kurucz reader: a missing file and a truncated one return ierr 1                      0.00E+00  ok
+allard: exact at the nodes of Nextgen2 (log P at T = Teff)                           0.00E+00  ok
+allard: continuous across the log Teff rows (log g 4.5)                              2.01E-08  ok
+allard: T at tau = 100 is above Teff (log Teff 3.4-4.0, log g 4.5)                   0.00E+00  ok
+allard: above, outside and below the tables are told apart                           0.00E+00  ok
+allard synthetic: exact on a polynomial (to the file's 9 digits)                     5.80E-08  ok
+allard synthetic: lookups reach 4 widths below log g 3, 1 above 5.5 (M233)           0.00E+00  ok
+allard: an [Fe/H] or [alpha/Fe] the file lacks is its own error (M221)               0.00E+00  ok
+
+ ******** ALTABINIT: Program Terminated ********
+
+allard: a table of 3 rows returns ierr 1                                             0.00E+00  ok
+
+ ******** ALTABINIT: Program Terminated ********
+
+allard: a -999 inside a row is refused                                               0.00E+00  ok
+
+ ******** ALTABINIT: Program Terminated ********
+
+allard: a row of three valid columns is refused                                      0.00E+00  ok
+
+ ALFILEIN: Allard File OPEN Failure
+      File name: no_such_table.all
+
+
+ **************** PROGRAM ALFilein TERMINATED @ 9999 **************
+
+
+
+ *** Invalid Allard Atmosphere input file ***
+ First record was 'not an atmosphere table            '
+
+
+ **************** PROGRAM ALFilein TERMINATED @ 9999 **************
+
+
+
+allard reader: a missing file, an empty one, one in neither layout: ierr 1           0.00E+00  ok
+
+ AtTabInit File Read error
+
+
+
+ **************** PROGRAM ALFilein TERMINATED @ 9999 **************
+
+
+
+allard reader: a record whose log P cannot be read returns ierr 1                    0.00E+00  ok
+atm_init: an atm_choice outside 0-5 returns ierr 1 (M236)                            0.00E+00  ok
+atm_get_surface_pt: a choice that is not a table returns ierr 1                      0.00E+00  ok
+atm_choices: 0-5 known, 3-5 tabulated, a name for each known one                     0.00E+00  ok
+atm_choices: Kurucz and Allard switch to gray at their limit, the rest never         0.00E+00  ok
+
+LOG TEFF OF   3.951 ABOVE 3.95 - SWITCHTO GRAY ATMOSPHERE BOUNDARY CONDITION
+
+
+LOG TEFF OF   4.004 ABOVE Allard Table max   4.000  - SWITCH TO GRAY ATMOSPHERE BOUNDARY CONDITION
+
+LOG TEFF OF   3.949 BELOW 3.95 - SWITCH BACK TO KURUCZ ATMOSPHERE BOUNDARY CONDITION
+LOG TEFF OF   3.999 below Allard Table max   4.000  - SWITCH BACK TO ALLARD ATMOSPHERE BOUNDARY CONDITION
+
+ ALSURFP: TEFFL less than TEFFLmin: 
+     TEFFLmin,TEFFL,TEFFLmax;    2.9084850188786495        2.8984850188786497        4.0087739243075049     
+
+ ******** ALSURFP: Program Terminated ********
+
+
+ ALSURFP: GL out of extended range: 
+     GLmin,GL,GLmax;    1.5000000000000000        6.0499999999999998        6.0000000000000000     
+atm_get_surface_pt: below the Allard tables ierr 1, off a row's log g failed         0.00E+00  ok
 test_atm: done

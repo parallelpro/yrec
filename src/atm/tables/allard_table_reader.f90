@@ -17,7 +17,8 @@
 !     log g of the records at the deck's [Fe/H] and [alpha/Fe]
 !     (allard_target_feh, allard_target_alpha), a second fills the table.
 ! An entry the file does not give stays allard_invalid (-999). Errors
-! return ierr = 1 after their message (atm_messages).
+! return ierr after their message (atm_messages): allard_composition_missing
+! for a composition the file does not hold, 1 for the others.
 module allard_table_reader
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use atm_tables, only: allard_table, allard_max_teff
@@ -30,6 +31,8 @@ module allard_table_reader
       implicit none
       private
       public :: read_allard_tables
+! the ierr of a composition the file does not hold (other errors are 1)
+      integer, parameter, public :: allard_composition_missing = 2
 
 ! an entry the file does not give, and the test for a valid one
       real(dp), parameter :: allard_invalid = -999.0d0, valid_above = -998.0d0
@@ -70,8 +73,9 @@ contains
 ! Reads the file at path into tbl (target_feh and target_alpha select the
 ! composition of the Allard layout), then finds the lookups' limits and
 ! checks the table. A file that cannot be opened or read, a record off
-! the grid, a composition the file does not hold, or a table without a
-! 4-point stencil returns ierr = 1 after its message.
+! the grid, or a table without a 4-point stencil returns ierr = 1 after
+! its message; a composition the file does not hold,
+! allard_composition_missing.
 subroutine read_allard_tables(path, target_feh, target_alpha, tbl, ierr)
       character(len=*), intent(in) :: path
       real(dp), intent(in) :: target_feh, target_alpha
@@ -226,7 +230,7 @@ subroutine collect_grid(allard_unit, path, target_feh, target_alpha, tbl, teffs,
       end do
       if (tbl%num_teff == 0) then
          call report_missing_composition()
-         ierr = 1
+         ierr = allard_composition_missing
          return
       end if
 ! the table holds one composition (its count, for the table's printout)

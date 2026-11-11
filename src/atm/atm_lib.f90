@@ -66,7 +66,9 @@ contains
 ! Checks the settings, installs them, and reads the table they select:
 ! the Kurucz table (atm_choice 3), the Allard tables (4) or the
 ! Castelli/Kurucz table (5). An atm_choice outside 0-5, or a table that
-! cannot be read, returns ierr = 1 after its message.
+! cannot be read, returns ierr = 1 after its message; an Allard file
+! without the deck's [Fe/H] and [alpha/Fe], 2 (allard_table_reader's
+! allard_composition_missing).
 subroutine atm_init(settings, paths, ierr)
       type(atm_settings_t), intent(in) :: settings
       type(atm_table_paths_t), intent(in) :: paths

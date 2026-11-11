@@ -1,0 +1,302 @@
+# Mutations of test_atm: each check must print FAIL (or the program fail
+# before printing it) under a mutation of the code it covers
+# (atm/README.md section 4). Run: python3 src/tools/mutate.py atm
+# (src/tools/mutate.py describes this format and the verdicts).
+program = "test_atm"
+timeout = 120
+
+# ---- atm_lib's contracts
+
+[[mutation]]
+id = 'atm_lib-01'
+check = 'atm_get_surface_pt: a table atm_init did not read returns ierr 1'
+file = 'atm/atm_lib.f90'
+old = 'if (.not. tbl%loaded) then'
+new = 'if (.false.) then'
+
+[[mutation]]
+id = 'atm_lib-02'
+check = 'atm_init: an atm_choice outside 0-5 returns ierr 1 (M236)'
+file = 'atm/atm_lib.f90'
+old = 'if (.not. atm_choice_is_known(settings%atm_choice)) then'
+new = 'if (.false.) then'
+
+[[mutation]]
+id = 'atm_lib-03'
+check = 'atm_get_surface_pt: a choice that is not a table returns ierr 1'
+file = 'atm/atm_lib.f90'
+old = '''
+         call report_not_a_table()
+         ierr = 1'''
+new = '''
+         call report_not_a_table()
+         ierr = 0'''
+
+[[mutation]]
+id = 'atm_lib-04'
+check = 'atm_choices: Kurucz and Allard switch to gray at their limit, the rest never'
+file = 'atm/atm_lib.f90'
+old = 'atm_reenters_table = log10_teff < gray_switch_log_teff(atm_choice)'
+new = 'atm_reenters_table = log10_teff <= gray_switch_log_teff(atm_choice)'
+
+[[mutation]]
+id = 'atm_choices-01'
+check = 'atm_choices: 0-5 known, 3-5 tabulated, a name for each known one'
+file = 'atm/atm_choices.f90'
+old = "choice_description('Kurucz/Castelli atmosphere tables', .true., .false.)"
+new = "choice_description('Kurucz/Castelli atmosphere tables', .false., .false.)"
+
+[[mutation]]
+id = 'atm_choices-02'
+check = 'atm_choices: Kurucz and Allard switch to gray at their limit, the rest never'
+file = 'atm/atm_choices.f90'
+old = 'kurucz_gray_switch_log_teff = 3.95d0'
+new = 'kurucz_gray_switch_log_teff = 3.96d0'
+
+# ---- the T-tau relations
+
+[[mutation]]
+id = 't_tau-01'
+check = 'ttau eddington: T = Teff at tau = 2/3'
+file = 'atm/t_tau_relations.f90'
+old = '+ 0.25d0*log10(tau + cc23)'
+new = '+ 0.25d0*log10(tau + 0.6667d0)'
+
+[[mutation]]
+id = 't_tau-02'
+check = 'ttau krishna-swamy: T = Teff at its photospheric tau'
+file = 'atm/t_tau_relations.f90'
+old = 'log10_tau_photosphere_krishna_swamy = -0.505627854d0'
+new = 'log10_tau_photosphere_krishna_swamy = -0.5056d0'
+
+[[mutation]]
+id = 't_tau-03'
+check = 'ttau hsra: T = Teff at tau = 2/3'
+file = 'atm/t_tau_relations.f90'
+old = 'log10_t = log10_teff + harvard_t_tau(tau) - hsra_log_t_offset'
+new = 'log10_t = log10_teff + harvard_t_tau(tau) + hsra_log_t_offset'
+
+[[mutation]]
+id = 't_tau-04'
+check = 'ttau: the photosphere of Eddington and HSRA is log10 tau = log10(2/3)'
+file = 'atm/t_tau_relations.f90'
+old = 'log10_tau_photosphere_eddington = -0.176091259d0'
+new = 'log10_tau_photosphere_eddington = -0.17609d0'
+
+[[mutation]]
+id = 't_tau-05'
+check = "ttau: Eddington's and Krishna-Swamy's start is their T at tau -> 0"
+file = 'atm/t_tau_relations.f90'
+old = 'ks_q_start = 0.550d0'
+new = 'ks_q_start = 0.560d0'
+
+[[mutation]]
+id = 't_tau-06'
+check = 'ttau eddington: T^4 is linear in tau + 2/3 (the gray law)'
+file = 'atm/t_tau_relations.f90'
+old = '0.25d0*log10(tau + cc23)'
+new = '0.26d0*log10(tau + cc23)'
+
+[[mutation]]
+id = 't_tau-07'
+check = 'ttau: T rises with tau from 1e-3 to 10 in each relation'
+file = 'atm/t_tau_relations.f90'
+old = 'ks_a1*exp(-ks_k1*tau)'
+new = 'ks_a1*exp(ks_k1*tau)'
+
+[[mutation]]
+id = 't_tau-08'
+check = 'ttau hsra: the fit at tau = 1 (log Teff 3.762) is 3.786755164513735'
+file = 'atm/t_tau_relations.f90'
+old = '0.0267719174279d0'
+new = '0.0267719174289d0'
+
+[[mutation]]
+id = 't_tau-09'
+check = "ttau: a table's choice gives NaN, not a relation"
+file = 'atm/t_tau_relations.f90'
+old = 'not_a_relation = ieee_value(1.0_dp, ieee_quiet_nan)'
+new = 'not_a_relation = 0.0_dp'
+
+# ---- the Kurucz and Castelli/Kurucz lookups
+
+[[mutation]]
+id = 'kurucz-01'
+check = 'kurucz: exact at every node below log Teff 4.5'
+file = 'atm/tables/kurucz_atmosphere.f90'
+old = 'first = last_valid - 3'
+new = 'first = last_valid - 4'
+
+[[mutation]]
+id = 'kurucz-02'
+check = 'kurucz: continuous across the log Teff rows (log g 4.37)'
+file = 'atm/tables/kurucz_atmosphere.f90'
+old = 'first_row = max(1, row-2)'
+new = 'first_row = max(1, row)'
+
+[[mutation]]
+id = 'kurucz-03'
+check = 'kurucz: a point more than a step above the table is refused (M232)'
+file = 'atm/tables/kurucz_atmosphere.f90'
+old = 'log10_teff > log_teff_max .or. log10_gravity > log_g_max'
+new = '.false.'
+
+[[mutation]]
+id = 'kurucz-04'
+check = 'kurucz m50: exact at the last valid node of a row ending at log g 4 (M234)'
+file = 'atm/tables/kurucz_atmosphere.f90'
+old = 'if (log10_gravity >= tbl%log_g(last_valid-1)) then'
+new = 'if (log10_gravity >= tbl%log_g(ng-1)) then'
+
+[[mutation]]
+id = 'kurucz-05'
+check = 'kurucz p01: a stencil on its all -999 row is refused (M234)'
+file = 'atm/tables/kurucz_atmosphere.f90'
+old = 'if (last_valid - first_valid + 1 < num_nodes) then'
+new = 'if (last_valid - first_valid + 1 < -99) then'
+
+[[mutation]]
+id = 'kurucz-06'
+check = 'castelli: a stencil reaching its log-g-5-only last row is refused (M231)'
+file = 'atm/tables/kurucz_atmosphere.f90'
+old = 'if (first_valid > ng-1 .or. last_valid < ng) then'
+new = 'if (.false.) then'
+
+[[mutation]]
+id = 'kurucz-07'
+check = 'castelli grid: exact on a plane in log Teff and log g, every branch'
+file = 'atm/tables/kurucz_atmosphere.f90'
+old = 'tbl%log10_pressure(row,ng-1)*weights(2) + &'
+new = 'tbl%log10_pressure(row,ng-1)*weights(1) + &'
+
+# ---- the Allard lookups and reader
+
+[[mutation]]
+id = 'allard-01'
+check = 'allard: exact at the nodes of Nextgen2 (log P at T = Teff)'
+file = 'atm/tables/allard_atmosphere.f90'
+old = 'first_column(i) = first_valid + below - 2'
+new = 'first_column(i) = first_valid + below + 1'
+
+[[mutation]]
+id = 'allard-02'
+check = 'allard: continuous across the log Teff rows (log g 4.5)'
+file = 'atm/tables/allard_atmosphere.f90'
+old = 'first_row = below - 1'
+new = 'first_row = below + 1'
+
+[[mutation]]
+id = 'allard-03'
+check = 'allard: T at tau = 100 is above Teff (log Teff 3.4-4.0, log g 4.5)'
+file = 'atm/tables/allard_atmosphere.f90'
+old = 'call polint(log_teff_nodes, temperature_tau100_col, num_nodes, log_teff, &'
+new = 'call polint(log_teff_nodes, log_teff_nodes, num_nodes, log_teff, &'
+
+[[mutation]]
+id = 'allard-04'
+check = 'allard: above, outside and below the tables are told apart'
+file = 'atm/tables/allard_atmosphere.f90'
+old = 'lookup%gravity_outside = log_g >= tbl%log_g_max .or. log_g <= tbl%log_g_min'
+new = 'lookup%gravity_outside = log_g <= tbl%log_g_min'
+
+[[mutation]]
+id = 'allard-05'
+check = "allard synthetic: exact on a polynomial (to the file's 9 digits)"
+file = 'atm/tables/allard_atmosphere.f90'
+old = 'call polint(log_g_nodes, tbl%log10_pressure(row,first:first+3), num_nodes, log_g, &'
+new = 'call polint(log_g_nodes, tbl%log10_pressure(row,first+1:first+4), num_nodes, log_g, &'
+
+[[mutation]]
+id = 'allard_reader-01'
+check = 'allard synthetic: lookups reach 4 widths below log g 3, 1 above 5.5 (M233)'
+file = 'atm/tables/allard_table_reader.f90'
+old = 'low_gravity_widths = 4.0d0'
+new = 'low_gravity_widths = 1.0d0'
+
+[[mutation]]
+id = 'allard_reader-02'
+check = 'allard: an [Fe/H] or [alpha/Fe] the file lacks is its own error (M221)'
+file = 'atm/tables/allard_table_reader.f90'
+old = 'if (tbl%num_teff == 0) then'
+new = 'if (tbl%num_teff < 0) then'
+
+[[mutation]]
+id = 'allard_reader-03'
+check = 'allard: a table of 3 rows returns ierr 1'
+file = 'atm/tables/allard_table_reader.f90'
+old = 'if (n < min_rows) then'
+new = 'if (.false.) then'
+
+# ---- the error paths of the readers and of atm_get_surface_pt
+
+[[mutation]]
+id = 'kurucz-08'
+check = 'castelli grid: a 3-point row without its top three columns is refused'
+file = 'atm/tables/kurucz_atmosphere.f90'
+old = 'if (first_valid > ng-2 .or. last_valid < ng) then'
+new = 'if (.false.) then'
+
+[[mutation]]
+id = 'kurucz_reader-01'
+check = 'kurucz reader: a missing file and a truncated one return ierr 1'
+file = 'atm/tables/kurucz_table_reader.f90'
+old = '''
+      close(table_unit)
+      if (ios /= 0) then'''
+new = '''
+      close(table_unit)
+      if (.false.) then'''
+
+[[mutation]]
+id = 'allard_reader-04'
+check = 'allard: a -999 inside a row is refused'
+file = 'atm/tables/allard_table_reader.f90'
+old = '''
+               table_is_bad = .true.
+               call log_allard_bad_entry'''
+new = '''
+               table_is_bad = .false.
+               call log_allard_bad_entry'''
+
+[[mutation]]
+id = 'allard_reader-05'
+check = 'allard: a row of three valid columns is refused'
+file = 'atm/tables/allard_table_reader.f90'
+old = 'if (last - first + 1 < min_valid_columns) then'
+new = 'if (last - first + 1 < 0) then'
+
+[[mutation]]
+id = 'allard_reader-06'
+check = 'allard reader: a missing file, an empty one, one in neither layout: ierr 1'
+file = 'atm/tables/allard_table_reader.f90'
+old = '''
+      if (ios /= 0) then
+         call report_allard_open_failure(path)'''
+new = '''
+      if (.false.) then
+         call report_allard_open_failure(path)'''
+
+[[mutation]]
+id = 'allard_reader-07'
+check = 'allard reader: a record whose log P cannot be read returns ierr 1'
+file = 'atm/tables/allard_table_reader.f90'
+old = '''
+         if (ios > 0) then
+            call report_allard_read_error('AtTabInit File Read error')'''
+new = '''
+         if (ios > 999999) then
+            call report_allard_read_error('AtTabInit File Read error')'''
+
+[[mutation]]
+id = 'atm_lib-05'
+check = "atm_get_surface_pt: below the Allard tables ierr 1, off a row's log g failed"
+file = 'atm/atm_lib.f90'
+old = 'if (lookup%teff_below) ierr = 1'
+new = 'if (.false.) ierr = 1'
+
+[[mutation]]
+id = 'atm_lib-06'
+check = "atm_get_surface_pt: below the Allard tables ierr 1, off a row's log g failed"
+file = 'atm/atm_lib.f90'
+old = 'lookup_failed = lookup%teff_above .or. lookup%gravity_outside .or. row > 0'
+new = 'lookup_failed = lookup%teff_above .or. lookup%gravity_outside'

@@ -352,7 +352,7 @@ atm/tables/allard_atmosphere.o: atm_tables.mod numerics_lib.mod
 atm/tables/allard_table_reader.o: atm_messages.mod atm_tables.mod math_lib.mod
 atm/tables/kurucz_atmosphere.o: atm_tables.mod numerics_lib.mod
 atm/tables/kurucz_table_reader.o: atm_messages.mod atm_tables.mod
-atm/test/test_atm.o: atm_lib.mod run_messages.mod
+atm/test/test_atm.o: allard_atmosphere.mod allard_table_reader.mod atm_lib.mod atm_tables.mod kurucz_atmosphere.mod kurucz_table_reader.mod math_lib.mod physical_constants.mod run_messages.mod
 convection/convection_configuration.o: physical_constants.mod
 convection/convection_lib.o: convection_configuration.mod convection_zones.mod semiconvection.mod temperature_gradients.mod
 convection/convection_zones.o: convection_configuration.mod eos_lib.mod math_lib.mod physical_constants.mod run_messages.mod
