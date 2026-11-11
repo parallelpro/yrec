@@ -446,7 +446,7 @@ subroutine gravitational_settling_setup(diff_scr, timestep_seconds, dlnp_dr, log
                      end do
                   end do
                endif
-               call thoul_diffusion(num_species,atomic_weight,atomic_charge, &
+               call thoul_diffusion(atomic_weight,atomic_charge, &
                     species_mass_fraction,coulomb_log,settling_ap,settling_at,settling_ac, &
                     ierr)
                if (ierr /= 0) then

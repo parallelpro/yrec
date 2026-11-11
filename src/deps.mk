@@ -402,11 +402,11 @@ core/test/test_triangle_fit.o: triangle_fit.mod
 element_diffusion/bahcall_loeb_units.o: physical_constants.mod
 element_diffusion/coulomb_logarithm.o: math_lib.mod physical_constants.mod
 element_diffusion/diffusion_grid.o: composition_layout.mod numerics_lib.mod
-element_diffusion/diffusion_scheme.o: composition_layout.mod physical_constants.mod
-element_diffusion/element_diffusion_lib.o: composition_layout.mod element_diffusion_configuration.mod element_diffusion_messages.mod element_diffusion_scratch.mod microdiff_driver.mod original_settling.mod settling_region.mod settling_substeps.mod
+element_diffusion/diffusion_scheme.o: physical_constants.mod
+element_diffusion/element_diffusion_lib.o: element_diffusion_configuration.mod element_diffusion_messages.mod element_diffusion_scratch.mod microdiff_driver.mod original_settling.mod settling_region.mod settling_substeps.mod
 element_diffusion/element_diffusion_messages.o: numerics_lib.mod run_messages.mod settling_region.mod
 element_diffusion/element_diffusion_scratch.o: composition_layout.mod
-element_diffusion/microdiff_coefficients.o: bahcall_loeb_units.mod composition_layout.mod coulomb_logarithm.mod element_diffusion_configuration.mod math_lib.mod microdiff_mapping.mod physical_constants.mod species_table.mod thoul_solver.mod
+element_diffusion/microdiff_coefficients.o: bahcall_loeb_units.mod composition_layout.mod coulomb_logarithm.mod element_diffusion_configuration.mod math_lib.mod microdiff_mapping.mod species_table.mod thoul_solver.mod
 element_diffusion/microdiff_driver.o: bahcall_loeb_units.mod composition_layout.mod element_diffusion_configuration.mod element_diffusion_messages.mod math_lib.mod microdiff_mapping.mod microdiff_run.mod physical_constants.mod species_table.mod
 element_diffusion/microdiff_mapping.o: composition_layout.mod diffusion_grid.mod element_diffusion_configuration.mod numerics_lib.mod species_table.mod
 element_diffusion/microdiff_run.o: composition_layout.mod diffusion_scheme.mod element_diffusion_configuration.mod microdiff_coefficients.mod microdiff_mapping.mod numerics_lib.mod physical_constants.mod
@@ -415,7 +415,7 @@ element_diffusion/settling_grid.o: bahcall_loeb_units.mod composition_layout.mod
 element_diffusion/settling_region.o: composition_layout.mod
 element_diffusion/settling_substeps.o: math_lib.mod physical_constants.mod
 element_diffusion/species_table.o: composition_layout.mod physical_constants.mod
-element_diffusion/test/test_element_diffusion.o: diffusion_settings_builder.mod element_diffusion_lib.mod run_messages.mod star_info_lib.mod
+element_diffusion/test/test_element_diffusion.o: coulomb_logarithm.mod diffusion_grid.mod diffusion_scheme.mod diffusion_settings_builder.mod element_diffusion_lib.mod numerics_lib.mod physical_constants.mod run_messages.mod settling_region.mod settling_substeps.mod species_table.mod star_info_lib.mod thoul_solver.mod
 element_diffusion/thoul_solver.o: numerics_lib.mod
 eos/blended_eos.o: eos_configuration.mod eos_messages.mod eos_mixture.mod eos_results.mod math_lib.mod opal_eos.mod opal_eos_tables.mod physical_constants.mod scv_eos.mod yale_eos.mod yale_eos_tables.mod
 eos/eos_configuration.o: mhd_eos_tables.mod

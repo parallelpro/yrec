@@ -42,10 +42,13 @@ module diffusion_grid
 contains
 
 ! The equal grid's point count num_points and spacing grid_spacing over
-! radius(zone_begin..zone_end): the fewest equal intervals no wider than
-! the narrowest model zone among zones spacing_from..zone_end (each zone
-! k spanning radius(k-1)..radius(k)), at least 2 points and at most
-! json.
+! radius(zone_begin..zone_end): num_points is the span over the
+! narrowest model zone among zones spacing_from..zone_end (each zone k
+! spanning radius(k-1)..radius(k)), rounded up, at least 2 and at most
+! json, and grid_spacing = span/(num_points - 1). (The F77 meant the
+! intervals to be no wider than that zone, "DR <= DRMIN", but counts the
+! intervals as points, so the spacing is wider by num_points/
+! (num_points - 1): one interval short. Changing it moves results.)
 pure subroutine size_equal_grid(radius, zone_begin, zone_end, spacing_from, &
      num_points, grid_spacing)
       real(dp), intent(in) :: radius(:)

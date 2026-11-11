@@ -1,67 +1,85 @@
 !----------------------------------------------------------------------
 ! microdiff_coefficients
 !----------------------------------------------------------------------
-! CRITICAL: several numeric literals below (0.0, 1.0, 0.5, 2.2) are
-! written WITHOUT a D0/D-3 exponent suffix in the original, meaning
-! Fortran parses them as single precision before widening to double --
-! numerically different from a D0-suffixed literal. They are the
-! original code's; do not "fix" them.
-!
-! G Somers 5/15: THIS IS A SUBROUTINE WRITEN TO CALCULATE THE DIFFUSION
-! COEFFICIENT ON THE EQUALLY-SPACED GRID USED FOR LIGHT ELEMENT DIFFUSION.
-! THIS CODE TAKES IN THE NECESSARY PARAMETERS ON THE EQUAL GRID (NAMELY
-! HCOMP(1,I), HCOMP(2,I), HCOMP(13-15,I), DENSITY, TEMPERATURE, HQPR,
-! AND DELR(2,I)
-!
-! Calls thoul_diffusion (Thoul et al. 1994) at each point of the grid;
-! microdiff_run calls it once for the zone centers and once for the
-! midpoints.
+! microdiff's drift and diffusion coefficients for one species at the
+! points of one equal grid. The species' diffusion velocity is (Thoul et
+! al. 1994)
+!     w = A_P d ln P/dr + A_T d ln T/dr + A_H d ln C_H/dr + A_D d ln C_D/dr,
+! the A's from the Burgers equations (thoul_solver) with each pair's
+! Coulomb logarithm (coulomb_logarithm), for the four Thoul columns:
+! hydrogen, helium, the species (column 3, or iron when hydrogen is
+! solved for) and the electrons. In Bahcall & Loeb units the
+! coefficients of dX/dt = (1/(rho r^2)) d/dr [D1 + D2 dX/dr] are
+!     D1 = f r^2 T^(5/2)/ln Lambda (A_P d ln P/dr + A_T d ln T/dr
+!          + A_H d ln C_H/dr) X,
+!     D2 = f r^2 T^(5/2)/ln Lambda A_D,
+! with A_T d ln T/dr = A_T del d ln P/dr (del = d ln T/d ln P) and the
+! signs of the Burgers solution's coefficients reversed. f is
+! settling_y_factor for hydrogen (column 1) and settling_z_factor for
+! column 3, the metals and the light elements alike (docs/bug_sweep.md
+! M250). The hydrogen term drops out of hydrogen's own D1 (it is the
+! self term, in D2); its gradient, d ln C_H/dr centred on the grid, is
+! computed by the hydrogen call and read by the others.
 module microdiff_coefficients
+      use, intrinsic :: iso_fortran_env, only: dp => real64
+      use composition_layout, only: json
       use element_diffusion_configuration, only: diffusion_settings
       use thoul_solver, only: thoul_diffusion
       use coulomb_logarithm, only: compute_concentrations, compute_coulomb_logarithms
+      use math_lib
       implicit none
+      private
+      public :: compute_microdiff_coefficients
+
+! the Thoul columns: hydrogen, helium, the species, the electrons
+      integer, parameter :: num_species = 4
+! ln Lambda in the Bahcall & Loeb time unit (bahcall_loeb_units): the
+! F77's single-precision 2.2 (2.2000000476837158 as a double), which
+! microdiff keeps; the original routines divide by 2.2d0 (docs/bug_sweep.md
+! M257: making them one moves results)
+      real(dp), parameter :: bl_coulomb_logarithm = real(2.2, dp)
+! the least mass fraction the Burgers equations take (none may be zero)
+      real(dp), parameter :: mass_fraction_floor = 1.0d-24
+
 contains
 
-subroutine compute_microdiff_coefficients(num_eq_points, species_fraction, grid, &
-     diffusion_coeff1, &
-     diffusion_coeff2, hydrogen_dlnc_dr, atomic_weight_diffused, &
+! ---------------------------------------------------------------
+! The drift (drift_coeff, D1) and diffusion (diffusion_coeff, D2)
+! coefficients at the num_points points of grid, for the species in
+! Thoul column species_col (atomic weight and charge as given for column
+! 3), from the columns' mass fractions species_fraction(column, point).
+! hydrogen_dlnc_dr: d ln C_H/dr at the points, written by the hydrogen
+! call (species_col 1, zero at the grid's ends) and read by the others.
+! Where the species is absent at a point and the next (the depleted
+! zone, the first such point excepted) both coefficients are zero.
+! ierr: ludcmp's status from a singular Burgers system.
+subroutine compute_microdiff_coefficients(num_points, species_fraction, grid, &
+     drift_coeff, diffusion_coeff, hydrogen_dlnc_dr, atomic_weight_diffused, &
      atomic_charge_diffused, species_col, ierr)
       use microdiff_mapping, only: microdiff_grid
-      use composition_layout, only: json
       use species_table, only: thoul_h1, thoul_he4, thoul_electron, &
            thoul_col_h, thoul_col_he, thoul_col_metal, thoul_col_electron
-      use physical_constants
-      use math_lib
       use bahcall_loeb_units, only: bl_temp_scale
-      implicit none
-      integer, intent(in) :: num_eq_points
-      double precision, intent(in) :: species_fraction(3,json)
+      integer, intent(in) :: num_points
+      real(dp), intent(in) :: species_fraction(:,:)
       type(microdiff_grid), intent(in) :: grid
-      double precision, intent(out) :: diffusion_coeff1(json), &
-           diffusion_coeff2(json)
-      double precision, intent(inout) :: hydrogen_dlnc_dr(json)
-      double precision, intent(in) :: atomic_weight_diffused, &
-           atomic_charge_diffused
+      real(dp), intent(out) :: drift_coeff(:), diffusion_coeff(:)
+      real(dp), intent(inout) :: hydrogen_dlnc_dr(:)
+      real(dp), intent(in) :: atomic_weight_diffused, atomic_charge_diffused
       integer, intent(in) :: species_col
       integer, intent(out) :: ierr
-! --- locals ---
-      double precision :: atomic_weight(4), atomic_charge(4), mass_frac(4), &
-           coulomb_log(4,4), pressure_coeff(4), temp_coeff(4), &
-           conc_coeff(4,4), &
-           coeff_scale(json), pressure_term(json), temp_term(json), &
-           hydrogen_term(json), diffusion_term(json), &
-           hydrogen_concen(json)
-      double precision :: concen(4)
-      double precision :: ln_lambda
-      integer :: num_species
-      data num_species/4/
+      real(dp) :: atomic_weight(num_species), atomic_charge(num_species), &
+           mass_frac(num_species), concentration(num_species), &
+           coulomb_log(num_species,num_species), pressure_coeff(num_species), &
+           temp_coeff(num_species), conc_coeff(num_species,num_species)
+! per point: f r^2 T^(5/2)/ln Lambda, the four terms of the velocity
+! (signs reversed; the temperature term times del), and C_H
+      real(dp) :: coeff_scale(json), pressure_term(json), temp_term(json), &
+           hydrogen_term(json), self_term(json), hydrogen_concentration(json)
+      real(dp) :: scale_factor, radius_bl, temperature_bl, dlnc_dr
       integer :: i
-      double precision :: hru_i, htu_i, fac, ap, at, ah, ad, dlncdr, coni, conip1, conim1, &
-           dradi, t1, t2, rho, t
 
       ierr = 0
-! SET UP THE ATOMIC WEIGHT AND CHARGE MATRICIES
       atomic_weight(thoul_col_h) = thoul_h1%weight
       atomic_weight(thoul_col_he) = thoul_he4%weight
       atomic_weight(thoul_col_metal) = atomic_weight_diffused
@@ -70,125 +88,85 @@ subroutine compute_microdiff_coefficients(num_eq_points, species_fraction, grid,
       atomic_charge(thoul_col_he) = thoul_he4%charge
       atomic_charge(thoul_col_metal) = atomic_charge_diffused
       atomic_charge(thoul_col_electron) = thoul_electron%charge
-! SET LN_LAMBDA.
-      ln_lambda = 2.2
-! CALCULATE DIFFUSION COEFFICIENTS FOR EACH LAYER.
-      do i = 1,num_eq_points
+      scale_factor = diffusion_settings%fgrz
+      if (species_col == thoul_col_h) scale_factor = diffusion_settings%fgry
+
+! The Burgers solution at each point.
+      do i = 1, num_points
          mass_frac(thoul_col_h) = species_fraction(thoul_col_h,i)
          mass_frac(thoul_col_he) = species_fraction(thoul_col_he,i)
          mass_frac(thoul_col_metal) = species_fraction(thoul_col_metal,i)
-! make sure XFRAC = 0.0 isn't used for diff coefficients
-         if (mass_frac(thoul_col_h).lt.1.0d-24) mass_frac(thoul_col_h) = 1.0d-24
-         if (mass_frac(thoul_col_he).lt.1.0d-24) mass_frac(thoul_col_he) = 1.0d-24
-         if (mass_frac(thoul_col_metal).lt.1.0d-24) mass_frac(thoul_col_metal) = 1.0d-24
-!        the concentrations per electron (coulomb_logarithm)
-         call compute_concentrations(atomic_weight, atomic_charge, mass_frac, concen)
-!        save the hydrogen concentration when X is diffused.
-         if(species_col.eq.thoul_col_h) hydrogen_concen(i) = concen(thoul_col_h)
-!        now check whether the Thoul routine must be run. if not,
-!        write COD1 = COD2 = 0. If its the first shell in the depleted
-!        zone, permit the calculations so that AD is correct.
-         if(species_fraction(species_col,i).eq.0.0.and.i.ne.num_eq_points)then
-            if(species_fraction(species_col,i+1).eq.0.0)then
-!              zero every per-zone term, not just AD: the original's
-!              SAVEd arrays left stale values in the other four at a
-!              skipped zone, and the modern locals were only zero here
-!              by virtue of -finit-local-zero.
+         if (mass_frac(thoul_col_h) < mass_fraction_floor) mass_frac(thoul_col_h) = mass_fraction_floor
+         if (mass_frac(thoul_col_he) < mass_fraction_floor) mass_frac(thoul_col_he) = mass_fraction_floor
+         if (mass_frac(thoul_col_metal) < mass_fraction_floor) &
+              mass_frac(thoul_col_metal) = mass_fraction_floor
+         call compute_concentrations(atomic_weight, atomic_charge, mass_frac, concentration)
+         if (species_col == thoul_col_h) hydrogen_concentration(i) = concentration(thoul_col_h)
+! In the depleted zone, nothing to solve.
+         if (species_fraction(species_col,i) == 0.0d0 .and. i /= num_points) then
+            if (species_fraction(species_col,i+1) == 0.0d0) then
                coeff_scale(i) = 0.0d0
                pressure_term(i) = 0.0d0
                temp_term(i) = 0.0d0
                hydrogen_term(i) = 0.0d0
-               diffusion_term(i) = 0.0
+               self_term(i) = 0.0d0
                cycle
-            endif
-         endif
-!        set relevant physical variables.
-         rho = grid%density(i)
-         t = grid%temperature(i)
-!        the pairwise Coulomb logarithms (coulomb_logarithm)
-         call compute_coulomb_logarithms(atomic_weight, atomic_charge, concen, &
-              rho, t, coulomb_log)
-!
-!        calculate the diffusion coefficients
-!
-         call thoul_diffusion(num_species,atomic_weight,atomic_charge,mass_frac, &
-              coulomb_log,pressure_coeff,temp_coeff,conc_coeff,ierr)
+            end if
+         end if
+         call compute_coulomb_logarithms(atomic_weight, atomic_charge, concentration, &
+              grid%density(i), grid%temperature(i), coulomb_log)
+         call thoul_diffusion(atomic_weight, atomic_charge, mass_frac, coulomb_log, &
+              pressure_coeff, temp_coeff, conc_coeff, ierr)
          if (ierr /= 0) return
-!
-         hru_i = grid%radius(i)
-         htu_i = t*bl_temp_scale
-!        JvS 01/26 Added support for FGRY and FGRZ modifications
-!        to diffusion coefficients.
-         fac=hru_i**2*pow(htu_i, 2.5d0)/ln_lambda
-         if(species_col.eq.thoul_col_h)then
-            fac=diffusion_settings%fgry*hru_i**2*pow(htu_i, 2.5d0)/ln_lambda
-         endif
-         if(species_col.eq.thoul_col_metal)then
-            fac=diffusion_settings%fgrz*hru_i**2*pow(htu_i, 2.5d0)/ln_lambda
-         endif
-!        collect the first diffusion terms for hydroden.
-!        collect the third diffusion terms for everything else.
-         ap = -pressure_coeff(species_col)
-         at = -temp_coeff(species_col)*grid%del_grad(i)
-         ah = -conc_coeff(species_col,thoul_col_h)
-         ad = -conc_coeff(species_col,species_col)
-!        store the numbers so the hydrogen gradient can finish
-!        being calculated; then use them later.
-         coeff_scale(i) = fac
-         pressure_term(i) = ap
-         temp_term(i) = at
-         hydrogen_term(i) = ah
-         diffusion_term(i) = ad
+         radius_bl = grid%radius(i)
+         temperature_bl = grid%temperature(i)*bl_temp_scale
+         coeff_scale(i) = scale_factor*radius_bl**2*pow(temperature_bl, 2.5d0)/bl_coulomb_logarithm
+         pressure_term(i) = -pressure_coeff(species_col)
+         temp_term(i) = -temp_coeff(species_col)*grid%del_grad(i)
+         hydrogen_term(i) = -conc_coeff(species_col,thoul_col_h)
+         self_term(i) = -conc_coeff(species_col,species_col)
       end do
-      do i = 1,num_eq_points
-         fac = coeff_scale(i)
-         ap = pressure_term(i)
-         at = temp_term(i)
-         ah = hydrogen_term(i)
-         ad = diffusion_term(i)
-!
-!        The general diffusion velocity is written as:
-!        Ap(D)*dlnP/dR + At(D)*dlnT/dR + Ax(D)*dlnX/dR + Ad(D)*dlnD/dR
-!        The first two terms are pressure and temperature gradients, and
-!        the last two terms are the hydrogen gradient and the diffused element
-!        gradient. For hydrogren diffusion, we can neglect the third term, as
-!        it is the same as the final term. For metal diffusion, we need all
-!        four. (see Thoul et al. 1994 for details)
-!
-!        calculate the hydrogen gradient if diffusing X, then set
-!        the local gradient to 0 to remove 2nd self-diff term.
-!        look it up otherwise.
-!
-!        only calculate the gradient on the hydrogen call.
-!        set the gradient at first and last points to 0.
-!
-         if(species_col.eq.thoul_col_h)then
-            dlncdr = 1.0
-            if (i.eq.1) then
-               dlncdr = 0.0
-            elseif (i.eq.num_eq_points) then
-               dlncdr = 0.0
-            else
-               coni = log(hydrogen_concen(i))
-               conip1 = log(hydrogen_concen(i+1))
-               conim1 = log(hydrogen_concen(i-1))
-               dradi = grid%radius(i+1)-grid%radius(i)
-               t1 = (coni-conim1)/dradi
-               t2 = (conip1-coni)/dradi
-               dlncdr = 0.5*(t1+t2)
-            endif
-            hydrogen_dlnc_dr(i) = dlncdr
-!           zero out gradient for hydrogen abundance, as stated above.
-            dlncdr = 0.0
+
+! The coefficients, with the hydrogen gradient.
+      do i = 1, num_points
+         if (species_col == thoul_col_h) then
+            hydrogen_dlnc_dr(i) = centred_log_gradient(hydrogen_concentration, &
+                 grid%radius, i, num_points)
+            dlnc_dr = 0.0d0
          else
-!           if not the hydrogen call, retrieve the gradient
-            dlncdr = hydrogen_dlnc_dr(i)
-         endif
-         diffusion_coeff1(i) = fac*(grid%dlnp_dr(i)*(ap+at)+dlncdr*ah)* &
-              species_fraction(species_col,i)
-         diffusion_coeff2(i) = fac*ad
+            dlnc_dr = hydrogen_dlnc_dr(i)
+         end if
+         drift_coeff(i) = coeff_scale(i)*(grid%dlnp_dr(i)*(pressure_term(i)+temp_term(i)) &
+              + dlnc_dr*hydrogen_term(i))*species_fraction(species_col,i)
+         diffusion_coeff(i) = coeff_scale(i)*self_term(i)
       end do
-      return
 end subroutine compute_microdiff_coefficients
 
+! ---------------------------------------------------------------
+! d ln c/dr at point i of an equally spaced grid of n points (radius),
+! the mean of the two one-sided differences, each over the spacing
+! r(i+1) - r(i); zero at the grid's ends.
+pure function centred_log_gradient(c, radius, i, n) result(gradient)
+      real(dp), intent(in) :: c(:), radius(:)
+      integer, intent(in) :: i, n
+      real(dp) :: gradient
+      real(dp) :: log_c, log_c_next, log_c_prev, spacing
+
+      if (i == 1 .or. i == n) then
+         gradient = 0.0d0
+         return
+      end if
+      log_c = log(c(i))
+      log_c_next = log(c(i+1))
+      log_c_prev = log(c(i-1))
+      spacing = radius(i+1) - radius(i)
+      gradient = 0.5d0*((log_c - log_c_prev)/spacing + (log_c_next - log_c)/spacing)
+end function centred_log_gradient
+
 end module microdiff_coefficients
+
+! Sources
+! - G. Somers (05/2015), after the original routines' coefficients
+!   (MHP 8/94); JvS (01/2026) applied settling_y_factor and
+!   settling_z_factor.
+! - Thoul, A. A., Bahcall, J. N. & Loeb, A. 1994, ApJ 421, 828.

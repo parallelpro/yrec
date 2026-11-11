@@ -3,12 +3,20 @@
 !----------------------------------------------------------------------
 ! The public interface of element diffusion: gravitational settling and
 ! the microscopic diffusion of helium, the metals and the light
-! elements over one timestep. diffuse_elements runs the newer routines
-! (microdiff) when use_new_diffusion_routines is set, else the original
-! ones (gravitational_settling). Its settings come from
-! set_diffusion_settings (element_diffusion_configuration), which the
-! star layer calls at the start of every run card.
+! elements over one timestep (README.md).
+!   diffuse_elements        one settling step: the settling region
+!                           (settling_region), then the newer routines
+!                           (microdiff) when use_new_diffusion_routines
+!                           is set, else the original ones
+!                           (gravitational_settling);
+!   plan_settling_substeps  the sub-steps of a step's settling
+!                           (settling_substeps), which its callers take;
+!   set_diffusion_settings  installs the settings record
+!                           (element_diffusion_configuration), as the
+!                           star layer does at the start of every run
+!                           card.
 module element_diffusion_lib
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use original_settling, only: gravitational_settling
       use microdiff_driver, only: microdiff
       use element_diffusion_configuration, only: diffusion_settings_t, &
@@ -25,37 +33,41 @@ module element_diffusion_lib
 contains
 
 ! ---------------------------------------------------------------
-! One settling step of length timestep (s) over num_zones zones (center
-! first): the mass fractions in composition change in place. The other
-! arrays are the structure (log radius, density and temperature, the
-! enclosed mass in grams, d ln P/dr, the temperature gradient del_grad
-! and the convective flags); the routines convert some of them to their
-! own units in place and back. Hydrogen and helium always settle, the
-! metals and the light elements when their settings say so (the callers
-! settle only while the star's settling_active holds).
-! suspension_reported: the run log's latch (the star's), set
-! when a model too convective or exhausted to settle is reported, cleared
-! when settling resumes.
+! One settling step of timestep seconds over a model of num_zones zones
+! (centre first): the mass fractions composition(species, zone) change
+! in place. The structure: log10 radius (cm), density (g/cm^3) and
+! temperature (K), the enclosed mass (g), d ln P/dr (1/cm), the
+! temperature gradient del_grad = d ln T/d ln P, the convective flags and
+! the total mass (g). microdiff leaves them as they are; the original
+! routines convert timestep, dlnp_dr, enclosed_mass and total_mass to
+! Bahcall & Loeb units in place and back, which can change their last
+! bit. Hydrogen and helium settle always (the callers call only while
+! the star's settling_active holds), the metals with use_diffusion_z and
+! the light elements with diffuse_lithium (microdiff only).
+! suspension_reported: the run log's latch (the star's), set when a
+! model that cannot settle is noted, cleared when settling resumes
+! (element_diffusion_messages' note_settling_region). ierr: a numerics
+! routine's status (a singular matrix), after its message; nonzero stops
+! the run.
 subroutine diffuse_elements(timestep, composition, dlnp_dr, log_radius, &
      log_density, enclosed_mass, log_temperature, del_grad, &
      convective_flag, num_zones, total_mass, &
      suspension_reported, ierr)
-      use composition_layout, only: json
-      double precision, intent(inout) :: timestep
-      double precision, intent(inout) :: composition(15,json)
-      double precision, intent(inout) :: dlnp_dr(json)
-      double precision, intent(in) :: log_radius(json), log_density(json)
-      double precision, intent(inout) :: enclosed_mass(json)
-      double precision, intent(in) :: log_temperature(json), del_grad(json)
-      logical, intent(in) :: convective_flag(json)
+      real(dp), intent(inout) :: timestep
+      real(dp), intent(inout) :: composition(:,:)
+      real(dp), intent(inout) :: dlnp_dr(:)
+      real(dp), intent(in) :: log_radius(:), log_density(:)
+      real(dp), intent(inout) :: enclosed_mass(:)
+      real(dp), intent(in) :: log_temperature(:), del_grad(:)
+      logical, intent(in) :: convective_flag(:)
       integer, intent(in) :: num_zones
-      double precision, intent(inout) :: total_mass
+      real(dp), intent(inout) :: total_mass
       logical, intent(inout) :: suspension_reported
       integer, intent(out) :: ierr
-! the settling routines' working arrays for this step
+! the original routines' working arrays for this step
 ! (element_diffusion_scratch), passed down as an argument
       type(diffusion_scratch), allocatable :: diff_scr
-! the zones that settle (settling_region)
+! the zones that settle
       integer :: zone_begin, zone_end, region
 
       ierr = 0
