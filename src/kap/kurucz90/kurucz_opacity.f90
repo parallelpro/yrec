@@ -17,8 +17,8 @@ module kurucz_opacity
            kurucz_max_num_temps, kurucz_table_set, opacity_table
       use numerics_lib, only: findex, natural_spline, splint, &
            compute_spline_coefficients, numerics_status_text
-      use kap_messages, only: kap_log, kap_log_values, kap_terminal, message_length, &
-           unwritten_line
+      use kap_messages, only: kap_log, kap_log_values, kap_report, kap_terminal, &
+           message_length, unwritten_line
       use math_lib
       implicit none
       private
@@ -99,8 +99,18 @@ subroutine read_kurucz_table(path, tbl, ierr)
            log10_opacity0, log10_opacity1, log10_opacity2, &
            log10_opacity4, log10_opacity8, electron_density, &
            atom_density, density, unused_col
-      if (read_status > 0) cycle table_read   ! was err=110: reread next record
       if (read_status < 0) exit table_read    ! was end=120
+! a record that does not parse is a header line before the first row
+! (some tables have three), and an error after it
+      if (read_status > 0 .and. num_read == 0) cycle table_read
+      if (read_status > 0) then
+         lines = unwritten_line
+         write(lines,'(a,i0,2a)') 'read_kurucz_tables: unreadable row after temperature row ', &
+              num_read, ' in ', trim(path)
+         call kap_report(lines)
+         ierr = 1
+         return
+      end if
       if (prev_grid_temp /= grid_temp) then
          num_read = num_read+1
          if (num_read > kurucz_max_num_temps) then
@@ -120,6 +130,14 @@ subroutine read_kurucz_table(path, tbl, ierr)
          write(lines,*) 'read_kurucz_tables: no header row read from ', &
               trim(path)
          call kap_terminal(lines)
+         ierr = 1
+         return
+      end if
+      if (density_index > kurucz_max_num_densities) then
+         lines = unwritten_line
+         write(lines,'(a,i0,3a)') 'read_kurucz_tables: more than ', kurucz_max_num_densities, &
+              ' densities at one temperature in ', trim(path)
+         call kap_report(lines)
          ierr = 1
          return
       end if

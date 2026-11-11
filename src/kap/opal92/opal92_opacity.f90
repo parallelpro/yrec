@@ -237,6 +237,10 @@ subroutine build_opal92_surface_table(hydrogen_fraction, ierr)
       character(len=message_length) :: lines(1)
 
       ierr = 0
+! findex's starting guesses: none (0); the density cursor then carries
+! from the first table set into the second
+      x_index = 0
+      rho_search_index = 0
       call build_surface_table(opacity_table%opal92(1), kap_settings%opal_table_z1, ierr)
       if (ierr /= 0) return
 

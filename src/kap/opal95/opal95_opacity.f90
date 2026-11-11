@@ -218,14 +218,17 @@ subroutine build_opal95_fixed_z_table(metal_fraction, ierr)
       ierr = 0
       opacity_table%opal95_fixed_z = metal_fraction
 !  Find 4 nearest tables in Z to desired value.
+! (the last stencil, the top four nodes, for Z above the next-to-last
+! node; only a Z above the top node is refused)
       do i = 3,n_opal95_z-1
          if (opacity_table%opal95_grid_z(i) >= metal_fraction) then
             z_table_index = i - 2
             exit
          endif
       end do
-      if (i > (n_opal95_z-1)) then
-! Desired Z > 0.1d0; stop
+      if (i > (n_opal95_z-1) .and. metal_fraction <= opacity_table%opal95_grid_z(n_opal95_z)) then
+         z_table_index = n_opal95_z - 3
+      else if (i > (n_opal95_z-1)) then
       lines = unwritten_line
       write(lines,5)metal_fraction
       call kap_terminal(lines)
@@ -284,13 +287,9 @@ subroutine build_opal95_fixed_z_table(metal_fraction, ierr)
          end do
       end do
       end if
-!  Table 10 (X = 1-Z) is always built; its Z stencil must not include
-!  THE Z=0.1 TABLE, SO PICK z_table_index2/z_weight_hix AGAIN HERE.
-!  (Z > grid_z(n_opal95_z-1) IS REJECTED ABOVE, SO THIS TEST IS ALWAYS
-!  true today; without it the table-9 stencil would be reused.)
-      if (metal_fraction < 0.1d0) then
-!  Check to ensure that Z=0.1 table is not one of the 4 tables; adjust
-!  interpolation factors if needed.
+!  Table 10 (X = 1-Z) is always built. There is no X = 1-Z table at
+!  Z = 0.1, so a stencil that reaches Z = 0.1 is replaced by the four
+!  nodes below it (extrapolating for Z above 0.08).
       if (opacity_table%opal95_grid_z(z_table_index+3) >= 0.1d0) then
          z_table_index2 = n_opal95_z - 4
          do i = 1,4
@@ -303,7 +302,6 @@ subroutine build_opal95_fixed_z_table(metal_fraction, ierr)
             z_weight_hix(i) = z_weight(i)
          end do
       endif
-      end if
       table1_index = opacity_table%opal95_table_start_index(z_table_index2)+10
       table2_index = opacity_table%opal95_table_start_index(z_table_index2+1)+10
       table3_index = opacity_table%opal95_table_start_index(z_table_index2+2)+10
@@ -423,7 +421,7 @@ subroutine compute_opal95_opacity(log10_density, log10_temperature, hydrogen_fra
 
       real(dp) :: interp_nodes(4), weight(4), dweight(4)
       integer :: i, k, j
-      logical :: low_regime_flag, density_shifted
+      logical :: density_shifted
       integer :: x_table_index, density_base_index, temp_row_index
       real(dp) :: extrap_logr, z_at_table
       character(len=message_length) :: lines(1)
@@ -471,16 +469,17 @@ subroutine compute_opal95_opacity(log10_density, log10_temperature, hydrogen_fra
 !     Now check if within portion of table with data.
 !     Note that a point can be within the table and still have the
 !     4x4 matrix of T,rho around it outside the table.
-!     Check low rho, low T regime; since the empty region depends on Z at
-!     low X, postpone until you know if it is a 2d, 3d, or 4d interpolation.
-      if (hydrogen_fraction < 0.2d0 .and. opacity_table%opal95_index_t <= 5) then
-         low_regime_flag = .true.
-      else
-         low_regime_flag = .false.
-!     Check high rho, high T regime(because of the table geometry, the
-!     point will fall outside the table first at the highest T).
+!     The low-rho, low-T corner at low X (X < 0.2, the stencil's first T
+!     row at or below the fifth) is not checked: its empty region depends
+!     on Z, and the check the F77 code postponed to the 2D/3D/4D choice
+!     was never written, so the stencil is used as found, without the
+!     high-rho shift or extrapolation.
       density_shifted = .false.
       opacity_table%opal95_extrap_hi = .false.
+      opacity_table%opal95_extrap_hi_row = .false.
+      if (.not. (hydrogen_fraction < 0.2d0 .and. opacity_table%opal95_index_t <= 5)) then
+!     Check high rho, high T regime(because of the table geometry, the
+!     point will fall outside the table first at the highest T).
       if (opacity_table%opal95_fixed_z_opacity(opacity_table%opal95_index_x(1,1),opacity_table%opal95_index_t+3, &
            opacity_table%opal95_index_rho(1)+3) >= opal95_missing_test) then
          density_shifted = .true.

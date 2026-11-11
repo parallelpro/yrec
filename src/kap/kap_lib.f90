@@ -230,6 +230,13 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
                return
             end if
             table_metal_fraction = kap_settings%laol_table_z1
+         else
+! no interior table to blend toward the pure-Z table (kap_init refuses
+! these settings; set_kap_settings does not check)
+            call kap_log_values([hydrogen_fraction, metal_fraction, log10_temperature], &
+                 'NO OPACITY TABLE CHOSEN' // ' RUN STOPPED. X Z TL=')
+            ierr = 1
+            return
          end if
 !        The pure-Z table plays the role of the second table at Z = 1.
          call blend_in_z(log10_opacity, purez_log10_opacity, &
@@ -426,7 +433,8 @@ subroutine kap_init(settings, paths, envelope_hydrogen_fraction, &
 
       integer :: jerr
 
-      ierr = 0
+      call check_kap_settings(settings, ierr)
+      if (ierr /= 0) return
       call set_kap_settings(settings)
       kap_envelope_metal_fraction = envelope_metal_fraction
       if (settings%use_conductive_opacity) then
@@ -443,6 +451,67 @@ subroutine kap_init(settings, paths, envelope_hydrogen_fraction, &
       end if
 
 end subroutine kap_init
+
+!----------------------------------------------------------------------
+! check_kap_settings
+!----------------------------------------------------------------------
+! Refuse, before any table is read, settings that cannot give an
+! opacity (each would otherwise give a NaN or an undefined opacity with
+! ierr = 0 at some lookup): ierr = 1 and a kap_report naming the
+! controls.
+!   - the pure-Z table blends toward an interior table above Z = 0.1, so
+!     it needs one (OPAL 1995, OPAL 1992 or LAOL 1989);
+!   - with two Z tables (the Z ramp or Z diffusion), the interior family
+!     in use (the first of OPAL 1995, OPAL 1992, LAOL 1989) and the
+!     molecular one (the first of Alexander 2006, Alexander 1994/95,
+!     Kurucz 1990) blend linearly between their two table Zs, which must
+!     differ (OPAL 1995 and the Alexander tables interpolate in Z
+!     instead);
+!   - the molecular ramp needs molecular_opacity_logt_min below
+!     molecular_opacity_logt_max when a molecular family is on.
+subroutine check_kap_settings(settings, ierr)
+      use kap_messages, only: kap_report, message_length, unwritten_line
+      type(kap_settings_t), intent(in) :: settings
+      integer, intent(out) :: ierr
+      character(len=message_length) :: lines(1)
+      logical :: interior_opal92, interior_laol89, molecular_kurucz90
+
+      ierr = 0
+      lines = unwritten_line
+      interior_opal92 = settings%use_opal92_tables .and. .not. settings%use_opal95_tables
+      interior_laol89 = settings%use_laol89_tables .and. .not. (settings%use_opal95_tables &
+           .or. settings%use_opal92_tables)
+      molecular_kurucz90 = settings%use_kurucz90_tables .and. .not. (settings%use_alex06_tables &
+           .or. settings%use_alex95_tables)
+      if (settings%use_pure_z_table .and. .not. (settings%use_opal95_tables .or. &
+           settings%use_opal92_tables .or. settings%use_laol89_tables)) then
+         write(lines,'(a)') 'kap_init: use_pure_z_table needs an interior table ' // &
+              '(use_opal95_tables, use_opal92_tables or use_laol89_tables)'
+      else if (settings%use_two_z_tables .and. interior_opal92 .and. &
+           settings%opal_table_z1 == settings%opal_table_z2) then
+         write(lines,'(a,1pe12.5)') 'kap_init: two OPAL 1992 tables (use_z_ramp or ' // &
+              'use_diffusion_z) need two Zs; opal_table_z1 = opal_table_z2 =', settings%opal_table_z1
+      else if (settings%use_two_z_tables .and. interior_laol89 .and. &
+           settings%laol_table_z1 == settings%laol_table_z2) then
+         write(lines,'(a,1pe12.5)') 'kap_init: two LAOL 1989 tables (use_z_ramp or ' // &
+              'use_diffusion_z) need two Zs; laol_table_z1 = laol_table_z2 =', settings%laol_table_z1
+      else if (settings%use_two_z_tables .and. molecular_kurucz90 .and. &
+           settings%kurucz_table_z1 == settings%kurucz_table_z2) then
+         write(lines,'(a,1pe12.5)') 'kap_init: two Kurucz 1990 tables (use_z_ramp or ' // &
+              'use_diffusion_z) need two Zs; kurucz_table_z1 = kurucz_table_z2 =', &
+              settings%kurucz_table_z1
+      else if ((settings%use_alex06_tables .or. settings%use_alex95_tables .or. &
+           settings%use_kurucz90_tables) .and. .not. (settings%molecular_opacity_logt_min < &
+           settings%molecular_opacity_logt_max)) then
+         write(lines,'(a,2(1pe12.5,a))') 'kap_init: molecular_opacity_logt_min (', &
+              settings%molecular_opacity_logt_min, ') must be below molecular_opacity_logt_max (', &
+              settings%molecular_opacity_logt_max, ')'
+      end if
+      if (lines(1)(1:1) /= unwritten_line) then
+         call kap_report(lines)
+         ierr = 1
+      end if
+end subroutine check_kap_settings
 
 !----------------------------------------------------------------------
 ! kap_update_surface_tables

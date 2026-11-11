@@ -173,11 +173,7 @@ subroutine build_laol_splines
       call spline_laol_table(opacity_table%laol(1))
 ! DBG 4/94 Do SPLINE on second opacity table if ZRAMP
       if (kap_settings%use_two_z_tables) then
-! NOTE: the log10 conversion of the second table's T grid runs over
-! the FIRST table's num_t, as the original did (an R6 decision
-! whether that is a latent bug when the two tables differ in T
-! extent); it is therefore kept here rather than in the helper.
-       do it=1, opacity_table%laol(1)%num_t
+       do it=1, opacity_table%laol(2)%num_t
           opacity_table%laol(2)%grid_t(it) = log10(opacity_table%laol(2)%grid_t(it))
        end do
          call spline_laol_table(opacity_table%laol(2))

@@ -78,11 +78,12 @@ subroutine read_alex06_tables(alex06_table_path, ierr)
                call kap_terminal(lines)
    15          format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
                     1x,'EXPECTED AND ACTUAL X,Z',4f7.2,' RUN STOPPED')
-!               STOP
+               ierr = 1
+               return
             endif
             read(table_unit,20) (row_logr_check(k),k=1,n_alex06_d)
    20       format(6x,19f7.3)
-            do kk=1,16
+            do kk=1,n_alex06_d
                if (row_logr_check(kk) /= opacity_table%alex06_grid_logr(kk)) then
                   lines = unwritten_line
                   write(lines,25) kk, opacity_table%alex06_grid_logr(kk), row_logr_check(kk)
@@ -132,7 +133,7 @@ subroutine read_alex06_tables(alex06_table_path, ierr)
             return
          endif
          read(table_unit,20) (row_logr_check(k),k=1,n_alex06_d)
-         do kk=1,16
+         do kk=1,n_alex06_d
             if (row_logr_check(kk) /= opacity_table%alex06_grid_logr(kk)) then
                lines = unwritten_line
                write(lines,25) kk, opacity_table%alex06_grid_logr(kk), row_logr_check(kk)
@@ -279,7 +280,9 @@ subroutine build_alex06_composition_table(ierr)
       do i = 1,3
          interp_nodes(i) = opacity_table%alex06_grid_x(opacity_table%alex06_index_x+i-1)
       end do
-      if (iz == n_alex06_z-3) then
+! the fourth table is the X = 1 - Z family's (at Z = 0.1, the X = 0.9
+! table) when the stencil ends at the last X position
+      if (opacity_table%alex06_index_x == n_alex06_x-3) then
          interp_nodes(4) = 1.0d0-opacity_table%alex06_cached_z
       else
          interp_nodes(4) = opacity_table%alex06_grid_x(opacity_table%alex06_index_x+3)
