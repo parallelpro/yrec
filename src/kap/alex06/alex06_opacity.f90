@@ -174,12 +174,15 @@ subroutine read_alex06_tables(alex06_table_path, ierr)
          end do
       end do
       close(unit=table_unit)
-!     Initialize fixed Z,X table
+!     Initialize fixed Z,X table, and the cache that names its
+!     composition (X = 0, Z = 0: a second kap_init starts from it too)
       do i = 1,n_alex06_t
          do j = 1,n_alex06_d
             opacity_table%alex06_opacity(i,j)=opacity_table%alex06_full_opacity(1,i,j)
          end do
       end do
+      opacity_table%alex06_cached_x = 0.0d0
+      opacity_table%alex06_cached_z = 0.0d0
 end subroutine read_alex06_tables
 
 !----------------------------------------------------------------------
@@ -188,11 +191,12 @@ end subroutine read_alex06_tables
 ! Generates the fixed-(X,Z) table for the Alexander 2006 low-
 ! temperature opacities by 4-point Lagrangian interpolation, first in
 ! Z then in X, from the full set of tables read by read_alex06_tables.f90.
-! The target X, Z are taken from opacity_table%alex06_cached_x/
-! alex06_cached_z, which the caller (compute_alex06_opacity.f90) sets before
-! calling this routine.
-subroutine build_alex06_composition_table(ierr)
+! The table is built at (hydrogen_fraction, metal_fraction); the caller
+! (compute_alex06_opacity) records that composition as the cache's only
+! when the build succeeds.
+subroutine build_alex06_composition_table(hydrogen_fraction, metal_fraction, ierr)
 
+      real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       integer, intent(out) :: ierr
 
       real(dp) :: interp_nodes(4), weight_z(4), weight_x(4)
@@ -203,11 +207,11 @@ subroutine build_alex06_composition_table(ierr)
 
 !     Xe = desired X; ze = desired Z
       ierr = 0
-      x_max = 1.0d0 - opacity_table%alex06_cached_z
+      x_max = 1.0d0 - metal_fraction
 !     Check that the requested composition is inside table bounds
-      if (opacity_table%alex06_cached_x < 0.0d0 .or. opacity_table%alex06_cached_x > x_max) then
+      if (hydrogen_fraction < 0.0d0 .or. hydrogen_fraction > x_max) then
          lines = unwritten_line
-         write(lines,5) opacity_table%alex06_cached_x, opacity_table%alex06_cached_z
+         write(lines,5) hydrogen_fraction, metal_fraction
          call kap_terminal(lines)
     5    format('ILLEGAL COMPOSITION (X,Z) = ',2f6.2,' IN ALEX06.RUN STOPPED')
 ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
@@ -216,9 +220,9 @@ subroutine build_alex06_composition_table(ierr)
       endif
 !     Permit extrapolation in Z by up to 1 table element
       z_max = opacity_table%alex06_grid_z(n_alex06_z)+(opacity_table%alex06_grid_z(n_alex06_z)-opacity_table%alex06_grid_z(n_alex06_z-1))
-      if (opacity_table%alex06_cached_z < 0.0d0 .or. opacity_table%alex06_cached_z > z_max) then
+      if (metal_fraction < 0.0d0 .or. metal_fraction > z_max) then
          lines = unwritten_line
-         write(lines,5) opacity_table%alex06_cached_x, opacity_table%alex06_cached_z
+         write(lines,5) hydrogen_fraction, metal_fraction
          call kap_terminal(lines)
 ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
          ierr = 1
@@ -226,7 +230,7 @@ subroutine build_alex06_composition_table(ierr)
       endif
 !     Find 4 nearest tables in Z.
       do i = 3,n_alex06_z-2
-         if (opacity_table%alex06_cached_z <= opacity_table%alex06_grid_z(i)) then
+         if (metal_fraction <= opacity_table%alex06_grid_z(i)) then
             iz = i - 2
             exit
          endif
@@ -236,14 +240,14 @@ subroutine build_alex06_composition_table(ierr)
       end if
 !     Find 4 nearest tables in X.
       do i = 3,n_alex06_x-2
-         if (opacity_table%alex06_cached_x <= opacity_table%alex06_grid_x(i)) then
+         if (hydrogen_fraction <= opacity_table%alex06_grid_x(i)) then
             opacity_table%alex06_index_x = i - 2
             exit
          endif
       end do
       if (i > (n_alex06_x-2)) then
 !     No table for X > 0.9 if Z =0.10 or more
-      if (opacity_table%alex06_cached_z >= 0.1d0) then
+      if (metal_fraction >= 0.1d0) then
          opacity_table%alex06_index_x = n_alex06_x - 4
       else
          opacity_table%alex06_index_x = n_alex06_x - 3
@@ -253,7 +257,7 @@ subroutine build_alex06_composition_table(ierr)
       do i = 1,4
          interp_nodes(i) = opacity_table%alex06_grid_z(iz+i-1)
       end do
-      interp_target = opacity_table%alex06_cached_z
+      interp_target = metal_fraction
       call interp(interp_nodes, weight_z, x_eval=interp_target)
 !     The difference in the number of tables for the Z=0.1 case requires some
 !     care in X interpolation.  First 3 X cases can be treated normally.
@@ -298,11 +302,11 @@ subroutine build_alex06_composition_table(ierr)
 ! the fourth table is the X = 1 - Z family's (at Z = 0.1, the X = 0.9
 ! table) when the stencil ends at the last X position
       if (opacity_table%alex06_index_x == n_alex06_x-3) then
-         interp_nodes(4) = 1.0d0-opacity_table%alex06_cached_z
+         interp_nodes(4) = 1.0d0-metal_fraction
       else
          interp_nodes(4) = opacity_table%alex06_grid_x(opacity_table%alex06_index_x+3)
       endif
-      interp_target = opacity_table%alex06_cached_x
+      interp_target = hydrogen_fraction
       call interp(interp_nodes, weight_x, x_eval=interp_target)
       do i = 1,n_alex06_t
          do j = 1,n_alex06_d
@@ -339,10 +343,10 @@ subroutine compute_alex06_opacity(log10_density, log10_temperature, hydrogen_fra
       delta_x = abs(hydrogen_fraction-opacity_table%alex06_cached_x)
 !     Ensure that opacity table has the same X,Z value as the point
       if (delta_z > alex_composition_tol .or. delta_x > alex_composition_tol) then
+         call build_alex06_composition_table(hydrogen_fraction, metal_fraction, ierr)
+         if (ierr /= 0) return
          opacity_table%alex06_cached_z = metal_fraction
          opacity_table%alex06_cached_x = hydrogen_fraction
-         call build_alex06_composition_table(ierr)
-         if (ierr /= 0) return
       endif
 !     Compute R for grid point
       logr = log10_density - 3.0d0*(log10_temperature-6.0d0)
