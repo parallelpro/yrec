@@ -11,7 +11,7 @@ module scv_eos_tables
       implicit none
 
       private
-      public :: idp, idtt, iscv_dlnrho_dlnp, iscv_dlnrho_dlnt, &
+      public :: iscv_dlnrho_dlnp, iscv_dlnrho_dlnt, &
            iscv_dlns_dlnt, iscv_frac_atom_ion1, iscv_frac_neutral, &
            iscv_log10_p, iscv_log10_rho, iscv_log10_s, iscvenv_cp, &
            iscvenv_dlnrho_dlnp, iscvenv_dlnrho_dlnt, iscvenv_du_dt, &
@@ -31,9 +31,16 @@ module scv_eos_tables
       real(dp) :: tlogx(scv_nt), tablex(scv_nt,scv_np,scv_nvar), &
            tabley(scv_nt,scv_np,scv_nvar), smix(scv_nt,scv_np), &
            tablez(scv_nt,scv_np,scv_nvar_z), tablenv(scv_nt,scv_np,scv_nvar_env)
-! the cell (first row, first column) the last SCV lookup used, where the
-! next one starts its search
-      integer :: nptsx(scv_nt), idtt, idp
+      integer :: nptsx(scv_nt)
+! The 4 x 4 cell of the tables an SCV lookup uses: its first T row and
+! its first P_gas column on the H table's grid (find_scv_cell). The last
+! lookup's cell, last_scv_cell, is where the next one starts its search
+! (where a point lies on a node, the cell it lands in depends on that
+! start); a run starts from the tables' first cell.
+      type, public :: scv_cell
+         integer :: first_row = 1, first_column = 1
+      end type scv_cell
+      type(scv_cell), public :: last_scv_cell
 ! the envelope X and Z tablenv was built for (-1 until it is built, and
 ! again whenever the tables are read); whether read_scv_tables has read
 ! the tables

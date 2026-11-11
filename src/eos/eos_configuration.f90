@@ -13,9 +13,11 @@ module eos_configuration
       use mhd_eos_tables, only: mhd_n_zams, mhd_n_centre
       implicit none
       private
-! The OPAL table vintages eos_settings_t%opal_vintage selects:
-! opal_vintage_conflict is the builder's answer to controls that select
-! more than one, an error at eos_init.
+! The OPAL table vintages eos_settings_t%opal_vintage selects. The
+! controls never select two: derive_controls (io/derived_controls.f90)
+! lets the newest win, with a warning, before the builder copies it.
+! opal_vintage_conflict is a value outside the range, which eos_init
+! refuses (its range check; test_eos passes it).
       integer, parameter, public :: opal_vintage_none = 0, opal_vintage_1995 = 1, &
            opal_vintage_2001 = 2, opal_vintage_2006 = 3, opal_vintage_conflict = -1
 
@@ -34,10 +36,13 @@ module eos_configuration
          logical :: use_debye_huckel_correction = .false.
          real(dp) :: debye_huckel_eta_min = -1.0d0, debye_huckel_eta_max = 1.0d0
 ! log10 T (K) at and above which the gas is fully ionized; the Saha
-! solution below it, blended into the fully ionized one over the 0.5 dex
-! under it
+! solution below it, blended into the fully ionized one over the
+! saha_ramp_width under it (eos_init refuses a cutoff whose ramp would
+! reach below the Fermi-Dirac table's first row)
          real(dp) :: saha_log10t_cutoff = 6.0d0
       end type eos_settings_t
+! the width of the Saha ramp below saha_log10t_cutoff [dex]
+      real(dp), parameter, public :: saha_ramp_width = 0.500d0
       type(eos_settings_t), public, protected :: eos_settings
 
 ! The tables eos_init reads, by path: the Fermi-Dirac table (always), the

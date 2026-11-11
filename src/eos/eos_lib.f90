@@ -13,24 +13,26 @@
 !                     field is)
 !     eos_set_mixture the envelope mixture (and, with SCV, the envelope
 !                     table built from it)
-! eos_get takes the MHD EOS (mhd_eos) when use_mhd_eos is set, else
-! the blended EOS (blended_eos): the Yale EOS, with the SCV table at
-! low temperature and an OPAL table blended in where it covers the
-! point. Each EOS family is one module; eos reads no star.
+! eos_get takes a selected whole-EOS table source's result alone (MHD,
+! when use_mhd_eos is set), else the blended EOS (blended_eos): the Yale
+! EOS, with the table sources (eos_source_list: the SCV table at low
+! temperature, an OPAL table blended in where it covers the point)
+! applied over it. Each EOS family is one module; eos reads no star.
 module eos_lib
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use eos_results, only: eos_result
       use eos_configuration, only: eos_settings, eos_settings_t, &
            set_eos_settings, eos_table_paths_t, opal_vintage_none, opal_vintage_1995, &
-           opal_vintage_2001, opal_vintage_2006, opal_vintage_conflict
+           opal_vintage_2001, opal_vintage_2006, opal_vintage_conflict, saha_ramp_width
       use blended_eos, only: compute_blended_eos
-      use mhd_eos, only: compute_mhd_eos, read_mhd_tables
-      use scv_eos, only: build_scv_envelope_table, read_scv_tables
-      use yale_eos, only: read_fermi_table
-      use eos_mixture, only: eos_mix, debye_huckel_composition_of
-      use opal_eos_tables, only: open_opal_eos_table, n_opal_vintages
-      use yale_eos_tables, only: debye_huckel_composition
-      use eos_messages, only: eos_report, message_length, unwritten_line
+      use eos_table_source, only: eos_table_source_t, stage_whole_eos
+      use eos_source_list, only: table_sources, n_table_sources
+      use scv_eos, only: build_scv_envelope_table
+      use fermi_table_reader, only: read_fermi_table
+      use eos_mixture, only: set_eos_mixture_state, debye_huckel_composition_of
+      use opal_eos_tables, only: n_opal_vintages
+      use yale_eos_tables, only: debye_huckel_composition, fermi_log10t_min
+      use eos_messages, only: eos_report, reset_eos_warnings, message_length, unwritten_line
       implicit none
       private
       public :: eos_init, eos_get, eos_result
@@ -69,34 +71,47 @@ subroutine eos_get(log10_temperature, log10_pressure, &
       integer, intent(out) :: ierr
 
       type(debye_huckel_composition) :: dh
+      type(eos_table_source_t) :: sources(n_table_sources)
+      logical :: covers
+      integer :: k
 
       ierr = 0
-      if (eos_settings%use_mhd_eos) then
-         call compute_mhd_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
-              metal_fraction, res, ierr)
-      else
-         if (eos_settings%use_debye_huckel_correction) dh = &
-              debye_huckel_composition_of(hydrogen_fraction, metal_fraction, composition_at_zone)
-         call compute_blended_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
-              metal_fraction, dh, res, want_derivatives, in_atmosphere, saha_iterations, ierr)
-      end if
+      sources = table_sources()
+      do k = 1, n_table_sources
+         if (sources(k)%stage /= stage_whole_eos) cycle
+         if (.not. sources(k)%selected()) cycle
+         call sources(k)%lookup(log10_temperature, log10_pressure, hydrogen_fraction, &
+              metal_fraction, res, covers, ierr)
+         return
+      end do
+      if (eos_settings%use_debye_huckel_correction) dh = &
+           debye_huckel_composition_of(hydrogen_fraction, metal_fraction, composition_at_zone)
+      call compute_blended_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
+           metal_fraction, dh, res, want_derivatives, in_atmosphere, saha_iterations, ierr)
 end subroutine eos_get
 
 !----------------------------------------------------------------------
 ! eos_init
 !----------------------------------------------------------------------
 ! Installs the settings and loads the tables they select, from paths:
-! opens the OPAL table (its vintage's reader reads it on first use) and
-! reads the MHD tables, the Fermi-Dirac table (always) and the SCV
-! tables. Each file is opened on a new unit; a missing or corrupt one
-! returns ierr = 1, and so do settings that select more than one OPAL
-! vintage or a Debye-Hueckel degeneracy range with eta_max <= eta_min
-! (nothing is installed then).
+! reads the Fermi-Dirac table (always), then each selected table
+! source's tables in eos_source_list's order (the SCV tables; the OPAL
+! table, which is opened here and read on first use by its vintage's
+! reader; the MHD tables). Each file is opened on a new unit; a missing
+! or corrupt one returns ierr = 1, the later ones not read, and so do
+! settings that select more than one OPAL
+! vintage, a Debye-Hueckel degeneracy range with eta_max <= eta_min, or
+! a Saha cutoff whose ramp would reach below the Fermi-Dirac table's
+! first row (log T 5.2: the cutoff must be at least 5.7), so that the
+! fully ionized gas never extrapolates the table below it (nothing is
+! installed then).
 subroutine eos_init(settings, paths, ierr)
       type(eos_settings_t), intent(in) :: settings
       type(eos_table_paths_t), intent(in) :: paths
       integer, intent(out) :: ierr
       character(len=message_length) :: eos_lines(4)
+      type(eos_table_source_t) :: sources(n_table_sources)
+      integer :: k
 
       ierr = 0
       if (settings%opal_vintage < opal_vintage_none .or. &
@@ -116,19 +131,26 @@ subroutine eos_init(settings, paths, ierr)
          ierr = 1
          return
       end if
+      if (.not. settings%saha_log10t_cutoff - saha_ramp_width >= fermi_log10t_min) then
+         eos_lines = unwritten_line
+         write(eos_lines,'(a,f4.2,a,f4.2,a,f4.2,a,f0.3)') 'eos_init: saha_log10t_cutoff must be at least ', &
+              fermi_log10t_min + saha_ramp_width, ' (the Fermi-Dirac table''s first row, log T ', &
+              fermi_log10t_min, ', plus the Saha ramp''s ', saha_ramp_width, ' dex): ', &
+              settings%saha_log10t_cutoff
+         call eos_report(eos_lines)
+         ierr = 1
+         return
+      end if
       call set_eos_settings(settings)
-      if (settings%opal_vintage /= opal_vintage_none) then
-         call open_opal_eos_table(trim(paths%opal), ierr)
-         if (ierr /= 0) return
-      end if
-      if (settings%use_mhd_eos) then
-         call read_mhd_tables(paths%mhd_zams, paths%mhd_centre, ierr)
-         if (ierr /= 0) return
-      end if
+      call reset_eos_warnings()
       call read_fermi_table(trim(paths%fermi), ierr)
       if (ierr /= 0) return
-      if (settings%use_scv_eos) call read_scv_tables(trim(paths%scv_h), &
-           trim(paths%scv_he), trim(paths%scv_z), ierr)
+      sources = table_sources()
+      do k = 1, n_table_sources
+         if (.not. sources(k)%selected()) cycle
+         call sources(k)%read_tables(paths, ierr)
+         if (ierr /= 0) return
+      end do
 end subroutine eos_init
 
 
@@ -150,10 +172,8 @@ subroutine eos_set_mixture(envelope_hydrogen_fraction, &
            envelope_metal_fraction, inverse_atomic_weight
       real(dp), intent(in) :: number_fractions(:)
 
-      eos_mix%envelope_hydrogen_fraction = envelope_hydrogen_fraction
-      eos_mix%envelope_metal_fraction = envelope_metal_fraction
-      eos_mix%inverse_atomic_weight = inverse_atomic_weight
-      eos_mix%number_fractions = number_fractions
+      call set_eos_mixture_state(envelope_hydrogen_fraction, envelope_metal_fraction, &
+           inverse_atomic_weight, number_fractions)
       if (eos_settings%use_scv_eos) call build_scv_envelope_table( &
            envelope_hydrogen_fraction, envelope_metal_fraction)
 end subroutine eos_set_mixture

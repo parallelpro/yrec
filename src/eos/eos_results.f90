@@ -3,7 +3,8 @@
 !----------------------------------------------------------------------
 ! eos_result: what the equation of state returns for one (log T, log P,
 ! X, Z), one named field per quantity (cgs units). eos_get fills it;
-! the EOS families take it as their result argument r.
+! the EOS families take it as their result argument r. Which source
+! fills which field on each path is eos/README.md's table (section 2.1).
 !
 ! The record is intent(inout) everywhere, because three groups of its
 ! fields are also inputs:
@@ -16,7 +17,8 @@
 !   ionized helium; the result depends on the start within the solver's
 !   tolerance, 1e-9 in E);
 ! - the six second derivatives are set only with want_derivatives, and
-!   otherwise keep their values.
+!   otherwise keep their values, on the blended path (MHD sets them on
+!   every call).
 ! Every other field is overwritten on each call.
 module eos_results
       use, intrinsic :: iso_fortran_env, only: dp => real64
@@ -36,7 +38,9 @@ module eos_results
 ! R (1/mu_ion + 1/mu_e) in erg/(g K), 1/mu_ion, 1/mu_e
          real(dp) :: specific_gas_constant = 0.0d0, ion_mean_weight_inverse = 0.0d0, &
               electron_mean_weight_inverse = 0.0d0
-! the electron degeneracy parameter eta (fully ionized gas; 0 otherwise)
+! the electron degeneracy parameter eta: the fully ionized gas's (also
+! across the Saha ramp, where it is not blended, and inside an OPAL table),
+! MHD's table's; 0 on the Saha path below the ramp
          real(dp) :: electron_degeneracy_parameter = 0.0d0
 ! dln rho/dln T at constant P, dln rho/dln P at constant T, cp in
 ! erg/(g K), and the adiabatic gradient

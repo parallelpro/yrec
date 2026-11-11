@@ -29,18 +29,11 @@
 ! run log (test_eos.short) gets eos's messages.
 program test_eos
       use run_messages, only: run_log_unit
-      use eos_lib
-      use eos_configuration, only: eos_settings, set_eos_settings
-      use blended_eos, only: gamma1_at_density
-      use eos_mixture, only: debye_huckel_composition_of
-      use yale_eos_tables, only: debye_huckel_composition, idh_c, idh_n, idh_o, idh_ne, &
-           idh_na, idh_mg, idh_al, idh_si, idh_ar, idh_fe
-      use opal_eos_tables, only: opal_tables, opal95, opal_shared, i_opal_cv, i_opal01_cv, &
-           i_opal_p, i_opal01_p
-      use opal_eos, only: esac06, esac01, compute_opal_eos, iv_opal01, iv_opal06
-      use opal95_eos, only: esac
+      use eos_lib, only: eos_init, eos_get, eos_set_mixture, eos_result, eos_settings_t, &
+           eos_table_paths_t, opal_vintage_none, opal_vintage_1995, opal_vintage_2001, &
+           opal_vintage_2006, opal_vintage_conflict
+      use eos_test_entries
       use physical_constants, only: gas_constant
-      use mhd_eos, only: interpolate_mhd_table
       use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
       type(eos_settings_t) :: settings
@@ -271,17 +264,10 @@ program test_eos
          end do
       end if
 
-! Error paths (2026, docs/ROADMAP.md stage 3): in the eos domain the error
-! conditions behind the converted stops are corrupt-table /
-! misconfiguration cases (out-of-table lookups stay *recoverable* by
-! design here -- in_table flags and sentinels -- unlike kap), so
-! with healthy tables the facade cannot be driven to ierr /= 0. The
-! first check asserts the success path threads ierr = 0 end to end
-! through compute_blended_eos/blend_eos/compute_opal_eos/esac06. The second drives esac06 (a
-! domain internal -- this test is in-domain, white-box by design)
-! with an invalid rad_flag, the same class of internal error the
-! converted stops guarded, and asserts ierr = 1 with no crash; its
-! diagnostic goes to run_log_unit as always.
+! The error paths: with healthy tables the facade's success threads
+! ierr = 0 through the blend and the OPAL lookup (a point outside a table
+! is not an error), and an OPAL interpolator given an invalid rad_flag
+! returns ierr = 1 with its message in the run log.
       write(*,'(a)') "# test_eos: error paths via ierr"
       logt = 6.30d0
       logp = 14.0d0
@@ -815,6 +801,7 @@ subroutine check_physics()
       call scv_mean_weight_checks()
       call diffusion_z_checks()
       call settings_checks()
+      call source_list_checks()
       call opal_trial_call_checks()
       call scv_reader_checks()
       call table_reader_checks()
@@ -822,15 +809,15 @@ end subroutine check_physics
 
 ! The Fermi-Dirac reader (at eos_init) and the OPAL 2006 reader (on
 ! first use): a missing table and one cut short return ierr = 1, the
-! cut table's unit closed. (The OPAL table is read once per process:
-! its loaded flag is cleared here to read the cut copy, and again to
-! read the real table back.)
+! cut table's unit closed. The OPAL table read before stays loaded
+! until eos_init names another file, which its reader then reads (the
+! cut copy here, then the real table back).
 subroutine table_reader_checks()
       type(eos_settings_t) :: s
       type(eos_table_paths_t) :: paths
       type(eos_result) :: r
-      integer :: ierr, ierr_missing, ierr_cut, it
-      logical :: cut_open
+      integer :: ierr, ierr_missing, ierr_cut, ierr_card, ierr_wide, it
+      logical :: cut_open, in_table
       s = eos_settings
       s%opal_vintage = opal_vintage_none
       s%use_scv_eos = .false.
@@ -843,9 +830,19 @@ subroutine table_reader_checks()
       inquire(file="fermi_truncated", opened=cut_open)
       call check("Fermi table: a missing or truncated table returns ierr = 1, its unit closed", &
            ierr_missing == 1 .and. ierr_cut == 1 .and. .not. cut_open)
+! a card whose abscissa is out of the table (card 100's 14 made 44), and
+! abscissae spanning more than the X lookup's 261 bins (the first, -16,
+! made -30): the reader stores neither
+      call copy_editing(fermi_path, "fermi_bad_card", 110, 1, "   44")
+      paths%fermi = "fermi_bad_card"
+      call eos_init(s, paths, ierr_card)
+      call copy_editing(fermi_path, "fermi_wide_x", 1, 9, "-30.0000")
+      paths%fermi = "fermi_wide_x"
+      call eos_init(s, paths, ierr_wide)
+      call check("Fermi table: a card out of its place, or abscissae wider than the lookup, returns ierr = 1", &
+           ierr_card == 1 .and. ierr_wide == 1)
       call copy_head(opal06_path, "opal06_truncated", 3000)
       call configure_eos("production", opal2006=.true., scv=.true., file="opal06_truncated")
-      opal_shared%table_loaded_flag(iv_opal06) = 0
       it = 0
       r = eos_result()
       call eos_get(5.0d0, 12.8d0, 0.70d0, 0.016492d0, r, .true., .false., it, ierr=ierr)
@@ -857,11 +854,71 @@ subroutine table_reader_checks()
       s = eos_settings
       call eos_init(s, paths, ierr_missing)
       call check("OPAL 2006 table: a missing table returns ierr = 1 at eos_init", ierr_missing == 1)
+! the OPAL 2006 table with one entry of its X = 0.6 table (P/P0 at T6 =
+! 1, rho = 0.1, line 94330) made -1e21: at X = 0.3 only the second of
+! the two X quadratics blended there reads it (with the weight -1/8), and
+! its check names it before the T6-rho interpolation's range check
+! returns ierr = 1
+      call copy_editing(opal06_path, "opal06_x_overflow", 94330, 30, "-0.100000E+22")
+      call configure_eos("production", opal2006=.true., scv=.true., file="opal06_x_overflow")
+      call esac06(opal_tables(iv_opal06), 0.3d0, 0.95d0, 0.09d0, 9, 1, ierr, in_table)
+      call check("OPAL 2006: an entry only the second X quadratic reads, past 1e20 there, is named; ierr = 1", &
+           ierr == 1 .and. run_log_contains("OPALEOS/ESAC06: problem it,ir,l3,k3,iq,ip="))
+! the OPAL 1995 table with its first density column's lowest T6 (row 56,
+! at line 14718 in the last X block, whose T6 column the grid keeps) made
+! zero: an error on first use, where the table was read before
+      call copy_editing(trim(yrec_input)//"/eos/legacy/opal/OPALeos.0188", "opal95_zero_t6", 14718, 1, &
+           "  0.0000")
+      call configure_eos("opal95", opal95=.true., scv=.true., file="opal95_zero_t6")
+      it = 0
+      r = eos_result()
+      call eos_get(5.0d0, 12.8d0, 0.70d0, 0.0188d0, r, .true., .false., it, ierr=ierr)
+      call check("OPAL 1995 table: a zero T6 returns ierr = 1 on first use", ierr == 1)
       call configure_eos("production", opal2006=.true., scv=.true., file=opal06_path)
       r = eos_result()
       call eos_get(5.0d0, 12.8d0, 0.70d0, 0.016492d0, r, .true., .false., it, ierr=ierr)
       if (ierr /= 0) write(*,'(a)') "table_reader_checks: the OPAL table did not read back"
 end subroutine table_reader_checks
+
+! whether a line of the run log written so far holds text (the log is
+! closed, read and opened again to append)
+logical function run_log_contains(text)
+      character(len=*), intent(in) :: text
+      character(len=400) :: line
+      integer :: u, ios
+      flush(run_log_unit)
+      close(run_log_unit)
+      run_log_contains = .false.
+      open(newunit=u, file="test_eos.short", status="old", action="read")
+      do
+         read(u, '(a)', iostat=ios) line
+         if (ios /= 0) exit
+         if (index(line, text) > 0) run_log_contains = .true.
+      end do
+      close(u)
+      open(run_log_unit, file="test_eos.short", status="old", position="append")
+end function run_log_contains
+
+! the file src into dst, with line line_no's columns from col on
+! replaced by text
+subroutine copy_editing(src, dst, line_no, col, text)
+      character(len=*), intent(in) :: src, dst, text
+      integer, intent(in) :: line_no, col
+      character(len=400) :: line
+      integer :: u_in, u_out, k, ios
+      open(newunit=u_in, file=src, status="old", action="read")
+      open(newunit=u_out, file=dst, status="replace")
+      k = 0
+      do
+         read(u_in, '(a)', iostat=ios) line
+         if (ios /= 0) exit
+         k = k + 1
+         if (k == line_no) line(col:col+len(text)-1) = text
+         write(u_out, '(a)') trim(line)
+      end do
+      close(u_in)
+      close(u_out)
+end subroutine copy_editing
 
 ! the first n_lines lines of the file src, into dst
 subroutine copy_head(src, dst, n_lines)
@@ -925,6 +982,19 @@ subroutine scv_reader_checks()
       paths%scv_h = "scv_truncated"
       call eos_init(s, paths, ierr)
       call check("SCV reader: a truncated table returns ierr = 1", ierr == 1)
+! the He table with its first row's log T (2.10) made 2.12, and the Z
+! table with the first point of its second row (listed last, its log P_gas
+! 4.00 at line 63) made 4.02: each is on another grid than the H table
+      paths = table_paths
+      call copy_editing(scvhe_path, "scv_he_off_grid", 1, 1, " 2.12")
+      paths%scv_he = "scv_he_off_grid"
+      call eos_init(s, paths, ierr1)
+      paths = table_paths
+      call copy_editing(scvz_path, "scv_z_off_grid", 63, 1, "  4.02")
+      paths%scv_z = "scv_z_off_grid"
+      call eos_init(s, paths, ierr2)
+      call check("SCV reader: a He or Z table on another grid than the H table's returns ierr = 1", &
+           ierr1 == 1 .and. ierr2 == 1)
       call configure_eos("scv_only", scv=.true.)
 end subroutine scv_reader_checks
 
@@ -942,16 +1012,17 @@ subroutine opal_trial_call_checks()
       character(len=256) :: legacy
       legacy = trim(yrec_input)//"/eos/legacy/"
       call configure_eos("opal95", opal95=.true., scv=.true., file=trim(legacy)//"opal/OPALeos.0188")
-      call esac(opal95, x, t6, rho, 10, 1, ierr, covers)
+      call esac95(opal_tables(iv_opal95), x, t6, rho, 10, 1, ierr, covers)
       ok = ierr == 0 .and. covers
-      cv_full = opal95%eos_output(i_opal_cv)
-      p_full = opal95%eos_output(i_opal_p)
+      cv_full = opal_tables(iv_opal95)%eos_output(i_opal_cv)
+      p_full = opal_tables(iv_opal95)%eos_output(i_opal_p)
       do k = 1, 20
-         call esac(opal95, x, t6, rho, 1, 1, ierr, covers)
+         call esac95(opal_tables(iv_opal95), x, t6, rho, 1, 1, ierr, covers)
          ok = ok .and. ierr == 0
       end do
       call check("OPAL 1995: trial calls keep the other slots and give the full call's pressure", &
-           ok .and. opal95%eos_output(i_opal_cv) == cv_full .and. opal95%eos_output(i_opal_p) == p_full)
+           ok .and. opal_tables(iv_opal95)%eos_output(i_opal_cv) == cv_full .and. &
+           opal_tables(iv_opal95)%eos_output(i_opal_p) == p_full)
       call configure_eos("opal2001", opal2001=.true., scv=.true., file=trim(legacy)//"opal2001/O01EOS0188z")
       call esac01(opal_tables(iv_opal01), x, t6, rho, 9, 1, ierr, covers)
       ok = ierr == 0 .and. covers
@@ -1036,6 +1107,7 @@ end subroutine set_metal_free_envelope
 subroutine settings_checks()
       type(eos_settings_t) :: s, before
       integer :: ierr
+      logical :: ok_low
       before = eos_settings
       s = eos_settings
       s%opal_vintage = opal_vintage_conflict
@@ -1049,6 +1121,17 @@ subroutine settings_checks()
       call eos_init(s, table_paths, ierr)
       call check("settings: a Debye-Hueckel range with eta_max <= eta_min, eos_init returns ierr = 1", &
            ierr == 1 .and. (eos_settings%use_debye_huckel_correction .eqv. before%use_debye_huckel_correction))
+! the Saha cutoff: its ramp, 0.5 dex below it, must stay on the
+! Fermi-Dirac table (log T 5.2 up): 5.69 is refused, 5.7 installed
+      s = before
+      s%saha_log10t_cutoff = 5.69d0
+      call eos_init(s, table_paths, ierr)
+      ok_low = ierr == 1 .and. eos_settings%saha_log10t_cutoff == before%saha_log10t_cutoff
+      s%saha_log10t_cutoff = 5.7d0
+      call eos_init(s, table_paths, ierr)
+      call check("settings: a Saha cutoff below log T 5.7 returns ierr = 1, and 5.7 is installed", &
+           ok_low .and. ierr == 0 .and. eos_settings%saha_log10t_cutoff == 5.7d0)
+      call eos_init(before, table_paths, ierr)
 ! the defaults are the controls' (defaults/controls_registry.tsv)
       s = eos_settings_t()
       call check("settings: the record's defaults are the controls' (cutoff 6, eta -1 to 1)", &
@@ -1056,6 +1139,52 @@ subroutine settings_checks()
            s%debye_huckel_eta_max == 1.0d0 .and. s%opal_vintage == opal_vintage_none .and. &
            .not. (s%use_scv_eos .or. s%use_mhd_eos .or. s%use_debye_huckel_correction))
 end subroutine settings_checks
+
+! The table sources' list (eos_source_list): each entry named, uniquely,
+! with a stage and every procedure the blend, eos_init and eos_get call;
+! SCV in place of the Saha solution, OPAL over the gas, MHD the whole EOS,
+! each selected by its switch.
+subroutine source_list_checks()
+      type(eos_table_source_t) :: list(n_table_sources)
+      type(eos_settings_t) :: s, before
+      integer :: k, j
+      logical :: ok, selected(n_table_sources)
+      list = table_sources()
+      ok = .true.
+      do k = 1, n_table_sources
+         ok = ok .and. len_trim(list(k)%name) > 0 .and. associated(list(k)%selected) .and. &
+              associated(list(k)%read_tables) .and. associated(list(k)%in_window) .and. &
+              associated(list(k)%lookup) .and. associated(list(k)%edge_weight) .and. &
+              associated(list(k)%adopt) .and. associated(list(k)%blend) .and. &
+              any(list(k)%stage == [stage_in_place_of_saha, stage_over_the_gas, stage_whole_eos])
+         do j = 1, k - 1
+            ok = ok .and. list(j)%name /= list(k)%name
+         end do
+      end do
+      before = eos_settings
+      s = eos_settings_t()
+      s%use_scv_eos = .true.
+      s%opal_vintage = opal_vintage_2006
+      call set_eos_settings(s)
+      do k = 1, n_table_sources
+         if (ok) selected(k) = list(k)%selected()
+      end do
+      call set_eos_settings(before)
+      do k = 1, n_table_sources
+         if (.not. ok) exit
+         select case (trim(list(k)%name))
+         case ("SCV")
+            ok = list(k)%stage == stage_in_place_of_saha .and. selected(k)
+         case ("OPAL")
+            ok = list(k)%stage == stage_over_the_gas .and. selected(k)
+         case ("MHD")
+            ok = list(k)%stage == stage_whole_eos .and. .not. selected(k)
+         case default
+            ok = .false.
+         end select
+      end do
+      call check("table sources: SCV, OPAL and MHD listed, each with its stage, switch and procedures", ok)
+end subroutine source_list_checks
 
 ! Below the OPAL 2006 table (T = 1500 K) gamma1_at_density takes the
 ! Yale/SCV value (to 1e-6), with OPAL selected as without it.
@@ -1112,7 +1241,33 @@ subroutine scv_mean_weight_checks()
       call check("SCV: R/mu and 1/mu_e continuous at the Saha ramp's foot", ierr1 == 0 .and. ierr2 == 0 .and. &
            abs(above%specific_gas_constant/below%specific_gas_constant - 1.0d0) < 1.0d-6 .and. &
            abs(above%electron_mean_weight_inverse - below%electron_mean_weight_inverse) < 1.0d-6)
+      call scv_search_checks()
 end subroutine scv_mean_weight_checks
+
+! SCV's cell search starts from the last lookup's cell: off the tables'
+! nodes its result does not depend on that start, from a far cell, from
+! the tables' first cell, or from a column below the table (which once
+! made a lookup in the lowest pressure interval, log P_gas 4 to 4.2, read
+! column 0). The program's own search start is kept.
+subroutine scv_search_checks()
+      real(dp), parameter :: x = 0.70d0, z = 0.016492d0, lt = 3.73d0, lp = 4.1d0
+      type(scv_cell) :: kept
+      type(eos_result) :: from_far, from_below, from_first
+      integer :: ierr1, ierr2, ierr3
+      kept = last_scv_cell
+      last_scv_cell = scv_cell(first_row=40, first_column=40)
+      call eos_at(lt, lp, x, z, from_far, ierr1)
+      last_scv_cell = scv_cell(first_row=1, first_column=0)
+      call eos_at(lt, lp, x, z, from_below, ierr2)
+      last_scv_cell = scv_cell()
+      call eos_at(lt, lp, x, z, from_first, ierr3)
+      last_scv_cell = kept
+      call check("SCV: a lookup's cell does not depend on where its search starts", &
+           ierr1 == 0 .and. ierr2 == 0 .and. ierr3 == 0 .and. &
+           from_below%log10_density == from_far%log10_density .and. &
+           from_first%log10_density == from_far%log10_density .and. &
+           from_below%adiabatic_gradient == from_far%adiabatic_gradient)
+end subroutine scv_search_checks
 
 ! cp and grad_ad of an ideal gas plus radiation with gas-pressure
 ! fraction b and R/mu = r_mu: with delta = (4 - 3b)/b,
@@ -1134,7 +1289,7 @@ subroutine ideal_gas_checks()
       real(dp), parameter :: fi_lp(4) = [13.0d0, 14.3d0, 15.0d0, 16.5d0]
       type(eos_result) :: r
       real(dp) :: mu_e_inv, mu_inv, rho_ideal, correction, cp, grad, worst
-      integer :: k, ierr
+      integer :: k, ierr, ierr_far, it
       logical :: ok
       call configure_eos("yale_only")
 ! a neutral gas (log T = 3.5): rho = mu P_gas/(R T) with 1/mu = 1/mu_ion +
@@ -1187,6 +1342,38 @@ subroutine ideal_gas_checks()
 ! pressure, an error
       call eos_at(7.5d0, 15.40d0, x, z, r, ierr)
       call check("radiation pressure above P: beta <= 0 returns ierr", ierr == 1)
+! the fully ionized gas's density iteration from a start 100 dex off (its
+! steps are capped at 4 dex, 20 of them): no convergence, an error, where
+! the same start one dex off converges
+      it = 0
+      r = eos_result()
+      r%log10_density = -100.0d0
+      r%density = 1.0d-100
+      call eos_get(7.0d0, 16.0d0, x, z, r, .true., .false., it, ierr=ierr_far)
+      it = 0
+      r = eos_result()
+      r%log10_density = 1.0d0
+      r%density = 10.0d0
+      call eos_get(7.0d0, 16.0d0, x, z, r, .true., .false., it, ierr=ierr)
+      call check("fully ionized gas: a density iteration that does not converge returns ierr = 1", &
+           ierr_far == 1 .and. ierr == 0)
+! the Fermi-Dirac table's range, log T 5.2-9 and log rho - log mu_e -
+! 1.5 log T from -16 to -3: a run's first point beyond it, in T (log T
+! 9.2, from a start near its density, log rho 5.59) or in degeneracy
+! (log T 7, log P 25.5), is reported once; points inside are not
+      call eos_init(eos_settings, table_paths, ierr)
+      call eos_at(7.0d0, 16.0d0, x, z, r, ierr)
+      ok = ierr == 0 .and. .not. eos_warned(once_fermi_extrapolation)
+      it = 0
+      r = eos_result()
+      r%log10_density = 5.5d0
+      r%density = 10.0d0**r%log10_density
+      call eos_get(9.2d0, 23.0d0, x, z, r, .true., .false., it, ierr=ierr)
+      ok = ok .and. ierr == 0 .and. eos_warned(once_fermi_extrapolation)
+      call eos_init(eos_settings, table_paths, ierr)
+      call eos_at(7.0d0, 25.5d0, x, z, r, ierr)
+      call check("fully ionized gas: a point beyond the Fermi-Dirac table is reported, one inside it not", &
+           ok .and. ierr == 0 .and. eos_warned(once_fermi_extrapolation))
 end subroutine ideal_gas_checks
 
 ! Every field a blend sets, on both sides of a boundary in log T (fixed
@@ -1451,7 +1638,7 @@ end subroutine set_envelope_mixture
 ! from the envelope mixture, eos_set_mixture).
 subroutine debye_huckel_checks()
       real(dp), parameter :: x = 0.70d0, z = 0.016492d0, lt = 6.8d0, lp = 17.0d0
-      real(dp) :: comp(15), seed(12), raise(2)
+      real(dp) :: comp(15), seed(12), raise(2), predicted(2)
       type(eos_result) :: none, with_dh
       integer :: ierr1, ierr2, k
       logical :: ok
@@ -1475,10 +1662,18 @@ subroutine debye_huckel_checks()
          call eos_at(lt, lp, x, z, with_dh, ierr2, comp=comp)
          ok = ok .and. ierr1 == 0 .and. ierr2 == 0
          raise(k) = with_dh%density/none%density - 1.0d0
+         predicted(k) = debye_huckel_factor(debye_huckel_composition_of(x, z, comp), &
+              with_dh%electron_degeneracy_parameter)
       end do
       call set_envelope_mixture(envelope_hydrogen_fraction, envelope_metal_fraction)
       call check("Debye-Hueckel: it raises rho, the more with the envelope's heavier metals as Fe", &
            ok .and. raise(1) > 0.0d0 .and. raise(2) > raise(1))
+! and by as much as the correction's charge-weighted factor says (the
+! rises' ratio to 3e-3; 1e-3 now, from the two base gases' 1/mu_ion):
+! with every metal given carbon's charge the two rises would be equal,
+! where the factor makes them 2.2% apart
+      call check("Debye-Hueckel: the two rises of rho are in the ratio of the charge-weighted factor", &
+           ok .and. abs((raise(2)/raise(1))/(predicted(2)/predicted(1)) - 1.0d0) < 3.0d-3)
 ! the heavier metals follow the zone's Z: a zone at twice the envelope's
 ! Z (its C, N and O doubled too) gets the density rise of an envelope at
 ! that Z, to 3e-3 (the gas under the correction differs a little: the
@@ -1500,6 +1695,27 @@ subroutine debye_huckel_checks()
            ok .and. abs(raise(1)/raise(2) - 1.0d0) < 3.0d-3)
       call record_metals_check(x, z, comp)
 end subroutine debye_huckel_checks
+
+! The Debye-Hueckel correction's composition factor (DBG 1992), which
+! multiplies its pressure sqrt(rho/T) rho: with S = sum Z_i (Z_i + 1)
+! X_i/A_i (2X + 1.5Y + (Z + sum Z_i X_i)/2, the metals' Z/A taken as 1/2)
+! and S1 = X + Y + sum Z_i X_i/2, S^(3/2) where the electrons are not
+! degenerate (eta below -1), S sqrt(S1) where they are (above 1), and the
+! line between in eta. The metals' charges are the test's own (C, N, O,
+! Ne, Na, Mg, Al, Si, P, S, Cl, Ar, Ca, Ti, Cr, Mn, Fe, Ni).
+pure real(dp) function debye_huckel_factor(dh, eta)
+      type(debye_huckel_composition), intent(in) :: dh
+      real(dp), intent(in) :: eta
+      real(dp), parameter :: charge(18) = [6.0d0, 7.0d0, 8.0d0, 10.0d0, 11.0d0, 12.0d0, &
+           13.0d0, 14.0d0, 15.0d0, 16.0d0, 17.0d0, 18.0d0, 20.0d0, 22.0d0, 24.0d0, 25.0d0, &
+           26.0d0, 28.0d0]
+      real(dp) :: s, s1, weight
+      s = 2.0d0*dh%hydrogen_fraction + 1.5d0*dh%helium_fraction + &
+           0.5d0*(dh%metal_fraction + sum(charge*dh%metals))
+      s1 = dh%hydrogen_fraction + dh%helium_fraction + 0.5d0*sum(charge*dh%metals)
+      weight = min(1.0d0, max(0.0d0, (eta + 1.0d0)/2.0d0))
+      debye_huckel_factor = s**1.5d0 + weight*(s*sqrt(s1) - s**1.5d0)
+end function debye_huckel_factor
 
 ! The record debye_huckel_composition_of builds from a zone's
 ! composition: its metals add up to the zone's Z, those beyond O in the

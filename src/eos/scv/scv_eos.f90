@@ -16,7 +16,7 @@
 module scv_eos
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use eos_results, only: eos_result
-      use scv_eos_tables, only: idp, idtt, iscv_dlnrho_dlnp, iscv_dlnrho_dlnt, &
+      use scv_eos_tables, only: scv_cell, last_scv_cell, iscv_dlnrho_dlnp, iscv_dlnrho_dlnt, &
            iscv_dlns_dlnt, iscv_frac_atom_ion1, iscv_frac_neutral, &
            iscv_log10_p, iscv_log10_rho, iscv_log10_s, iscvenv_cp, &
            iscvenv_dlnrho_dlnp, iscvenv_dlnrho_dlnt, iscvenv_du_dt, &
@@ -30,10 +30,14 @@ module scv_eos
            numerics_status_text
       use eos_messages, only: eos_log, eos_report, message_length, unwritten_line
       use eos_mixture, only: mean_weights_from_density
+      use scv_table_reader, only: read_scv_tables
+      use eos_configuration, only: eos_settings, eos_table_paths_t
+      use eos_table_source, only: eos_table_source_t, stage_in_place_of_saha, always_in_window, &
+           whole_weight_inside, adopt_whole_result, blend_table_result
       use math_lib
       implicit none
       private
-      public :: compute_scv_envelope_eos, build_scv_envelope_table, read_scv_tables
+      public :: compute_scv_envelope_eos, build_scv_envelope_table, scv_table_source
 
 ! the lowest log10 P_gas (cgs) the tables cover; how far a zone's X or
 ! Z may be from the envelope table's for the table to serve it
@@ -41,6 +45,49 @@ module scv_eos
            scv_composition_tolerance = 1.0d-5
 
 contains
+
+!----------------------------------------------------------------------
+! scv_table_source
+!----------------------------------------------------------------------
+! SCV as a table source (eos_table_source): selected by use_scv_eos, its
+! three tables read at eos_init, consulted below the Saha cutoff in place
+! of the Saha solution (compute_scv_envelope_eos, from a copy of it), and
+! taken whole wherever its tables cover the point: it has no edge weight
+! yet (M88).
+function scv_table_source() result(src)
+      type(eos_table_source_t) :: src
+      src%name = 'SCV'
+      src%stage = stage_in_place_of_saha
+      src%selected => scv_selected
+      src%read_tables => read_scv_source
+      src%in_window => always_in_window
+      src%lookup => scv_lookup
+      src%edge_weight => whole_weight_inside
+      src%adopt => adopt_whole_result
+      src%blend => blend_table_result
+end function scv_table_source
+
+logical function scv_selected()
+      scv_selected = eos_settings%use_scv_eos
+end function scv_selected
+
+subroutine read_scv_source(paths, ierr)
+      type(eos_table_paths_t), intent(in) :: paths
+      integer, intent(out) :: ierr
+      call read_scv_tables(trim(paths%scv_h), trim(paths%scv_he), trim(paths%scv_z), ierr)
+end subroutine read_scv_source
+
+! the lookup takes P from table_r (the copy of the Saha result), not from
+! log10_pressure
+subroutine scv_lookup(log10_temperature, log10_pressure, hydrogen_fraction, metal_fraction, &
+     table_r, covers, ierr)
+      real(dp), intent(in) :: log10_temperature, log10_pressure, hydrogen_fraction, metal_fraction
+      type(eos_result), intent(inout) :: table_r
+      logical, intent(out) :: covers
+      integer, intent(out) :: ierr
+      call compute_scv_envelope_eos(log10_temperature, hydrogen_fraction, metal_fraction, &
+           table_r, covers, ierr)
+end subroutine scv_lookup
 
 !----------------------------------------------------------------------
 ! compute_scv_envelope_eos (formerly eqscve)
@@ -93,6 +140,8 @@ subroutine compute_scv_envelope_eos(log10_temperature, hydrogen_fraction, &
       logical :: temp_needs_smoothing, press_needs_smoothing, t_centred, p_centred
       integer :: temp_smooth_direction, press_smooth_direction
       integer :: i, ii, j, k
+! the cell's first T row and first P_gas column (find_scv_cell)
+      integer :: idtt, idp
       ierr = 0
       if (abs(hydrogen_fraction-tablenv_hydrogen_fraction) > scv_composition_tolerance &
            .or. abs(metal_fraction-tablenv_metal_fraction) > scv_composition_tolerance) then
@@ -104,9 +153,11 @@ subroutine compute_scv_envelope_eos(log10_temperature, hydrogen_fraction, &
       beta_complement = 1.0d0 - r%beta
       log10_gas_pressure = log10(r%beta*r%pressure)
 ! the table's cell around the point (idtt, idp), if it covers it
-      call find_scv_cell(log10_temperature, log10_gas_pressure, covers, &
+      call find_scv_cell(log10_temperature, log10_gas_pressure, last_scv_cell, covers, &
            t_centred, p_centred)
       if (.not. covers) return
+      idtt = last_scv_cell%first_row
+      idp = last_scv_cell%first_column
       temp_needs_smoothing = .false.
       if (t_centred) then
          temp_dist_above = log10_temperature - &
@@ -124,10 +175,8 @@ subroutine compute_scv_envelope_eos(log10_temperature, hydrogen_fraction, &
             if (idtt < nts-3) then
                temp_needs_smoothing = .true.
                temp_smooth_direction = 1
-! 2026 (bugsweep Batch 2): weight must be 0.5 AT the node and fall
-! to 0 at dist = tol (mirror of the downward branch above); the
-! inherited 0.5*dist/tol was reversed, giving a 0.5|S_n+1 - S_n|
-! jump at 60% of every cell instead of a continuous blend.
+! the weight is 0.5 at the node, falling to 0 at tol_temp_smooth (the
+! mirror of the downward branch)
                temp_smooth_weight = 0.5d0*(1.0d0 - temp_dist_below/tol_temp_smooth)
             end if
          end if
@@ -149,7 +198,7 @@ subroutine compute_scv_envelope_eos(log10_temperature, hydrogen_fraction, &
             if (idp < nptsx(idtt)-3) then
                press_needs_smoothing = .true.
                press_smooth_direction = 1
-! 2026 (bugsweep Batch 2): same reversal as the T branch above.
+! (as in T)
                press_smooth_weight = 0.5d0*(1.0d0 - press_dist_below/tol_pressure_smooth)
             end if
          end if
@@ -282,7 +331,8 @@ subroutine compute_scv_envelope_eos(log10_temperature, hydrogen_fraction, &
               idp+k-1,iscvenv_log10_p)
       end do
       call interp(interp_nodes, press_interp_weights, x_eval=log10_gas_pressure)
-      call scv_ionization_fractions(temp_interp_weights, press_interp_weights, r%ion_fraction)
+      call scv_ionization_fractions(idtt, idp, temp_interp_weights, press_interp_weights, &
+           r%ion_fraction)
 
 contains
 
@@ -392,12 +442,16 @@ subroutine compute_scv_eos(log10_temperature, hydrogen_fraction, &
            log10_du_dt_pure_z, du_dt_pure_z
       logical :: t_centred, p_centred
       integer :: i, ii, k
+! the cell's first T row and first P_gas column (find_scv_cell)
+      integer :: idtt, idp
       beta_complement = 1.0d0 - r%beta
       log10_gas_pressure = log10(r%beta*r%pressure)
 ! the tables' cell around the point (idtt, idp), if they cover it
-      call find_scv_cell(log10_temperature, log10_gas_pressure, covers, &
+      call find_scv_cell(log10_temperature, log10_gas_pressure, last_scv_cell, covers, &
            t_centred, p_centred)
       if (.not. covers) return
+      idtt = last_scv_cell%first_row
+      idp = last_scv_cell%first_column
       do k = 1,4
          interp_nodes(k) = tlogx(k+idtt-1)
       end do
@@ -531,7 +585,8 @@ subroutine compute_scv_eos(log10_temperature, hydrogen_fraction, &
            r%specific_heat_cp
 
 ! the ionization fractions, from the pure H and He tables at the cell
-      call scv_ionization_fractions(temp_interp_weights, press_interp_weights, r%ion_fraction)
+      call scv_ionization_fractions(idtt, idp, temp_interp_weights, press_interp_weights, &
+           r%ion_fraction)
 
 end subroutine compute_scv_eos
 
@@ -541,18 +596,23 @@ end subroutine compute_scv_eos
 ! The 4 x 4 cell of the SCV tables around (log T, log P_gas): its first
 ! row idtt and first column idp, on the H table's grid (tlogx and the log
 ! P_gas column, which the He, Z and envelope tables share), searched from
-! the last lookup's cell (it moves to this one). covers is false outside
-! the tables: log T beyond their rows, log P_gas below
-! scv_min_log10_gas_pressure or above the row's highest. t_centred and
-! p_centred tell whether the cell is centred on the point (not clamped
-! at the table's edge), where the envelope lookup smooths across cells.
-subroutine find_scv_cell(log10_temperature, log10_gas_pressure, covers, t_centred, &
+! the cell given (the last lookup's), which becomes this one; a column
+! below the table's first is clamped to it. covers is false outside the
+! tables: log T beyond their rows, log P_gas below
+! scv_min_log10_gas_pressure or above the row's highest (the cell is then
+! left as it was found). t_centred and p_centred tell whether the cell
+! is centred on the point (not clamped at the table's edge), where the
+! envelope lookup smooths across cells.
+subroutine find_scv_cell(log10_temperature, log10_gas_pressure, cell, covers, t_centred, &
      p_centred)
       real(dp), intent(in) :: log10_temperature, log10_gas_pressure
+      type(scv_cell), intent(inout) :: cell
       logical, intent(out) :: covers, t_centred, p_centred
       integer, parameter :: nts = scv_nt
-      integer :: i, ii, j, jj, jjj
+      integer :: i, ii, j, jj, jjj, idtt, idp
 
+      idtt = cell%first_row
+      idp = cell%first_column
       covers = .false.
       t_centred = .false.
       p_centred = .false.
@@ -579,6 +639,7 @@ subroutine find_scv_cell(log10_temperature, log10_gas_pressure, covers, t_centre
       idtt = max(1,ii)
       idtt = min(nts-3,idtt)
       t_centred = idtt == ii
+      cell%first_row = idtt
 ! the columns, at the cell's first row (the one with the fewest points)
       jjj = min(nptsx(idtt)-3, idp)
       if (log10_gas_pressure < tablex(idtt,jjj+1,iscv_log10_p)) then
@@ -599,10 +660,11 @@ subroutine find_scv_cell(log10_temperature, log10_gas_pressure, covers, t_centre
             end if
          end do
          if (j > nptsx(idtt)) return
-         idp = min(nptsx(idtt)-3, jj)
+         idp = max(1, min(nptsx(idtt)-3, jj))
       end if
       covers = .true.
       p_centred = idp == jj
+      cell%first_column = idp
 end subroutine find_scv_cell
 
 !----------------------------------------------------------------------
@@ -614,9 +676,11 @@ end subroutine find_scv_cell
 ! neutral He and He+, interpolated in P at the cell's four rows and then
 ! in T; the H+, electron and He++ fractions follow from the
 ! conservation of particles and of charge.
-subroutine scv_ionization_fractions(temp_interp_weights, press_interp_weights, ion_fraction)
-      real(dp), intent(in) :: temp_interp_weights(4), press_interp_weights(4)
-      real(dp), intent(out) :: ion_fraction(3)
+subroutine scv_ionization_fractions(idtt, idp, temp_interp_weights, press_interp_weights, &
+     ion_fraction)
+      integer, intent(in) :: idtt, idp
+      real(dp), intent(in) :: temp_interp_weights(:), press_interp_weights(:)
+      real(dp), intent(out) :: ion_fraction(:)
       real(dp) :: temp_grid(4,2)
       real(dp) :: xtf_h2, xtf_he, xtf_h1, xtf_hep, xtf_h_e, xtf_hp, xtf_he_e, xtf_hepp
       integer :: i, ii
@@ -663,8 +727,8 @@ end subroutine scv_ionization_fractions
 ! envelope_metal_fraction) into tablenv's six columns, which
 ! compute_scv_envelope_eos interpolates. Nothing to do before
 ! read_scv_tables has read the tables, or when the table is built for
-! this composition already. The lookups' warm-start cell (idtt, idp) is
-! not touched.
+! this composition already. The lookups' warm-start cell (last_scv_cell)
+! is not touched.
 subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
      envelope_metal_fraction)
 ! the envelope composition the table is built for
@@ -857,96 +921,15 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
 
 end subroutine build_scv_envelope_table
 
-!----------------------------------------------------------------------
-! read_scv_tables
-!----------------------------------------------------------------------
-! Reads the SCV tables (columns 1-11 of the pure-H and pure-He tables,
-! 1-13 of the pure-metal one, computed with the Prather EOS) into
-! tablex, tabley and tablez. The He and Z tables share the H table's
-! T grid (tlogx) and P(T) point counts (nptsx). The envelope table,
-! built from the tables read before, no longer stands (its composition
-! is reset; the next eos_set_mixture builds it again). A table that
-! cannot be opened, or a read that fails (a truncated or corrupt
-! table, or a row longer than the arrays), is ierr = 1 with a message;
-! every table opened is closed.
-subroutine read_scv_tables(scv_h_table_path, scv_he_table_path, scv_z_table_path, &
-     ierr)
-      character(len=*), intent(in) :: scv_h_table_path, scv_he_table_path, &
-           scv_z_table_path
-      integer, intent(out) :: ierr
-! the units of the H, He and Z tables (0: not open)
-      integer :: units(3), k
-
-      tablenv_hydrogen_fraction = -1.0d0
-      tablenv_metal_fraction = -1.0d0
-      scv_tables_loaded = .false.
-      units = 0
-      call open_scv_table(scv_h_table_path, units(1), ierr)
-      if (ierr == 0) call open_scv_table(scv_he_table_path, units(2), ierr)
-      if (ierr == 0) call open_scv_table(scv_z_table_path, units(3), ierr)
-      if (ierr == 0) call read_scv_rows(units, scv_h_table_path, ierr)
-      scv_tables_loaded = ierr == 0
-      do k = 1, 3
-         if (units(k) /= 0) close(units(k))
-      end do
-end subroutine read_scv_tables
-
-! The rows of the three tables, on units(1:3) (H, He, Z): for each T row
-! its log T and point count (the He and Z tables' copies read and not
-! kept), then its points; the metal table lists them from the highest
-! pressure down.
-subroutine read_scv_rows(units, h_table_path, ierr)
-      integer, intent(in) :: units(3)
-      character(len=*), intent(in) :: h_table_path
-      integer, intent(out) :: ierr
-      character(len=message_length) :: eos_lines(4)
-      integer :: t_idx, p_idx, col_idx, ios
-      real(dp) :: copy_log10_t
-      integer :: copy_npts
-
-      ierr = 0
-      do t_idx = 1, scv_nt
-         read(units(1),1,iostat=ios) tlogx(t_idx),nptsx(t_idx)
-         if (ios == 0) read(units(2),1,iostat=ios) copy_log10_t,copy_npts
-         if (ios == 0) read(units(3),1,iostat=ios) copy_log10_t,copy_npts
-    1    format(f5.2,i4)
-         if (ios == 0 .and. (nptsx(t_idx) < 4 .or. nptsx(t_idx) > size(tablex, 2))) ios = -1
-         if (ios /= 0) exit
-         do p_idx = 1, nptsx(t_idx)
-            read(units(1),2,iostat=ios) (tablex(t_idx,p_idx,col_idx),col_idx=1,11)
-            if (ios == 0) read(units(2),2,iostat=ios) (tabley(t_idx,p_idx,col_idx),col_idx=1,11)
-    2       format(f6.2,1p2e13.5,0p,8f9.4)
-            if (ios /= 0) exit
-         end do
-         if (ios /= 0) exit
-         do p_idx = nptsx(t_idx),1,-1
-            read(units(3),3,iostat=ios)(tablez(t_idx,p_idx,col_idx),col_idx=1,13)
-    3       format(f6.2,12f9.4)
-            if (ios /= 0) exit
-         end do
-         if (ios /= 0) exit
-      end do
-      if (ios /= 0) then
-         eos_lines = unwritten_line
-         write(eos_lines,'(a,i0,a,a)') 'eos_init: an SCV table ends early or is corrupt, at T row ', &
-              t_idx, '; the H table: ', trim(h_table_path)
-         call eos_report(eos_lines)
-         ierr = 1
-      end if
-end subroutine read_scv_rows
-
-subroutine open_scv_table(path, table_unit, ierr)
-      character(len=*), intent(in) :: path
-      integer, intent(out) :: table_unit, ierr
-      character(len=message_length) :: eos_lines(4)
-      open(newunit=table_unit, file=path, status='OLD', iostat=ierr)
-      if (ierr /= 0) then
-         eos_lines = unwritten_line
-         write(eos_lines,*) 'eos_init: cannot open the SCV table ', trim(path)
-         call eos_report(eos_lines)
-         table_unit = 0
-         ierr = 1
-      end if
-end subroutine open_scv_table
+!======================================================================
+! Sources: Saumon, Chabrier & Van Horn (1995) for the H and He tables;
+! the metal table was computed with the Prather EOS of the old Yale code.
+! The lookups were EQSCVE (compute_scv_envelope_eos) and EQSCVG
+! (compute_scv_eos), the table build SETSCV. The upward smoothing
+! weights, 0.5 at the node and falling to 0 at the tolerance, were made
+! the mirror of the downward ones in 2026 (the inherited 0.5 dist/tol
+! was reversed, a jump at 60% of every cell). The search start became a
+! defined cell (scv_cell) and the column search was clamped to the table
+! in 2026 (M107).
 
 end module scv_eos

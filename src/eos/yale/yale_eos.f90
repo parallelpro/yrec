@@ -17,7 +17,11 @@ module yale_eos
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use eos_results, only: eos_result
       use yale_eos_tables, only: debye_huckel_coefficient, debye_huckel_nu, &
-           debye_huckel_composition, n_debye_huckel_metals, yale
+           debye_huckel_composition, n_debye_huckel_metals, yale, fermi_n_x, &
+           fermi_n_t, fermi_n_bins, fermi_bins_per_unit_x, fermi_log10t_origin, i_fd_log_pe, &
+           i_fd_log_ue, i_fd_log_dpe_dlnt, i_fd_dlnpe_dlnrho, i_fd_log_due_dlnt, &
+           fermi_log10t_step, fermi_rows_per_dex, fermi_log10t_min, &
+           fermi_log10t_max
       use physical_constants, only: clni, cmkh, gas_constant, ln10
       use eos_messages, only: eos_log, eos_report, message_length, unwritten_line
       use eos_mixture, only: ix_h, ix_he, n_mix_species
@@ -25,7 +29,7 @@ module yale_eos
       use math_lib
       implicit none
       private
-      public :: compute_saha_eos, compute_fully_ionized_eos, read_fermi_table
+      public :: compute_saha_eos, compute_fully_ionized_eos
 
 ! Single-precision literals, as in eqsaha.f: widened to double, they
 ! differ from the correctly rounded doubles in the last bits. (The
@@ -54,6 +58,15 @@ module yale_eos
 ! magnitude, as on the DEC-20 the code was written for
       real(dp), parameter :: log10_smallest_product = -38.0d0
       real(dp), parameter :: saha_convergence_tol = 1.0D-09
+! The fully ionized density iteration (iterate_fully_ionized_density): it
+! converges when its step in log rho is below density_tolerance_dex, its
+! steps are capped at max_density_step_dex (a factor 10^4, LLP 1/31/07),
+! it fails after max_density_iterations, and the relative pressure error
+! its second-order term is computed from is floored at
+! smallest_pressure_error (its log is taken).
+      real(dp), parameter :: density_tolerance_dex = 1.0d-8, max_density_step_dex = 4.0d0, &
+           smallest_pressure_error = 1.0d-15
+      integer, parameter :: max_density_iterations = 20
 
 ! The Saha system of one compute_saha_eos call: its constants, the
 ! solution (E and the He fractions) and the reduced Newton matrix, which
@@ -181,7 +194,7 @@ contains
 ! to log T and log P: always the first derivatives (dln rho/dln T,
 ! dln rho/dln P, cp, grad_ad), the second ones only with
 ! want_derivatives and not in_atmosphere (otherwise they keep the
-! caller's values). Called from blend_eos.f90
+! caller's values). Called from blended_eos's gas_eos
 ! whenever the temperature is below the ionization cutoff, either
 ! directly (Prather EOS) or ahead of the SCV table lookup (to get
 ! derivatives SCV itself does not supply).
@@ -263,7 +276,7 @@ subroutine set_saha_constants(log10_temperature, log10_pressure, r, s)
          end if
       end do
       s%nz0 = i - 1
-      s%nz1 = min0(nz,s%nz1)
+      s%nz1 = min(nz,s%nz1)
 ! helium: skipped when absent, and when neutral (its fractions zero);
 ! He++ skipped when its exponent is below the tolerance (x2 zero)
       s%skip_helium_i = .true.
@@ -671,27 +684,42 @@ end subroutine differentiate_saha_solution_twice
 ! Debye-Hueckel term) add up to P, then sets the density, its first and
 ! second derivatives, cp, grad_ad and their derivatives, and eta (the
 ! second derivatives always: the caller keeps or discards them). The
-! density iteration starts from r's density. Called by blend_eos's
-! gas_eos at and above the Saha cutoff, and below it within the ramp,
-! where the Saha (or SCV) result is blended into it.
-! DBG 7/92 modified to include Debye-Hueckel correction.
-!     Correction is applied to pressure and all thermodynamic variables.
-!     Treatment is also valid for electron degeneracy.  A ramp function
-!     between the nondegenerate and degernate electron gas cases of the
-!     D-H correction is used (this is not correct but, hopefully is
-!     close enough.)  The constant term is debye_huckel_coefficient.
-subroutine compute_fully_ionized_eos(log10_temperature, log10_pressure, dh, r)
+! density iteration starts from r's density; when it does not converge
+! (iterate_fully_ionized_density) r keeps its other fields and ierr is
+! 1. extrapolated tells whether the converged point lies outside the
+! Fermi-Dirac table (log T from fermi_log10t_min to fermi_log10t_max, X
+! = log rho - log mu_e - 1.5 log T from its first abscissa to its last),
+! where its interpolation extrapolates. Called by blend_eos's gas_eos at
+! and above the Saha cutoff, and below it within the ramp, where the
+! Saha (or SCV) result is blended into it. With the Debye-Hueckel
+! correction its pressure term enters the pressure and every
+! thermodynamic quantity; between the nondegenerate and the degenerate
+! electron gas (eta from debye_huckel_eta_min to _max) its composition
+! factor is interpolated linearly (an approximation, Sources).
+subroutine compute_fully_ionized_eos(log10_temperature, log10_pressure, dh, r, &
+     extrapolated, ierr)
       real(dp), intent(in) :: log10_temperature, log10_pressure
 ! the zone's composition for the Debye-Hueckel correction (read only
 ! with the correction on)
       type(debye_huckel_composition), intent(in) :: dh
       type(eos_result), intent(inout) :: r
+      logical, intent(out) :: extrapolated
+      integer, intent(out) :: ierr
       type(fermi_solution) :: f
       logical :: converged
+      real(dp) :: abscissa
 
+      ierr = 0
+      extrapolated = .false.
       call start_fully_ionized_solution(log10_temperature, log10_pressure, dh, r, f)
       call iterate_fully_ionized_density(log10_temperature, log10_pressure, r, f, converged)
-      if (.not. converged) return
+      if (.not. converged) then
+         ierr = 1
+         return
+      end if
+      abscissa = f%dml - 1.50d0*f%tl8
+      extrapolated = log10_temperature < fermi_log10t_min .or. log10_temperature > fermi_log10t_max &
+           .or. abscissa < yale%fermi_table_x_grid(1) .or. abscissa > yale%fermi_table_x_grid(fermi_n_x)
       r%log10_density = f%dl8
       r%density = f%d8
       call interpolate_fermi_table(f)
@@ -729,12 +757,11 @@ subroutine start_fully_ionized_solution(log10_temperature, log10_pressure, dh, r
       f%emul8 = f%emul
 !  Pe is tabulated as a function of X(=log d - log mue - 3/2log T) and
 !  Y(= log T). Find index(JT1,JT2,JT3) for 3 pt interpolation in Y.
-! MHP 10/02 corrected mixed type
-      f%jt1 = int(5.0d0*(log10_temperature - 5.0d0))
-      f%jt1 = max0(1,min0(f%jt1,18))  ! Force jt1 to be in the table
+      f%jt1 = int(fermi_rows_per_dex*(log10_temperature - fermi_log10t_origin))
+      f%jt1 = max(1, min(f%jt1, fermi_n_t - 2))  ! the 3-row stencil inside the table
       f%jt2 = f%jt1 + 1
       f%jt3 = f%jt1 + 2
-      f%ttud = 5.0d0*(f%tl8 - (5.0d0 + 0.20d0*real(f%jt1, dp)))
+      f%ttud = fermi_rows_per_dex*(f%tl8 - (fermi_log10t_origin + fermi_log10t_step*real(f%jt1, dp)))
       f%ttcu = 0.50d0*f%ttud*(f%ttud - 1.0d0)
       f%ttdcu = f%ttud - 0.50d0
       f%dml = r%log10_density + f%emul
@@ -756,8 +783,9 @@ end subroutine start_fully_ionized_solution
 !----------------------------------------------------------------------
 ! Newton iteration on log rho until the electron (Fermi table), ion and
 ! radiation pressures, plus the Debye-Hueckel term, add up to P; steps
-! are capped at 4 dex, and 20 steps without convergence is a failure
-! (converged false, a message in the run log). For details consult
+! are capped at max_density_step_dex, and max_density_iterations steps
+! without convergence (to density_tolerance_dex) is a failure
+! (converged false, its message in the run log). For details consult
 ! Prather's thesis. The electron pressure pe is tabulated against
 ! X = log rho - log mu_e - 1.5 log T (3-point Lagrange, unequal spacing)
 ! and Y = log T (3-point Newton, equal spacing); pa is the ion pressure,
@@ -803,9 +831,9 @@ subroutine iterate_fully_ionized_density(log10_temperature, log10_pressure, r, f
 ! Begin iteration loop for correct density (was label 10)
 !  find index (ID1,ID2,ID3) for 3-pt interpolation in X
       xx = f%dml - 1.50d0*f%tl8
-      pr6= 20.0d0*(xx - yale%fermi_table_x_grid(1)) + 1.0d0
+      pr6= fermi_bins_per_unit_x*(xx - yale%fermi_table_x_grid(1)) + 1.0d0
       kk = int(pr6)
-      kk = min0(261,max0(1,kk))
+      kk = min(fermi_n_bins, max(1, kk))
       f%id1 = yale%fermi_table_x_lookup(kk)
 !  If index unchanged from previous loop,skip this section
       if (f%id1 /= f%id1p) then
@@ -821,11 +849,11 @@ subroutine iterate_fully_ionized_density(log10_temperature, log10_pressure, r, f
 !  Interpolation in Y is Newtonian(equal spacing in Y)
       do nn = 1,3
        id = f%id1 + nn - 1
-       f%df1(1,nn) = yale%fermi_table_data(1,id,f%jt2) - yale%fermi_table_data(1,id,f%jt1)
-       f%df2(1,nn) = yale%fermi_table_data(1,id,f%jt3)-yale%fermi_table_data(1,id,f%jt2)-f%df1(1,nn)
-       f%ff(1,nn) = yale%fermi_table_data(1,id,f%jt1) + f%ttud*f%df1(1,nn) + f%ttcu*f%df2(1,nn)
+       f%df1(i_fd_log_pe,nn) = yale%fermi_table_data(i_fd_log_pe,id,f%jt2) - yale%fermi_table_data(i_fd_log_pe,id,f%jt1)
+       f%df2(i_fd_log_pe,nn) = yale%fermi_table_data(i_fd_log_pe,id,f%jt3)-yale%fermi_table_data(i_fd_log_pe,id,f%jt2)-f%df1(i_fd_log_pe,nn)
+       f%ff(i_fd_log_pe,nn) = yale%fermi_table_data(i_fd_log_pe,id,f%jt1) + f%ttud*f%df1(i_fd_log_pe,nn) + f%ttcu*f%df2(i_fd_log_pe,nn)
       end do
-      dpel2 = 2.0d0*(f%ff(1,1)*cden1 + f%ff(1,2)*cden2 + f%ff(1,3)*cden3)
+      dpel2 = 2.0d0*(f%ff(i_fd_log_pe,1)*cden1 + f%ff(i_fd_log_pe,2)*cden2 + f%ff(i_fd_log_pe,3)*cden3)
       end if
       dx1 = xx - yale%fermi_table_x_grid(f%id1)
       dx2 = xx - yale%fermi_table_x_grid(f%id2)
@@ -852,8 +880,8 @@ subroutine iterate_fully_ionized_density(log10_temperature, log10_pressure, r, f
          end if
       end if
 !  Now find pe and its 1st and 2nd derivatives w.r.t. density
-      pel =  f%cl1*f%ff(1,1) +  f%cl2*f%ff(1,2) +  f%cl3*f%ff(1,3)
-      dpel1 = f%dcl1*f%ff(1,1) + f%dcl2*f%ff(1,2) + f%dcl3*f%ff(1,3)
+      pel =  f%cl1*f%ff(i_fd_log_pe,1) +  f%cl2*f%ff(i_fd_log_pe,2) +  f%cl3*f%ff(i_fd_log_pe,3)
+      dpel1 = f%dcl1*f%ff(i_fd_log_pe,1) + f%dcl2*f%ff(i_fd_log_pe,2) + f%dcl3*f%ff(i_fd_log_pe,3)
       f%dl8 = f%dml - f%emul8
       f%d8 = exp(ln10*f%dl8)
       f%pa = f%ramut*f%d8
@@ -879,20 +907,19 @@ subroutine iterate_fully_ionized_density(log10_temperature, log10_pressure, r, f
 ! Factor is the difference between the P predicted from the given rho
 ! and the true P; if too large increment rho and try again.
       factor=abs(pr8)
-      if(factor < 1d-15) factor = 1d-15
+      if(factor < smallest_pressure_error) factor = smallest_pressure_error
       pr8l=log10(factor)
       pr9l=log10(abs(pr9))
       factl=log10(0.5d0)+pr9l+2.d0*pr8l
       fact=exp(ln10*factl)
       fact=sign(fact,pr9)
       corr=-pr8-fact
-!  limit range of changes in density to a factor of 10**4   llp  1/31/07
-      if(corr > 4d0) corr =  4d0
-      if(corr < -4d0) corr = -4d0
-      if(abs(corr) >= 1.0d-08) then
+      if(corr > max_density_step_dex) corr = max_density_step_dex
+      if(corr < -max_density_step_dex) corr = -max_density_step_dex
+      if(abs(corr) >= density_tolerance_dex) then
        f%dml = f%dml + corr
        f%nden = f%nden + 1
-       if(f%nden <= 20) cycle density_iter
+       if(f%nden <= max_density_iterations) cycle density_iter
        eos_lines = unwritten_line
        write(eos_lines,40) log10_temperature,log10_pressure,ptl,f%dml,corr
        call eos_log(eos_lines)
@@ -915,7 +942,7 @@ subroutine interpolate_fermi_table(f)
       integer :: kk
       integer :: nn
 
-      do kk = 2,5
+      do kk = i_fd_log_ue, i_fd_log_due_dlnt
        do nn = 1,3
           id = f%id1 + nn - 1
           f%df1(kk,nn) = yale%fermi_table_data(kk,id,f%jt2) - yale%fermi_table_data(kk,id,f%jt1)
@@ -946,13 +973,13 @@ subroutine differentiate_pressure(f)
       real(dp) :: qqpedd
 
 ! Derivatives of P
-      peq = exp(ln10*f%ffe(3))
-      qped = f%ffe(4)
-      qqpedd =(f%dcl1*f%ff(4,1) + f%dcl2*f%ff(4,2) + f%dcl3*f%ff(4,3))*clni
-      pr1 = f%df1(3,1)+f%ttdcu*f%df2(3,1)
-      pr2 = f%df1(3,2)+f%ttdcu*f%df2(3,2)
-      pr3 = f%df1(3,3)+f%ttdcu*f%df2(3,3)
-      pr4 = f%dcl1*f%ff(3,1) + f%dcl2*f%ff(3,2) + f%dcl3*f%ff(3,3)
+      peq = exp(ln10*f%ffe(i_fd_log_dpe_dlnt))
+      qped = f%ffe(i_fd_dlnpe_dlnrho)
+      qqpedd =(f%dcl1*f%ff(i_fd_dlnpe_dlnrho,1) + f%dcl2*f%ff(i_fd_dlnpe_dlnrho,2) + f%dcl3*f%ff(i_fd_dlnpe_dlnrho,3))*clni
+      pr1 = f%df1(i_fd_log_dpe_dlnt,1)+f%ttdcu*f%df2(i_fd_log_dpe_dlnt,1)
+      pr2 = f%df1(i_fd_log_dpe_dlnt,2)+f%ttdcu*f%df2(i_fd_log_dpe_dlnt,2)
+      pr3 = f%df1(i_fd_log_dpe_dlnt,3)+f%ttdcu*f%df2(i_fd_log_dpe_dlnt,3)
+      pr4 = f%dcl1*f%ff(i_fd_log_dpe_dlnt,1) + f%dcl2*f%ff(i_fd_log_dpe_dlnt,2) + f%dcl3*f%ff(i_fd_log_dpe_dlnt,3)
       pr5 =   5.0d0*(f%cl1*pr1 + f%cl2*pr2 + f%cl3*pr3)
       qpeqd = peq*pr4
       qpeqt = peq*(pr5 - 1.50d0*pr4)
@@ -1033,12 +1060,12 @@ subroutine compute_internal_energy_and_cp(f, r)
       real(dp) :: ur
 
 ! Internal energy term(u) and its derivatives
-      ue  = exp(ln10*(f%ffe(2) + f%emul))
-      ueq = exp(ln10*(f%ffe(5) + f%emul))
-      pr1 = f%df1(5,1)+f%ttdcu*f%df2(5,1)
-      pr2 = f%df1(5,2)+f%ttdcu*f%df2(5,2)
-      pr3 = f%df1(5,3)+f%ttdcu*f%df2(5,3)
-      pr4 = f%dcl1*f%ff(5,1) + f%dcl2*f%ff(5,2) + f%dcl3*f%ff(5,3)
+      ue  = exp(ln10*(f%ffe(i_fd_log_ue) + f%emul))
+      ueq = exp(ln10*(f%ffe(i_fd_log_due_dlnt) + f%emul))
+      pr1 = f%df1(i_fd_log_due_dlnt,1)+f%ttdcu*f%df2(i_fd_log_due_dlnt,1)
+      pr2 = f%df1(i_fd_log_due_dlnt,2)+f%ttdcu*f%df2(i_fd_log_due_dlnt,2)
+      pr3 = f%df1(i_fd_log_due_dlnt,3)+f%ttdcu*f%df2(i_fd_log_due_dlnt,3)
+      pr4 = f%dcl1*f%ff(i_fd_log_due_dlnt,1) + f%dcl2*f%ff(i_fd_log_due_dlnt,2) + f%dcl3*f%ff(i_fd_log_due_dlnt,3)
       pr5 =   5.0d0*(f%cl1*pr1 + f%cl2*pr2 + f%cl3*pr3)
       queqt = ueq*(pr5 - 1.50d0*pr4)
       pd = r%pressure/r%density
@@ -1092,70 +1119,15 @@ subroutine compute_internal_energy_and_cp(f, r)
       r%adiabatic_gradient_dp = pr4 - r%specific_heat_cp_dp
 end subroutine compute_internal_energy_and_cp
 
-!----------------------------------------------------------------------
-! read_fermi_table
-!----------------------------------------------------------------------
-! Reads the Fermi-Dirac integral table of the degenerate electron gas
-! (FERMI.TAB: 43 abscissas, 43 degeneracies, 860 cards of 5 values)
-! into yale, and bins the abscissas into fermi_table_x_lookup, the
-! interval index compute_fully_ionized_eos looks up. A table that cannot
-! be opened, a read that fails (a truncated or corrupt table) and a
-! non-increasing abscissa are ierr = 1, with a message.
-subroutine read_fermi_table(fermi_table_path, ierr)
-      character(len=*), intent(in) :: fermi_table_path
-      integer, intent(out) :: ierr
-      character(len=message_length) :: eos_lines(4)
-      integer :: fermi_unit, grid_idx, iden_idx, col_idx, card_idx, ios
-      integer :: bin_start, bin_width, bin_end
-
-      ierr = 0
-      open(newunit=fermi_unit, file=fermi_table_path, form='FORMATTED', status='OLD', &
-           iostat=ierr)
-      if (ierr /= 0) then
-         eos_lines = unwritten_line
-         write(eos_lines,*) 'eos_init: cannot open the Fermi-Dirac table ', trim(fermi_table_path)
-         call eos_report(eos_lines)
-         ierr = 1
-         return
-      end if
-      read(fermi_unit,150,iostat=ios)  (yale%fermi_table_x_grid(grid_idx), grid_idx = 1,43)
-      if (ios == 0) read(fermi_unit,150,iostat=ios)  (yale%fermi_table_eta(grid_idx), grid_idx = 1,43)
-      if (ios == 0) read(fermi_unit,160,iostat=ios) (grid_idx,iden_idx, &
-           (yale%fermi_table_data(col_idx,grid_idx,iden_idx), col_idx=1,5),card_idx=1,860)
-  150 format(8x,9f8.4)
-  160 format(2i5,5f12.7)
-      if (ios /= 0) then
-         eos_lines = unwritten_line
-         write(eos_lines,*) 'eos_init: the Fermi-Dirac table ends early or is corrupt: ', &
-              trim(fermi_table_path)
-         call eos_report(eos_lines)
-         close(fermi_unit)
-         ierr = 1
-         return
-      end if
-      bin_start = 1
-      do grid_idx=1,41
-! a non-increasing abscissa is a corrupt table
-       if (yale%fermi_table_x_grid(grid_idx+1) <= yale%fermi_table_x_grid(grid_idx)) then
-          eos_lines = unwritten_line
-          write(eos_lines,1000) grid_idx
-          call eos_report(eos_lines)
- 1000       format(1x,39('>'),40('<')/1x,'read_fermi_table: abscissa',i4, &
-           ' does not increase')
-          close(fermi_unit)
-          ierr = 1
-          return
-       endif
-       bin_width = int((yale%fermi_table_x_grid(grid_idx+1) - yale%fermi_table_x_grid(grid_idx))*20.0d0 + 0.10d0)
-       bin_end = bin_start + bin_width - 1
-       if (grid_idx == 41)  bin_end = 261
-       do iden_idx=bin_start,bin_end
-          yale%fermi_table_x_lookup(iden_idx) = grid_idx
-       end do
-       bin_start = bin_end + 1
-      end do
-
-      close(fermi_unit)
-end subroutine read_fermi_table
+!======================================================================
+! Sources: Prather (1976, thesis), the Yale EOS: EQSAHA (compute_saha_eos)
+! and EQRELV (compute_fully_ionized_eos). The Debye-Hueckel correction is
+! DBG's (Guenther, Demarque, Kim & Pinsonneault 1992), with its ramp
+! between the nondegenerate and degenerate electron gas, which its
+! author called "not correct but, hopefully, close enough". The density
+! iteration's steps were capped at 4 dex (LLP 1/31/07). In 2026: the
+! solvers were cut into the named steps above; the iteration's failure
+! became an error (M93) and leaving the Fermi-Dirac table a warning
+! (M208).
 
 end module yale_eos

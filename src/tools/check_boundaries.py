@@ -213,13 +213,16 @@ STAR_BLIND_FILES = [
     # the mechanisms' velocities, slot by slot (2026-10-28)
     "rotation/seculr/transport_mechanisms.f90",
     # the equation of state's solvers and interpolators (2026-10-29;
-    # test_eos): the blend, the mixture, the Yale, SCV, OPAL and MHD EOS
+    # test_eos): the blend, the mixture, the table-source descriptor and
+    # its list, the Yale, SCV, OPAL and MHD EOS
     "eos/blended_eos.f90",
     "eos/eos_mixture.f90",
+    "eos/eos_table_source.f90",
+    "eos/eos_source_list.f90",
+    "eos/eos_test_entries.f90",
     "eos/yale/yale_eos.f90",
     "eos/scv/scv_eos.f90",
     "eos/opal/opal_eos.f90",
-    "eos/opal/opal95_eos.f90",
     "eos/mhd/mhd_eos.f90",
     # convection's kernels (2026-11, test_convection): the temperature
     # gradient, the zones with overshoot and their homogenization, and
@@ -1238,11 +1241,6 @@ NO_IO_ALLOWANCE = {
         "core round (b: core_messages; the kernel returns codes, core.md finding 5)",
     "core/envelope/envelope_integrands.f90":
         "core round (b: its dead `if (.false.) print` lines, core.md finding 5)",
-    "eos/yale/yale_eos.f90": "eos round (the Fermi-Dirac table read, with the source descriptor)",
-    "eos/scv/scv_eos.f90": "eos round (the SCV table read, with the source descriptor)",
-    "eos/opal/opal_eos.f90": "eos round (the OPAL table read, with the source descriptor)",
-    "eos/opal/opal95_eos.f90": "eos round (the OPAL 1995 table read, with the source descriptor)",
-    "eos/mhd/mhd_eos.f90": "eos round (the MHD table read, with the source descriptor)",
     "rotation/seculr/instability_velocities.f90":
         "rotation follow-up, outside PLAN.md's rounds (rotation.md finding 6: the RAT print)",
 }

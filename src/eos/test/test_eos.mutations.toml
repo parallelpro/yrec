@@ -1,0 +1,549 @@
+# Mutations of test_eos: each check must print FAIL under a mutation of
+# the code it covers (eos/README.md, section 4). Run: python3 src/tools/mutate.py
+# eos (src/tools/mutate.py describes this format and the verdicts).
+program = "test_eos"
+timeout = 300
+
+[[mutation]]
+id = 'opal_reread-01'
+check = 'OPAL 2006 table: a truncated table returns ierr = 1 on first use, its unit closed'
+file = 'eos/opal/opal_table_reader.f90'
+old = '''      opal_shared%table_loaded_flag(vintage) = 0
+      opal_shared%readco_init_flag(vintage) = 0'''
+new = '''      opal_shared%readco_init_flag(vintage) = 0'''
+
+[[mutation]]
+id = 'fermi_reader-01'
+check = 'Fermi table: a card out of its place, or abscissae wider than the lookup, returns ierr = 1'
+file = 'eos/yale/fermi_table_reader.f90'
+old = '''         if (misplaced_card) exit'''
+new = '''         misplaced_card = .false.'''
+
+[[mutation]]
+id = 'fermi_reader-02'
+check = 'Fermi table: a card out of its place, or abscissae wider than the lookup, returns ierr = 1'
+file = 'eos/yale/fermi_table_reader.f90'
+old = '''            if (bin_end > fermi_n_bins) then'''
+new = '''            if (bin_end > 2*fermi_n_bins) then'''
+
+[[mutation]]
+id = 'cutoff_range-01'
+check = 'settings: a Saha cutoff below log T 5.7 returns ierr = 1, and 5.7 is installed'
+file = 'eos/eos_lib.f90'
+old = '''      if (.not. settings%saha_log10t_cutoff - saha_ramp_width >= fermi_log10t_min) then'''
+new = '''      if (.not. settings%saha_log10t_cutoff >= fermi_log10t_min) then'''
+
+[[mutation]]
+id = 'fully_ionized_convergence-01'
+check = 'fully ionized gas: a density iteration that does not converge returns ierr = 1'
+file = 'eos/yale/yale_eos.f90'
+old = '''      if (.not. converged) then
+         ierr = 1
+         return
+      end if'''
+new = '''      if (.not. converged) then
+         return
+      end if'''
+
+[[mutation]]
+id = 'fermi_range-01'
+check = 'fully ionized gas: a point beyond the Fermi-Dirac table is reported, one inside it not'
+file = 'eos/yale/yale_eos.f90'
+old = '''      extrapolated = log10_temperature < fermi_log10t_min .or. log10_temperature > fermi_log10t_max &'''
+new = '''      extrapolated = log10_temperature < fermi_log10t_min .or. log10_temperature > 2*fermi_log10t_max &'''
+
+[[mutation]]
+id = 'fermi_range-02'
+check = 'fully ionized gas: a point beyond the Fermi-Dirac table is reported, one inside it not'
+file = 'eos/yale/yale_eos.f90'
+old = '''           .or. abscissa < yale%fermi_table_x_grid(1) .or. abscissa > yale%fermi_table_x_grid(fermi_n_x)'''
+new = '''           .or. abscissa < yale%fermi_table_x_grid(1)'''
+
+[[mutation]]
+id = 'fermi_range-03'
+check = 'fully ionized gas: a point beyond the Fermi-Dirac table is reported, one inside it not'
+file = 'eos/eos_messages.f90'
+old = '''      if (warned(id)) return
+      warned(id) = .true.'''
+new = '''      if (warned(id)) return'''
+
+[[mutation]]
+id = 'scv_reader-01'
+check = "SCV reader: a He or Z table on another grid than the H table's returns ierr = 1"
+file = 'eos/scv/scv_table_reader.f90'
+old = '''         off_grid = first_off_grid(copy_log10_t /= tlogx(t_idx) .or. copy_npts /= nptsx(t_idx))'''
+new = '''         off_grid = 0'''
+
+[[mutation]]
+id = 'scv_reader-02'
+check = "SCV reader: a He or Z table on another grid than the H table's returns ierr = 1"
+file = 'eos/scv/scv_table_reader.f90'
+old = '''              tablex(t_idx,1:nptsx(t_idx),iscv_log10_p)), any(tablez(t_idx,1:nptsx(t_idx),iscv_log10_p) /= &'''
+new = '''              tablex(t_idx,1:nptsx(t_idx),iscv_log10_p)), .false. .and. any(tablez(t_idx,1:nptsx(t_idx),iscv_log10_p) /= &'''
+
+[[mutation]]
+id = 'opal95_reader-01'
+check = 'OPAL 1995 table: a zero T6 returns ierr = 1 on first use'
+file = 'eos/opal/opal_table_reader.f90'
+old = '''         if (v%t6_list(1,t6_scan_idx) == 0.0d0) then'''
+new = '''         if (v%t6_list(1,t6_scan_idx) == -1.0d0) then'''
+
+[[mutation]]
+id = 'scv_search-01'
+check = "SCV: a lookup's cell does not depend on where its search starts"
+file = 'eos/scv/scv_eos.f90'
+old = '''         idp = max(1, min(nptsx(idtt)-3, jj))'''
+new = '''         idp = min(nptsx(idtt)-3, jj)'''
+
+[[mutation]]
+id = 'opal_x_quadratic-01'
+check = 'OPAL 2006: an entry only the second X quadratic reads, past 1e20 there, is named; ierr = 1'
+file = 'eos/opal/opal_eos.f90'
+old = '''            if (v%x_interp_result_alt(t6_scan_idx,density_scan_idx) > opal_x_interp_overflow) &'''
+new = '''            if (v%x_interp_result(t6_scan_idx,density_scan_idx) > opal_x_interp_overflow) &'''
+
+[[mutation]]
+id = 'debye_huckel-01'
+check = 'Debye-Hueckel: the two rises of rho are in the ratio of the charge-weighted factor'
+file = 'eos/yale/yale_eos.f90'
+old = '''            almix = almix + debye_huckel_nu(ii)*dh%metals(ii)'''
+new = '''            almix = almix + 6.0d0*dh%metals(ii)'''
+
+[[mutation]]
+id = 'source_list-01'
+check = 'table sources: SCV, OPAL and MHD listed, each with its stage, switch and procedures'
+file = 'eos/scv/scv_eos.f90'
+old = '''      src%stage = stage_in_place_of_saha'''
+new = '''      src%stage = stage_in_place_of_saha + 1'''
+
+[[mutation]]
+id = 'source_list-02'
+check = 'table sources: SCV, OPAL and MHD listed, each with its stage, switch and procedures'
+file = 'eos/mhd/mhd_eos.f90'
+old = '''      src%edge_weight => whole_weight_inside
+      src%adopt => adopt_whole_result
+      src%blend => blend_table_result
+end function mhd_table_source'''
+new = '''      src%edge_weight => whole_weight_inside
+      src%adopt => adopt_whole_result
+end function mhd_table_source'''
+
+[[mutation]]
+id = 'source_list-03'
+check = "continuity: where the OPAL 2006 edge ramp reaches OPAL"
+file = 'eos/blended_eos.f90'
+old = '''      if (.not. near_edge) then
+         call src%adopt(table_r, r)'''
+new = '''      if (.true.) then
+         call src%adopt(table_r, r)'''
+
+# ---- the checks that came before this round's (one mutation each) ----
+
+[[mutation]]
+id = 'scv_general-01'
+check = "SCV general path: before the envelope table is built, SCV's result, as after"
+file = 'eos/scv/scv_eos.f90'
+old = '''      ierr = 0
+      if (abs(hydrogen_fraction-tablenv_hydrogen_fraction) > scv_composition_tolerance &'''
+new = '''      ierr = 0
+      covers = .false.
+      if (tablenv_hydrogen_fraction < 0.0d0) return
+      if (abs(hydrogen_fraction-tablenv_hydrogen_fraction) > scv_composition_tolerance &'''
+
+[[mutation]]
+id = 'derivatives-01'
+check = "derivatives: the Saha solution's first and second, against finite differences"
+file = 'eos/yale/yale_eos.f90'
+old = '''      r%dlnrho_dlnt = -1.0d0 - r%beta14 - s%ep1*d%sqet'''
+new = '''      r%dlnrho_dlnt = (-1.0d0 - r%beta14 - s%ep1*d%sqet)*1.01d0'''
+
+[[mutation]]
+id = 'derivatives-02'
+check = "derivatives: the fully ionized gas's first (1e-3) and second (0.1)"
+file = 'eos/yale/yale_eos.f90'
+old = '''      r%dlnrho_dlnt = -f%qpt*r%dlnrho_dlnp'''
+new = '''      r%dlnrho_dlnt = -1.01d0*f%qpt*r%dlnrho_dlnp'''
+
+[[mutation]]
+id = 'derivatives-03'
+check = "derivatives: OPAL 2006's first, against finite differences (3e-3)"
+file = 'eos/opal_eos_tables.f90'
+old = '''                n_vars=9, i_p=1, i_e=2, i_s=3, i_dedrho=4, i_cv=5, i_chi_rho=6, i_chi_t=7, &'''
+new = '''                n_vars=9, i_p=1, i_e=2, i_s=3, i_dedrho=4, i_cv=5, i_chi_rho=6, i_chi_t=6, &'''
+
+[[mutation]]
+id = 'derivatives-04'
+check = "derivatives: OPAL 1995's first, against finite differences (1e-2)"
+file = 'eos/opal_eos_tables.f90'
+old = '''                n_vars=10, i_p=1, i_e=2, i_s=3, i_dedrho=4, i_cv=5, i_chi_rho=6, i_chi_t=7, &'''
+new = '''                n_vars=10, i_p=1, i_e=2, i_s=3, i_dedrho=4, i_cv=5, i_chi_rho=6, i_chi_t=6, &'''
+
+[[mutation]]
+id = 'derivatives-05'
+check = "derivatives: OPAL 2001's first, against finite differences (3e-3)"
+file = 'eos/opal_eos_tables.f90'
+old = '''i_dedrho=0, i_cv=4, i_chi_rho=5, i_chi_t=6, &'''
+new = '''i_dedrho=0, i_cv=4, i_chi_rho=5, i_chi_t=5, &'''
+
+[[mutation]]
+id = 'derivatives-06'
+check = "derivatives: the numerical second derivatives, against finite differences (1e-4)"
+file = 'eos/blended_eos.f90'
+old = '''         r%dlnrho_dlnt_dt = (above(1) - below(1))/dtl2/ln10'''
+new = '''         r%dlnrho_dlnt_dt = (above(1) - below(1))/dtl2/ln10*1.01d0'''
+
+[[mutation]]
+id = 'derivatives-07'
+check = "derivatives: the Saha solution's with the Debye-Hueckel correction on (1e-6, 1e-4)"
+file = 'eos/yale/yale_eos.f90'
+old = '''      r%dlnrho_dlnp = r%beta_inverse - s%ep1*d%sqep'''
+new = '''      r%dlnrho_dlnp = (r%beta_inverse - s%ep1*d%sqep)*1.01d0'''
+
+[[mutation]]
+id = 'mhd_lookup-01'
+check = "mhd lookup: in range inside and at the corners, not above the table"
+file = 'eos/mhd/mhd_eos.f90'
+old = '''         if (log10_pressure > p_max) then'''
+new = '''         if (log10_pressure > p_max + 100.0d0) then'''
+
+[[mutation]]
+id = 'mhd_lookup-02'
+check = "mhd lookup: coincident table rows return lir's status"
+file = 'eos/mhd/mhd_eos.f90'
+old = '''      call lir(log10_temperature, x_nodes, interp_vars, work2, lir_num_vars, &
+           lir_leading_dim, lir_num_points, lir_interp_mode, ierr)
+'''
+new = '''      call lir(log10_temperature, x_nodes, interp_vars, work2, lir_num_vars, &
+           lir_leading_dim, lir_num_points, lir_interp_mode, ierr)
+      ierr = 0
+'''
+
+[[mutation]]
+id = 'mhd_reader-01'
+check = "mhd reader: eos_init reads the eight tables"
+file = 'eos/mhd/mhd_table_reader.f90'
+old = '''      if (ivar1 < num_vars_read) then'''
+new = '''      if (ivar1 <= num_vars_read) then'''
+
+[[mutation]]
+id = 'mhd_reader-02'
+check = "mhd reader: log rho = log P - log T - c(X) in each family and at the boundary"
+file = 'eos/mhd/mhd_eos.f90'
+old = '''         call quint(hydrogen_fraction, x_grid_origin, x_grid_spacing, &'''
+new = '''         call quint(hydrogen_fraction + 0.01d0, x_grid_origin, x_grid_spacing, &'''
+
+[[mutation]]
+id = 'mhd_reader-03'
+check = "mhd reader: grad_ad, dln rho/dln T and dln rho/dln P as tabulated"
+file = 'eos/mhd/mhd_eos.f90'
+old = '''      r%adiabatic_gradient = mhd%mhd_output(i_mhd_grad_ad)'''
+new = '''      r%adiabatic_gradient = 1.001d0*mhd%mhd_output(i_mhd_grad_ad)'''
+
+[[mutation]]
+id = 'mhd_reader-04'
+check = "mhd reader: log T above the tables returns ierr"
+file = 'eos/mhd/mhd_eos.f90'
+old = '''           log10_temperature > mhd%table_log10t_max) then'''
+new = '''           log10_temperature > mhd%table_log10t_max + 1.0d0) then'''
+
+[[mutation]]
+id = 'mhd_reader-05'
+check = "mhd reader: log P above the tables returns ierr"
+file = 'eos/mhd/mhd_eos.f90'
+old = '''      if (.not. in_range) then
+         ierr = 1
+         return
+      end if
+!     Interpolation in X'''
+new = '''      if (.not. in_range) then
+         ierr = 0
+         return
+      end if
+!     Interpolation in X'''
+
+[[mutation]]
+id = 'mhd_reader-06'
+check = "mhd reader: a missing table returns ierr = 1"
+file = 'eos/mhd/mhd_table_reader.f90'
+old = '''         table_unit = 0
+         ierr = 1'''
+new = '''         table_unit = 0
+         ierr = 2'''
+
+[[mutation]]
+id = 'mhd_reader-07'
+check = "mhd reader: a truncated table returns ierr = 1"
+file = 'eos/mhd/mhd_table_reader.f90'
+old = '''      if (ierr /= 0 .or. nchem0 < num_chem) then'''
+new = '''      if (nchem0 < num_chem) then'''
+
+[[mutation]]
+id = 'ideal_gas-01'
+check = "ideal gas, neutral: rho = mu P_gas/(R T)"
+file = 'eos/yale/yale_eos.f90'
+old = '''      r%density = r%beta*r%pressure/(r%specific_gas_constant*r%temperature)'''
+new = '''      r%density = 1.001d0*r%beta*r%pressure/(r%specific_gas_constant*r%temperature)'''
+
+[[mutation]]
+id = 'ideal_gas-02'
+check = "ideal gas, neutral: grad_ad -> 0.4, cp -> 5R/(2 mu) (+ radiation)"
+file = 'eos/yale/yale_eos.f90'
+old = '''      r%specific_heat_cp = qut - d%pdtq'''
+new = '''      r%specific_heat_cp = 1.01d0*qut - d%pdtq'''
+
+[[mutation]]
+id = 'ideal_gas-03'
+check = "ideal gas, fully ionized: rho = mu P_gas/(R T) with the Fermi-Dirac correction"
+file = 'eos/yale/yale_eos.f90'
+old = '''      f%pa = f%ramut*f%d8'''
+new = '''      f%pa = 1.001d0*f%ramut*f%d8'''
+
+[[mutation]]
+id = 'ideal_gas-04'
+check = "ideal gas, fully ionized: grad_ad -> 0.4, cp -> 5R/(2 mu) (+ radiation)"
+file = 'eos/yale/yale_eos.f90'
+old = '''      ua = 1.50d0*f%ramut'''
+new = '''      ua = 1.55d0*f%ramut'''
+
+[[mutation]]
+id = 'ideal_gas-05'
+check = "radiation-dominated: grad_ad and cp of the gas plus radiation"
+file = 'eos/yale/yale_eos.f90'
+old = '''      ur = 3.0d0*f%beta1*pd'''
+new = '''      ur = 3.1d0*f%beta1*pd'''
+
+[[mutation]]
+id = 'ideal_gas-06'
+check = "radiation-dominated: grad_ad -> 1/4"
+file = 'eos/yale/yale_eos.f90'
+old = '''      f%qpt = (f%pa + peq)*f%pinv + 4.0d0*f%beta1'''
+new = '''      f%qpt = (f%pa + peq)*f%pinv + 4.2d0*f%beta1'''
+
+[[mutation]]
+id = 'ideal_gas-07'
+check = "radiation pressure above P: beta <= 0 returns ierr"
+file = 'eos/blended_eos.f90'
+old = '''         call eos_report(eos_lines)
+         ierr = 1
+         return
+      end if
+      r%beta_inverse = 1.0d0/r%beta'''
+new = '''         call eos_report(eos_lines)
+         ierr = 2
+         return
+      end if
+      r%beta_inverse = 1.0d0/r%beta'''
+
+[[mutation]]
+id = 'continuity-01'
+check = "continuity: the blended quantities at the Saha ramp's foot (cutoff - 0.5)"
+file = 'eos/blended_eos.f90'
+old = '''      f = ramp_weight_sq*ramp_weight*(6.0d0*ramp_weight_sq - 15.0d0*ramp_weight + 10.0d0)'''
+new = '''      f = ramp_weight_sq*ramp_weight*(6.0d0*ramp_weight_sq - 15.0d0*ramp_weight + 10.1d0)'''
+
+[[mutation]]
+id = 'continuity-02'
+check = "continuity: the blended quantities at the Saha cutoff"
+file = 'eos/blended_eos.f90'
+old = '''           saha_ramp_scale*(eos_settings%saha_log10t_cutoff - log10_temperature), &'''
+new = '''           saha_ramp_scale*(eos_settings%saha_log10t_cutoff - log10_temperature) + 0.1d0, &'''
+
+[[mutation]]
+id = 'continuity-03'
+check = "continuity: the blended quantities at the Saha cutoff, denser"
+file = 'eos/blended_eos.f90'
+old = '''         call fully_ionized_gas(log10_temperature, log10_pressure, hydrogen_fraction, dh, r, ierr)
+         return'''
+new = '''         call fully_ionized_gas(log10_temperature, log10_pressure, 1.001d0*hydrogen_fraction, dh, r, ierr)
+         return'''
+
+[[mutation]]
+id = 'continuity-04'
+check = "continuity: the blended quantities at the Saha ramp's foot, SCV under it"
+file = 'eos/scv/scv_eos.f90'
+old = '''      call compute_scv_envelope_eos(log10_temperature, hydrogen_fraction, metal_fraction, &
+           table_r, covers, ierr)
+end subroutine scv_lookup'''
+new = '''      call compute_scv_envelope_eos(log10_temperature, hydrogen_fraction, metal_fraction, &
+           table_r, covers, ierr)
+      if (log10_temperature > 5.5d0) covers = .false.
+end subroutine scv_lookup'''
+
+[[mutation]]
+id = 'continuity-05'
+check = "continuity: at the OPAL 2006 table's edge (the Yale/SCV result beyond)"
+file = 'eos/eos_table_source.f90'
+old = '''      r%log10_density = r%log10_density + &
+           weight*(table_r%log10_density - r%log10_density)'''
+new = '''      r%log10_density = r%log10_density + &
+           (weight + 0.01d0)*(table_r%log10_density - r%log10_density)'''
+
+[[mutation]]
+id = 'atmosphere-01'
+check = "in_atmosphere: the density, ionization and first derivatives of a full evaluation"
+file = 'eos/yale/yale_eos.f90'
+old = '''      call differentiate_saha_solution(s, r, d)'''
+new = '''      if (.not. in_atmosphere) call differentiate_saha_solution(s, r, d)'''
+
+[[mutation]]
+id = 'envelope_table-01'
+check = "envelope tables: eos_set_mixture builds the SCV table for a new composition"
+file = 'eos/scv/scv_eos.f90'
+old = '''      if (.not. scv_tables_loaded) return'''
+new = '''      if (scv_tables_loaded) return'''
+
+[[mutation]]
+id = 'envelope_table-02'
+check = "envelope tables: a table built for another composition is not used"
+file = 'eos/scv/scv_eos.f90'
+old = '''           scv_composition_tolerance = 1.0d-5'''
+new = '''           scv_composition_tolerance = 1.0d-1'''
+
+[[mutation]]
+id = 'debye_huckel-02'
+check = "Debye-Hueckel: it raises rho, the more with the envelope's heavier metals as Fe"
+file = 'eos/yale_eos_tables.f90'
+old = '''      real(dp), parameter :: debye_huckel_coefficient = -sqrt('''
+new = '''      real(dp), parameter :: debye_huckel_coefficient = sqrt('''
+
+[[mutation]]
+id = 'debye_huckel-03'
+check = "Debye-Hueckel: the heavier metals scale with the zone's Z"
+file = 'eos/eos_mixture.f90'
+old = '''         if (envelope_beyond_o > 0.0d0) metal_scale = max(composition(i_metals) - &
+              dh%metals(idh_c) - dh%metals(idh_n) - dh%metals(idh_o), 0.0d0)/envelope_beyond_o'''
+new = '''         if (envelope_beyond_o > 0.0d0) metal_scale = 1.0d0'''
+
+[[mutation]]
+id = 'debye_huckel-04'
+check = "Debye-Hueckel: a zone's metals add up to its Z; carbon a core makes leaves Ne..Fe alone"
+file = 'eos/eos_mixture.f90'
+old = '''         dh%metals(idh_n) = composition(i_n14)+composition(i_n15)'''
+new = '''         dh%metals(idh_n) = 1.01d0*composition(i_n14)+composition(i_n15)'''
+
+[[mutation]]
+id = 'gamma1-01'
+check = "gamma1_at_density: below the OPAL table, the Yale/SCV value"
+file = 'eos/eos_test_entries.f90'
+old = '''      if (eos_settings%opal_vintage == opal_vintage_2006 .and. in_table) then'''
+new = '''      if (eos_settings%opal_vintage == opal_vintage_2006) then'''
+
+[[mutation]]
+id = 'scv_mean_weights-01'
+check = "SCV: R/mu = beta P/(rho T) and 1/mu_e from it, on both SCV paths"
+file = 'eos/eos_mixture.f90'
+old = '''      r%specific_gas_constant = r%beta*r%pressure/(r%density*r%temperature)'''
+new = '''      r%specific_gas_constant = 1.001d0*r%beta*r%pressure/(r%density*r%temperature)'''
+
+[[mutation]]
+id = 'scv_mean_weights-02'
+check = "SCV: R/mu and 1/mu_e continuous at the Saha ramp's foot"
+file = 'eos/blended_eos.f90'
+old = '''      r%density = exp(ln10*r%log10_density)
+      call mean_weights_from_density(r)'''
+new = '''      r%density = exp(ln10*r%log10_density)'''
+
+[[mutation]]
+id = 'diffusion_z-01'
+check = "diffusion of Z: at the envelope's Z, the default mixture's 1/mu_ion and rho"
+file = 'eos/blended_eos.f90'
+old = '''         h_excess = (hydrogen_fraction - eos_mix%envelope_hydrogen_fraction)* &
+              inverse_a_hydrogen'''
+new = '''         h_excess = (hydrogen_fraction - eos_mix%envelope_hydrogen_fraction)* &
+              1.01d0*inverse_a_hydrogen'''
+
+[[mutation]]
+id = 'diffusion_z-02'
+check = "diffusion of Z: an envelope without metals takes the default mixture"
+file = 'eos/blended_eos.f90'
+old = '''      if (eos_settings%use_diffusion_z .and. eos_mix%envelope_metal_fraction > 0.0d0) then'''
+new = '''      if (eos_settings%use_diffusion_z) then'''
+
+[[mutation]]
+id = 'settings-01'
+check = "settings: two OPAL vintages selected, eos_init returns ierr = 1"
+file = 'eos/eos_lib.f90'
+old = '''      if (settings%opal_vintage < opal_vintage_none .or. &'''
+new = '''      if (settings%opal_vintage < opal_vintage_none - 1 .or. &'''
+
+[[mutation]]
+id = 'settings-02'
+check = "settings: a Debye-Hueckel range with eta_max <= eta_min, eos_init returns ierr = 1"
+file = 'eos/eos_lib.f90'
+old = '''           .not. settings%debye_huckel_eta_max > settings%debye_huckel_eta_min) then'''
+new = '''           .not. settings%debye_huckel_eta_max >= settings%debye_huckel_eta_min) then'''
+
+[[mutation]]
+id = 'settings-03'
+check = "settings: the record's defaults are the controls' (cutoff 6, eta -1 to 1)"
+file = 'eos/eos_configuration.f90'
+old = '''debye_huckel_eta_min = -1.0d0'''
+new = '''debye_huckel_eta_min = -1.5d0'''
+
+[[mutation]]
+id = 'opal_trial-01'
+check = "OPAL 1995: trial calls keep the other slots and give the full call's pressure"
+file = 'eos/opal/opal_eos.f90'
+old = '''                 opal_radiation_pressure(lay, t6_temperature))*lay%energy_unit_ratio'''
+new = '''                 opal_radiation_pressure(lay, t6_temperature))'''
+
+[[mutation]]
+id = 'opal_trial-02'
+check = "OPAL 2001: trial calls keep the other slots and give the full call's pressure"
+file = 'eos/opal/opal_eos.f90'
+old = '''            v%eos_output(lay%i_p) = v%eos_output(lay%i_p) + &
+                 opal_radiation_pressure(lay, t6_temperature)
+         end if'''
+new = '''            v%eos_output(lay%i_p) = v%eos_output(lay%i_p) + &
+                 2.0d0*opal_radiation_pressure(lay, t6_temperature)
+         end if'''
+
+[[mutation]]
+id = 'scv_reader-03'
+check = "SCV reader: after a re-read the envelope table waits for its rebuild"
+file = 'eos/scv/scv_table_reader.f90'
+old = '''      tablenv_hydrogen_fraction = -1.0d0
+      tablenv_metal_fraction = -1.0d0'''
+new = ''''''
+
+[[mutation]]
+id = 'scv_reader-04'
+check = "SCV reader: a missing table returns ierr = 1 and leaves no table open"
+file = 'eos/scv/scv_table_reader.f90'
+old = '''         if (units(k) /= 0) close(units(k))'''
+new = '''         if (units(k) /= 0 .and. k > 1) close(units(k))'''
+
+[[mutation]]
+id = 'scv_reader-05'
+check = "SCV reader: a truncated table returns ierr = 1"
+file = 'eos/scv/scv_table_reader.f90'
+old = '''         call eos_report(eos_lines)
+         ierr = 1
+      else if (off_grid /= 0) then'''
+new = '''         call eos_report(eos_lines)
+         ierr = 0
+      else if (off_grid /= 0) then'''
+
+[[mutation]]
+id = 'fermi_reader-03'
+check = "Fermi table: a missing or truncated table returns ierr = 1, its unit closed"
+file = 'eos/yale/fermi_table_reader.f90'
+old = '''         call eos_report(eos_lines)
+         ierr = 1
+      else if (misplaced_card) then'''
+new = '''         call eos_report(eos_lines)
+         ierr = 0
+      else if (misplaced_card) then'''
+
+[[mutation]]
+id = 'opal_reader-01'
+check = "OPAL 2006 table: a missing table returns ierr = 1 at eos_init"
+file = 'eos/opal/opal_table_reader.f90'
+old = '''         call eos_report(eos_lines)
+         ierr = 1
+      end if
+end subroutine open_opal_eos_table'''
+new = '''         call eos_report(eos_lines)
+         ierr = 2
+      end if
+end subroutine open_opal_eos_table'''

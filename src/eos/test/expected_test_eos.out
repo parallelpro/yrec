@@ -612,6 +612,8 @@ ok   radiation-dominated: grad_ad and cp of the gas plus radiation
 ok   radiation-dominated: grad_ad -> 1/4
  blend_eos: beta = P_gas/P is not positive: log T, log P, beta   7.5000000000000000        15.400000000000000       -4.0148916156006464E-003
 ok   radiation pressure above P: beta <= 0 returns ierr
+ok   fully ionized gas: a density iteration that does not converge returns ierr = 1
+ok   fully ionized gas: a point beyond the Fermi-Dirac table is reported, one inside it not
 # test_eos: configuration yale_only
 ok   continuity: the blended quantities at the Saha ramp's foot (cutoff - 0.5)
 ok   continuity: the blended quantities at the Saha cutoff
@@ -632,6 +634,7 @@ ok   envelope tables: a table built for another composition is not used
 # test_eos: configuration yale_only
 # test_eos: configuration debye_huckel
 ok   Debye-Hueckel: it raises rho, the more with the envelope's heavier metals as Fe
+ok   Debye-Hueckel: the two rises of rho are in the ratio of the charge-weighted factor
 # test_eos: configuration yale_only
 # test_eos: configuration debye_huckel
 # test_eos: configuration yale_only
@@ -643,6 +646,7 @@ ok   gamma1_at_density: below the OPAL table, the Yale/SCV value
 # test_eos: configuration scv_only
 ok   SCV: R/mu = beta P/(rho T) and 1/mu_e from it, on both SCV paths
 ok   SCV: R/mu and 1/mu_e continuous at the Saha ramp's foot
+ok   SCV: a lookup's cell does not depend on where its search starts
 # test_eos: configuration yale_only
 # test_eos: configuration yale_diffusion_z
 # test_eos: configuration yale_only
@@ -657,7 +661,10 @@ ok   diffusion of Z: an envelope without metals takes the default mixture
 ok   settings: two OPAL vintages selected, eos_init returns ierr = 1
  eos_init: the Debye-Hueckel degeneracy range needs eta_max > eta_min:   1.0000000000000000        1.0000000000000000
 ok   settings: a Debye-Hueckel range with eta_max <= eta_min, eos_init returns ierr = 1
+eos_init: saha_log10t_cutoff must be at least 5.70 (the Fermi-Dirac table's first row, log T 5.20, plus the Saha ramp's 0.50 dex): 5.690
+ok   settings: a Saha cutoff below log T 5.7 returns ierr = 1, and 5.7 is installed
 ok   settings: the record's defaults are the controls' (cutoff 6, eta -1 to 1)
+ok   table sources: SCV, OPAL and MHD listed, each with its stage, switch and procedures
 # test_eos: configuration opal95
 ok   OPAL 1995: trial calls keep the other slots and give the full call's pressure
 # test_eos: configuration opal2001
@@ -668,14 +675,26 @@ ok   SCV reader: after a re-read the envelope table waits for its rebuild
 ok   SCV reader: a missing table returns ierr = 1 and leaves no table open
 eos_init: an SCV table ends early or is corrupt, at T row 9; the H table: scv_truncated
 ok   SCV reader: a truncated table returns ierr = 1
+eos_init: an SCV table's grid (log T, point count or log P_gas) is not the H table's, at T row 1: scv_he_off_grid
+eos_init: an SCV table's grid (log T, point count or log P_gas) is not the H table's, at T row 2: scv_z_off_grid
+ok   SCV reader: a He or Z table on another grid than the H table's returns ierr = 1
 # test_eos: configuration scv_only
  eos_init: cannot open the Fermi-Dirac table fermi_missing
  eos_init: the Fermi-Dirac table ends early or is corrupt: fermi_truncated
 ok   Fermi table: a missing or truncated table returns ierr = 1, its unit closed
+read_fermi_table: card 100 is for abscissa 44 and row 3, not the next in the table: fermi_bad_card
+read_fermi_table: the abscissae span more than the 261 bins of the X lookup: fermi_wide_x
+ok   Fermi table: a card out of its place, or abscissae wider than the lookup, returns ierr = 1
 # test_eos: configuration production
 OPALEOS/ESAC06: the OPAL EOS table ends early or is corrupt: X block 1, density column 15
 ok   OPAL 2006 table: a truncated table returns ierr = 1 on first use, its unit closed
  eos_init: cannot open the OPAL EOS table opal06_missing
 ok   OPAL 2006 table: a missing table returns ierr = 1 at eos_init
+# test_eos: configuration production
+T6RINTEOS06: Interpolation indices out of range;please report conditions.
+ok   OPAL 2006: an entry only the second X quadratic reads, past 1e20 there, is named; ierr = 1
+# test_eos: configuration opal95
+READCO: Error:  56-th T6 value is zero
+ok   OPAL 1995 table: a zero T6 returns ierr = 1 on first use
 # test_eos: configuration production
 test_eos: done
