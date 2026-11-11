@@ -9,12 +9,14 @@
 !                                 composition, per Z table
 !     compute_opal92_opacity      the opacity and its log derivatives by
 !                                 interpolation in X, T and R
-! The tables live in opacity_tables (opacity_table%opal92(1:2)).
+! The tables live in opacity_tables (tables(1:2)).
 module opal92_opacity
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use opacity_tables, only: kap_settings, n_opal92_d, n_opal92_t, &
-           n_opal92_x, opacity_table, opal92_missing_opacity, &
-           opal92_table_set, opal92_x_match_tol
+      use opacity_tables, only: n_opal92_d, n_opal92_t, n_opal92_x, &
+           opal92_missing_opacity, opal92_table_set, opal92_x_match_tol, &
+           kap_settings_t, kap_table_paths_t, opacity_table_state
+      use opacity_source, only: kap_point, kap_result, kap_source
+      use opacity_blending, only: blend_results_in_z
       use numerics_lib, only: findex, natural_spline, splint, &
            compute_spline_coefficients, numerics_status_text
       use kap_messages, only: kap_log, kap_terminal, message_length, unwritten_line
@@ -22,6 +24,7 @@ module opal92_opacity
       use math_lib
       implicit none
       private
+      public :: opal92_source
       public :: read_opal92_tables, build_opal92_surface_table, compute_opal92_opacity
 
 contains
@@ -38,8 +41,12 @@ contains
 ! Each table is read by the internal read_opal92_table, first the
 ! table at opal_table_z1 and then, with use_two_z_tables, the one at
 ! opal_table_z2; a table that cannot be opened or is short returns ierr.
-subroutine read_opal92_tables(opal92_table_path, opal92_table2_path, ierr)
+subroutine read_opal92_tables(tables, opal92_table_path, opal92_table2_path, &
+     two_z_tables, ierr)
+! (1) at opal_table_z1 and, with two_z_tables, (2) at opal_table_z2
+      type(opal92_table_set), intent(inout) :: tables(:)
       character(len=256), intent(in) :: opal92_table_path, opal92_table2_path
+      logical, intent(in) :: two_z_tables
       integer, intent(out) :: ierr
 !     Local_grid_z is a read-list target that is never used afterwards.
       real(dp) :: local_grid_z(n_opal92_x)
@@ -49,16 +56,16 @@ subroutine read_opal92_tables(opal92_table_path, opal92_table2_path, ierr)
       character(len=message_length) :: lines(1)
 
       ierr = 0
-      call read_opal92_table(opal92_table_path, opacity_table%opal92(1), ierr)
+      call read_opal92_table(opal92_table_path, tables(1), ierr)
       if (ierr /= 0) return
 
 ! DBG 5/94 Second Opacity Table read here
-      if (kap_settings%use_two_z_tables) then
-         call read_opal92_table(opal92_table2_path, opacity_table%opal92(2), ierr)
+      if (two_z_tables) then
+         call read_opal92_table(opal92_table2_path, tables(2), ierr)
          if (ierr /= 0) return
       end if
 !
-      call prepare_opal92_tables(ierr)
+      call prepare_opal92_tables(tables, two_z_tables, ierr)
 
       return
 
@@ -123,11 +130,13 @@ end subroutine read_opal92_tables
 ! n_opal92_t stride that read_opal92_tables stores with.
 !
 ! 2026 wave 3 (R5): the verbatim second-Z loop nest (on
-! opacity_table%opal92(2)) became the internal prep_table below,
+! tables(2)) became the internal prep_table below,
 ! called once per set in the original order; the loop's working
 ! scalars stay host-associated. The stdout diagnostic no longer says
 ! "second".
-subroutine prepare_opal92_tables(ierr)
+subroutine prepare_opal92_tables(tables, two_z_tables, ierr)
+      type(opal92_table_set), intent(inout) :: tables(:)
+      logical, intent(in) :: two_z_tables
       integer, intent(out) :: ierr
 ! MHP 10/02 made array dimensions consistent
       integer, parameter :: np = 100
@@ -140,12 +149,12 @@ subroutine prepare_opal92_tables(ierr)
 
       ierr = 0
 
-      call prep_table(opacity_table%opal92(1), ierr)
+      call prep_table(tables(1), ierr)
       if (ierr /= 0) return
 !
 ! DBG 5/94 ZRAMP stuff
-      if (kap_settings%use_two_z_tables) then
-         call prep_table(opacity_table%opal92(2), ierr)
+      if (two_z_tables) then
+         call prep_table(tables(2), ierr)
       end if
 
       return
@@ -216,7 +225,13 @@ end subroutine prepare_opal92_tables
 ! cursor handed to interpolate_opal92_2d and carries over from the first
 ! set into the second exactly as before). The stdout diagnostics no
 ! longer say "second-Z".
-subroutine build_opal92_surface_table(hydrogen_fraction, ierr)
+subroutine build_opal92_surface_table(tables, hydrogen_fraction, table_z, &
+     two_z_tables, ierr)
+! (1) at table_z(1) and, with two_z_tables, (2) at table_z(2)
+! (opal_table_z1 and opal_table_z2)
+      type(opal92_table_set), intent(inout) :: tables(:)
+      real(dp), intent(in) :: table_z(:)
+      logical, intent(in) :: two_z_tables
 ! MHP 10/02 made array dimensions consistent
       integer, parameter :: np = 100
 
@@ -237,11 +252,11 @@ subroutine build_opal92_surface_table(hydrogen_fraction, ierr)
 ! from the first table set into the second
       x_index = 0
       rho_search_index = 0
-      call build_surface_table(opacity_table%opal92(1), kap_settings%opal_table_z1, ierr)
+      call build_surface_table(tables(1), table_z(1), ierr)
       if (ierr /= 0) return
 
-      if (kap_settings%use_two_z_tables) then
-         call build_surface_table(opacity_table%opal92(2), kap_settings%opal_table_z2, ierr)
+      if (two_z_tables) then
+         call build_surface_table(tables(2), table_z(2), ierr)
       end if
 
       return
@@ -324,7 +339,7 @@ end subroutine build_opal92_surface_table
 ! interpolation, and linearly extrapolates/interpolates in X if
 ! needed.
 !
-! 2026 wave 3 (R5): tbl is the table set (opacity_table%opal92(1) or
+! 2026 wave 3 (R5): tbl is the table set (tables(1) or
 ! (2)); the former opal92_interp3d_z2.f90 was a member-for-member
 ! rename of this file (its two stdout messages named it; its grdnt
 ! line was only continued differently) and is deleted.
@@ -425,7 +440,7 @@ end subroutine compute_opal92_opacity
 ! dlnkap_dlnrho is the partial derivative of opacity wrt density,
 ! dlnkap_dlnt is the partial derivative of opacity wrt temperature.
 !
-! 2026 wave 3 (R5): tbl is the table set (opacity_table%opal92(1) or
+! 2026 wave 3 (R5): tbl is the table set (tables(1) or
 ! (2)); the former opal92_interp2d_z2.f90 was a member-for-member
 ! rename of this file (its two stdout messages named it) and is
 ! deleted.
@@ -550,5 +565,90 @@ subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_in
 ! QODF = D LN(O)/D LN(D)
 
 end subroutine interpolate_opal92_2d
+
+!----------------------------------------------------------------------
+! The family's descriptor (opacity_source) and its procedures
+!----------------------------------------------------------------------
+! An interior family of one table per Z: with use_two_z_tables, a second
+! table at opal_table_z2, blended linearly in Z with the first; in a
+! helium-burning core, the first table alone, at opal_table_z1.
+function opal92_source(settings) result(source)
+      type(kap_settings_t), intent(in) :: settings
+      type(kap_source) :: source
+
+      source%name = 'OPAL 1992'
+      source%blends_two_z = .true.
+      source%table_z = [settings%opal_table_z1, settings%opal_table_z2]
+      source%table_z_controls = [character(len=16) :: 'opal_table_z1', 'opal_table_z2']
+      source%selected = settings%use_opal92_tables
+      source%load => load_opal92
+      source%refresh => refresh_opal92
+      source%lookup => lookup_opal92
+      source%core_lookup => core_lookup_opal92
+end function opal92_source
+
+subroutine load_opal92(settings, paths, envelope_hydrogen_fraction, tables, ierr)
+      type(kap_settings_t), intent(in) :: settings
+      type(kap_table_paths_t), intent(in) :: paths
+      real(dp), intent(in) :: envelope_hydrogen_fraction
+      type(opacity_table_state), intent(inout) :: tables
+      integer, intent(out) :: ierr
+
+      call read_opal92_tables(tables%opal92, paths%opal92, paths%opal92_z2, &
+           settings%use_two_z_tables, ierr)
+      if (ierr /= 0) return
+      call build_opal92_surface_table(tables%opal92, envelope_hydrogen_fraction, &
+           [settings%opal_table_z1, settings%opal_table_z2], &
+           settings%use_two_z_tables, ierr)
+end subroutine load_opal92
+
+subroutine refresh_opal92(settings, hydrogen_fraction, tables, ierr)
+      type(kap_settings_t), intent(in) :: settings
+      real(dp), intent(in) :: hydrogen_fraction
+      type(opacity_table_state), intent(inout) :: tables
+      integer, intent(out) :: ierr
+
+      call build_opal92_surface_table(tables%opal92, hydrogen_fraction, &
+           [settings%opal_table_z1, settings%opal_table_z2], &
+           settings%use_two_z_tables, ierr)
+end subroutine refresh_opal92
+
+subroutine lookup_opal92(settings, tables, point, res, in_table, ierr)
+      type(kap_settings_t), intent(in) :: settings
+      type(opacity_table_state), intent(inout) :: tables
+      type(kap_point), intent(in) :: point
+      type(kap_result), intent(inout) :: res
+      logical, intent(out) :: in_table
+      integer, intent(out) :: ierr
+      type(kap_result) :: res_z2
+
+      in_table = .true.
+      call compute_opal92_opacity(tables%opal92(1), point%log10_density, &
+           point%log10_temperature, point%hydrogen_fraction, res%opacity, &
+           res%log10_opacity, res%dlnkap_dlnrho, res%dlnkap_dlnt, ierr)
+      if (ierr /= 0) return
+      if (settings%use_two_z_tables) then
+         call compute_opal92_opacity(tables%opal92(2), point%log10_density, &
+              point%log10_temperature, point%hydrogen_fraction, res_z2%opacity, &
+              res_z2%log10_opacity, res_z2%dlnkap_dlnrho, res_z2%dlnkap_dlnt, ierr)
+         if (ierr /= 0) return
+         call blend_results_in_z(res, res_z2, point%metal_fraction, &
+              settings%opal_table_z1, settings%opal_table_z2)
+      end if
+end subroutine lookup_opal92
+
+subroutine core_lookup_opal92(settings, tables, point, res, table_z, ierr)
+      type(kap_settings_t), intent(in) :: settings
+      type(opacity_table_state), intent(inout) :: tables
+      type(kap_point), intent(in) :: point
+      type(kap_result), intent(inout) :: res
+      real(dp), intent(out) :: table_z
+      integer, intent(out) :: ierr
+
+      call compute_opal92_opacity(tables%opal92(1), point%log10_density, &
+           point%log10_temperature, point%hydrogen_fraction, res%opacity, &
+           res%log10_opacity, res%dlnkap_dlnrho, res%dlnkap_dlnt, ierr)
+      table_z = settings%opal_table_z1
+end subroutine core_lookup_opal92
 
 end module opal92_opacity

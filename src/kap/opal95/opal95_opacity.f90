@@ -15,13 +15,15 @@
 !                                 (X, T, R) or 4D (Z, X, T, R)
 !                                 Lagrange interpolation
 ! The tables and the interpolation state live in opacity_tables
-! (opacity_table%opal95_*).
+! (tbl%*).
 module opal95_opacity
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use opacity_tables, only: kap_settings, n_opal95_d, n_opal95_t, &
-           n_opal95_tables, n_opal95_x, n_opal95_z, opacity_table, &
-           opal95_composition_tol, opal95_missing_opacity, &
-           opal95_missing_test, stencil4_locate_opal95
+      use opacity_tables, only: n_opal95_d, n_opal95_t, n_opal95_tables, &
+           n_opal95_x, n_opal95_z, opal95_composition_tol, &
+           opal95_missing_opacity, opal95_missing_test, opal95_table_set, &
+           stencil4_locate_opal95, kap_settings_t, kap_table_paths_t, &
+           opacity_table_state
+      use opacity_source, only: kap_point, kap_result, kap_source
       use numerics_lib, only: interp, lagrange4
       use kap_messages, only: kap_log, kap_report, kap_terminal, message_length, &
            unwritten_line
@@ -29,6 +31,7 @@ module opal95_opacity
       use math_lib
       implicit none
       private
+      public :: opal95_source
       public :: read_opal95_tables, build_opal95_surface_table, compute_opal95_opacity
 
 contains
@@ -41,7 +44,10 @@ contains
 ! skipping the header, then builds the fixed-Z table via
 ! build_opal95_fixed_z_table. Any premature end of file (fewer than n_opal95_tables
 ! tables, or a truncated table body) is reported and returns ierr = 1.
-subroutine read_opal95_tables(opal95_table_path, ierr)
+subroutine read_opal95_tables(tbl, opal95_table_path, single_table_z, ierr)
+      type(opal95_table_set), intent(inout) :: tbl
+! the Z of the fixed-Z table (opal95_single_table_z)
+      real(dp), intent(in) :: single_table_z
       integer, intent(out) :: ierr
 
 ! the table file's unit
@@ -78,13 +84,13 @@ subroutine read_opal95_tables(opal95_table_path, ierr)
       nn = 1
 !     Entry point for getting new tables.
       table_loop: do
-      n = opacity_table%opal95_table_start_index(iz)+ix
+      n = tbl%table_start_index(iz)+ix
       if (ix < n_opal95_x) then
-         xxt = opacity_table%opal95_grid_x(ix)
+         xxt = tbl%grid_x(ix)
       else
-         xxt = 1.0d0 - opacity_table%opal95_grid_z(iz)
+         xxt = 1.0d0 - tbl%grid_z(iz)
       endif
-      if (opacity_table%opal95_grid_z(iz) /= zz .or. xxt /= xx) then
+      if (tbl%grid_z(iz) /= zz .or. xxt /= xx) then
        lines = unwritten_line
        write(lines,*)' OPAL95: Z ERROR INCOMPATIBLE TABLE'
        call kap_log(lines)
@@ -95,7 +101,7 @@ subroutine read_opal95_tables(opal95_table_path, ierr)
       endif
 
 !     Read in header info: Grid in rho/T6**3
-      read(table_unit,20,iostat=read_status) (opacity_table%opal95_grid_logr(i),i=1,n_opal95_d)
+      read(table_unit,20,iostat=read_status) (tbl%grid_logr(i),i=1,n_opal95_d)
       if (read_status < 0) then
          lines = unwritten_line
          write(lines,*) 'read_opal95_tables: OPAL95 opacity table file ended after ', nn-1, &
@@ -110,46 +116,46 @@ subroutine read_opal95_tables(opal95_table_path, ierr)
 !     Read in full table: Log cappa as a function of log T and
 !     LOG R = RHO/T6**3
       do i = 1,57
-         read(table_unit,30,end=9999,err=9998) opacity_table%opal95_grid_logt(i), &
-              (opacity_table%opal95_full_opacity(n,i,j),j=1,n_opal95_d)
+         read(table_unit,30,end=9999,err=9998) tbl%grid_logt(i), &
+              (tbl%full_opacity(n,i,j),j=1,n_opal95_d)
       end do
    30 format(f4.2,19f7.3)
 ! MHP 12/97 now treat corner without data.
-      read(table_unit,31,end=9999,err=9998) opacity_table%opal95_grid_logt(58), &
-           (opacity_table%opal95_full_opacity(n,58,j),j=1,n_opal95_d-1)
+      read(table_unit,31,end=9999,err=9998) tbl%grid_logt(58), &
+           (tbl%full_opacity(n,58,j),j=1,n_opal95_d-1)
    31 format(f4.2,18f7.3)
 
-      opacity_table%opal95_full_opacity(n,58,n_opal95_d) = opal95_missing_opacity
+      tbl%full_opacity(n,58,n_opal95_d) = opal95_missing_opacity
       do i = 59,60
-         read(table_unit,32,end=9999,err=9998) opacity_table%opal95_grid_logt(i), &
-              (opacity_table%opal95_full_opacity(n,i,j),j=1,n_opal95_d-2)
+         read(table_unit,32,end=9999,err=9998) tbl%grid_logt(i), &
+              (tbl%full_opacity(n,i,j),j=1,n_opal95_d-2)
    32    format(f4.2,17f7.3)
          do j = n_opal95_d-1,n_opal95_d
-            opacity_table%opal95_full_opacity(n,i,j) = opal95_missing_opacity
+            tbl%full_opacity(n,i,j) = opal95_missing_opacity
          end do
       end do
       do i = 61,64
-         read(table_unit,33,end=9999,err=9998) opacity_table%opal95_grid_logt(i), &
-              (opacity_table%opal95_full_opacity(n,i,j),j=1,n_opal95_d-3)
+         read(table_unit,33,end=9999,err=9998) tbl%grid_logt(i), &
+              (tbl%full_opacity(n,i,j),j=1,n_opal95_d-3)
    33    format(f4.2,16f7.3)
          do j = n_opal95_d-2,n_opal95_d
-            opacity_table%opal95_full_opacity(n,i,j) = opal95_missing_opacity
+            tbl%full_opacity(n,i,j) = opal95_missing_opacity
          end do
       end do
       do i = 65,69
-         read(table_unit,34,end=9999,err=9998) opacity_table%opal95_grid_logt(i), &
-              (opacity_table%opal95_full_opacity(n,i,j),j=1,n_opal95_d-4)
+         read(table_unit,34,end=9999,err=9998) tbl%grid_logt(i), &
+              (tbl%full_opacity(n,i,j),j=1,n_opal95_d-4)
    34    format(f4.2,15f7.3)
          do j = n_opal95_d-3,n_opal95_d
-            opacity_table%opal95_full_opacity(n,i,j) = opal95_missing_opacity
+            tbl%full_opacity(n,i,j) = opal95_missing_opacity
          end do
       end do
       i = n_opal95_t
-      read(table_unit,35,end=9999,err=9998) opacity_table%opal95_grid_logt(i), &
-           (opacity_table%opal95_full_opacity(n,i,j),j=1,n_opal95_d-5)
+      read(table_unit,35,end=9999,err=9998) tbl%grid_logt(i), &
+           (tbl%full_opacity(n,i,j),j=1,n_opal95_d-5)
    35 format(f4.2,14f7.3)
       do j = n_opal95_d-4,n_opal95_d
-         opacity_table%opal95_full_opacity(n,i,j) = opal95_missing_opacity
+         tbl%full_opacity(n,i,j) = opal95_missing_opacity
       end do
 
 !     Exit if correct number of tables read in.
@@ -196,9 +202,9 @@ subroutine read_opal95_tables(opal95_table_path, ierr)
 !     Note that for metal diffusion a 4-d interpolation (in X,Z,T,rho)
 !     is performed rather than a linear interpolation between two fixed
 !     Z TABLES.
-      target_z = kap_settings%opal95_single_table_z
+      target_z = single_table_z
 
-      call build_opal95_fixed_z_table(target_z, ierr)
+      call build_opal95_fixed_z_table(tbl, target_z, ierr)
       return
 !     A table header that does not read.
  9997 lines = unwritten_line
@@ -229,8 +235,9 @@ end subroutine read_opal95_tables
 ! MHP 7/98 compute opacity table at fixed Z from the full OP95 set.
 ! Builds the fixed-Z (X, T, rho) opacity table by cubic interpolation
 ! across the 4 nearest Z tables in the full OPAL95 table set
-! (opacity_table%opal95_full_opacity, filled by read_opal95_tables).
-subroutine build_opal95_fixed_z_table(metal_fraction, ierr)
+! (tbl%full_opacity, filled by read_opal95_tables).
+subroutine build_opal95_fixed_z_table(tbl, metal_fraction, ierr)
+      type(opal95_table_set), intent(inout) :: tbl
 
       integer, intent(out) :: ierr
 
@@ -242,17 +249,17 @@ subroutine build_opal95_fixed_z_table(metal_fraction, ierr)
       character(len=message_length) :: lines(2)
 
       ierr = 0
-      opacity_table%opal95_fixed_z = metal_fraction
+      tbl%fixed_z = metal_fraction
 !  Find 4 nearest tables in Z to desired value.
 ! (the last stencil, the top four nodes, for Z above the next-to-last
 ! node; only a Z above the top node is refused)
       do i = 3,n_opal95_z-1
-         if (opacity_table%opal95_grid_z(i) >= metal_fraction) then
+         if (tbl%grid_z(i) >= metal_fraction) then
             z_table_index = i - 2
             exit
          endif
       end do
-      if (i > (n_opal95_z-1) .and. metal_fraction <= opacity_table%opal95_grid_z(n_opal95_z)) then
+      if (i > (n_opal95_z-1) .and. metal_fraction <= tbl%grid_z(n_opal95_z)) then
          z_table_index = n_opal95_z - 3
       else if (i > (n_opal95_z-1)) then
       lines = unwritten_line
@@ -266,21 +273,21 @@ subroutine build_opal95_fixed_z_table(metal_fraction, ierr)
       end if
 !  Find interpolation factors in Z.
       do i = 1,4
-         table_z_nodes(i) = opacity_table%opal95_grid_z(z_table_index+i-1)
+         table_z_nodes(i) = tbl%grid_z(z_table_index+i-1)
       end do
       call interp(table_z_nodes, z_weight, x_eval=metal_fraction)
 !  For X tables 1-8, all values of Z present; perform interpolation.
       do i = 1,8
 ! Indices for 4 desired compositions.
-         table1_index = opacity_table%opal95_table_start_index(z_table_index)+i
-         table2_index = opacity_table%opal95_table_start_index(z_table_index+1)+i
-         table3_index = opacity_table%opal95_table_start_index(z_table_index+2)+i
-         table4_index = opacity_table%opal95_table_start_index(z_table_index+3)+i
+         table1_index = tbl%table_start_index(z_table_index)+i
+         table2_index = tbl%table_start_index(z_table_index+1)+i
+         table3_index = tbl%table_start_index(z_table_index+2)+i
+         table4_index = tbl%table_start_index(z_table_index+3)+i
          do j = 1,n_opal95_t
             do k = 1,n_opal95_d
-               opacity_table%opal95_fixed_z_opacity(i,j,k) = z_weight(1)*opacity_table%opal95_full_opacity(table1_index,j,k)+ &
-               z_weight(2)*opacity_table%opal95_full_opacity(table2_index,j,k)+z_weight(3)*opacity_table%opal95_full_opacity(table3_index,j,k)+ &
-               z_weight(4)*opacity_table%opal95_full_opacity(table4_index,j,k)
+               tbl%fixed_z_opacity(i,j,k) = z_weight(1)*tbl%full_opacity(table1_index,j,k)+ &
+               z_weight(2)*tbl%full_opacity(table2_index,j,k)+z_weight(3)*tbl%full_opacity(table3_index,j,k)+ &
+               z_weight(4)*tbl%full_opacity(table4_index,j,k)
             end do
          end do
       end do
@@ -289,10 +296,10 @@ subroutine build_opal95_fixed_z_table(metal_fraction, ierr)
       if (metal_fraction < 0.04d0) then
 !  Otherwise, check to ensure that the 4 Z tables used have Z < 0.04
 !  adjust interpolation factors if needed
-      if (opacity_table%opal95_grid_z(z_table_index+3) > 0.04d0) then
+      if (tbl%grid_z(z_table_index+3) > 0.04d0) then
          z_table_index2 = n_opal95_z - 6
          do i = 1,4
-            table_z_nodes(i) = opacity_table%opal95_grid_z(z_table_index2+i-1)
+            table_z_nodes(i) = tbl%grid_z(z_table_index2+i-1)
          end do
          call interp(table_z_nodes, z_weight_hix, x_eval=metal_fraction)
       else
@@ -301,25 +308,25 @@ subroutine build_opal95_fixed_z_table(metal_fraction, ierr)
             z_weight_hix(i) = z_weight(i)
          end do
       endif
-      table1_index = opacity_table%opal95_table_start_index(z_table_index2)+9
-      table2_index = opacity_table%opal95_table_start_index(z_table_index2+1)+9
-      table3_index = opacity_table%opal95_table_start_index(z_table_index2+2)+9
-      table4_index = opacity_table%opal95_table_start_index(z_table_index2+3)+9
+      table1_index = tbl%table_start_index(z_table_index2)+9
+      table2_index = tbl%table_start_index(z_table_index2+1)+9
+      table3_index = tbl%table_start_index(z_table_index2+2)+9
+      table4_index = tbl%table_start_index(z_table_index2+3)+9
       do j = 1,n_opal95_t
          do k = 1,n_opal95_d
-            opacity_table%opal95_fixed_z_opacity(9,j,k) = z_weight_hix(1)*opacity_table%opal95_full_opacity(table1_index,j,k)+ &
-            z_weight_hix(2)*opacity_table%opal95_full_opacity(table2_index,j,k)+z_weight_hix(3)*opacity_table%opal95_full_opacity(table3_index,j,k)+ &
-            z_weight_hix(4)*opacity_table%opal95_full_opacity(table4_index,j,k)
+            tbl%fixed_z_opacity(9,j,k) = z_weight_hix(1)*tbl%full_opacity(table1_index,j,k)+ &
+            z_weight_hix(2)*tbl%full_opacity(table2_index,j,k)+z_weight_hix(3)*tbl%full_opacity(table3_index,j,k)+ &
+            z_weight_hix(4)*tbl%full_opacity(table4_index,j,k)
          end do
       end do
       end if
 !  Table 10 (X = 1-Z) is always built. There is no X = 1-Z table at
 !  Z = 0.1, so a stencil that reaches Z = 0.1 is replaced by the four
 !  nodes below it (extrapolating for Z above 0.08).
-      if (opacity_table%opal95_grid_z(z_table_index+3) >= 0.1d0) then
+      if (tbl%grid_z(z_table_index+3) >= 0.1d0) then
          z_table_index2 = n_opal95_z - 4
          do i = 1,4
-            table_z_nodes(i) = opacity_table%opal95_grid_z(z_table_index2+i-1)
+            table_z_nodes(i) = tbl%grid_z(z_table_index2+i-1)
          end do
          call interp(table_z_nodes, z_weight_hix, x_eval=metal_fraction)
       else
@@ -328,15 +335,15 @@ subroutine build_opal95_fixed_z_table(metal_fraction, ierr)
             z_weight_hix(i) = z_weight(i)
          end do
       endif
-      table1_index = opacity_table%opal95_table_start_index(z_table_index2)+10
-      table2_index = opacity_table%opal95_table_start_index(z_table_index2+1)+10
-      table3_index = opacity_table%opal95_table_start_index(z_table_index2+2)+10
-      table4_index = opacity_table%opal95_table_start_index(z_table_index2+3)+10
+      table1_index = tbl%table_start_index(z_table_index2)+10
+      table2_index = tbl%table_start_index(z_table_index2+1)+10
+      table3_index = tbl%table_start_index(z_table_index2+2)+10
+      table4_index = tbl%table_start_index(z_table_index2+3)+10
       do j = 1,n_opal95_t
          do k = 1,n_opal95_d
-            opacity_table%opal95_fixed_z_opacity(10,j,k) = z_weight_hix(1)*opacity_table%opal95_full_opacity(table1_index,j,k)+ &
-            z_weight_hix(2)*opacity_table%opal95_full_opacity(table2_index,j,k)+z_weight_hix(3)*opacity_table%opal95_full_opacity(table3_index,j,k)+ &
-            z_weight_hix(4)*opacity_table%opal95_full_opacity(table4_index,j,k)
+            tbl%fixed_z_opacity(10,j,k) = z_weight_hix(1)*tbl%full_opacity(table1_index,j,k)+ &
+            z_weight_hix(2)*tbl%full_opacity(table2_index,j,k)+z_weight_hix(3)*tbl%full_opacity(table3_index,j,k)+ &
+            z_weight_hix(4)*tbl%full_opacity(table4_index,j,k)
          end do
       end do
 end subroutine build_opal95_fixed_z_table
@@ -348,9 +355,10 @@ end subroutine build_opal95_fixed_z_table
 ! THE MODEL Z. Builds the surface (T, rho) opacity table for the
 ! given hydrogen abundance by cubic interpolation across the 4
 ! nearest X tables in the fixed-Z table set
-! (opacity_table%opal95_fixed_z_opacity, filled by
+! (tbl%fixed_z_opacity, filled by
 ! build_opal95_fixed_z_table).
-subroutine build_opal95_surface_table(hydrogen_fraction)
+subroutine build_opal95_surface_table(tbl, hydrogen_fraction)
+      type(opal95_table_set), intent(inout) :: tbl
 
 
       real(dp), intent(in) :: hydrogen_fraction
@@ -362,15 +370,15 @@ subroutine build_opal95_surface_table(hydrogen_fraction)
 ! this value means "tables 6, 7, 8 and 10" (table 9 absent).
       integer, parameter :: x_stencil_6_7_8_10 = 11
 
-      opacity_table%opal95_surface_x = hydrogen_fraction
+      tbl%surface_x = hydrogen_fraction
 !  Find 4 nearest tables in X to desired value.
       if (hydrogen_fraction <= 0.8d0 .or. &
-           opacity_table%opal95_fixed_z <= 0.04d0) then
+           tbl%fixed_z <= 0.04d0) then
 ! All four X tables present: Either X is below the high-X gap, or
 ! the high X tables are present at this low Z.
 ! (2026 readability: the two branches were identical and were merged.)
          do i = 3,n_opal95_x-1
-            if (opacity_table%opal95_grid_x(i) >= hydrogen_fraction) then
+            if (tbl%grid_x(i) >= hydrogen_fraction) then
                x_table_index = i - 2
                exit
             endif
@@ -379,22 +387,22 @@ subroutine build_opal95_surface_table(hydrogen_fraction)
          x_table_index = n_opal95_x - 3
          end if
          do i = 1,4
-            table_x_nodes(i) = opacity_table%opal95_grid_x(x_table_index+i-1)
+            table_x_nodes(i) = tbl%grid_x(x_table_index+i-1)
          end do
-      else if (opacity_table%opal95_fixed_z >= 0.1d0) then
+      else if (tbl%fixed_z >= 0.1d0) then
 ! USE TABLES 6-9
          x_table_index = 6
          do i = 1,4
-            table_x_nodes(i) = opacity_table%opal95_grid_x(x_table_index+i-1)
+            table_x_nodes(i) = tbl%grid_x(x_table_index+i-1)
          end do
       else
 ! If Z is between 0.04 and 0.1, tables 1-8 and 10 exist.
 ! Since we have already determined that X > 0.8, use 6-8 and 10.
          x_table_index = x_stencil_6_7_8_10
-         table_x_nodes(1) = opacity_table%opal95_grid_x(6)
-         table_x_nodes(2) = opacity_table%opal95_grid_x(7)
-         table_x_nodes(3) = opacity_table%opal95_grid_x(8)
-         table_x_nodes(4) = opacity_table%opal95_grid_x(10)
+         table_x_nodes(1) = tbl%grid_x(6)
+         table_x_nodes(2) = tbl%grid_x(7)
+         table_x_nodes(3) = tbl%grid_x(8)
+         table_x_nodes(4) = tbl%grid_x(10)
       endif
 !
 !  Find interpolation factors in X.
@@ -413,9 +421,9 @@ subroutine build_opal95_surface_table(hydrogen_fraction)
       endif
       do j = 1,n_opal95_t
          do k = 1,n_opal95_d
-            opacity_table%opal95_surface_opacity(j,k) = x_weight(1)*opacity_table%opal95_fixed_z_opacity(table1_index,j,k) + &
-            x_weight(2)*opacity_table%opal95_fixed_z_opacity(table2_index,j,k) + x_weight(3)*opacity_table%opal95_fixed_z_opacity(table3_index,j,k) + &
-            x_weight(4)*opacity_table%opal95_fixed_z_opacity(table4_index,j,k)
+            tbl%surface_opacity(j,k) = x_weight(1)*tbl%fixed_z_opacity(table1_index,j,k) + &
+            x_weight(2)*tbl%fixed_z_opacity(table2_index,j,k) + x_weight(3)*tbl%fixed_z_opacity(table3_index,j,k) + &
+            x_weight(4)*tbl%fixed_z_opacity(table4_index,j,k)
          end do
       end do
 end subroutine build_opal95_surface_table
@@ -436,8 +444,9 @@ end subroutine build_opal95_surface_table
 ! Determines whether a 2D (rho,T), 3D (X,rho,T), or 4D (Z,X,rho,T)
 ! interpolation is required and dispatches to interpolate_opal95_2d/3d/4d
 ! accordingly.
-subroutine compute_opal95_opacity(log10_density, log10_temperature, hydrogen_fraction, &
+subroutine compute_opal95_opacity(tbl, log10_density, log10_temperature, hydrogen_fraction, &
      metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr)
+      type(opal95_table_set), intent(inout) :: tbl
 
       real(dp), intent(in) :: log10_density, log10_temperature, &
            hydrogen_fraction, metal_fraction
@@ -450,15 +459,22 @@ subroutine compute_opal95_opacity(log10_density, log10_temperature, hydrogen_fra
       logical :: density_shifted
       integer :: x_table_index, density_base_index, temp_row_index
       real(dp) :: extrap_logr, z_at_table
+! the call's stencil (its first indices are tbl's cursors): the weights
+! in Z, in X for each Z row, in T and in log R for each T row, with the T
+! and log R derivative weights; log R, and where it is extrapolated from
+      real(dp) :: weight_z(4), weight_x(4,4), weight_t(4), dweight_t(4), &
+           weight_rho(4,4), dweight_rho(4,4)
+      real(dp) :: logr, logr_lo_edge, logr_hi_edge(4)
+      logical :: extrap_lo, extrap_hi, extrap_hi_row(4)
       character(len=message_length) :: lines(1)
 
 !     Ensure that we are within the OPAL 95 tables.
 !     Compute log R = rho/T6**3
       ierr = 0
-      opacity_table%opal95_logr = log10_density - 3.0d0*(log10_temperature-6.0d0)
+      logr = log10_density - 3.0d0*(log10_temperature-6.0d0)
 !     CHECK T
-      if (log10_temperature < opacity_table%opal95_grid_logt(1) .or. &
-           log10_temperature > opacity_table%opal95_grid_logt(n_opal95_t)) then
+      if (log10_temperature < tbl%grid_logt(1) .or. &
+           log10_temperature > tbl%grid_logt(n_opal95_t)) then
          lines = unwritten_line
          write(lines,5) log10_temperature
     5    format(' LOG T OF',f11.6,'OUT OF OPAL 95 TABLE RANGE')
@@ -470,28 +486,28 @@ subroutine compute_opal95_opacity(log10_density, log10_temperature, hydrogen_fra
       endif
 !     Check to see if extrapolation below the first table element
 !     in density is needed.
-      if (opacity_table%opal95_logr < opacity_table%opal95_grid_logr(1)) then
-         opacity_table%opal95_extrap_lo = .true.
+      if (logr < tbl%grid_logr(1)) then
+         extrap_lo = .true.
       else
-         opacity_table%opal95_extrap_lo = .false.
+         extrap_lo = .false.
       endif
 !     (No low-R range check: the region below the first table element
 !     is handled by linear extrapolation in R from the last two opacity
 !     values, opal95_extrap_lo above.)
 !     get interpolation factors in T
-      call stencil4_locate_opal95(opacity_table%opal95_grid_logt, n_opal95_t, log10_temperature, opacity_table%opal95_index_t)
+      call stencil4_locate_opal95(tbl%grid_logt, n_opal95_t, log10_temperature, tbl%index_t)
 !     T interpolation factors
       do i = 1,4
-         interp_nodes(i) = opacity_table%opal95_grid_logt(opacity_table%opal95_index_t+i-1)
+         interp_nodes(i) = tbl%grid_logt(tbl%index_t+i-1)
       end do
 !     Get interpolation factors in T
       call interp(interp_nodes, weight, dweight, log10_temperature)
       do i = 1,4
-         opacity_table%opal95_weight_t(i) = weight(i)
-         opacity_table%opal95_dweight_t(i) = dweight(i)
+         weight_t(i) = weight(i)
+         dweight_t(i) = dweight(i)
       end do
 !     Get indices in rho for each of the 4 T values.
-      call stencil4_locate_opal95(opacity_table%opal95_grid_logr, n_opal95_d, opacity_table%opal95_logr, opacity_table%opal95_index_rho(1))
+      call stencil4_locate_opal95(tbl%grid_logr, n_opal95_d, logr, tbl%index_rho(1))
 !     Now check if within portion of table with data.
 !     Note that a point can be within the table and still have the
 !     4x4 matrix of T,rho around it outside the table.
@@ -501,13 +517,13 @@ subroutine compute_opal95_opacity(log10_density, log10_temperature, hydrogen_fra
 !     was never written, so the stencil is used as found, without the
 !     high-rho shift or extrapolation.
       density_shifted = .false.
-      opacity_table%opal95_extrap_hi = .false.
-      opacity_table%opal95_extrap_hi_row = .false.
-      if (.not. (hydrogen_fraction < 0.2d0 .and. opacity_table%opal95_index_t <= 5)) then
+      extrap_hi = .false.
+      extrap_hi_row = .false.
+      if (.not. (hydrogen_fraction < 0.2d0 .and. tbl%index_t <= 5)) then
 !     Check high rho, high T regime(because of the table geometry, the
 !     point will fall outside the table first at the highest T).
-      if (opacity_table%opal95_fixed_z_opacity(opacity_table%opal95_index_x(1,1),opacity_table%opal95_index_t+3, &
-           opacity_table%opal95_index_rho(1)+3) >= opal95_missing_test) then
+      if (tbl%fixed_z_opacity(tbl%index_x(1,1),tbl%index_t+3, &
+           tbl%index_rho(1)+3) >= opal95_missing_test) then
          density_shifted = .true.
 !        Now there are two possible solutions: We can use a different set
 !        of densities for each temperature and stay within the table, or
@@ -515,30 +531,30 @@ subroutine compute_opal95_opacity(log10_density, log10_temperature, hydrogen_fra
 !        temperatures.  If the desired density is outside the table,
 !        linear extrapolation in R at fixed T is used.
          do k = 1,4
-            if (opacity_table%opal95_fixed_z_opacity(opacity_table%opal95_index_x(1,1),opacity_table%opal95_index_t+k-1, &
-                 opacity_table%opal95_index_rho(1)+1) >= opal95_missing_test) then
-               opacity_table%opal95_extrap_hi = .true.
-               opacity_table%opal95_extrap_hi_row(k) = .true.
+            if (tbl%fixed_z_opacity(tbl%index_x(1,1),tbl%index_t+k-1, &
+                 tbl%index_rho(1)+1) >= opal95_missing_test) then
+               extrap_hi = .true.
+               extrap_hi_row(k) = .true.
             else
-               opacity_table%opal95_extrap_hi_row(k) = .false.
+               extrap_hi_row(k) = .false.
             endif
          end do
 !        Find 4 nearest elements within the table at each of the 4 temperatures.
-         x_table_index = opacity_table%opal95_index_x(1,1)
-         density_base_index = opacity_table%opal95_index_rho(1)
+         x_table_index = tbl%index_x(1,1)
+         density_base_index = tbl%index_rho(1)
          do i = 1,4
-            temp_row_index = opacity_table%opal95_index_t+i-1
-            if (opacity_table%opal95_fixed_z_opacity(x_table_index,temp_row_index, &
+            temp_row_index = tbl%index_t+i-1
+            if (tbl%fixed_z_opacity(x_table_index,temp_row_index, &
                  density_base_index+3) > opal95_missing_test) then
                do j = density_base_index+2,1,-1
-                  if (opacity_table%opal95_full_opacity(x_table_index,temp_row_index,j) <= opal95_missing_test) then
-                     opacity_table%opal95_index_rho(i) = j - 3
+                  if (tbl%full_opacity(x_table_index,temp_row_index,j) <= opal95_missing_test) then
+                     tbl%index_rho(i) = j - 3
                      density_base_index = j - 3
                      exit
                   endif
                end do
             else
-               opacity_table%opal95_index_rho(i) = density_base_index
+               tbl%index_rho(i) = density_base_index
             endif
          end do
       endif
@@ -547,119 +563,119 @@ subroutine compute_opal95_opacity(log10_density, log10_temperature, hydrogen_fra
 !     Assign all the same values if grid in R is same for all T.
       if (.not.density_shifted) then
          do i = 1,4
-            interp_nodes(i) = opacity_table%opal95_grid_logr(opacity_table%opal95_index_rho(1)+i-1)
+            interp_nodes(i) = tbl%grid_logr(tbl%index_rho(1)+i-1)
          end do
-         if (.not.opacity_table%opal95_extrap_lo) then
-            call interp(interp_nodes, weight, dweight, opacity_table%opal95_logr)
+         if (.not.extrap_lo) then
+            call interp(interp_nodes, weight, dweight, logr)
          else
-            opacity_table%opal95_logr_lo_edge = opacity_table%opal95_grid_logr(1)
-            call interp(interp_nodes, weight, dweight, opacity_table%opal95_logr_lo_edge)
+            logr_lo_edge = tbl%grid_logr(1)
+            call interp(interp_nodes, weight, dweight, logr_lo_edge)
          endif
          do j = 1,4
-            opacity_table%opal95_index_rho(j) = opacity_table%opal95_index_rho(1)
+            tbl%index_rho(j) = tbl%index_rho(1)
             do i = 1,4
-               opacity_table%opal95_weight_rho(j,i) = weight(i)
-               opacity_table%opal95_dweight_rho(j,i) = dweight(i)
+               weight_rho(j,i) = weight(i)
+               dweight_rho(j,i) = dweight(i)
             end do
          end do
       else
          do j = 1,4
             do i = 1,4
-               interp_nodes(i) = opacity_table%opal95_grid_logr(opacity_table%opal95_index_rho(j)+i-1)
+               interp_nodes(i) = tbl%grid_logr(tbl%index_rho(j)+i-1)
             end do
 !           If extrapolation is being performed, assign R=redge
 !           and extrapolate linearly later
-            if (.not.opacity_table%opal95_extrap_hi_row(j)) then
-               call interp(interp_nodes, weight, dweight, opacity_table%opal95_logr)
+            if (.not.extrap_hi_row(j)) then
+               call interp(interp_nodes, weight, dweight, logr)
             else
-               extrap_logr = opacity_table%opal95_grid_logr(opacity_table%opal95_index_rho(j)+3)
+               extrap_logr = tbl%grid_logr(tbl%index_rho(j)+3)
                call interp(interp_nodes, weight, dweight, extrap_logr)
-               opacity_table%opal95_logr_hi_edge(j) = extrap_logr
+               logr_hi_edge(j) = extrap_logr
             endif
             do i = 1,4
-               opacity_table%opal95_weight_rho(j,i) = weight(i)
-               opacity_table%opal95_dweight_rho(j,i) = dweight(i)
+               weight_rho(j,i) = weight(i)
+               dweight_rho(j,i) = dweight(i)
             end do
          end do
       endif
 !     Determine whether a 2d (rho,T); 3d (X,rho,T); or 4d (Z,X,rho,T)
 !     interpolation is needed to get the opacity.
 !     (The retired acoustic-depth mode used to force 4D here.)
-      if (abs(metal_fraction-opacity_table%opal95_fixed_z)/max(opacity_table%opal95_fixed_z,1.0d-6) <= opal95_composition_tol) then
-         if (abs(hydrogen_fraction-opacity_table%opal95_surface_x) <= opal95_composition_tol) then
+      if (abs(metal_fraction-tbl%fixed_z)/max(tbl%fixed_z,1.0d-6) <= opal95_composition_tol) then
+         if (abs(hydrogen_fraction-tbl%surface_x) <= opal95_composition_tol) then
 !           2d interpolation in surface table
-            call interpolate_opal95_2d(opacity_table%opal95_index_t, opacity_table%opal95_index_rho, &
-     opacity_table%opal95_weight_t, opacity_table%opal95_dweight_t, &
-     opacity_table%opal95_weight_rho, opacity_table%opal95_dweight_rho, &
-     opacity_table%opal95_logr, opacity_table%opal95_logr_lo_edge, &
-     opacity_table%opal95_logr_hi_edge, opacity_table%opal95_extrap_lo, &
-     opacity_table%opal95_extrap_hi, opacity_table%opal95_extrap_hi_row, &
+            call interpolate_opal95_2d(tbl, tbl%index_t, tbl%index_rho, &
+     weight_t, dweight_t, &
+     weight_rho, dweight_rho, &
+     logr, logr_lo_edge, &
+     logr_hi_edge, extrap_lo, &
+     extrap_hi, extrap_hi_row, &
      opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
             return
          else
 !           3d interpolation in fixed Z table (X,T,rho)
 !           get interpolation factors in X.
-         call locate_opal95_x_stencil(1, opacity_table%opal95_fixed_z, hydrogen_fraction)
-         call interpolate_opal95_3d(opacity_table%opal95_index_x(1,:), &
-     opacity_table%opal95_weight_x(1,:), opacity_table%opal95_index_t, opacity_table%opal95_index_rho, &
-     opacity_table%opal95_weight_t, opacity_table%opal95_dweight_t, &
-     opacity_table%opal95_weight_rho, opacity_table%opal95_dweight_rho, &
-     opacity_table%opal95_logr, opacity_table%opal95_logr_lo_edge, &
-     opacity_table%opal95_logr_hi_edge, opacity_table%opal95_extrap_lo, &
-     opacity_table%opal95_extrap_hi, opacity_table%opal95_extrap_hi_row, &
+         call locate_opal95_x_stencil(1, tbl%fixed_z, hydrogen_fraction)
+         call interpolate_opal95_3d(tbl, tbl%index_x(1,:), &
+     weight_x(1,:), tbl%index_t, tbl%index_rho, &
+     weight_t, dweight_t, &
+     weight_rho, dweight_rho, &
+     logr, logr_lo_edge, &
+     logr_hi_edge, extrap_lo, &
+     extrap_hi, extrap_hi_row, &
      opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
          return
       endif
       endif
 !     4d interpolation in Z,X,T,rho
 !     get nearest tables in Z.
-      if (metal_fraction > opacity_table%opal95_grid_z(opacity_table%opal95_index_z+2)) then
+      if (metal_fraction > tbl%grid_z(tbl%index_z+2)) then
 !mhp 7/12 corrected typo
 !         DO I = JZ+3,NUMT-1
-         do i = opacity_table%opal95_index_z+3,n_opal95_z-1
-            if (metal_fraction < opacity_table%opal95_grid_z(i)) then
-               opacity_table%opal95_index_z = i - 2
+         do i = tbl%index_z+3,n_opal95_z-1
+            if (metal_fraction < tbl%grid_z(i)) then
+               tbl%index_z = i - 2
                exit
             endif
          end do
          if (i > (n_opal95_z-1)) then
-         opacity_table%opal95_index_z = n_opal95_z - 3
+         tbl%index_z = n_opal95_z - 3
          end if
       else
-         do i = opacity_table%opal95_index_z+1,2,-1
-            if (metal_fraction >= opacity_table%opal95_grid_z(i)) then
-               opacity_table%opal95_index_z = i - 1
+         do i = tbl%index_z+1,2,-1
+            if (metal_fraction >= tbl%grid_z(i)) then
+               tbl%index_z = i - 1
                exit
             endif
          end do
          if (i < (2)) then
-         opacity_table%opal95_index_z = 1
+         tbl%index_z = 1
          end if
       endif
 !     mhp 7/12 added failsafe
-      opacity_table%opal95_index_z = min(opacity_table%opal95_index_z,n_opal95_z-3)
+      tbl%index_z = min(tbl%index_z,n_opal95_z-3)
 !     Z interpolation factors
       do i = 1,4
-         interp_nodes(i) = opacity_table%opal95_grid_z(opacity_table%opal95_index_z+i-1)
+         interp_nodes(i) = tbl%grid_z(tbl%index_z+i-1)
       end do
 !     Interpolation factors in Z
       call interp(interp_nodes, weight, x_eval=metal_fraction)
       do i = 1,4
-         opacity_table%opal95_weight_z(i) = weight(i)
+         weight_z(i) = weight(i)
       end do
 !     Get nearest tables in X at each value of Z
       do k = 1,4
-         z_at_table = opacity_table%opal95_grid_z(opacity_table%opal95_index_z+k-1)
+         z_at_table = tbl%grid_z(tbl%index_z+k-1)
          call locate_opal95_x_stencil(k, z_at_table, hydrogen_fraction)
       end do
-      call interpolate_opal95_4d(opacity_table%opal95_index_z, opacity_table%opal95_weight_z, &
-     opacity_table%opal95_index_x, opacity_table%opal95_weight_x, &
-     opacity_table%opal95_index_t, opacity_table%opal95_index_rho, &
-     opacity_table%opal95_weight_t, opacity_table%opal95_dweight_t, &
-     opacity_table%opal95_weight_rho, opacity_table%opal95_dweight_rho, &
-     opacity_table%opal95_logr, opacity_table%opal95_logr_lo_edge, &
-     opacity_table%opal95_logr_hi_edge, opacity_table%opal95_extrap_lo, &
-     opacity_table%opal95_extrap_hi, opacity_table%opal95_extrap_hi_row, &
+      call interpolate_opal95_4d(tbl, tbl%index_z, weight_z, &
+     tbl%index_x, weight_x, &
+     tbl%index_t, tbl%index_rho, &
+     weight_t, dweight_t, &
+     weight_rho, dweight_rho, &
+     logr, logr_lo_edge, &
+     logr_hi_edge, extrap_lo, &
+     extrap_hi, extrap_hi_row, &
      opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
       return
 
@@ -667,8 +683,8 @@ contains
 
 ! locate_opal95_x_stencil
 ! For Z row k of the stencil (Z value z_here), pick the four X tables
-! opacity_table%opal95_index_x(k,1:4) bracketing hydrogen_fraction and
-! store their weights in opacity_table%opal95_weight_x(k,1:4). The
+! tbl%index_x(k,1:4) bracketing hydrogen_fraction and
+! store their weights in weight_x(k,1:4). The
 ! warm-start search moves opal95_index_x(k,1) from its previous value;
 ! at Z >= 0.04 and X >= 0.8 the missing high-X tables (no X=0.95 for
 ! Z >= 0.04, no X=1-Z for Z >= 0.1) force the stencil to the top
@@ -681,63 +697,63 @@ subroutine locate_opal95_x_stencil(k, z_here, hydrogen_fraction)
       integer :: i, j, x_table_index, x_shift_base
       real(dp) :: interp_nodes(4), weight(4)
 
-      if (hydrogen_fraction > opacity_table%opal95_grid_x(opacity_table%opal95_index_x(k,1)+2)) then
-         do i = opacity_table%opal95_index_x(k,1)+3,n_opal95_x-1
-            if (hydrogen_fraction < opacity_table%opal95_grid_x(i)) then
-               opacity_table%opal95_index_x(k,1) = i - 2
+      if (hydrogen_fraction > tbl%grid_x(tbl%index_x(k,1)+2)) then
+         do i = tbl%index_x(k,1)+3,n_opal95_x-1
+            if (hydrogen_fraction < tbl%grid_x(i)) then
+               tbl%index_x(k,1) = i - 2
                exit
             endif
          end do
-         if (i > n_opal95_x-1) opacity_table%opal95_index_x(k,1) = n_opal95_x - 3
+         if (i > n_opal95_x-1) tbl%index_x(k,1) = n_opal95_x - 3
       else
-         do i = opacity_table%opal95_index_x(k,1)+1,2,-1
-            if (hydrogen_fraction >= opacity_table%opal95_grid_x(i)) then
-               opacity_table%opal95_index_x(k,1) = i - 1
+         do i = tbl%index_x(k,1)+1,2,-1
+            if (hydrogen_fraction >= tbl%grid_x(i)) then
+               tbl%index_x(k,1) = i - 1
                exit
             endif
          end do
-         if (i < 2) opacity_table%opal95_index_x(k,1) = 1
+         if (i < 2) tbl%index_x(k,1) = 1
       endif
 !     Check for absent tables at high X.
       if (z_here >= 0.04d0) then
          if (hydrogen_fraction >= 0.8d0) then
             if (z_here < 0.1d0) then
 !              NO TABLE 9 (X=0.95)
-               opacity_table%opal95_index_x(k,4) = n_opal95_x
-               opacity_table%opal95_index_x(k,3) = n_opal95_x - 2
-               opacity_table%opal95_index_x(k,2) = n_opal95_x - 3
-               opacity_table%opal95_index_x(k,1) = n_opal95_x - 4
+               tbl%index_x(k,4) = n_opal95_x
+               tbl%index_x(k,3) = n_opal95_x - 2
+               tbl%index_x(k,2) = n_opal95_x - 3
+               tbl%index_x(k,1) = n_opal95_x - 4
             else
 !              No table 9 or table 10
-               opacity_table%opal95_index_x(k,4) = n_opal95_x - 2
-               opacity_table%opal95_index_x(k,3) = n_opal95_x - 3
-               opacity_table%opal95_index_x(k,2) = n_opal95_x - 4
-               opacity_table%opal95_index_x(k,1) = n_opal95_x - 5
+               tbl%index_x(k,4) = n_opal95_x - 2
+               tbl%index_x(k,3) = n_opal95_x - 3
+               tbl%index_x(k,2) = n_opal95_x - 4
+               tbl%index_x(k,1) = n_opal95_x - 5
             endif
          else
-            x_shift_base = opacity_table%opal95_index_x(k,1) - 1
+            x_shift_base = tbl%index_x(k,1) - 1
             do i = 1,4
-               opacity_table%opal95_index_x(k,i) = x_shift_base + i
+               tbl%index_x(k,i) = x_shift_base + i
             end do
          endif
       else
-         x_shift_base = opacity_table%opal95_index_x(k,1) - 1
+         x_shift_base = tbl%index_x(k,1) - 1
          do i = 1,4
-            opacity_table%opal95_index_x(k,i) = x_shift_base + i
+            tbl%index_x(k,i) = x_shift_base + i
          end do
       endif
 !     X interpolation factors
       do i = 1,4
-         x_table_index = opacity_table%opal95_index_x(k,i)
-         interp_nodes(i) = opacity_table%opal95_grid_x(x_table_index)
+         x_table_index = tbl%index_x(k,i)
+         interp_nodes(i) = tbl%grid_x(x_table_index)
       end do
-      if (opacity_table%opal95_index_x(k,4) == n_opal95_x) then
+      if (tbl%index_x(k,4) == n_opal95_x) then
          interp_nodes(4) = 1.0d0 - z_here
       endif
 !     Get interpolation factors in X
       call interp(interp_nodes, weight, x_eval=hydrogen_fraction)
       do j = 1,4
-         opacity_table%opal95_weight_x(k,j) = weight(j)
+         weight_x(k,j) = weight(j)
       end do
 end subroutine locate_opal95_x_stencil
 
@@ -752,16 +768,17 @@ end subroutine compute_opal95_opacity
 ! surface composition exactly.
 ! 2026 wave 3 (R5): the T/rho stencil (indices, weights, log R
 ! extrapolation state) that compute_opal95_opacity computes per call used to reach
-! this routine as hidden module state (opacity_table%opal95_index_*,
+! this routine as hidden module state (tbl%index_*,
 ! opal95_weight_*, opal95_logr*, opal95_extrap_*); it now arrives as
 ! explicit intent(in) arguments, passed straight from those members by
 ! compute_opal95_opacity. The opacity tables themselves stay in opacity_table.
-pure subroutine interpolate_opal95_2d(index_t, index_rho, weight_t, dweight_t, &
+pure subroutine interpolate_opal95_2d(tbl, index_t, index_rho, weight_t, dweight_t, &
      weight_rho, dweight_rho, logr, logr_lo_edge, logr_hi_edge, &
      extrap_lo, extrap_hi, extrap_hi_row, &
      opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
 
 
+      type(opal95_table_set), intent(in) :: tbl
       integer, intent(in) :: index_t, index_rho(4)
       real(dp), intent(in) :: weight_t(4), dweight_t(4), &
            weight_rho(4,4), dweight_rho(4,4)
@@ -780,15 +797,15 @@ pure subroutine interpolate_opal95_2d(index_t, index_rho, weight_t, dweight_t, &
 ! For each T, interpolate in 4 values of R
          density_index = index_rho(i)
 ! Log cappa at desired rho for each of the 4 desired T.
-         logcappa_at_t(i) = weight_rho(i,1)*opacity_table%opal95_surface_opacity(temp_index,density_index) &
-              + weight_rho(i,2)*opacity_table%opal95_surface_opacity(temp_index,density_index+1) &
-              + weight_rho(i,3)*opacity_table%opal95_surface_opacity(temp_index,density_index+2) &
-              + weight_rho(i,4)*opacity_table%opal95_surface_opacity(temp_index,density_index+3)
+         logcappa_at_t(i) = weight_rho(i,1)*tbl%surface_opacity(temp_index,density_index) &
+              + weight_rho(i,2)*tbl%surface_opacity(temp_index,density_index+1) &
+              + weight_rho(i,3)*tbl%surface_opacity(temp_index,density_index+2) &
+              + weight_rho(i,4)*tbl%surface_opacity(temp_index,density_index+3)
 ! D log cappa/d log R for each of the 4 desired T.
-         dlogcappa_dlogr_at_t(i) = dweight_rho(i,1)*opacity_table%opal95_surface_opacity(temp_index,density_index) &
-              + dweight_rho(i,2)*opacity_table%opal95_surface_opacity(temp_index,density_index+1) &
-              + dweight_rho(i,3)*opacity_table%opal95_surface_opacity(temp_index,density_index+2) &
-              + dweight_rho(i,4)*opacity_table%opal95_surface_opacity(temp_index,density_index+3)
+         dlogcappa_dlogr_at_t(i) = dweight_rho(i,1)*tbl%surface_opacity(temp_index,density_index) &
+              + dweight_rho(i,2)*tbl%surface_opacity(temp_index,density_index+1) &
+              + dweight_rho(i,3)*tbl%surface_opacity(temp_index,density_index+2) &
+              + dweight_rho(i,4)*tbl%surface_opacity(temp_index,density_index+3)
       end do
 ! Check on whether rho is outside of the table and needs extrapolation
       if (extrap_lo) then
@@ -826,17 +843,18 @@ end subroutine interpolate_opal95_2d
 ! fraction but X does not match the surface composition.
 ! 2026 wave 3 (R5): the T/rho stencil (indices, weights, log R
 ! extrapolation state) that compute_opal95_opacity computes per call used to reach
-! this routine as hidden module state (opacity_table%opal95_index_*,
+! this routine as hidden module state (tbl%index_*,
 ! opal95_weight_*, opal95_logr*, opal95_extrap_*); it now arrives as
 ! explicit intent(in) arguments, passed straight from those members by
 ! compute_opal95_opacity. The opacity tables themselves stay in opacity_table.
-pure subroutine interpolate_opal95_3d(index_x, weight_x, index_t, index_rho, &
+pure subroutine interpolate_opal95_3d(tbl, index_x, weight_x, index_t, index_rho, &
      weight_t, dweight_t, weight_rho, dweight_rho, &
      logr, logr_lo_edge, logr_hi_edge, extrap_lo, extrap_hi, extrap_hi_row, &
      opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
 
 
-! X stencil: row 1 of compute_opal95_opacity's opal95_index_x/opal95_weight_x.
+      type(opal95_table_set), intent(in) :: tbl
+! X stencil: row 1 of compute_opal95_opacity's index_x/weight_x.
       integer, intent(in) :: index_x(4)
       real(dp), intent(in) :: weight_x(4)
       integer, intent(in) :: index_t, index_rho(4)
@@ -862,15 +880,15 @@ pure subroutine interpolate_opal95_3d(index_x, weight_x, index_t, index_rho, &
 ! For each T, get cappa for 4 values of R
             density_index = index_rho(i)
 ! Log cappa at desired rho for each of the 4 desired T.
-            logcappa_at_t(i) = weight_rho(i,1)*opacity_table%opal95_fixed_z_opacity(x_table_index,temp_index,density_index) &
-                 + weight_rho(i,2)*opacity_table%opal95_fixed_z_opacity(x_table_index,temp_index,density_index+1) &
-                 + weight_rho(i,3)*opacity_table%opal95_fixed_z_opacity(x_table_index,temp_index,density_index+2) &
-                 + weight_rho(i,4)*opacity_table%opal95_fixed_z_opacity(x_table_index,temp_index,density_index+3)
+            logcappa_at_t(i) = weight_rho(i,1)*tbl%fixed_z_opacity(x_table_index,temp_index,density_index) &
+                 + weight_rho(i,2)*tbl%fixed_z_opacity(x_table_index,temp_index,density_index+1) &
+                 + weight_rho(i,3)*tbl%fixed_z_opacity(x_table_index,temp_index,density_index+2) &
+                 + weight_rho(i,4)*tbl%fixed_z_opacity(x_table_index,temp_index,density_index+3)
 ! D log cappa/d log R for each of the 4 desired T.
-            dlogcappa_dlogr_at_t(i) = dweight_rho(i,1)*opacity_table%opal95_fixed_z_opacity(x_table_index,temp_index,density_index) &
-                 + dweight_rho(i,2)*opacity_table%opal95_fixed_z_opacity(x_table_index,temp_index,density_index+1) &
-                 + dweight_rho(i,3)*opacity_table%opal95_fixed_z_opacity(x_table_index,temp_index,density_index+2) &
-                 + dweight_rho(i,4)*opacity_table%opal95_fixed_z_opacity(x_table_index,temp_index,density_index+3)
+            dlogcappa_dlogr_at_t(i) = dweight_rho(i,1)*tbl%fixed_z_opacity(x_table_index,temp_index,density_index) &
+                 + dweight_rho(i,2)*tbl%fixed_z_opacity(x_table_index,temp_index,density_index+1) &
+                 + dweight_rho(i,3)*tbl%fixed_z_opacity(x_table_index,temp_index,density_index+2) &
+                 + dweight_rho(i,4)*tbl%fixed_z_opacity(x_table_index,temp_index,density_index+3)
          end do
 ! Check on whether rho is outside of the table and needs extrapolation
          if (extrap_lo) then
@@ -915,16 +933,17 @@ end subroutine interpolate_opal95_3d
 ! reduced table.
 ! 2026 wave 3 (R5): the T/rho stencil (indices, weights, log R
 ! extrapolation state) that compute_opal95_opacity computes per call used to reach
-! this routine as hidden module state (opacity_table%opal95_index_*,
+! this routine as hidden module state (tbl%index_*,
 ! opal95_weight_*, opal95_logr*, opal95_extrap_*); it now arrives as
 ! explicit intent(in) arguments, passed straight from those members by
 ! compute_opal95_opacity. The opacity tables themselves stay in opacity_table.
-pure subroutine interpolate_opal95_4d(index_z, weight_z, index_x, weight_x, &
+pure subroutine interpolate_opal95_4d(tbl, index_z, weight_z, index_x, weight_x, &
      index_t, index_rho, weight_t, dweight_t, weight_rho, dweight_rho, &
      logr, logr_lo_edge, logr_hi_edge, extrap_lo, extrap_hi, extrap_hi_row, &
      opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
 
 
+      type(opal95_table_set), intent(in) :: tbl
 ! Z stencil, and the X stencil (index_x(k,:), weight_x(k,:)) at each
 ! of its four Z rows.
       integer, intent(in) :: index_z, index_x(4,4)
@@ -948,7 +967,7 @@ pure subroutine interpolate_opal95_4d(index_z, weight_z, index_x, weight_x, &
 
 ! Find opacity at each of the 4 nearby values of Z
       do k = 1,4
-         z_table_offset = opacity_table%opal95_table_start_index(index_z+k-1)
+         z_table_offset = tbl%table_start_index(index_z+k-1)
 ! Find opacity at each of the 4 nearby values of X
          do j = 1,4
             xz_table_index = index_x(k,j) + z_table_offset
@@ -958,15 +977,15 @@ pure subroutine interpolate_opal95_4d(index_z, weight_z, index_x, weight_x, &
 ! For each T, get cappa for 4 values of R
                density_index = index_rho(i)
 ! Log cappa at desired rho for each of the 4 desired T.
-               logcappa_at_t(i) = weight_rho(i,1)*opacity_table%opal95_full_opacity(xz_table_index,temp_index,density_index) + &
-                    weight_rho(i,2)*opacity_table%opal95_full_opacity(xz_table_index,temp_index,density_index+1) &
-                    + weight_rho(i,3)*opacity_table%opal95_full_opacity(xz_table_index,temp_index,density_index+2) &
-                    + weight_rho(i,4)*opacity_table%opal95_full_opacity(xz_table_index,temp_index,density_index+3)
+               logcappa_at_t(i) = weight_rho(i,1)*tbl%full_opacity(xz_table_index,temp_index,density_index) + &
+                    weight_rho(i,2)*tbl%full_opacity(xz_table_index,temp_index,density_index+1) &
+                    + weight_rho(i,3)*tbl%full_opacity(xz_table_index,temp_index,density_index+2) &
+                    + weight_rho(i,4)*tbl%full_opacity(xz_table_index,temp_index,density_index+3)
 ! D log cappa/d log R for each of the 4 desired T.
-               dlogcappa_dlogr_at_t(i) = dweight_rho(i,1)*opacity_table%opal95_full_opacity(xz_table_index,temp_index,density_index) &
-                    + dweight_rho(i,2)*opacity_table%opal95_full_opacity(xz_table_index,temp_index,density_index+1) &
-                    + dweight_rho(i,3)*opacity_table%opal95_full_opacity(xz_table_index,temp_index,density_index+2) &
-                    + dweight_rho(i,4)*opacity_table%opal95_full_opacity(xz_table_index,temp_index,density_index+3)
+               dlogcappa_dlogr_at_t(i) = dweight_rho(i,1)*tbl%full_opacity(xz_table_index,temp_index,density_index) &
+                    + dweight_rho(i,2)*tbl%full_opacity(xz_table_index,temp_index,density_index+1) &
+                    + dweight_rho(i,3)*tbl%full_opacity(xz_table_index,temp_index,density_index+2) &
+                    + dweight_rho(i,4)*tbl%full_opacity(xz_table_index,temp_index,density_index+3)
             end do
 ! Check on whether rho is outside of the table and needs extrapolation
             if (extrap_lo) then
@@ -1022,5 +1041,76 @@ pure subroutine interpolate_opal95_4d(index_z, weight_z, index_x, weight_x, &
       dlnkap_dlnt = dlnkap_dlnt - 3.0d0*dlnkap_dlnrho
       opacity = pow(1.0d1, log10_opacity)
 end subroutine interpolate_opal95_4d
+
+!----------------------------------------------------------------------
+! The family's descriptor (opacity_source) and its procedures
+!----------------------------------------------------------------------
+! An interior family that interpolates in Z itself (the 4D path), so it
+! needs no second table at another Z; in a helium-burning core it is
+! read at its top Z.
+function opal95_source(settings) result(source)
+      type(kap_settings_t), intent(in) :: settings
+      type(kap_source) :: source
+
+      source%name = 'OPAL 1995'
+      source%selected = settings%use_opal95_tables
+      source%covers_any_z = .true.
+      source%load => load_opal95
+      source%refresh => refresh_opal95
+      source%lookup => lookup_opal95
+      source%core_lookup => core_lookup_opal95
+end function opal95_source
+
+subroutine load_opal95(settings, paths, envelope_hydrogen_fraction, tables, ierr)
+      type(kap_settings_t), intent(in) :: settings
+      type(kap_table_paths_t), intent(in) :: paths
+      real(dp), intent(in) :: envelope_hydrogen_fraction
+      type(opacity_table_state), intent(inout) :: tables
+      integer, intent(out) :: ierr
+
+      call read_opal95_tables(tables%opal95, paths%opal95, &
+           settings%opal95_single_table_z, ierr)
+      if (ierr /= 0) return
+      call build_opal95_surface_table(tables%opal95, envelope_hydrogen_fraction)
+end subroutine load_opal95
+
+subroutine refresh_opal95(settings, hydrogen_fraction, tables, ierr)
+      type(kap_settings_t), intent(in) :: settings
+      real(dp), intent(in) :: hydrogen_fraction
+      type(opacity_table_state), intent(inout) :: tables
+      integer, intent(out) :: ierr
+
+      ierr = 0
+      call build_opal95_surface_table(tables%opal95, hydrogen_fraction)
+end subroutine refresh_opal95
+
+subroutine lookup_opal95(settings, tables, point, res, in_table, ierr)
+      type(kap_settings_t), intent(in) :: settings
+      type(opacity_table_state), intent(inout) :: tables
+      type(kap_point), intent(in) :: point
+      type(kap_result), intent(inout) :: res
+      logical, intent(out) :: in_table
+      integer, intent(out) :: ierr
+
+      in_table = .true.
+      call compute_opal95_opacity(tables%opal95, point%log10_density, &
+           point%log10_temperature, point%hydrogen_fraction, point%metal_fraction, &
+           res%opacity, res%log10_opacity, res%dlnkap_dlnrho, res%dlnkap_dlnt, ierr)
+end subroutine lookup_opal95
+
+! in a helium-burning core: the tables at their top Z
+subroutine core_lookup_opal95(settings, tables, point, res, table_z, ierr)
+      type(kap_settings_t), intent(in) :: settings
+      type(opacity_table_state), intent(inout) :: tables
+      type(kap_point), intent(in) :: point
+      type(kap_result), intent(inout) :: res
+      real(dp), intent(out) :: table_z
+      integer, intent(out) :: ierr
+
+      table_z = tables%opal95%grid_z(n_opal95_z)
+      call compute_opal95_opacity(tables%opal95, point%log10_density, &
+           point%log10_temperature, point%hydrogen_fraction, table_z, &
+           res%opacity, res%log10_opacity, res%dlnkap_dlnrho, res%dlnkap_dlnt, ierr)
+end subroutine core_lookup_opal95
 
 end module opal95_opacity

@@ -13,18 +13,23 @@
 !                                             table
 ! Both interpolate with cubic splines in log rho and four-point windows
 ! in T and X, extrapolating up to laol_extrapolation_tolerance; the
-! tables live in opacity_tables (opacity_table%laol(1:2), %laol_pure_z).
+! tables live in opacity_tables (tables(1:2), %laol_pure_z).
 module laol_opacity
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use opacity_tables, only: kap_settings, laol_opacity_cap, &
-           laol_table_set, n_laol_rho, n_laol_t, n_laol_x, opacity_table
+      use opacity_tables, only: laol_opacity_cap, laol_table_set, n_laol_rho, &
+           n_laol_t, n_laol_x, pure_z_table_set, kap_settings_t, kap_table_paths_t, &
+           opacity_table_state
+      use opacity_source, only: kap_point, kap_result, kap_source
+      use opacity_blending, only: blend_results_in_z
       use numerics_lib, only: natural_spline, locate, splint, numerics_status_text
       use kap_messages, only: kap_log, message_length, unwritten_line
       use opacity_table_files, only: open_table, read_failed
       use math_lib
       implicit none
       private
-      public :: read_laol_tables, build_laol_splines, compute_laol_opacity, read_pure_z_table, build_pure_z_splines, compute_pure_z_opacity
+      public :: laol89_source, pure_z_source
+      public :: read_laol_tables, build_laol_splines, compute_laol_opacity, &
+           read_pure_z_table, build_pure_z_splines, compute_pure_z_opacity
 
 contains
 
@@ -33,7 +38,7 @@ contains
 !----------------------------------------------------------------------
 ! DBG 4/94 Modified to read in second table for ZRAMP core stuff.
 ! Reads the LAOL89 opacity table(s) (and, if a second Z table is
-! requested, a second LAOL89 table) into opacity_table%laol(1)/(2).
+! requested, a second LAOL89 table) into tables(1)/(2).
 !
 ! 2026 wave 3 (R5): the two verbatim read sequences became the
 ! internal read_laol_table below, called once per table; the second
@@ -42,11 +47,16 @@ contains
 ! ix_na, ix_mg, ix_al, ix_si, ix_ar, ix_fe), so one read list serves
 ! both. The run-log message "SECOND OPACITY ARRAY TOO LARGE." is
 ! kept verbatim for table 2.
-subroutine read_laol_tables(laol_work_array, laol_table_path, &
-     laol_table2_path, ierr)
+subroutine read_laol_tables(tables, laol_work_array, laol_table_path, &
+     laol_table2_path, two_z_tables, extrapolation_tolerance, ierr)
       use composition_layout, only: ix_na, ix_al, ix_mg, ix_fe, ix_si, ix_c, &
            ix_o, ix_n, ix_ar, ix_ne
 
+! (1) at laol_table_z1 and, with two_z_tables, (2) at laol_table_z2
+      type(laol_table_set), intent(inout) :: tables(:)
+      logical, intent(in) :: two_z_tables
+! laol_extrapolation_tolerance (its ln is the distance in log rho)
+      real(dp), intent(in) :: extrapolation_tolerance
       integer, intent(out) :: ierr
       real(dp), intent(inout) :: laol_work_array(12)
       character(len=256), intent(in) :: laol_table_path, laol_table2_path
@@ -57,14 +67,16 @@ subroutine read_laol_tables(laol_work_array, laol_table_path, &
       integer :: ii, ix, ir, it
 
       ierr = 0
-      opacity_table%laol(2)%table_number = 2
-      call read_laol_table(laol_table_path, opacity_table%laol(1), &
+      tables(2)%table_number = 2
+      tables(1)%log_extrapolation_tolerance = log(extrapolation_tolerance)
+      tables(2)%log_extrapolation_tolerance = log(extrapolation_tolerance)
+      call read_laol_table(laol_table_path, tables(1), &
            laol_work_array, ierr)
       if (ierr /= 0) return
 
 ! DBG 4/94 New stuff follows
-      if (kap_settings%use_two_z_tables) then
-         call read_laol_table(laol_table2_path, opacity_table%laol(2), &
+      if (two_z_tables) then
+         call read_laol_table(laol_table2_path, tables(2), &
               work_array2, ierr)
          if (ierr /= 0) return
       end if
@@ -173,23 +185,25 @@ end subroutine read_laol_tables
 ! the internal spline_laol_table below; the log10 conversion of each
 ! table's T grid stays here because the second table's loop bound
 ! was (and is) the first table's num_t.
-subroutine build_laol_splines
+subroutine build_laol_splines(tables, two_z_tables)
+      type(laol_table_set), intent(inout) :: tables(:)
+      logical, intent(in) :: two_z_tables
 
 ! MHP 8/25 Removed unused variables
       real(dp) :: row_log10_opacity(n_laol_rho), row_log_rho(n_laol_rho), &
            row_d2opacity(n_laol_rho)
       integer :: it, ix, ir, num_valid_rho
 
-      do it=1, opacity_table%laol(1)%num_t
-         opacity_table%laol(1)%grid_t(it) = log10(opacity_table%laol(1)%grid_t(it))
+      do it=1, tables(1)%num_t
+         tables(1)%grid_t(it) = log10(tables(1)%grid_t(it))
       end do
-      call spline_laol_table(opacity_table%laol(1))
+      call spline_laol_table(tables(1))
 ! DBG 4/94 Do SPLINE on second opacity table if ZRAMP
-      if (kap_settings%use_two_z_tables) then
-       do it=1, opacity_table%laol(2)%num_t
-          opacity_table%laol(2)%grid_t(it) = log10(opacity_table%laol(2)%grid_t(it))
+      if (two_z_tables) then
+       do it=1, tables(2)%num_t
+          tables(2)%grid_t(it) = log10(tables(2)%grid_t(it))
        end do
-         call spline_laol_table(opacity_table%laol(2))
+         call spline_laol_table(tables(2))
       end if
       return
 
@@ -239,7 +253,7 @@ end subroutine build_laol_splines
 ! table edge, linearly extrapolate) in hydrogen abundance.
 !
 ! 2026 wave 3 (R5): tbl is the table to interpolate in --
-! opacity_table%laol(1) (the former compute_laol_opacity.f90) or laol(2) (the
+! tables(1) (the former compute_laol_opacity.f90) or laol(2) (the
 ! former gtlaol2.f90, deleted: a member-for-member rename of this
 ! file whose two run-log diagnostics said "OPACITY TABLE #2"; those
 ! are kept verbatim under `if (tbl%table_number == 2)`).
@@ -272,7 +286,7 @@ subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_
 !
 !     Tollaol permits some extraploation beyond table edge.
       ierr = 0
-      log_extrap_tolerance = log(kap_settings%laol_extrapolation_tolerance)
+      log_extrap_tolerance = tbl%log_extrapolation_tolerance
       call locate(tbl%grid_t, tbl%num_t, log10_temperature, t_locate_guess)
       call locate(tbl%grid_x, tbl%num_x, hydrogen_fraction, x_grid_index)
       if (x_grid_index == tbl%num_x) then
@@ -419,8 +433,11 @@ end subroutine compute_laol_opacity
 !----------------------------------------------------------------------
 ! Reads the pure-Z (Z=1) LAOL89 opacity table.
 ! MHP 10/02 vector v not used
-subroutine read_pure_z_table(pure_z_table_path, ierr)
+subroutine read_pure_z_table(tbl, pure_z_table_path, extrapolation_tolerance, ierr)
 
+      type(pure_z_table_set), intent(inout) :: tbl
+! laol_extrapolation_tolerance (its ln is the distance in log rho)
+      real(dp), intent(in) :: extrapolation_tolerance
       integer, intent(out) :: ierr
       character(len=256), intent(in) :: pure_z_table_path
       integer :: n, i, ii, ir, it
@@ -432,13 +449,14 @@ subroutine read_pure_z_table(pure_z_table_path, ierr)
       integer :: ios
       character(len=256) :: iomsg
 
+      tbl%log_extrapolation_tolerance = log(extrapolation_tolerance)
       call open_table(pure_z_table_path, 'pure-Z', pure_z_unit, ierr)
       if (ierr /= 0) return
 !     Read in array sizes
-      read(pure_z_unit,100,iostat=ios,iomsg=iomsg) n,opacity_table%zlaol_num_rho,opacity_table%zlaol_num_t
+      read(pure_z_unit,100,iostat=ios,iomsg=iomsg) n,tbl%num_rho,tbl%num_t
       if (read_failed(ios, iomsg, 'pure-Z', pure_z_table_path, pure_z_unit, ierr)) return
   100 format(/,18x,i2,9x,i3,14x,i3)
-      if (n /= 1.or.opacity_table%zlaol_num_rho > n_laol_rho.or.opacity_table%zlaol_num_t > n_laol_t) then
+      if (n /= 1.or.tbl%num_rho > n_laol_rho.or.tbl%num_t > n_laol_t) then
          lines = unwritten_line
          write(lines,*)' Z OPACITY INPUT ERROR.'
          call kap_log(lines)
@@ -458,22 +476,22 @@ subroutine read_pure_z_table(pure_z_table_path, ierr)
       if (read_failed(ios, iomsg, 'pure-Z', pure_z_table_path, pure_z_unit, ierr)) return
   140 format(/,(1p6e12.5))
 !     Read in density grid of table
-      read(pure_z_unit,150,iostat=ios,iomsg=iomsg) (opacity_table%zlaol_logrho_grid(ii),ii=1,opacity_table%zlaol_num_rho)
+      read(pure_z_unit,150,iostat=ios,iomsg=iomsg) (tbl%rho_grid(ii),ii=1,tbl%num_rho)
       if (read_failed(ios, iomsg, 'pure-Z', pure_z_table_path, pure_z_unit, ierr)) return
   150 format(/,(1p6e12.5))
 !     Read in temperature grid of table
-      read(pure_z_unit,160,iostat=ios,iomsg=iomsg) (opacity_table%zlaol_logt_grid(ii),ii=1,opacity_table%zlaol_num_t)
+      read(pure_z_unit,160,iostat=ios,iomsg=iomsg) (tbl%logt_grid(ii),ii=1,tbl%num_t)
       if (read_failed(ios, iomsg, 'pure-Z', pure_z_table_path, pure_z_unit, ierr)) return
   160 format(/,(1p6e12.5))
 !     Read in pure Z opacities
       read(pure_z_unit,170,iostat=ios,iomsg=iomsg)
       if (read_failed(ios, iomsg, 'pure-Z', pure_z_table_path, pure_z_unit, ierr)) return
   170 format(1x)
-      do ir=1,opacity_table%zlaol_num_rho
+      do ir=1,tbl%num_rho
          read(pure_z_unit,200,iostat=ios,iomsg=iomsg)
          if (read_failed(ios, iomsg, 'pure-Z', pure_z_table_path, pure_z_unit, ierr)) return
   200    format(1x)
-         read(pure_z_unit,210,iostat=ios,iomsg=iomsg) (opacity_table%zlaol_opacity(ir,it),it=1,opacity_table%zlaol_num_t)
+         read(pure_z_unit,210,iostat=ios,iomsg=iomsg) (tbl%opacity(ir,it),it=1,tbl%num_t)
          if (read_failed(ios, iomsg, 'pure-Z', pure_z_table_path, pure_z_unit, ierr)) return
   210    format(1p6e12.5)
          end do
@@ -488,38 +506,39 @@ end subroutine read_pure_z_table
 ! Builds the natural cubic spline coefficients (in log rho, at each
 ! tabulated T) for the pure-Z LAOL89 opacity table read by
 ! read_pure_z_table.f90, for use by compute_pure_z_opacity.f90.
-subroutine build_pure_z_splines
+subroutine build_pure_z_splines(tbl)
+      type(pure_z_table_set), intent(inout) :: tbl
 
       real(dp) :: row_log10_opacity(n_laol_rho), row_log_rho(n_laol_rho), &
            row_d2opacity(n_laol_rho)
       integer :: it, ir, num_valid_rho
 
-      do it=1, opacity_table%zlaol_num_t
-         opacity_table%zlaol_logt_grid(it) = log10(opacity_table%zlaol_logt_grid(it))
+      do it=1, tbl%num_t
+         tbl%logt_grid(it) = log10(tbl%logt_grid(it))
       end do
-        do it=1, opacity_table%zlaol_num_t
+        do it=1, tbl%num_t
             num_valid_rho=0
-            do ir=1, opacity_table%zlaol_num_rho
-                  opacity_table%zslaol_opacity(ir,it) = 0.0d0
-                  opacity_table%zslaol_log_rho(ir,it) = 0.0d0
-                  opacity_table%zslaol_d2opacity(ir,it) = 0.0d0
-                  if (opacity_table%zlaol_opacity(ir,it) /= 0.0d0) then
+            do ir=1, tbl%num_rho
+                  tbl%spline_opacity(ir,it) = 0.0d0
+                  tbl%spline_log_rho(ir,it) = 0.0d0
+                  tbl%spline_d2opacity(ir,it) = 0.0d0
+                  if (tbl%opacity(ir,it) /= 0.0d0) then
                      num_valid_rho = num_valid_rho+1
-                     row_log10_opacity(num_valid_rho) = log10(opacity_table%zlaol_opacity(ir,it))
-                     row_log_rho(num_valid_rho) = log10(opacity_table%zlaol_logrho_grid(ir))
+                     row_log10_opacity(num_valid_rho) = log10(tbl%opacity(ir,it))
+                     row_log_rho(num_valid_rho) = log10(tbl%rho_grid(ir))
                   end if
             end do
             if (num_valid_rho >= 4) then
-               opacity_table%zslaol_num_points(it)=num_valid_rho
+               tbl%spline_num_points(it)=num_valid_rho
                call natural_spline(row_log_rho, row_log10_opacity, num_valid_rho, &
                     row_d2opacity)
                do ir=1,num_valid_rho
-                     opacity_table%zslaol_opacity(ir,it) = row_log10_opacity(ir)
-                     opacity_table%zslaol_log_rho(ir,it) = row_log_rho(ir)
-                     opacity_table%zslaol_d2opacity(ir,it) = row_d2opacity(ir)
+                     tbl%spline_opacity(ir,it) = row_log10_opacity(ir)
+                     tbl%spline_log_rho(ir,it) = row_log_rho(ir)
+                     tbl%spline_d2opacity(ir,it) = row_d2opacity(ir)
                end do
             else
-               opacity_table%zslaol_num_points(it) = 0
+               tbl%spline_num_points(it) = 0
             end if
         end do
 end subroutine build_pure_z_splines
@@ -530,8 +549,9 @@ end subroutine build_pure_z_splines
 ! Get LAOL89 opacity for the pure-Z (Z=1) table: cubic-spline
 ! interpolate in density, then in temperature (no composition
 ! interpolation needed since the table is pure Z).
-subroutine compute_pure_z_opacity(log10_density, log10_temperature, opacity, &
+subroutine compute_pure_z_opacity(tbl, log10_density, log10_temperature, opacity, &
      log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr)
+      type(pure_z_table_set), intent(in) :: tbl
       integer :: jerr_gate
       real(dp), intent(in) :: log10_density, log10_temperature
       real(dp), intent(out) :: opacity, log10_opacity, &
@@ -555,18 +575,18 @@ subroutine compute_pure_z_opacity(log10_density, log10_temperature, opacity, &
 !
 !     Tollaol permits some extraploation beyond table edge.
       ierr = 0
-      log_extrap_tolerance = log(kap_settings%laol_extrapolation_tolerance)
-      call locate(opacity_table%zlaol_logt_grid, opacity_table%zlaol_num_t, log10_temperature, t_locate_guess)
+      log_extrap_tolerance = tbl%log_extrapolation_tolerance
+      call locate(tbl%logt_grid, tbl%num_t, log10_temperature, t_locate_guess)
       num_valid_t = 0
 !     Get range of four tt surrounding T
-      call select_four_point_window(t_locate_guess, opacity_table%zlaol_num_t, t_range_lo, t_range_hi)
+      call select_four_point_window(t_locate_guess, tbl%num_t, t_range_lo, t_range_hi)
       do t_index=t_range_lo, t_range_hi
-         num_valid_rho = opacity_table%zslaol_num_points(t_index)
+         num_valid_rho = tbl%spline_num_points(t_index)
          if (num_valid_rho >= 4) then
             do rho_loop_index=1, num_valid_rho
-               row_log10_opacity(rho_loop_index) = opacity_table%zslaol_opacity(rho_loop_index,t_index)
-               row_log_rho(rho_loop_index) = opacity_table%zslaol_log_rho(rho_loop_index,t_index)
-               row_d2opacity(rho_loop_index) = opacity_table%zslaol_d2opacity(rho_loop_index,t_index)
+               row_log10_opacity(rho_loop_index) = tbl%spline_opacity(rho_loop_index,t_index)
+               row_log_rho(rho_loop_index) = tbl%spline_log_rho(rho_loop_index,t_index)
+               row_d2opacity(rho_loop_index) = tbl%spline_d2opacity(rho_loop_index,t_index)
             end do
             if (log10_density > row_log_rho(1) .and. &
                  log10_density < row_log_rho(num_valid_rho)) then
@@ -584,7 +604,7 @@ subroutine compute_pure_z_opacity(log10_density, log10_temperature, opacity, &
                end if
                num_valid_t = num_valid_t+1
                logt_interp_opacity(num_valid_t) = log10_opacity_value
-               logt_values(num_valid_t) = opacity_table%zlaol_logt_grid(t_index)
+               logt_values(num_valid_t) = tbl%logt_grid(t_index)
                dlnkap_dlnrho_by_t(num_valid_t) = &
                     (row_log10_opacity(spline_index_hi)-row_log10_opacity(spline_index_lo))/ &
                     (row_log_rho(spline_index_hi)-row_log_rho(spline_index_lo))
@@ -596,7 +616,7 @@ subroutine compute_pure_z_opacity(log10_density, log10_temperature, opacity, &
                log10_opacity_value = row_log10_opacity(1)+slope*(log10_density-row_log_rho(1))
                num_valid_t = num_valid_t+1
                logt_interp_opacity(num_valid_t) = log10_opacity_value
-               logt_values(num_valid_t) = opacity_table%zlaol_logt_grid(t_index)
+               logt_values(num_valid_t) = tbl%logt_grid(t_index)
                dlnkap_dlnrho_by_t(num_valid_t) = slope
             else if (log10_density >= row_log_rho(num_valid_rho) .and. &
                  log10_density < row_log_rho(num_valid_rho)+log_extrap_tolerance) then
@@ -607,7 +627,7 @@ subroutine compute_pure_z_opacity(log10_density, log10_temperature, opacity, &
                     slope*(log10_density-row_log_rho(num_valid_rho))
                num_valid_t = num_valid_t+1
                logt_interp_opacity(num_valid_t) = log10_opacity_value
-               logt_values(num_valid_t) = opacity_table%zlaol_logt_grid(t_index)
+               logt_values(num_valid_t) = tbl%logt_grid(t_index)
                dlnkap_dlnrho_by_t(num_valid_t) = slope
             end if
          else
@@ -680,5 +700,119 @@ subroutine select_four_point_window(grid_index, grid_size, window_start, window_
          window_end = grid_index + 2
       end if
 end subroutine select_four_point_window
+
+!----------------------------------------------------------------------
+! The family's descriptor (opacity_source) and its procedures
+!----------------------------------------------------------------------
+! An interior family of one table per Z, as OPAL 1992 (laol_table_z1,
+! laol_table_z2).
+function laol89_source(settings) result(source)
+      type(kap_settings_t), intent(in) :: settings
+      type(kap_source) :: source
+
+      source%name = 'LAOL 1989'
+      source%blends_two_z = .true.
+      source%table_z = [settings%laol_table_z1, settings%laol_table_z2]
+      source%table_z_controls = [character(len=16) :: 'laol_table_z1', 'laol_table_z2']
+      source%selected = settings%use_laol89_tables
+      source%load => load_laol89
+      source%lookup => lookup_laol89
+      source%core_lookup => core_lookup_laol89
+end function laol89_source
+
+subroutine load_laol89(settings, paths, envelope_hydrogen_fraction, tables, ierr)
+      type(kap_settings_t), intent(in) :: settings
+      type(kap_table_paths_t), intent(in) :: paths
+      real(dp), intent(in) :: envelope_hydrogen_fraction
+      type(opacity_table_state), intent(inout) :: tables
+      integer, intent(out) :: ierr
+! the table header's 12-element metal mixture (read, not used: the
+! star takes its surface mixture from the controls)
+      real(dp) :: laol_header_mixture(12)
+
+      laol_header_mixture = 0.0d0
+      call read_laol_tables(tables%laol, laol_header_mixture, paths%laol, &
+           paths%laol_z2, settings%use_two_z_tables, &
+           settings%laol_extrapolation_tolerance, ierr)
+      if (ierr /= 0) return
+      call build_laol_splines(tables%laol, settings%use_two_z_tables)
+end subroutine load_laol89
+
+subroutine lookup_laol89(settings, tables, point, res, in_table, ierr)
+      type(kap_settings_t), intent(in) :: settings
+      type(opacity_table_state), intent(inout) :: tables
+      type(kap_point), intent(in) :: point
+      type(kap_result), intent(inout) :: res
+      logical, intent(out) :: in_table
+      integer, intent(out) :: ierr
+      type(kap_result) :: res_z2
+
+      in_table = .true.
+      call compute_laol_opacity(tables%laol(1), point%log10_density, &
+           point%log10_temperature, point%hydrogen_fraction, res%opacity, &
+           res%log10_opacity, res%dlnkap_dlnrho, res%dlnkap_dlnt, ierr)
+      if (ierr /= 0) return
+      if (settings%use_two_z_tables) then
+         call compute_laol_opacity(tables%laol(2), point%log10_density, &
+              point%log10_temperature, point%hydrogen_fraction, res_z2%opacity, &
+              res_z2%log10_opacity, res_z2%dlnkap_dlnrho, res_z2%dlnkap_dlnt, ierr)
+         if (ierr /= 0) return
+         call blend_results_in_z(res, res_z2, point%metal_fraction, &
+              settings%laol_table_z1, settings%laol_table_z2)
+      end if
+end subroutine lookup_laol89
+
+subroutine core_lookup_laol89(settings, tables, point, res, table_z, ierr)
+      type(kap_settings_t), intent(in) :: settings
+      type(opacity_table_state), intent(inout) :: tables
+      type(kap_point), intent(in) :: point
+      type(kap_result), intent(inout) :: res
+      real(dp), intent(out) :: table_z
+      integer, intent(out) :: ierr
+
+      call compute_laol_opacity(tables%laol(1), point%log10_density, &
+           point%log10_temperature, point%hydrogen_fraction, res%opacity, &
+           res%log10_opacity, res%dlnkap_dlnrho, res%dlnkap_dlnt, ierr)
+      table_z = settings%laol_table_z1
+end subroutine core_lookup_laol89
+
+! The pure-Z table (Z = 1, pure C and O), the helium-burning core's
+! table: kap_eval blends an interior family's opacity toward it.
+function pure_z_source(settings) result(source)
+      type(kap_settings_t), intent(in) :: settings
+      type(kap_source) :: source
+
+      source%name = 'pure Z (LAOL)'
+      source%selected = settings%use_pure_z_table
+      source%load => load_pure_z
+      source%lookup => lookup_pure_z
+end function pure_z_source
+
+subroutine load_pure_z(settings, paths, envelope_hydrogen_fraction, tables, ierr)
+      type(kap_settings_t), intent(in) :: settings
+      type(kap_table_paths_t), intent(in) :: paths
+      real(dp), intent(in) :: envelope_hydrogen_fraction
+      type(opacity_table_state), intent(inout) :: tables
+      integer, intent(out) :: ierr
+
+      call read_pure_z_table(tables%pure_z, paths%pure_z, &
+           settings%laol_extrapolation_tolerance, ierr)
+      if (ierr /= 0) return
+      call build_pure_z_splines(tables%pure_z)
+end subroutine load_pure_z
+
+subroutine lookup_pure_z(settings, tables, point, res, in_table, ierr)
+      type(kap_settings_t), intent(in) :: settings
+      type(opacity_table_state), intent(inout) :: tables
+      type(kap_point), intent(in) :: point
+      type(kap_result), intent(inout) :: res
+      logical, intent(out) :: in_table
+      integer, intent(out) :: ierr
+
+      in_table = .true.
+      call compute_pure_z_opacity(tables%pure_z, point%log10_density, &
+           point%log10_temperature, res%opacity, res%log10_opacity, &
+           res%dlnkap_dlnrho, res%dlnkap_dlnt, ierr)
+end subroutine lookup_pure_z
 
 end module laol_opacity

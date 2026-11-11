@@ -15,27 +15,16 @@ module conductive_opacity
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use math_lib
       use numerics_lib, only: hunt
+      use opacity_tables, only: cond_n_rho, cond_n_temp, cond_n_z, conductive_table_set, &
+           kap_settings_t, kap_table_paths_t, opacity_table_state
+      use opacity_source, only: kap_point, kap_result, kap_source
       use kap_messages, only: kap_terminal, kap_terminal_values, message_length, &
            unwritten_line
       use opacity_table_files, only: read_failed
       implicit none
       private
+      public :: conductive_source
       public :: read_conductive_table, compute_conductive_opacity
-      integer, parameter :: cond_n_temp = 19, cond_n_rho = 64, &
-           cond_n_z = 15
-! table_loaded_flag holds this value once condopacp has read the table.
-      integer, parameter :: cond_table_loaded_marker = 12345
-
-      type :: conductive_table_state
-            real(dp) :: temp_grid(cond_n_temp)
-            real(dp) :: rho_grid(cond_n_rho)
-            real(dp) :: z_grid(cond_n_z)
-            real(dp) :: log10_kappa_table(cond_n_temp, cond_n_rho, &
-                 cond_n_z)
-            integer :: table_loaded_flag = -1
-      end type conductive_table_state
-
-      type(conductive_table_state), save :: cond_table
 
 contains
 
@@ -45,7 +34,8 @@ contains
 ! Read the Potekhin table (condall06.d) at path, once per run from
 ! kap_init. (2026-10: read_controls opened it on a
 ! unit and condopacp read it on its first lookup.)
-subroutine read_conductive_table(path, ierr)
+subroutine read_conductive_table(tbl, path, ierr)
+      type(conductive_table_set), intent(inout) :: tbl
       character(len=*), intent(in) :: path
       integer, intent(out) :: ierr
       integer :: file_unit, z_index, t_index, r_index
@@ -65,17 +55,17 @@ subroutine read_conductive_table(path, ierr)
       read(file_unit,'(A)',iostat=ios,iomsg=iomsg) ! skip the first line
       if (read_failed(ios, iomsg, 'conductive', path, file_unit, ierr)) return
       do z_index=1,cond_n_z
-         read(file_unit,*,iostat=ios,iomsg=iomsg) z_grid_value,(cond_table%temp_grid(t_index),t_index=1,cond_n_temp)
+         read(file_unit,*,iostat=ios,iomsg=iomsg) z_grid_value,(tbl%temp_grid(t_index),t_index=1,cond_n_temp)
          if (read_failed(ios, iomsg, 'conductive', path, file_unit, ierr)) return
-         cond_table%z_grid(z_index)=log10(z_grid_value)
+         tbl%z_grid(z_index)=log10(z_grid_value)
          do r_index=1,cond_n_rho
-            read(file_unit,*,iostat=ios,iomsg=iomsg) cond_table%rho_grid(r_index), &
-                 (cond_table%log10_kappa_table(t_index,r_index,z_index),t_index=1,cond_n_temp)
+            read(file_unit,*,iostat=ios,iomsg=iomsg) tbl%rho_grid(r_index), &
+                 (tbl%log10_kappa_table(t_index,r_index,z_index),t_index=1,cond_n_temp)
             if (read_failed(ios, iomsg, 'conductive', path, file_unit, ierr)) return
          enddo
       enddo
       close(file_unit)
-      cond_table%table_loaded_flag=cond_table_loaded_marker
+      tbl%loaded = .true.
 end subroutine read_conductive_table
 
 !----------------------------------------------------------------------
@@ -93,12 +83,13 @@ end subroutine read_conductive_table
 ! fraction (ion_fraction, from the compute_fully_ionized_eos solve
 ! upstream). Called from kap_lib.f90's kap_get whenever conductive
 ! opacity is enabled.
-subroutine compute_conductive_opacity(log10_density, log10_temperature, &
+subroutine compute_conductive_opacity(tbl, log10_density, log10_temperature, &
      hydrogen_fraction, metal_fraction, conductive_opacity, &
      conductive_log10_opacity, conductive_dlnkap_dlnrho, &
      conductive_dlnkap_dlnt, ion_fraction, got_conductive_opacity, ierr)
 
 
+      type(conductive_table_set), intent(in) :: tbl
       real(dp), intent(in) :: log10_density, log10_temperature, &
            hydrogen_fraction, metal_fraction
       real(dp), intent(out) :: conductive_opacity, &
@@ -164,13 +155,13 @@ subroutine compute_conductive_opacity(log10_density, log10_temperature, &
       if(log10_temperature >= 3.0D0.and.log10_temperature <= 9.0D0 &
            .and.log10_density <= 9.75D0) then
          if (log10_density >= -6.0D0) then
-           call condopacp(1.0D0,log10_temperature,log10_density, &
+           call condopacp(tbl, 1.0D0,log10_temperature,log10_density, &
                 log10_cond_h1,dlnkap_dlnrho_h1,dlnkap_dlnt_h1,ierr)
            if (ierr /= 0) return
-           call condopacp(2.0D0,log10_temperature,log10_density, &
+           call condopacp(tbl, 2.0D0,log10_temperature,log10_density, &
                 log10_cond_he4,dlnkap_dlnrho_he4,dlnkap_dlnt_he4,ierr)
            if (ierr /= 0) return
-           call condopacp(8.0D0,log10_temperature,log10_density, &
+           call condopacp(tbl, 8.0D0,log10_temperature,log10_density, &
                 log10_cond_ox,dlnkap_dlnrho_ox,dlnkap_dlnt_ox,ierr)
            if (ierr /= 0) return
 
@@ -211,13 +202,13 @@ subroutine compute_conductive_opacity(log10_density, log10_temperature, &
          end if
          if (log10_density < -6.0D0.and.extrapolation_indicator >= 0.0D0) then
 ! Extrapolate Conductive opacity
-           call condopacp(1.0D0,log10_temperature,-6.0D0,log10_cond_h1, &
+           call condopacp(tbl, 1.0D0,log10_temperature,-6.0D0,log10_cond_h1, &
                 conductive_dlnkap_dlnrho,conductive_dlnkap_dlnt,ierr)
            if (ierr /= 0) return
-           call condopacp(2.0D0,log10_temperature,-6.0D0,log10_cond_he4, &
+           call condopacp(tbl, 2.0D0,log10_temperature,-6.0D0,log10_cond_he4, &
                 unused_deriv1,unused_deriv2,ierr)
            if (ierr /= 0) return
-           call condopacp(8.0D0,log10_temperature,-6.0D0,log10_cond_ox, &
+           call condopacp(tbl, 8.0D0,log10_temperature,-6.0D0,log10_cond_ox, &
                 unused_deriv1,unused_deriv2,ierr)
            if (ierr /= 0) return
 
@@ -269,8 +260,9 @@ end subroutine compute_conductive_opacity
 !      conductive_opacity_table's read_conductive_table.)
 !     Please address any questions/comments to Alexander Potekhin:
 !     e-mail: palex@astro.ioffe.rssi.ru
-subroutine condopacp(ion_charge, log10_temperature, log10_density, &
+subroutine condopacp(tbl, ion_charge, log10_temperature, log10_density, &
      log10_conductivity, dlnkappa_dlnrho, dlnkappa_dlnt, ierr)
+      type(conductive_table_set), intent(in) :: tbl
 
       real(dp), intent(in) :: ion_charge, log10_temperature, &
            log10_density
@@ -298,7 +290,7 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
       real(dp) :: dt2k, drtk, drt2k, xt
       character(len=message_length) :: lines(1)
 
-      if (cond_table%table_loaded_flag /= cond_table_loaded_marker) then
+      if (.not. tbl%loaded) then
          lines = unwritten_line
          write(lines,*) 'condopacp: the conductive-opacity table is not loaded (kap_init)'
          call kap_terminal(lines)
@@ -312,7 +304,7 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
       z_index = 0
       t_index = 0
       r_index = 0
-      call hunt(cond_table%z_grid,cond_n_z,log10_ion_charge,z_index)
+      call hunt(tbl%z_grid,cond_n_z,log10_ion_charge,z_index)
       if (z_index == 0.or.z_index == cond_n_z) then
 ! 2026 audit (section 7): stop -> ierr (runtime table-range guard;
 ! see kap_lib's kap_get).
@@ -322,11 +314,11 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
          ierr = 1
          return
       end if
-      call hunt(cond_table%temp_grid,cond_n_temp,log10_temperature,t_index)
+      call hunt(tbl%temp_grid,cond_n_temp,log10_temperature,t_index)
 
 !      if (IT.eq.0.or.IT.eq.MAXT) stop 'CONINTER: T out of range'
       if (t_index == 0.or.t_index == cond_n_temp) then
-                  call kap_terminal_values(cond_table%z_grid)
+                  call kap_terminal_values(tbl%z_grid)
                   lines = unwritten_line
                   write(lines,*) cond_n_z, log10_temperature, z_index
                   call kap_terminal(lines)
@@ -339,7 +331,7 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
                   return
       endif
 
-      call hunt(cond_table%rho_grid,cond_n_rho,log10_density,r_index)
+      call hunt(tbl%rho_grid,cond_n_rho,log10_density,r_index)
       if (r_index == 0.or.r_index == cond_n_rho) then
 ! 2026 audit (section 7): stop -> ierr (runtime table-range guard;
 ! see kap_lib's kap_get).
@@ -355,73 +347,73 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
       r_index_hi=min0(cond_n_rho,r_index+2)
 ! Cubic interpolation in RLG:
 ! Z0:
-      call cinterp3(cond_table%rho_grid(r_index_lo),cond_table%rho_grid(r_index),cond_table%rho_grid(r_index+1), &
-           cond_table%rho_grid(r_index_hi),log10_density,r_index,cond_n_rho, &
-           cond_table%log10_kappa_table(t_index_lo,r_index_lo,z_index), &
-           cond_table%log10_kappa_table(t_index_lo,r_index,z_index), &
-           cond_table%log10_kappa_table(t_index_lo,r_index+1,z_index), &
-           cond_table%log10_kappa_table(t_index_lo,r_index_hi,z_index), &
+      call cinterp3(tbl%rho_grid(r_index_lo),tbl%rho_grid(r_index),tbl%rho_grid(r_index+1), &
+           tbl%rho_grid(r_index_hi),log10_density,r_index,cond_n_rho, &
+           tbl%log10_kappa_table(t_index_lo,r_index_lo,z_index), &
+           tbl%log10_kappa_table(t_index_lo,r_index,z_index), &
+           tbl%log10_kappa_table(t_index_lo,r_index+1,z_index), &
+           tbl%log10_kappa_table(t_index_lo,r_index_hi,z_index), &
            cktmz0,drktmz0,dr2ktmz0,xr,ierr)
       if (ierr /= 0) return
-      call cinterp3(cond_table%rho_grid(r_index_lo),cond_table%rho_grid(r_index),cond_table%rho_grid(r_index+1), &
-           cond_table%rho_grid(r_index_hi),log10_density,r_index,cond_n_rho, &
-           cond_table%log10_kappa_table(t_index,r_index_lo,z_index), &
-           cond_table%log10_kappa_table(t_index,r_index,z_index), &
-           cond_table%log10_kappa_table(t_index,r_index+1,z_index), &
-           cond_table%log10_kappa_table(t_index,r_index_hi,z_index), &
+      call cinterp3(tbl%rho_grid(r_index_lo),tbl%rho_grid(r_index),tbl%rho_grid(r_index+1), &
+           tbl%rho_grid(r_index_hi),log10_density,r_index,cond_n_rho, &
+           tbl%log10_kappa_table(t_index,r_index_lo,z_index), &
+           tbl%log10_kappa_table(t_index,r_index,z_index), &
+           tbl%log10_kappa_table(t_index,r_index+1,z_index), &
+           tbl%log10_kappa_table(t_index,r_index_hi,z_index), &
            ckt0z0,drkt0z0,dr2kt0z0,xr,ierr)
       if (ierr /= 0) return
-      call cinterp3(cond_table%rho_grid(r_index_lo),cond_table%rho_grid(r_index),cond_table%rho_grid(r_index+1), &
-           cond_table%rho_grid(r_index_hi),log10_density,r_index,cond_n_rho, &
-           cond_table%log10_kappa_table(t_index+1,r_index_lo,z_index), &
-           cond_table%log10_kappa_table(t_index+1,r_index,z_index), &
-           cond_table%log10_kappa_table(t_index+1,r_index+1,z_index), &
-           cond_table%log10_kappa_table(t_index+1,r_index_hi,z_index), &
+      call cinterp3(tbl%rho_grid(r_index_lo),tbl%rho_grid(r_index),tbl%rho_grid(r_index+1), &
+           tbl%rho_grid(r_index_hi),log10_density,r_index,cond_n_rho, &
+           tbl%log10_kappa_table(t_index+1,r_index_lo,z_index), &
+           tbl%log10_kappa_table(t_index+1,r_index,z_index), &
+           tbl%log10_kappa_table(t_index+1,r_index+1,z_index), &
+           tbl%log10_kappa_table(t_index+1,r_index_hi,z_index), &
            ckt1z0,drkt1z0,dr2kt1z0,xr,ierr)
       if (ierr /= 0) return
-      call cinterp3(cond_table%rho_grid(r_index_lo),cond_table%rho_grid(r_index),cond_table%rho_grid(r_index+1), &
-           cond_table%rho_grid(r_index_hi),log10_density,r_index,cond_n_rho, &
-           cond_table%log10_kappa_table(t_index_hi,r_index_lo,z_index), &
-           cond_table%log10_kappa_table(t_index_hi,r_index,z_index), &
-           cond_table%log10_kappa_table(t_index_hi,r_index+1,z_index), &
-           cond_table%log10_kappa_table(t_index_hi,r_index_hi,z_index), &
+      call cinterp3(tbl%rho_grid(r_index_lo),tbl%rho_grid(r_index),tbl%rho_grid(r_index+1), &
+           tbl%rho_grid(r_index_hi),log10_density,r_index,cond_n_rho, &
+           tbl%log10_kappa_table(t_index_hi,r_index_lo,z_index), &
+           tbl%log10_kappa_table(t_index_hi,r_index,z_index), &
+           tbl%log10_kappa_table(t_index_hi,r_index+1,z_index), &
+           tbl%log10_kappa_table(t_index_hi,r_index_hi,z_index), &
            cktpz0,drktpz0,dr2ktpz0,xr,ierr)
       if (ierr /= 0) return
 ! Z1:
-      call cinterp3(cond_table%rho_grid(r_index_lo),cond_table%rho_grid(r_index),cond_table%rho_grid(r_index+1), &
-           cond_table%rho_grid(r_index_hi),log10_density,r_index,cond_n_rho, &
-           cond_table%log10_kappa_table(t_index_lo,r_index_lo,z_index+1), &
-           cond_table%log10_kappa_table(t_index_lo,r_index,z_index+1), &
-           cond_table%log10_kappa_table(t_index_lo,r_index+1,z_index+1), &
-           cond_table%log10_kappa_table(t_index_lo,r_index_hi,z_index+1), &
+      call cinterp3(tbl%rho_grid(r_index_lo),tbl%rho_grid(r_index),tbl%rho_grid(r_index+1), &
+           tbl%rho_grid(r_index_hi),log10_density,r_index,cond_n_rho, &
+           tbl%log10_kappa_table(t_index_lo,r_index_lo,z_index+1), &
+           tbl%log10_kappa_table(t_index_lo,r_index,z_index+1), &
+           tbl%log10_kappa_table(t_index_lo,r_index+1,z_index+1), &
+           tbl%log10_kappa_table(t_index_lo,r_index_hi,z_index+1), &
            cktmz1,drktmz1,dr2ktmz1,xr,ierr)
       if (ierr /= 0) return
-      call cinterp3(cond_table%rho_grid(r_index_lo),cond_table%rho_grid(r_index),cond_table%rho_grid(r_index+1), &
-           cond_table%rho_grid(r_index_hi),log10_density,r_index,cond_n_rho, &
-           cond_table%log10_kappa_table(t_index,r_index_lo,z_index+1), &
-           cond_table%log10_kappa_table(t_index,r_index,z_index+1), &
-           cond_table%log10_kappa_table(t_index,r_index+1,z_index+1), &
-           cond_table%log10_kappa_table(t_index,r_index_hi,z_index+1), &
+      call cinterp3(tbl%rho_grid(r_index_lo),tbl%rho_grid(r_index),tbl%rho_grid(r_index+1), &
+           tbl%rho_grid(r_index_hi),log10_density,r_index,cond_n_rho, &
+           tbl%log10_kappa_table(t_index,r_index_lo,z_index+1), &
+           tbl%log10_kappa_table(t_index,r_index,z_index+1), &
+           tbl%log10_kappa_table(t_index,r_index+1,z_index+1), &
+           tbl%log10_kappa_table(t_index,r_index_hi,z_index+1), &
            ckt0z1,drkt0z1,dr2kt0z1,xr,ierr)
       if (ierr /= 0) return
-      call cinterp3(cond_table%rho_grid(r_index_lo),cond_table%rho_grid(r_index),cond_table%rho_grid(r_index+1), &
-           cond_table%rho_grid(r_index_hi),log10_density,r_index,cond_n_rho, &
-           cond_table%log10_kappa_table(t_index+1,r_index_lo,z_index+1), &
-           cond_table%log10_kappa_table(t_index+1,r_index,z_index+1), &
-           cond_table%log10_kappa_table(t_index+1,r_index+1,z_index+1), &
-           cond_table%log10_kappa_table(t_index+1,r_index_hi,z_index+1), &
+      call cinterp3(tbl%rho_grid(r_index_lo),tbl%rho_grid(r_index),tbl%rho_grid(r_index+1), &
+           tbl%rho_grid(r_index_hi),log10_density,r_index,cond_n_rho, &
+           tbl%log10_kappa_table(t_index+1,r_index_lo,z_index+1), &
+           tbl%log10_kappa_table(t_index+1,r_index,z_index+1), &
+           tbl%log10_kappa_table(t_index+1,r_index+1,z_index+1), &
+           tbl%log10_kappa_table(t_index+1,r_index_hi,z_index+1), &
            ckt1z1,drkt1z1,dr2kt1z1,xr,ierr)
       if (ierr /= 0) return
-      call cinterp3(cond_table%rho_grid(r_index_lo),cond_table%rho_grid(r_index),cond_table%rho_grid(r_index+1), &
-           cond_table%rho_grid(r_index_hi),log10_density,r_index,cond_n_rho, &
-           cond_table%log10_kappa_table(t_index_hi,r_index_lo,z_index+1), &
-           cond_table%log10_kappa_table(t_index_hi,r_index,z_index+1), &
-           cond_table%log10_kappa_table(t_index_hi,r_index+1,z_index+1), &
-           cond_table%log10_kappa_table(t_index_hi,r_index_hi,z_index+1), &
+      call cinterp3(tbl%rho_grid(r_index_lo),tbl%rho_grid(r_index),tbl%rho_grid(r_index+1), &
+           tbl%rho_grid(r_index_hi),log10_density,r_index,cond_n_rho, &
+           tbl%log10_kappa_table(t_index_hi,r_index_lo,z_index+1), &
+           tbl%log10_kappa_table(t_index_hi,r_index,z_index+1), &
+           tbl%log10_kappa_table(t_index_hi,r_index+1,z_index+1), &
+           tbl%log10_kappa_table(t_index_hi,r_index_hi,z_index+1), &
            cktpz1,drktpz1,dr2ktpz1,xr,ierr)
       if (ierr /= 0) return
 ! Linear interpolation in ZLG:
-      xz1=(log10_ion_charge-cond_table%z_grid(z_index))/(cond_table%z_grid(z_index+1)-cond_table%z_grid(z_index))
+      xz1=(log10_ion_charge-tbl%z_grid(z_index))/(tbl%z_grid(z_index+1)-tbl%z_grid(z_index))
       xz0=1d0-xz1
       cktm=xz0*cktmz0+xz1*cktmz1
       drktm=xz0*drktmz0+xz1*drktmz1
@@ -436,13 +428,13 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
       drktp=xz0*drktpz0+xz1*drktpz1
       dr2ktp=xz0*dr2ktpz0+xz1*dr2ktpz1
 ! Cubic interpolation in TLG:
-      call cinterp3(cond_table%temp_grid(t_index_lo),cond_table%temp_grid(t_index),cond_table%temp_grid(t_index+1), &
-           cond_table%temp_grid(t_index_hi),log10_temperature,t_index,cond_n_temp, &
+      call cinterp3(tbl%temp_grid(t_index_lo),tbl%temp_grid(t_index),tbl%temp_grid(t_index+1), &
+           tbl%temp_grid(t_index_hi),log10_temperature,t_index,cond_n_temp, &
            cktm,ckt0,ckt1,cktp, & ! input: values of lg kappa
            log10_conductivity,dlnkappa_dlnt,dt2k,xt,ierr) ! lg kappa, d lg k / d lg T, d2 lg k / d2 lg T
       if (ierr /= 0) return
-      call cinterp3(cond_table%temp_grid(t_index_lo),cond_table%temp_grid(t_index),cond_table%temp_grid(t_index+1), &
-           cond_table%temp_grid(t_index_hi),log10_temperature,t_index,cond_n_temp, &
+      call cinterp3(tbl%temp_grid(t_index_lo),tbl%temp_grid(t_index),tbl%temp_grid(t_index+1), &
+           tbl%temp_grid(t_index_hi),log10_temperature,t_index,cond_n_temp, &
            drktm,drkt0,drkt1,drktp, & ! input: values of d lg k / d lg rho
            dlnkappa_dlnrho,drtk,drt2k,xt,ierr) ! d lg k / d lg rho, d2 lgk/(d lgT d lg rho)
       if (ierr /= 0) return
@@ -515,5 +507,44 @@ subroutine cinterp3(grid_lo2,grid_lo1,grid_hi1,grid_hi2,grid_target, &
       endif
 end subroutine cinterp3
 
+
+!----------------------------------------------------------------------
+! The family's descriptor (opacity_source) and its procedures
+!----------------------------------------------------------------------
+! The Potekhin conductive opacity: in_table is .false. where the table
+! gives none (kap_eval then tries Hubbard & Lampe's fit).
+function conductive_source(settings) result(source)
+      type(kap_settings_t), intent(in) :: settings
+      type(kap_source) :: source
+
+      source%name = 'Potekhin conductive'
+      source%selected = settings%use_conductive_opacity
+      source%load => load_conductive
+      source%lookup => lookup_conductive
+end function conductive_source
+
+subroutine load_conductive(settings, paths, envelope_hydrogen_fraction, tables, ierr)
+      type(kap_settings_t), intent(in) :: settings
+      type(kap_table_paths_t), intent(in) :: paths
+      real(dp), intent(in) :: envelope_hydrogen_fraction
+      type(opacity_table_state), intent(inout) :: tables
+      integer, intent(out) :: ierr
+
+      call read_conductive_table(tables%conductive, paths%conductive, ierr)
+end subroutine load_conductive
+
+subroutine lookup_conductive(settings, tables, point, res, in_table, ierr)
+      type(kap_settings_t), intent(in) :: settings
+      type(opacity_table_state), intent(inout) :: tables
+      type(kap_point), intent(in) :: point
+      type(kap_result), intent(inout) :: res
+      logical, intent(out) :: in_table
+      integer, intent(out) :: ierr
+
+      call compute_conductive_opacity(tables%conductive, point%log10_density, &
+           point%log10_temperature, point%hydrogen_fraction, point%metal_fraction, &
+           res%opacity, res%log10_opacity, res%dlnkap_dlnrho, res%dlnkap_dlnt, &
+           point%ion_fraction, in_table, ierr)
+end subroutine lookup_conductive
 
 end module conductive_opacity

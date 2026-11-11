@@ -23,7 +23,7 @@
 module kap_lib
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use opacity_tables, only: kap_settings, kap_settings_t, kap_table_paths_t, &
-           opacity_table, set_kap_settings
+           opacity_table_state, set_kap_settings
       use opal95_opacity, only: compute_opal95_opacity, read_opal95_tables, &
            build_opal95_surface_table
       use conductive_opacity, only: compute_conductive_opacity
@@ -49,10 +49,14 @@ module kap_lib
       public :: kap_eval
 ! the settings record (opacity_tables), its setter, and the paths record
       public :: kap_settings_t, set_kap_settings, kap_table_paths_t
-! the envelope metal fraction the surface-table machinery was
-! initialized with (set by kap_init, checked by kap_eval's
-! single-Z-table range test)
-      real(dp), save :: kap_envelope_metal_fraction
+! kap's state: every family's tables, their warm-start cursors and
+! composition caches (opacity_tables' types), and the envelope metal
+! fraction the tables were loaded for. Only this module writes it: the
+! family routines get their sets as arguments. initial_tables is never
+! written: it holds what a fresh process starts from (the grids' and
+! cursors' initial values, zero elsewhere), and kap_init starts each run
+! from it, so a second run in one process starts where the first did.
+      type(opacity_table_state), save :: tables, initial_tables
 ! result-array slots for kap_get (2026, MESA kap-results shape)
       integer, parameter, public :: &
            i_kap = 1, i_log10_kap = 2, i_dlnkap_dlnrho = 3, &
@@ -129,7 +133,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
       got_atmosphere_opacity = .false.
       if (log10_temperature <= kap_settings%molecular_opacity_logt_max) then
          if (kap_settings%use_alex06_tables) then
-            call compute_alex06_opacity(log10_density, log10_temperature, &
+            call compute_alex06_opacity(tables%alex06, log10_density, log10_temperature, &
                  hydrogen_fraction, metal_fraction, atm_opacity, &
                  atm_log10_opacity, atm_dlnkap_dlnrho, atm_dlnkap_dlnt, &
                  jerr)
@@ -139,14 +143,14 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
             end if
             got_atmosphere_opacity = .true.
          else if (kap_settings%use_alex95_tables) then
-            call compute_alex94_opacity(log10_density, log10_temperature, &
+            call compute_alex94_opacity(tables%alex94, log10_density, log10_temperature, &
                  hydrogen_fraction, metal_fraction, atm_opacity, &
                  atm_log10_opacity, atm_dlnkap_dlnrho, atm_dlnkap_dlnt)
             got_atmosphere_opacity = .true.
          else if (kap_settings%use_kurucz90_tables) then
 ! outside a Kurucz table (in_table false) the interior opacity is used
 ! alone
-            call compute_kurucz_opacity(opacity_table%kurucz(1), log10_density, &
+            call compute_kurucz_opacity(tables%kurucz(1), log10_density, &
                  log10_temperature, atm_opacity, atm_log10_opacity, &
                  atm_dlnkap_dlnrho, atm_dlnkap_dlnt, in_table, jerr)
             if (jerr /= 0) then
@@ -154,7 +158,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
                return
             end if
             if (in_table .and. kap_settings%use_two_z_tables) then
-               call compute_kurucz_opacity(opacity_table%kurucz(2), log10_density, &
+               call compute_kurucz_opacity(tables%kurucz(2), log10_density, &
                     log10_temperature, atm_opacity_2, atm_log10_opacity_2, &
                     atm_dlnkap_dlnrho_2, atm_dlnkap_dlnt_2, in_table, jerr)
                if (jerr /= 0) then
@@ -195,7 +199,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
             ierr = jerr
             return
          end if
-         call compute_pure_z_opacity(log10_density, log10_temperature, purez_opacity, &
+         call compute_pure_z_opacity(tables%pure_z, log10_density, log10_temperature, purez_opacity, &
               purez_log10_opacity, purez_dlnkap_dlnrho, purez_dlnkap_dlnt, &
               jerr)
          if (jerr /= 0) then
@@ -205,7 +209,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
          if (kap_settings%use_opal95_tables) then
 !           mhp 7/12 interpolate to maximum z in table
             table_metal_fraction = 0.1d0
-            call compute_opal95_opacity(log10_density, log10_temperature, &
+            call compute_opal95_opacity(tables%opal95, log10_density, log10_temperature, &
                  hydrogen_fraction, table_metal_fraction, opacity, &
                  log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, jerr)
             if (jerr /= 0) then
@@ -213,7 +217,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
                return
             end if
          else if (kap_settings%use_opal92_tables) then
-            call compute_opal92_opacity(opacity_table%opal92(1), log10_density, log10_temperature, &
+            call compute_opal92_opacity(tables%opal92(1), log10_density, log10_temperature, &
                  hydrogen_fraction, opacity, log10_opacity, &
                  dlnkap_dlnrho, dlnkap_dlnt, jerr)
             if (jerr /= 0) then
@@ -222,7 +226,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
             end if
             table_metal_fraction = kap_settings%opal_table_z1
          else if (kap_settings%use_laol89_tables) then
-            call compute_laol_opacity(opacity_table%laol(1), log10_density, log10_temperature, &
+            call compute_laol_opacity(tables%laol(1), log10_density, log10_temperature, &
                  hydrogen_fraction, opacity, log10_opacity, &
                  dlnkap_dlnrho, dlnkap_dlnt, jerr)
             if (jerr /= 0) then
@@ -248,12 +252,12 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
               metal_fraction, table_metal_fraction, 1.0d0)
 
       else if ((metal_fraction > 0.12d0) .or. &
-           ((abs(metal_fraction - kap_envelope_metal_fraction) > &
+           ((abs(metal_fraction - tables%envelope_metal_fraction) > &
            kap_settings%metal_fraction_match_tolerance) .and. .not.kap_settings%use_two_z_tables &
            .and. .not.kap_settings%use_opal95_tables)) then
 !        JCZ 211125 changed to 10^7 K in message to reflect above
 !        change in logic.
-         call kap_log_values([metal_fraction, kap_envelope_metal_fraction, log10_temperature], &
+         call kap_log_values([metal_fraction, tables%envelope_metal_fraction, log10_temperature], &
               ' Z>0.12 T < 10^7 K' // &
               ' OUTSIDE OPAL OPACITY TABLE RANGE OR Z' // &
               ' OUTSIDE SINGLE TABLE USED.Z,ZENV,LOG T=')
@@ -265,7 +269,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
 !     second Z table rather than pure Z table
 
       else if (kap_settings%use_opal95_tables) then
-         call compute_opal95_opacity(log10_density, log10_temperature, &
+         call compute_opal95_opacity(tables%opal95, log10_density, log10_temperature, &
               hydrogen_fraction, metal_fraction, opacity, log10_opacity, &
               dlnkap_dlnrho, dlnkap_dlnt, jerr)
          if (jerr /= 0) then
@@ -273,14 +277,14 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
             return
          end if
       else if (kap_settings%use_opal92_tables) then
-         call compute_opal92_opacity(opacity_table%opal92(1), log10_density, log10_temperature, hydrogen_fraction, &
+         call compute_opal92_opacity(tables%opal92(1), log10_density, log10_temperature, hydrogen_fraction, &
               opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, jerr)
          if (jerr /= 0) then
             ierr = jerr
             return
          end if
          if (kap_settings%use_two_z_tables) then
-            call compute_opal92_opacity(opacity_table%opal92(2), log10_density, log10_temperature, &
+            call compute_opal92_opacity(tables%opal92(2), log10_density, log10_temperature, &
                  hydrogen_fraction, opacity_2, log10_opacity_2, &
                  dlnkap_dlnrho_2, dlnkap_dlnt_2, jerr)
             if (jerr /= 0) then
@@ -296,14 +300,14 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
                  metal_fraction, kap_settings%opal_table_z1, kap_settings%opal_table_z2)
          end if
       else if (kap_settings%use_laol89_tables) then
-         call compute_laol_opacity(opacity_table%laol(1), log10_density, log10_temperature, hydrogen_fraction, &
+         call compute_laol_opacity(tables%laol(1), log10_density, log10_temperature, hydrogen_fraction, &
               opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, jerr)
          if (jerr /= 0) then
             ierr = jerr
             return
          end if
          if (kap_settings%use_two_z_tables) then
-            call compute_laol_opacity(opacity_table%laol(2), log10_density, log10_temperature, &
+            call compute_laol_opacity(tables%laol(2), log10_density, log10_temperature, &
                  hydrogen_fraction, opacity_2, log10_opacity_2, &
                  dlnkap_dlnrho_2, dlnkap_dlnt_2, jerr)
             if (jerr /= 0) then
@@ -353,7 +357,7 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
 !     Do conductive opacity correction
       if (kap_settings%use_conductive_opacity) then
 !        Get Potekhin conductive opacity
-         call compute_conductive_opacity(log10_density, log10_temperature, &
+         call compute_conductive_opacity(tables%conductive, log10_density, log10_temperature, &
               hydrogen_fraction, metal_fraction, conductive_opacity, &
               conductive_log10_opacity, conductive_dlnkap_dlnrho, &
               conductive_dlnkap_dlnt, ion_fraction, got_conductive_opacity, &
@@ -436,9 +440,10 @@ subroutine kap_init(settings, paths, envelope_hydrogen_fraction, &
       call check_kap_settings(settings, ierr)
       if (ierr /= 0) return
       call set_kap_settings(settings)
-      kap_envelope_metal_fraction = envelope_metal_fraction
+      tables = initial_tables
+      tables%envelope_metal_fraction = envelope_metal_fraction
       if (settings%use_conductive_opacity) then
-         call read_conductive_table(paths%conductive, jerr)
+         call read_conductive_table(tables%conductive, paths%conductive, jerr)
          if (jerr /= 0) then
             ierr = jerr
             return
@@ -572,38 +577,45 @@ subroutine load_opacity_tables(envelope_hydrogen_fraction, paths, ierr)
       ierr = 0
 ! the interior tables
       if (kap_settings%use_opal95_tables) then
-         call read_opal95_tables(paths%opal95, ierr)
+         call read_opal95_tables(tables%opal95, paths%opal95, &
+              kap_settings%opal95_single_table_z, ierr)
          if (ierr /= 0) return
-         call build_opal95_surface_table(envelope_hydrogen_fraction)
+         call build_opal95_surface_table(tables%opal95, envelope_hydrogen_fraction)
       end if
       if (kap_settings%use_opal92_tables) then
-         call read_opal92_tables(paths%opal92, paths%opal92_z2, ierr)
+         call read_opal92_tables(tables%opal92, paths%opal92, paths%opal92_z2, &
+              kap_settings%use_two_z_tables, ierr)
          if (ierr /= 0) return
-         call build_opal92_surface_table(envelope_hydrogen_fraction, ierr)
+         call build_opal92_surface_table(tables%opal92, envelope_hydrogen_fraction, &
+              [kap_settings%opal_table_z1, kap_settings%opal_table_z2], &
+              kap_settings%use_two_z_tables, ierr)
          if (ierr /= 0) return
       end if
       if (kap_settings%use_laol89_tables) then
          laol_header_mixture = 0.0d0
-         call read_laol_tables(laol_header_mixture, paths%laol, &
-              paths%laol_z2, ierr)
+         call read_laol_tables(tables%laol, laol_header_mixture, paths%laol, &
+              paths%laol_z2, kap_settings%use_two_z_tables, &
+              kap_settings%laol_extrapolation_tolerance, ierr)
          if (ierr /= 0) return
-         call build_laol_splines
+         call build_laol_splines(tables%laol, kap_settings%use_two_z_tables)
       end if
       if (kap_settings%use_pure_z_table) then
-         call read_pure_z_table(paths%pure_z, ierr)
+         call read_pure_z_table(tables%pure_z, paths%pure_z, &
+              kap_settings%laol_extrapolation_tolerance, ierr)
          if (ierr /= 0) return
-         call build_pure_z_splines
+         call build_pure_z_splines(tables%pure_z)
       end if
 ! the molecular tables
       if (kap_settings%use_alex06_tables) then
-         call read_alex06_tables(paths%alex06, ierr)
+         call read_alex06_tables(tables%alex06, paths%alex06, ierr)
          if (ierr /= 0) return
       else if (kap_settings%use_alex95_tables) then
-         call read_alex94_tables(paths%alex94, ierr)
+         call read_alex94_tables(tables%alex94, paths%alex94, kap_settings%alex_table_z1, ierr)
          if (ierr /= 0) return
-         call build_alex94_surface_table(envelope_hydrogen_fraction)
+         call build_alex94_surface_table(tables%alex94, envelope_hydrogen_fraction)
       else if (kap_settings%use_kurucz90_tables) then
-         call read_kurucz_tables(paths%kurucz, paths%kurucz_z2, ierr)
+         call read_kurucz_tables(tables%kurucz, paths%kurucz, paths%kurucz_z2, &
+              kap_settings%use_two_z_tables, ierr)
          if (ierr /= 0) return
       end if
 end subroutine load_opacity_tables
@@ -620,14 +632,16 @@ subroutine refresh_surface_tables(hydrogen_fraction, ierr)
 
       ierr = 0
       if (kap_settings%use_opal95_tables) then
-         call build_opal95_surface_table(hydrogen_fraction)
+         call build_opal95_surface_table(tables%opal95, hydrogen_fraction)
       end if
       if (kap_settings%use_opal92_tables) then
-         call build_opal92_surface_table(hydrogen_fraction, ierr)
+         call build_opal92_surface_table(tables%opal92, hydrogen_fraction, &
+              [kap_settings%opal_table_z1, kap_settings%opal_table_z2], &
+              kap_settings%use_two_z_tables, ierr)
          if (ierr /= 0) return
       end if
       if (kap_settings%use_alex95_tables) then
-         call build_alex94_surface_table(hydrogen_fraction)
+         call build_alex94_surface_table(tables%alex94, hydrogen_fraction)
       end if
 end subroutine refresh_surface_tables
 

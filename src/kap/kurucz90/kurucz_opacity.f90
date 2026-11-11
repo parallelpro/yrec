@@ -10,11 +10,13 @@
 !                              log T; in_table is .false. outside the
 !                              table (the first table also has a
 !                              log rho <= -3, log T <= 4.1 range check)
-! The tables live in opacity_tables (opacity_table%kurucz(1:2)).
+! The tables live in opacity_tables (tables(1:2)).
 module kurucz_opacity
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use opacity_tables, only: kap_settings, kurucz_max_num_densities, &
-           kurucz_max_num_temps, kurucz_table_set, opacity_table
+      use opacity_tables, only: kurucz_max_num_densities, kurucz_max_num_temps, &
+           kurucz_table_set, kap_settings_t, kap_table_paths_t, opacity_table_state
+      use opacity_source, only: kap_point, kap_result, kap_source
+      use opacity_blending, only: blend_results_in_z
       use numerics_lib, only: findex, natural_spline, splint, &
            compute_spline_coefficients, numerics_status_text
       use kap_messages, only: kap_log, kap_log_values, kap_report, kap_terminal, &
@@ -23,6 +25,7 @@ module kurucz_opacity
       use math_lib
       implicit none
       private
+      public :: kurucz90_source
       public :: read_kurucz_tables, compute_kurucz_opacity
 
 contains
@@ -31,7 +34,7 @@ contains
 ! read_kurucz_tables
 !----------------------------------------------------------------------
 ! Reads the Kurucz opacity table (and, if a second Z table is
-! requested, a second Kurucz table) into opacity_table%kurucz(1)/(2),
+! requested, a second Kurucz table) into tables(1)/(2),
 ! then calls build_kurucz_splines on each for the spline
 ! interpolation coefficients used later by kurucz.f90.
 !
@@ -42,9 +45,13 @@ contains
 ! loop's working scalars stay host-associated so that whatever value
 ! they carried from the first table into the second is carried
 ! exactly as before.
-subroutine read_kurucz_tables(kurucz_table_path, kurucz_table2_path, ierr)
+subroutine read_kurucz_tables(tables, kurucz_table_path, kurucz_table2_path, &
+     two_z_tables, ierr)
 
+! (1) at kurucz_table_z1 and, with two_z_tables, (2) at kurucz_table_z2
+      type(kurucz_table_set), intent(inout) :: tables(:)
       character(len=256), intent(in) :: kurucz_table_path, kurucz_table2_path
+      logical, intent(in) :: two_z_tables
       integer, intent(out) :: ierr
       integer :: num_read, density_index
       integer :: read_status
@@ -56,24 +63,24 @@ subroutine read_kurucz_tables(kurucz_table_path, kurucz_table2_path, ierr)
       ierr = 0
 ! The early-out range check in kurucz() belongs to the first table
 ! only (the former kurucz2.f90 never had it).
-      opacity_table%kurucz(2)%check_range = .false.
+      tables(2)%check_range = .false.
 
       call read_kurucz_table(kurucz_table_path, &
-           opacity_table%kurucz(1), ierr)
+           tables(1), ierr)
       if (ierr /= 0) return
 
 ! DBG 12/95 read in second Z table if requested
-      if (kap_settings%use_two_z_tables) then
+      if (two_z_tables) then
          call read_kurucz_table(kurucz_table2_path, &
-              opacity_table%kurucz(2), ierr)
+              tables(2), ierr)
          if (ierr /= 0) return
       end if
 
-      call build_kurucz_splines(opacity_table%kurucz(1), ierr)
+      call build_kurucz_splines(tables(1), ierr)
       if (ierr /= 0) return
 ! DBG 12/95 second Z table
-      if (kap_settings%use_two_z_tables) then
-         call build_kurucz_splines(opacity_table%kurucz(2), ierr)
+      if (two_z_tables) then
+         call build_kurucz_splines(tables(2), ierr)
       end if
 
       return
@@ -247,8 +254,8 @@ end subroutine build_kurucz_splines
 ! alternate return, `return 1` to the caller's label 100.)
 !
 ! 2026 wave 3 (R5): tbl is the table set to interpolate in --
-! opacity_table%kurucz(1) (the former kurucz.f90) or
-! opacity_table%kurucz(2) (the former kurucz2.f90, deleted; it was a
+! tables(1) (the former kurucz.f90) or
+! tables(2) (the former kurucz2.f90, deleted; it was a
 ! member-for-member rename of this file except for the early-out
 ! range check below, which it lacked and which tbl%check_range now
 ! gates).
@@ -415,5 +422,61 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
       end if
 !     QODF = D LN(O)/D LN(D)
 end subroutine compute_kurucz_opacity
+
+!----------------------------------------------------------------------
+! The family's descriptor (opacity_source) and its procedures
+!----------------------------------------------------------------------
+! A molecular family of one table per Z (kurucz_table_z1, and with
+! use_two_z_tables kurucz_table_z2, blended linearly in Z), with no
+! value outside its table (in_table .false.: the interior opacity is
+! used alone there).
+function kurucz90_source(settings) result(source)
+      type(kap_settings_t), intent(in) :: settings
+      type(kap_source) :: source
+
+      source%name = 'Kurucz 1990'
+      source%blends_two_z = .true.
+      source%table_z = [settings%kurucz_table_z1, settings%kurucz_table_z2]
+      source%table_z_controls = [character(len=16) :: 'kurucz_table_z1', 'kurucz_table_z2']
+      source%selected = settings%use_kurucz90_tables
+      source%load => load_kurucz90
+      source%lookup => lookup_kurucz90
+end function kurucz90_source
+
+subroutine load_kurucz90(settings, paths, envelope_hydrogen_fraction, tables, ierr)
+      type(kap_settings_t), intent(in) :: settings
+      type(kap_table_paths_t), intent(in) :: paths
+      real(dp), intent(in) :: envelope_hydrogen_fraction
+      type(opacity_table_state), intent(inout) :: tables
+      integer, intent(out) :: ierr
+
+      call read_kurucz_tables(tables%kurucz, paths%kurucz, paths%kurucz_z2, &
+           settings%use_two_z_tables, ierr)
+end subroutine load_kurucz90
+
+subroutine lookup_kurucz90(settings, tables, point, res, in_table, ierr)
+      type(kap_settings_t), intent(in) :: settings
+      type(opacity_table_state), intent(inout) :: tables
+      type(kap_point), intent(in) :: point
+      type(kap_result), intent(inout) :: res
+      logical, intent(out) :: in_table
+      integer, intent(out) :: ierr
+      type(kap_result) :: res_z2
+
+      call compute_kurucz_opacity(tables%kurucz(1), point%log10_density, &
+           point%log10_temperature, res%opacity, res%log10_opacity, &
+           res%dlnkap_dlnrho, res%dlnkap_dlnt, in_table, ierr)
+      if (ierr /= 0) return
+      if (in_table .and. settings%use_two_z_tables) then
+         call compute_kurucz_opacity(tables%kurucz(2), point%log10_density, &
+              point%log10_temperature, res_z2%opacity, res_z2%log10_opacity, &
+              res_z2%dlnkap_dlnrho, res_z2%dlnkap_dlnt, in_table, ierr)
+         if (ierr /= 0) return
+      end if
+      if (in_table .and. settings%use_two_z_tables) then
+         call blend_results_in_z(res, res_z2, point%metal_fraction, &
+              settings%kurucz_table_z1, settings%kurucz_table_z2)
+      end if
+end subroutine lookup_kurucz90
 
 end module kurucz_opacity
