@@ -11,7 +11,6 @@
 ! opal_layout (everything the code tells the vintages apart by), the
 ! slots of eos_output (i_opal_*, i_opal01_*), and the helpers the
 ! vintages share:
-!     open_opal_eos_table      open the selected table (at eos_init)
 !     interpolate_opal_t6_rho  the T6-rho interpolation of the 2001 and
 !                              2006 tables
 !     find_opal_ramp           table coverage and edge-blend weight for
@@ -31,11 +30,11 @@
 module opal_eos_tables
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use eos_configuration, only: opal_vintage_1995, opal_vintage_2001, opal_vintage_2006
-      use eos_messages, only: eos_log, eos_report, message_length, unwritten_line
+      use eos_messages, only: eos_report, message_length, unwritten_line
       use math_lib
       implicit none
       private
-      public :: n_eos_nr_max, n_opal_vintages, open_opal_eos_table, find_opal_ramp, i_opal01_chi_rho, i_opal01_chi_t, &
+      public :: n_eos_nr_max, n_opal_vintages, find_opal_ramp, i_opal01_chi_rho, i_opal01_chi_t, &
            i_opal01_cv, i_opal01_e, i_opal01_gamma1, i_opal01_gamma2_ratio, &
            i_opal01_gamma3m1, i_opal01_p, i_opal01_s, i_opal_chi_rho, &
            i_opal_chi_t, i_opal_cv, i_opal_dedrho, i_opal_e, i_opal_gamma1, &
@@ -615,36 +614,6 @@ real(dp) function quad(cache, recompute_flag, cache_slot, eval_point, &
 end function quad
 
 
-!----------------------------------------------------------------------
-! open_opal_eos_table
-!----------------------------------------------------------------------
-! Opens the OPAL EOS table of the vintage the settings select on a new
-! unit (opal_shared%table_unit), closing one left open by an earlier
-! eos_init, and marks the vintage's table unread, so that its reader
-! reads this file on first use (refilling the table first) whatever an
-! earlier eos_init loaded.
-subroutine open_opal_eos_table(vintage, opal_eos_table_path, ierr)
-      integer, intent(in) :: vintage
-      character(len=*), intent(in) :: opal_eos_table_path
-      integer, intent(out) :: ierr
-      character(len=message_length) :: eos_lines(4)
-      logical :: is_open
-
-      if (opal_shared%table_unit /= 0) then
-         inquire(unit=opal_shared%table_unit, opened=is_open)
-         if (is_open) close(opal_shared%table_unit)
-      end if
-      opal_shared%table_loaded_flag(vintage) = 0
-      opal_shared%readco_init_flag(vintage) = 0
-      open(newunit=opal_shared%table_unit, file=opal_eos_table_path, status='OLD', &
-           iostat=ierr)
-      if (ierr /= 0) then
-         eos_lines = unwritten_line
-         write(eos_lines,*) 'eos_init: cannot open the OPAL EOS table ', trim(opal_eos_table_path)
-         call eos_report(eos_lines)
-         ierr = 1
-      end if
-end subroutine open_opal_eos_table
 
 !======================================================================
 ! Sources: the OPAL EOS interpolation codes of Rogers, Swenson &

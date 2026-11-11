@@ -28,7 +28,7 @@ module eos_lib
       use eos_table_source, only: eos_table_source_t, stage_whole_eos
       use eos_source_list, only: table_sources, n_table_sources
       use scv_eos, only: build_scv_envelope_table
-      use yale_eos, only: read_fermi_table
+      use fermi_table_reader, only: read_fermi_table
       use eos_mixture, only: eos_mix, debye_huckel_composition_of
       use opal_eos_tables, only: n_opal_vintages
       use yale_eos_tables, only: debye_huckel_composition, fermi_log10t_min

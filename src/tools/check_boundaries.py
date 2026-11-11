@@ -1180,10 +1180,6 @@ NO_IO_ALLOWANCE = {
         "core round (b: core_messages; the kernel returns codes, core.md finding 5)",
     "core/envelope/envelope_integrands.f90":
         "core round (b: its dead `if (.false.) print` lines, core.md finding 5)",
-    "eos/yale/yale_eos.f90": "eos round (the Fermi-Dirac table read, with the source descriptor)",
-    "eos/scv/scv_eos.f90": "eos round (the SCV table read, with the source descriptor)",
-    "eos/opal/opal_eos.f90": "eos round (the OPAL table read, with the source descriptor)",
-    "eos/mhd/mhd_eos.f90": "eos round (the MHD table read, with the source descriptor)",
     "rotation/seculr/instability_velocities.f90":
         "rotation follow-up, outside PLAN.md's rounds (rotation.md finding 6: the RAT print)",
 }
