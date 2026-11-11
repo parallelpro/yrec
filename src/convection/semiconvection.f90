@@ -66,10 +66,7 @@ subroutine extend_by_semiconvection(timestep, composition, log_density, luminosi
       integer, intent(inout) :: num_zones_mixed
       double precision, intent(in) :: log_teff
 
-! only_check_core: hardwired switch -- semiconvection is only ever
-! evaluated at the convective core (the first mixed zone).
-      logical, parameter :: only_check_core = .true.
-      integer :: loop_upper_bound, zone_idx, edge_side
+      integer :: zone_idx, edge_side
       logical :: up_semiconv_flag, down_semiconv_flag
       integer :: cz_edge_idx, adjacent_radiative_idx
       logical :: want_derivatives, in_atmosphere, is_convective
@@ -103,14 +100,9 @@ subroutine extend_by_semiconvection(timestep, composition, log_density, luminosi
 
       ierr = 0
 
-! RUN THROUGH THE CONVECTION ZONES (ONLY THE FIRST, I.E. THE CORE, WHEN
-! only_check_core IS SET).
-      if (only_check_core) then
-         loop_upper_bound = 1
-      else
-         loop_upper_bound = num_zones_mixed
-      end if
-      do zone_idx = 1, loop_upper_bound
+! Only the first mixed zone is examined (the YREC team's core-only
+! switch, a8e60674), whatever num_zones_mixed is.
+      zone_idx = 1
 
 ! DETERMINE IF THIS REGION IS A CORE CONVECTION ZONE, SURFACE CZ,
 ! OR INTERMEDIATE CZ.
@@ -309,7 +301,6 @@ subroutine extend_by_semiconvection(timestep, composition, log_density, luminosi
   601       format(1x,'CZ OLD EDGE ',i3,' EXTENDED TO-', &
                  i3,' LIMIT=',l1,' RAD.GRADS-IN/OUT',2f8.4)
          end do
-      end do
 !  CHECK FOR MERGERS OF NEARBY CONVECTION ZONES CAUSED BY SEMI-CONVECTION.
       if (num_zones_mixed.le.1) return
       k_idx = 1

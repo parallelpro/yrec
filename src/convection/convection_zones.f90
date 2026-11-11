@@ -266,15 +266,8 @@ subroutine extend_by_overshoot(composition, log_density, log_pressure, log_radiu
 ! OVERSHOOT WILL BE PERFORMED IN EACH CASE, AND SEPARATE USER
 ! PARAMETERS GOVERNING THE DEGREE OF OVERSHOOT.
          if (mixed_zone_bounds(zone_idx,1).eq.1) then
-! CONVECTIVE CORE
-! CHECK FOR A FULLY CONVECTIVE STAR; SKIP THIS SR IF THERE IS ONE.
-            if (mixed_zone_bounds(zone_idx,2).eq.num_zones) then
-               write(run_log_unit,5)
-    5          format(1x,'FULLY CONVECTIVE MODEL - NO OVERSHOOT')
-               write(run_log_unit,200) (mixed_zone_bounds_no_overshoot( &
-                    1,j_idx), j_idx=1,2)
-               return
-            end if
+! CONVECTIVE CORE (find_convection_zones returns before calling this
+! for a fully convective model, so the core ends below the surface).
 ! SKIP IF NO CORE OVERSHOOT IS DESIRED.
             if (.not.convection_settings%core_overshoot) cycle
             up_overshoot_flag = .true.
