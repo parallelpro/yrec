@@ -11,3 +11,17 @@ file = 'eos/opal_eos_tables.f90'
 old = '''      opal_shared%table_loaded_flag(vintage) = 0
       opal_shared%readco_init_flag(vintage) = 0'''
 new = '''      opal_shared%readco_init_flag(vintage) = 0'''
+
+[[mutation]]
+id = 'fermi_reader-01'
+check = 'Fermi table: a card out of its place, or abscissae wider than the lookup, returns ierr = 1'
+file = 'eos/yale/yale_eos.f90'
+old = '''         if (misplaced_card) exit'''
+new = '''         misplaced_card = .false.'''
+
+[[mutation]]
+id = 'fermi_reader-02'
+check = 'Fermi table: a card out of its place, or abscissae wider than the lookup, returns ierr = 1'
+file = 'eos/yale/yale_eos.f90'
+old = '''            if (bin_end > fermi_n_bins) then'''
+new = '''            if (bin_end > 2*fermi_n_bins) then'''

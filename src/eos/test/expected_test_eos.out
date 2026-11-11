@@ -672,6 +672,9 @@ ok   SCV reader: a truncated table returns ierr = 1
  eos_init: cannot open the Fermi-Dirac table fermi_missing
  eos_init: the Fermi-Dirac table ends early or is corrupt: fermi_truncated
 ok   Fermi table: a missing or truncated table returns ierr = 1, its unit closed
+read_fermi_table: card 100 is for abscissa 44 and row 3, not the next in the table: fermi_bad_card
+read_fermi_table: the abscissae span more than the 261 bins of the X lookup: fermi_wide_x
+ok   Fermi table: a card out of its place, or abscissae wider than the lookup, returns ierr = 1
 # test_eos: configuration production
 OPALEOS/ESAC06: the OPAL EOS table ends early or is corrupt: X block 1, density column 15
 ok   OPAL 2006 table: a truncated table returns ierr = 1 on first use, its unit closed

@@ -19,10 +19,20 @@ module yale_eos_tables
            idh_na = 5, idh_mg = 6, idh_al = 7, idh_si = 8, idh_p = 9, idh_s = 10, &
            idh_cl = 11, idh_ar = 12, idh_ca = 13, idh_ti = 14, idh_cr = 15, &
            idh_mn = 16, idh_fe = 17, idh_ni = 18, n_debye_huckel_metals = 18
+! The Fermi-Dirac table's shape: fermi_n_x abscissae X = log rho -
+! log mu_e - 1.5 log T (and their degeneracies eta), fermi_n_t rows in
+! log T, fermi_n_quantities integrals per entry, one card per (abscissa,
+! row) in the file, abscissa first; and the binned X lookup, fermi_n_bins
+! bins of 1/fermi_bins_per_unit_x in X from the first abscissa, each
+! naming the first abscissa of its 3-point stencil (the last stencil,
+! from abscissa fermi_n_x - 2, takes the bins to the end).
+      integer, parameter, public :: fermi_n_x = 43, fermi_n_t = 20, fermi_n_quantities = 5, &
+           fermi_n_cards = fermi_n_x*fermi_n_t, fermi_n_bins = 261
+      real(dp), parameter, public :: fermi_bins_per_unit_x = 20.0d0
       type :: yale_eos_state
-           real(dp) :: fermi_table_x_grid(43), fermi_table_eta(43), &
-                fermi_table_data(5,43,20)
-           integer :: fermi_table_x_lookup(261)
+           real(dp) :: fermi_table_x_grid(fermi_n_x), fermi_table_eta(fermi_n_x), &
+                fermi_table_data(fermi_n_quantities,fermi_n_x,fermi_n_t)
+           integer :: fermi_table_x_lookup(fermi_n_bins)
       end type yale_eos_state
 
       type(yale_eos_state) :: yale

@@ -829,7 +829,7 @@ subroutine table_reader_checks()
       type(eos_settings_t) :: s
       type(eos_table_paths_t) :: paths
       type(eos_result) :: r
-      integer :: ierr, ierr_missing, ierr_cut, it
+      integer :: ierr, ierr_missing, ierr_cut, ierr_card, ierr_wide, it
       logical :: cut_open
       s = eos_settings
       s%opal_vintage = opal_vintage_none
@@ -843,6 +843,17 @@ subroutine table_reader_checks()
       inquire(file="fermi_truncated", opened=cut_open)
       call check("Fermi table: a missing or truncated table returns ierr = 1, its unit closed", &
            ierr_missing == 1 .and. ierr_cut == 1 .and. .not. cut_open)
+! a card whose abscissa is out of the table (card 100's 14 made 44), and
+! abscissae spanning more than the X lookup's 261 bins (the first, -16,
+! made -30): the reader stores neither
+      call copy_editing(fermi_path, "fermi_bad_card", 110, 1, "   44")
+      paths%fermi = "fermi_bad_card"
+      call eos_init(s, paths, ierr_card)
+      call copy_editing(fermi_path, "fermi_wide_x", 1, 9, "-30.0000")
+      paths%fermi = "fermi_wide_x"
+      call eos_init(s, paths, ierr_wide)
+      call check("Fermi table: a card out of its place, or abscissae wider than the lookup, returns ierr = 1", &
+           ierr_card == 1 .and. ierr_wide == 1)
       call copy_head(opal06_path, "opal06_truncated", 3000)
       call configure_eos("production", opal2006=.true., scv=.true., file="opal06_truncated")
       it = 0
@@ -861,6 +872,27 @@ subroutine table_reader_checks()
       call eos_get(5.0d0, 12.8d0, 0.70d0, 0.016492d0, r, .true., .false., it, ierr=ierr)
       if (ierr /= 0) write(*,'(a)') "table_reader_checks: the OPAL table did not read back"
 end subroutine table_reader_checks
+
+! the file src into dst, with line line_no's columns from col on
+! replaced by text
+subroutine copy_editing(src, dst, line_no, col, text)
+      character(len=*), intent(in) :: src, dst, text
+      integer, intent(in) :: line_no, col
+      character(len=400) :: line
+      integer :: u_in, u_out, k, ios
+      open(newunit=u_in, file=src, status="old", action="read")
+      open(newunit=u_out, file=dst, status="replace")
+      k = 0
+      do
+         read(u_in, '(a)', iostat=ios) line
+         if (ios /= 0) exit
+         k = k + 1
+         if (k == line_no) line(col:col+len(text)-1) = text
+         write(u_out, '(a)') trim(line)
+      end do
+      close(u_in)
+      close(u_out)
+end subroutine copy_editing
 
 ! the first n_lines lines of the file src, into dst
 subroutine copy_head(src, dst, n_lines)
