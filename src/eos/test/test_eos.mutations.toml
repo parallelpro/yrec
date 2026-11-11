@@ -32,3 +32,15 @@ check = 'settings: a Saha cutoff below log T 5.7 returns ierr = 1, and 5.7 is in
 file = 'eos/eos_lib.f90'
 old = '''      if (.not. settings%saha_log10t_cutoff - saha_ramp_width >= fermi_log10t_min) then'''
 new = '''      if (.not. settings%saha_log10t_cutoff >= fermi_log10t_min) then'''
+
+[[mutation]]
+id = 'fully_ionized_convergence-01'
+check = 'fully ionized gas: a density iteration that does not converge returns ierr = 1'
+file = 'eos/yale/yale_eos.f90'
+old = '''      if (.not. converged) then
+         ierr = 1
+         return
+      end if'''
+new = '''      if (.not. converged) then
+         return
+      end if'''

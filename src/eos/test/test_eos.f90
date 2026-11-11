@@ -1177,7 +1177,7 @@ subroutine ideal_gas_checks()
       real(dp), parameter :: fi_lp(4) = [13.0d0, 14.3d0, 15.0d0, 16.5d0]
       type(eos_result) :: r
       real(dp) :: mu_e_inv, mu_inv, rho_ideal, correction, cp, grad, worst
-      integer :: k, ierr
+      integer :: k, ierr, ierr_far, it
       logical :: ok
       call configure_eos("yale_only")
 ! a neutral gas (log T = 3.5): rho = mu P_gas/(R T) with 1/mu = 1/mu_ion +
@@ -1230,6 +1230,21 @@ subroutine ideal_gas_checks()
 ! pressure, an error
       call eos_at(7.5d0, 15.40d0, x, z, r, ierr)
       call check("radiation pressure above P: beta <= 0 returns ierr", ierr == 1)
+! the fully ionized gas's density iteration from a start 100 dex off (its
+! steps are capped at 4 dex, 20 of them): no convergence, an error, where
+! the same start one dex off converges
+      it = 0
+      r = eos_result()
+      r%log10_density = -100.0d0
+      r%density = 1.0d-100
+      call eos_get(7.0d0, 16.0d0, x, z, r, .true., .false., it, ierr=ierr_far)
+      it = 0
+      r = eos_result()
+      r%log10_density = 1.0d0
+      r%density = 10.0d0
+      call eos_get(7.0d0, 16.0d0, x, z, r, .true., .false., it, ierr=ierr)
+      call check("fully ionized gas: a density iteration that does not converge returns ierr = 1", &
+           ierr_far == 1 .and. ierr == 0)
 end subroutine ideal_gas_checks
 
 ! Every field a blend sets, on both sides of a boundary in log T (fixed

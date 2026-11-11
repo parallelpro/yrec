@@ -240,7 +240,7 @@ subroutine gas_eos(log10_temperature, log10_pressure, hydrogen_fraction, metal_f
 
       ierr = 0
       if (log10_temperature >= eos_settings%saha_log10t_cutoff) then
-         call fully_ionized_gas(log10_temperature, log10_pressure, hydrogen_fraction, dh, r)
+         call fully_ionized_gas(log10_temperature, log10_pressure, hydrogen_fraction, dh, r, ierr)
          return
       end if
       call compute_saha_eos(saha_number_fractions, log10_temperature, &
@@ -254,7 +254,8 @@ subroutine gas_eos(log10_temperature, log10_pressure, hydrogen_fraction, metal_f
       end if
       if (log10_temperature <= eos_settings%saha_log10t_cutoff - saha_ramp_width) return
       saha = r
-      call fully_ionized_gas(log10_temperature, log10_pressure, hydrogen_fraction, dh, r)
+      call fully_ionized_gas(log10_temperature, log10_pressure, hydrogen_fraction, dh, r, ierr)
+      if (ierr /= 0) return
       call blend_saha_into(saha, &
            saha_ramp_scale*(eos_settings%saha_log10t_cutoff - log10_temperature), &
            want_derivatives, r)
@@ -389,11 +390,13 @@ end subroutine zone_mixture
 !----------------------------------------------------------------------
 ! A fully ionized gas: 1/mu_e = X/A_H + (1 - X)(Z/A of He and the
 ! metals, 1/2), R/mu, the ionization fractions (H+, He+, He++ = 1, 0, 1),
-! then compute_fully_ionized_eos's density and derivatives.
-subroutine fully_ionized_gas(log10_temperature, log10_pressure, hydrogen_fraction, dh, r)
+! then compute_fully_ionized_eos's density and derivatives (ierr = 1 when
+! its density iteration does not converge).
+subroutine fully_ionized_gas(log10_temperature, log10_pressure, hydrogen_fraction, dh, r, ierr)
       real(dp), intent(in) :: log10_temperature, log10_pressure, hydrogen_fraction
       type(debye_huckel_composition), intent(in) :: dh
       type(eos_result), intent(inout) :: r
+      integer, intent(out) :: ierr
       r%electron_mean_weight_inverse = hydrogen_fraction*inverse_a_hydrogen &
            + (1.0d0 - hydrogen_fraction)*electrons_per_nucleon_metals
       r%specific_gas_constant = gas_constant*(r%ion_mean_weight_inverse + &
@@ -401,7 +404,7 @@ subroutine fully_ionized_gas(log10_temperature, log10_pressure, hydrogen_fractio
       r%ion_fraction(1) = 1.0d0
       r%ion_fraction(2) = 0.0d0
       r%ion_fraction(3) = 1.0d0
-      call compute_fully_ionized_eos(log10_temperature, log10_pressure, dh, r)
+      call compute_fully_ionized_eos(log10_temperature, log10_pressure, dh, r, ierr)
 end subroutine fully_ionized_gas
 
 !----------------------------------------------------------------------

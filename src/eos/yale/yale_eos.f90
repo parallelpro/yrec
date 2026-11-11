@@ -673,27 +673,34 @@ end subroutine differentiate_saha_solution_twice
 ! Debye-Hueckel term) add up to P, then sets the density, its first and
 ! second derivatives, cp, grad_ad and their derivatives, and eta (the
 ! second derivatives always: the caller keeps or discards them). The
-! density iteration starts from r's density. Called by blend_eos's
-! gas_eos at and above the Saha cutoff, and below it within the ramp,
-! where the Saha (or SCV) result is blended into it.
+! density iteration starts from r's density; when it does not converge
+! (iterate_fully_ionized_density) r keeps its other fields and ierr is
+! 1. Called by blend_eos's gas_eos at and above the Saha cutoff, and
+! below it within the ramp, where the Saha (or SCV) result is blended
+! into it.
 ! DBG 7/92 modified to include Debye-Hueckel correction.
 !     Correction is applied to pressure and all thermodynamic variables.
 !     Treatment is also valid for electron degeneracy.  A ramp function
 !     between the nondegenerate and degernate electron gas cases of the
 !     D-H correction is used (this is not correct but, hopefully is
 !     close enough.)  The constant term is debye_huckel_coefficient.
-subroutine compute_fully_ionized_eos(log10_temperature, log10_pressure, dh, r)
+subroutine compute_fully_ionized_eos(log10_temperature, log10_pressure, dh, r, ierr)
       real(dp), intent(in) :: log10_temperature, log10_pressure
 ! the zone's composition for the Debye-Hueckel correction (read only
 ! with the correction on)
       type(debye_huckel_composition), intent(in) :: dh
       type(eos_result), intent(inout) :: r
+      integer, intent(out) :: ierr
       type(fermi_solution) :: f
       logical :: converged
 
+      ierr = 0
       call start_fully_ionized_solution(log10_temperature, log10_pressure, dh, r, f)
       call iterate_fully_ionized_density(log10_temperature, log10_pressure, r, f, converged)
-      if (.not. converged) return
+      if (.not. converged) then
+         ierr = 1
+         return
+      end if
       r%log10_density = f%dl8
       r%density = f%d8
       call interpolate_fermi_table(f)

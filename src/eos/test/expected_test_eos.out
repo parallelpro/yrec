@@ -612,6 +612,7 @@ ok   radiation-dominated: grad_ad and cp of the gas plus radiation
 ok   radiation-dominated: grad_ad -> 1/4
  blend_eos: beta = P_gas/P is not positive: log T, log P, beta   7.5000000000000000        15.400000000000000       -4.0148916156006464E-003
 ok   radiation pressure above P: beta <= 0 returns ierr
+ok   fully ionized gas: a density iteration that does not converge returns ierr = 1
 # test_eos: configuration yale_only
 ok   continuity: the blended quantities at the Saha ramp's foot (cutoff - 0.5)
 ok   continuity: the blended quantities at the Saha cutoff
