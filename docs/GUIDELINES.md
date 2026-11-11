@@ -434,6 +434,29 @@ result surprised you. Full battery = gate3 (3 legacy pins + MESA pins)
 + config matrix + reentry + convert + error_exit + physics + domain
 tests + boundaries.
 
+**A refactor: byte-identical on every deck (`src/tools/compare_decks.py`).**
+Before the first edit, take a baseline from the commit the refactor
+starts from; after each commit, compare with it:
+
+    python3 -I src/tools/compare_decks.py . --set all --snapshot   # before
+    python3 -I src/tools/compare_decks.py . --set all              # after
+
+It builds src/, runs check_boundaries, runs the 56 decks (the
+configuration matrix, the testsuite's 12 solar decks, the examples, and
+the rotation and accretion variants in `src/tools/compare_decks/`; about
+10 minutes with the default 6 jobs) and byte-compares every output file
+with the baseline (the version line aside), and each log with its pin in
+the main checkout's `standard/` directories (a fresh clone has none
+until `test_all.py` seeds them; the pins line then says so). The
+refactor is done when it ends with `RESULT: ALL IDENTICAL` and the pins
+line counts 35 OK. `--set quick` (18 decks, half a minute) suits the
+commits inside a series, `--only REGEX` reruns the decks that differed,
+and `--work DIR` keeps a second baseline apart from the default
+`.compare_decks/` of the main checkout. A baseline taken after the edit
+proves nothing: if you have edited already, snapshot a worktree of the
+starting commit (`git worktree add ../base <commit>`, then
+`compare_decks.py ../base --set all --snapshot`).
+
 Never run two batteries (or a battery and a build) concurrently in this
 tree -- concurrent makes and shared example output/ dirs corrupt both
 (learned the hard way, twice).
