@@ -1,0 +1,272 @@
+# Mutations of test_kap: each ok/FAIL check must print FAIL under a mutation of
+# the code it covers (kap/README.md, section 4). Run: python3 src/tools/mutate.py
+# kap (src/tools/mutate.py describes this format and the verdicts).
+program = "test_kap"
+timeout = 120
+
+[[mutation]]
+id = 'opal95-2d-node'
+check = 'OPAL95 2D path (surface X, Z): exact at a table node'
+file = 'kap/opal95/opal95_opacity.f90'
+old = '      log10_opacity = lagrange4(st%weight_t, logcappa_at_t)'
+new = '      log10_opacity = lagrange4(st%dweight_t, logcappa_at_t)'
+
+[[mutation]]
+id = 'opal95-3d-node'
+check = 'OPAL95 3D path (X off the surface): exact at a table node'
+file = 'kap/opal95/opal95_opacity.f90'
+old = '      log10_opacity = lagrange4(st%weight_x(:,1), logcappa_at_x)'
+new = '      log10_opacity = lagrange4(st%weight_x(:,1), logcappa_at_x) + 1.0d-3'
+
+[[mutation]]
+id = 'opal95-4d-node'
+check = 'OPAL95 4D path (Z off the fixed-Z table): exact at a node'
+file = 'kap/opal95/opal95_opacity.f90'
+old = '      log10_opacity = lagrange4(st%weight_z, logcappa_at_z)'
+new = '      log10_opacity = lagrange4(st%weight_t, logcappa_at_z)'
+
+[[mutation]]
+id = 'alex06-node'
+check = 'Alexander 2006: exact at a table node'
+file = 'kap/alex06/alex06_opacity.f90'
+old = 'call interp(interp_nodes, weight_x, x_eval=interp_target)'
+new = 'call interp(interp_nodes, weight_x, x_eval=interp_target+1.0d-3)'
+
+[[mutation]]
+id = 'opal95-2d-dt'
+check = 'OPAL95 2D: dln kappa/dln rho, dln T against differences'
+file = 'kap/opal95/opal95_opacity.f90'
+old = '      dlnkap_dlnt = lagrange4(st%dweight_t, logcappa_at_t)'
+new = '      dlnkap_dlnt = lagrange4(st%weight_t, logcappa_at_t)'
+
+[[mutation]]
+id = 'opal95-3d-drho'
+check = 'OPAL95 3D: dln kappa/dln rho, dln T against differences'
+file = 'kap/opal95/opal95_opacity.f90'
+old = '      dlnkap_dlnrho = lagrange4(st%weight_x(:,1), dlogcappa_dlogr_at_x)'
+new = '      dlnkap_dlnrho = lagrange4(st%weight_x(:,1), dlogcappa_dlogt_at_x)'
+
+[[mutation]]
+id = 'opal95-4d-drho'
+check = 'OPAL95 4D: dln kappa/dln rho, dln T against differences'
+file = 'kap/opal95/opal95_opacity.f90'
+old = '      dlnkap_dlnrho = lagrange4(st%weight_z, dlogcappa_dlogr_at_z)'
+new = '      dlnkap_dlnrho = lagrange4(st%weight_z, dlogcappa_dlogt_at_z)'
+
+[[mutation]]
+id = 'opal95-extrapolation'
+check = "OPAL95: kappa continuous at the table's lowest log R"
+file = 'kap/opal95/opal95_opacity.f90'
+old = '         delta_logr = st%logr - st%logr_lo_edge'
+new = '         delta_logr = st%logr - st%logr_lo_edge + 1.0d0'
+
+[[mutation]]
+id = 'alex06-dt'
+check = 'Alexander 2006: dln kappa/dln rho, dln T against differences'
+file = 'kap/alex06/alex06_opacity.f90'
+old = '      dlnkap_dlnt = dlnkap_dlnt - 3.0d0*dlnkap_dlnrho'
+new = '      dlnkap_dlnt = dlnkap_dlnt - 2.0d0*dlnkap_dlnrho'
+
+[[mutation]]
+id = 'conductive-dt'
+check = 'Potekhin conduction (ionized): derivatives against differences'
+file = 'kap/conductive/conductive_opacity.f90'
+old = 'conductive_dlnkap_dlnt = (weight_h1*cond_h1*dlnkap_dlnt_h1 &'
+new = 'conductive_dlnkap_dlnt = (weight_h1*cond_h1*dlnkap_dlnrho_h1 &'
+
+[[mutation]]
+id = 'conduction-sum-drho'
+check = 'Potekhin conduction (ionized): derivatives against differences'
+file = 'kap/opacity_blending.f90'
+old = '      res%dlnkap_dlnrho = (radiative%dlnkap_dlnrho + conductive%dlnkap_dlnrho - &'
+new = '      res%dlnkap_dlnrho = (radiative%dlnkap_dlnrho - conductive%dlnkap_dlnrho - &'
+
+[[mutation]]
+id = 'helium-core-blend'
+check = 'helium core (pure Z blend): derivatives against differences'
+file = 'kap/opacity_blending.f90'
+old = '      call blend_in_z(res%dlnkap_dlnt, res_z2%dlnkap_dlnt, &'
+new = '      call blend_in_z(res%dlnkap_dlnt, res_z2%dlnkap_dlnrho, &'
+
+[[mutation]]
+id = 'ramp-min'
+check = 'ramp: kappa continuous at molecular_opacity_logt_min'
+file = 'kap/opacity_blending.f90'
+old = '         res%opacity = ramp_weight*res%opacity + (1.0d0 - ramp_weight)*molecular%opacity'
+new = '         res%opacity = ramp_weight*res%opacity + (1.0d0 - ramp_weight)*molecular%opacity*1.01d0'
+
+[[mutation]]
+id = 'ramp-max'
+check = 'ramp: kappa continuous at molecular_opacity_logt_max'
+file = 'kap/opacity_blending.f90'
+old = '         ramp_weight = (log10_temperature - logt_min) / (logt_max - logt_min)'
+new = '         ramp_weight = (log10_temperature - logt_min) / (logt_max - logt_min + 0.01d0)'
+
+[[mutation]]
+id = 'opal95-fixed-z'
+check = 'OPAL95: the 2D path continuous with the 4D path in Z'
+file = 'kap/opal95/opal95_opacity.f90'
+old = '               z_weight(2)*tbl%full_opacity(table2_index,j,k)+z_weight(3)*tbl%full_opacity(table3_index,j,k)+ &'
+new = '               z_weight(3)*tbl%full_opacity(table2_index,j,k)+z_weight(3)*tbl%full_opacity(table3_index,j,k)+ &'
+
+[[mutation]]
+id = 'opal95-surface-x'
+check = 'kap_update_surface_tables: the new 2D path is the old 3D path'
+file = 'kap/opal95/opal95_opacity.f90'
+old = '            tbl%surface_opacity(j,k) = x_weight(1)*tbl%fixed_z_opacity(table1_index,j,k) + &'
+new = '            tbl%surface_opacity(j,k) = x_weight(2)*tbl%fixed_z_opacity(table1_index,j,k) + &'
+
+[[mutation]]
+id = 'conductive-he-weight'
+check = 'Potekhin mixture: kappa_c = sum of w_i kappa_i (partly ionized)'
+file = 'kap/conductive/conductive_opacity.f90'
+old = 'weight_he4 = number_fraction_he4 * (ion_fraction(2) + 2D0*ion_fraction(3))/2D0'
+new = 'weight_he4 = number_fraction_he4 * (ion_fraction(2) + ion_fraction(3))/2D0'
+
+[[mutation]]
+id = 'opal92-dt'
+check = 'OPAL92 (two Z): derivatives against differences'
+file = 'kap/opal92/opal92_opacity.f90'
+old = '      dlnkap_dlnt = qoti - 3.0d0*dlnkap_dlnrho'
+new = '      dlnkap_dlnt = qoti - 2.0d0*dlnkap_dlnrho'
+
+[[mutation]]
+id = 'blend-at-z1'
+check = 'OPAL92 two-Z blend: at opal_table_z1 it is the first table'
+file = 'kap/opacity_blending.f90'
+old = '           (metal_fraction - table_z2)*slope'
+new = '           (metal_fraction - table_z1)*slope'
+
+[[mutation]]
+id = 'laol-dt'
+check = 'LAOL89 (secant derivatives): against differences, to 10%'
+file = 'kap/laol89/laol_opacity.f90'
+old = '      dlnkap_dlnt = (logt_interp_opacity(spline_index_hi)-logt_interp_opacity(spline_index_lo))/ &'
+new = '      dlnkap_dlnt = (logt_interp_opacity(spline_index_lo)-logt_interp_opacity(spline_index_hi))/ &'
+
+[[mutation]]
+id = 'kurucz-drho'
+check = 'Kurucz 1990 (two Z): derivatives against differences'
+file = 'kap/kurucz90/kurucz_opacity.f90'
+old = '         dlnkap_dlnrho_at_rho = (3.0d0*c4*delta_logrho+2.0d0*c3)*delta_logrho+c2'
+new = '         dlnkap_dlnrho_at_rho = (3.0d0*c4*delta_logrho+3.0d0*c3)*delta_logrho+c2'
+
+[[mutation]]
+id = 'alex94-dt'
+check = 'Alexander 1994: derivatives against differences'
+file = 'kap/alex94/alex94_opacity.f90'
+old = '         dlnkap_dlnt = lagrange4(dweight_t, opacity_row)'
+new = '         dlnkap_dlnt = lagrange4(weight_t, opacity_row)'
+
+[[mutation]]
+id = 'blend-slope'
+check = "blend_in_z: each table's value at its own Z"
+file = 'kap/opacity_blending.f90'
+old = '      slope = (value_z1 - value_z2) / &'
+new = '      slope = (value_z1 + value_z2) / &'
+
+[[mutation]]
+id = 'conduction-sum-slope'
+check = 'add_conduction: equal opacities halve kappa, average the slopes'
+file = 'kap/opacity_blending.f90'
+old = '           conductive%opacity*conductive%dlnkap_dlnrho) / &'
+new = '           conductive%opacity*radiative%dlnkap_dlnrho) / &'
+
+[[mutation]]
+id = 'hubbard-lampe-drho'
+check = 'hubbard_lampe_opacity: derivatives against differences'
+file = 'kap/opacity_blending.f90'
+old = '           2.0d0*hubbard_lampe_c_rho2*log10_density - hubbard_lampe_c_rho'
+new = '           hubbard_lampe_c_rho2*log10_density - hubbard_lampe_c_rho'
+
+[[mutation]]
+id = 'settings-pure-z'
+check = 'kap_init refuses the pure-Z table without an interior table'
+file = 'kap/kap_lib.f90'
+old = '      if (helium_core_family%selected .and. .not. interior_family%selected) then'
+new = '      if (.false.) then'
+
+[[mutation]]
+id = 'settings-two-z'
+check = 'kap_init refuses two OPAL92 tables at one Z'
+file = 'kap/kap_lib.f90'
+old = '           family%table_z(1) == family%table_z(2)'
+new = '           family%table_z(1) < family%table_z(2)'
+
+[[mutation]]
+id = 'settings-ramp'
+check = 'kap_init refuses molecular_opacity_logt_min >= _max'
+file = 'kap/kap_lib.f90'
+old = '      else if (molecular_family%selected .and. .not. (settings%molecular_opacity_logt_min < &'
+new = '      else if (.false. .and. .not. (settings%molecular_opacity_logt_min < &'
+
+[[mutation]]
+id = 'missing-table'
+check = 'kap_init: a missing table returns ierr (and is not created)'
+file = 'kap/conductive/conductive_reader.f90'
+old = "open(newunit=file_unit, file=path, status='OLD', iostat=ierr)"
+new = "open(newunit=file_unit, file=path, status='UNKNOWN', iostat=ierr)"
+
+[[mutation]]
+id = 'short-table'
+check = 'kap_init: a short OPAL92 table returns ierr'
+file = 'kap/opal92/opal92_reader.f90'
+old = '''              (tbl%log10_opacity(k+(i-1)*n_opal92_t,density_index),density_index=1,n_opal92_d)
+         if (read_failed(ios, iomsg, 'OPAL 1992', path, unit, ierr)) return'''
+new = '''              (tbl%log10_opacity(k+(i-1)*n_opal92_t,density_index),density_index=1,n_opal92_d)
+         if (ios < 0) then
+            close(unit)
+            tbl%num_temps = n_opal92_t
+            tbl%num_x = n_opal92_x
+            return
+         end if'''
+
+[[mutation]]
+id = 'opal95-t-range'
+check = 'kap_get: log T off the tables returns ierr, res unchanged'
+file = 'kap/opal95/opal95_opacity.f90'
+old = '           log10_temperature > tbl%grid_logt(n_opal95_t)) then'
+new = '           log10_temperature > tbl%grid_logt(n_opal95_t) + 1.0d0) then'
+
+[[mutation]]
+id = 'res-on-error'
+check = 'kap_get: log T off the tables returns ierr, res unchanged'
+file = 'kap/kap_lib.f90'
+old = '''      call kap_eval(point, result, ierr)
+      if (ierr /= 0) return'''
+new = '''      call kap_eval(point, result, ierr)
+      if (ierr /= 0) result%log10_opacity = 0.0d0'''
+
+[[mutation]]
+id = 'z-limit'
+check = 'kap_get: Z above 0.12 below 10^7 K returns ierr'
+file = 'kap/kap_lib.f90'
+old = '      else if ((point%metal_fraction > max_interior_metal_fraction) .or. &'
+new = '      else if ((point%metal_fraction > 1.0d0) .or. &'
+
+[[mutation]]
+id = 'alex06-cache'
+check = 'Alexander 2006: a refused composition fails again on a retry'
+file = 'kap/alex06/alex06_opacity.f90'
+old = '''         if (ierr /= 0) return
+         tbl%cached_z = metal_fraction
+         tbl%cached_x = hydrogen_fraction'''
+new = '''         tbl%cached_z = metal_fraction
+         tbl%cached_x = hydrogen_fraction
+         if (ierr /= 0) return'''
+
+[[mutation]]
+id = 'kap-init-state'
+check = "kap_init again: the first lookup is the first run's, bit for bit"
+file = 'kap/kap_lib.f90'
+old = '      tables = initial_tables'
+new = '      tables%envelope_metal_fraction = 0.0d0'
+
+[[mutation]]
+id = 'helium-core-without-pure-z'
+check = 'kap_get: a helium core without the pure-Z table returns ierr'
+file = 'kap/kap_lib.f90'
+old = '''              ' NEED PURE Z TABLE TO CONTINUE. Z,LOG T=')
+         ierr = 1'''
+new = '''              ' NEED PURE Z TABLE TO CONTINUE. Z,LOG T=')
+         ierr = 0'''

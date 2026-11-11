@@ -61,4 +61,47 @@ kap  0.70000  0.01623  4.50000   2.655415400077498E+01   1.424132469617034E+00  
 kap  0.70000  0.01623  5.50000   2.292043036133105E+01   1.360222767824000E+00   7.289150505455674E-01  -3.391082803778413E+00
 kap  0.70000  0.01623  6.50000   1.995278920441118E+00   3.000036143793723E-01   7.203675624282337E-01  -3.508641422636175E+00
 kap  0.70000  0.01623  7.20000   4.961510349444221E-01  -3.043860983925905E-01   1.921724233006523E-01  -7.186063237027787E-01
+# test_kap: checks (error, then ok or FAIL)
+OPAL95 2D path (surface X, Z): exact at a table node                       0.00E+00  ok
+OPAL95 3D path (X off the surface): exact at a table node                  0.00E+00  ok
+OPAL95 4D path (Z off the fixed-Z table): exact at a node                  0.00E+00  ok
+Alexander 2006: exact at a table node (log T 3.40, log R -3)               0.00E+00  ok
+OPAL95 2D: dln kappa/dln rho, dln T against differences                    1.76E-08  ok
+OPAL95 3D: dln kappa/dln rho, dln T against differences                    2.21E-08  ok
+OPAL95 4D: dln kappa/dln rho, dln T against differences                    1.92E-08  ok
+Alexander 2006: dln kappa/dln rho, dln T against differences               1.42E-06  ok
+Potekhin conduction (ionized): derivatives against differences             3.84E-09  ok
+helium core (pure Z blend): derivatives against differences                6.76E-03  ok
+ramp: kappa continuous at molecular_opacity_logt_min                       2.41E-08  ok
+ramp: kappa continuous at molecular_opacity_logt_max                       6.09E-09  ok
+OPAL95: kappa continuous at the table's lowest log R                       3.70E-11  ok
+OPAL95: the 2D path continuous with the 4D path in Z                       5.36E-05  ok
+kap_update_surface_tables: the new 2D path is the old 3D path              0.00E+00  ok
+Potekhin mixture: kappa_c = sum of w_i kappa_i (partly ionized)            1.11E-15  ok
+OPAL92 (two Z): derivatives against differences                            5.76E-08  ok
+OPAL92 two-Z blend: at opal_table_z1 it is the first table                 0.00E+00  ok
+LAOL89 (secant derivatives): against differences, to 10%                   5.89E-02  ok
+Kurucz 1990 (two Z): derivatives against differences                       2.01E-07  ok
+Alexander 1994: derivatives against differences                            1.14E-06  ok
+blend_in_z: each table's value at its own Z                                0.00E+00  ok
+add_conduction: equal opacities halve kappa, average the slopes            0.00E+00  ok
+hubbard_lampe_opacity: derivatives against differences                     1.11E-11  ok
+kap_init: use_pure_z_table needs an interior table (use_opal95_tables, use_opal92_tables or use_laol89_tables)
+kap_init refuses the pure-Z table without an interior table                0.00E+00  ok
+kap_init: two OPAL 1992 tables (use_z_ramp or use_diffusion_z) need two Zs; opal_table_z1 = opal_table_z2 = 2.00000E-02
+kap_init refuses two OPAL92 tables at one Z                                0.00E+00  ok
+kap_init: molecular_opacity_logt_min ( 4.10000E+00) must be below molecular_opacity_logt_max ( 4.10000E+00)
+kap_init refuses molecular_opacity_logt_min >= _max                        0.00E+00  ok
+ read_conductive_table: cannot open no_such_table.cond
+kap_init: a missing table returns ierr (and is not created)                0.00E+00  ok
+kap_init: the OPAL 1992 table short_table.opal92 ends early
+kap_init: a short OPAL92 table returns ierr                                0.00E+00  ok
+ LOG T OF   8.900000OUT OF OPAL 95 TABLE RANGE
+kap_get: log T off the tables returns ierr, res unchanged                  0.00E+00  ok
+kap_get: Z above 0.12 below 10^7 K returns ierr                            0.00E+00  ok
+ILLEGAL COMPOSITION (X,Z) =   0.99  0.02 IN ALEX06.RUN STOPPED
+ILLEGAL COMPOSITION (X,Z) =   0.99  0.02 IN ALEX06.RUN STOPPED
+Alexander 2006: a refused composition fails again on a retry               0.00E+00  ok
+kap_init again: the first lookup is the first run's, bit for bit           0.00E+00  ok
+kap_get: a helium core without the pure-Z table returns ierr               0.00E+00  ok
 test_kap: done
