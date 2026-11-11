@@ -571,7 +571,7 @@ subroutine settle_helium()
             call diffuse_elements(settling_dt,composition,dlnp_dr_settling, &
                  log_radius,log_density,enclosed_mass,log_temperature, &
                  sub_physics%gradT,am_transport_convective_flag,num_zones, &
-                 total_mass,s%settling_active, &
+                 total_mass, &
                  s%settling_suspended_reported, ierr)
             if (ierr /= 0) return
          end do

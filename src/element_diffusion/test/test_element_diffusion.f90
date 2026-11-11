@@ -204,7 +204,7 @@ subroutine settle_case(label, new_routines)
 ! the controls set above, as a run card installs them
       call set_diffusion_settings(diffusion_settings_from_star(star))
       call diffuse_elements(step, xa, local_dlnp_dr, log_r, log_rho, local_m, &
-           log_t, del, convective, nz, mass, star%physics%diffuse_helium_active, &
+           log_t, del, convective, nz, mass, &
            star%settling_suspended_reported, ierr)
       write(*,'(/,a)') '# '//label
       write(*,'(a,i0)') 'ierr = ', ierr

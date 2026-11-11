@@ -65,7 +65,7 @@ contains
 ! back to the model grid).
 subroutine microdiff(diff_scr, timestep, composition, dlnp_dr, log_radius, &
      log_density, enclosed_mass, log_temperature, del_grad, &
-     convective_flag, num_zones, total_mass, diffuse_helium, &
+     convective_flag, num_zones, total_mass, &
      suspension_reported, ierr)
       use microdiff_mapping
       use microdiff_run
@@ -87,8 +87,7 @@ subroutine microdiff(diff_scr, timestep, composition, dlnp_dr, log_radius, &
       integer, intent(in) :: num_zones
       double precision, intent(in) :: total_mass
       integer, intent(out) :: ierr
-      ! settle hydrogen and helium; the run log's suspension latch
-      logical, intent(in) :: diffuse_helium
+      ! the run log's suspension latch
       logical, intent(inout) :: suspension_reported
 ! --- locals ---
 ! The timestep, dlnP/dr, mass coordinate and total mass in Bahcall and
@@ -163,8 +162,9 @@ subroutine microdiff(diff_scr, timestep, composition, dlnp_dr, log_radius, &
 !  IN THE CASE OF HYDROGEN DIFFUSION, PASS IN THEA/THEZ FOR IRON SINCE
 !  THESE VALUES ARE USED FOR THE METAL ABUNDANCE IN THOUL.
 !
-!     DIFFUSE HYDROGEN.
-      if(diffuse_helium)then
+!     DIFFUSE HYDROGEN (always: diffuse_elements is called only while
+!     hydrogen and helium settle, and the metal and light-element calls
+!     read the hydrogen gradient this call computes).
          species_col = thoul_col_h
          atomic_weight_diffused = thoul_fe%weight
          atomic_charge_diffused = thoul_fe%charge
@@ -191,7 +191,6 @@ subroutine microdiff(diff_scr, timestep, composition, dlnp_dr, log_radius, &
             species_fraction_mid(thoul_col_h,i) = eq_mid%hydrogen(i)
          enddo
          species_fraction(thoul_col_h,num_eq_points) = eq%hydrogen(num_eq_points)
-      endif
 !
 !----------------------------------------------------------------------
 !

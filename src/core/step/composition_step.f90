@@ -303,7 +303,7 @@ subroutine settle
       do substep_idx = 1, num_settling_steps
          call diffuse_elements(settling_dt, s%xa, dlnp_dr, s%logR, &
               s%logRho, s%m, s%logT, s%gradT, deep_mix_flag, &
-              s%nz, total_mass_unlogged, s%settling_active, &
+              s%nz, total_mass_unlogged, &
               s%settling_suspended_reported, ierr)
          if (ierr /= 0) return
       end do

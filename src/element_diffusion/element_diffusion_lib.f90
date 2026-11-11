@@ -26,14 +26,15 @@ contains
 ! arrays are the structure (log radius, density and temperature, the
 ! enclosed mass in grams, d ln P/dr, the temperature gradient del_grad
 ! and the convective flags); the routines convert some of them to their
-! own units in place and back. diffuse_helium: settle hydrogen and
-! helium (the newer routines; the metals and light elements settle
-! regardless). suspension_reported: the run log's latch (the star's), set
+! own units in place and back. Hydrogen and helium always settle, the
+! metals and the light elements when their settings say so (the callers
+! settle only while the star's settling_active holds).
+! suspension_reported: the run log's latch (the star's), set
 ! when a model too convective or exhausted to settle is reported, cleared
 ! when settling resumes.
 subroutine diffuse_elements(timestep, composition, dlnp_dr, log_radius, &
      log_density, enclosed_mass, log_temperature, del_grad, &
-     convective_flag, num_zones, total_mass, diffuse_helium, &
+     convective_flag, num_zones, total_mass, &
      suspension_reported, ierr)
       use composition_layout, only: json
       double precision, intent(inout) :: timestep
@@ -45,7 +46,6 @@ subroutine diffuse_elements(timestep, composition, dlnp_dr, log_radius, &
       logical, intent(in) :: convective_flag(json)
       integer, intent(in) :: num_zones
       double precision, intent(inout) :: total_mass
-      logical, intent(in) :: diffuse_helium
       logical, intent(inout) :: suspension_reported
       integer, intent(out) :: ierr
 ! the settling routines' working arrays for this step
@@ -56,7 +56,7 @@ subroutine diffuse_elements(timestep, composition, dlnp_dr, log_radius, &
       if (diffusion_settings%use_new_diffusion_routines) then
          call microdiff(diff_scr, timestep, composition, dlnp_dr, log_radius, &
               log_density, enclosed_mass, log_temperature, del_grad, &
-              convective_flag, num_zones, total_mass, diffuse_helium, &
+              convective_flag, num_zones, total_mass, &
               suspension_reported, ierr)
       else
          call gravitational_settling(diff_scr, timestep, composition, dlnp_dr, log_radius, &
