@@ -45,8 +45,9 @@ transcript and the deck generator in another.
 
 1. **The harness in the repository.** `src/tools/compare_decks.py` (today's check.py rules: build, run
    the 56 decks, byte-compare every output with a baseline, compare logs with the `standard/` pins).
-   - The extra decks it needs go into `testsuite/`: the rotating variants `rv_*`, `cm_accretion`
-     and `o24_rescale_rotating`.
+   - The extra decks it needs (the rotating variants `rv_*`, `cm_accretion` and
+     `o24_rescale_rotating`) go into `src/tools/compare_decks/`, which pytest does not collect (done
+     in round 0; `testsuite/` would have put them in two root tests' recursive searches).
    - The baseline goes to a git-ignored directory outside /private/tmp.
    - Newcomers get the same check the rounds use.
 2. **bug_sweep §14.** Register the seventh evaluation's new findings for all 13 packages, so every later

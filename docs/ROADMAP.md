@@ -3967,3 +3967,69 @@ io/); and Phase 5's typed parts of the star.
 - The scratchpad lost about half its entries at midnight again (the doc
   checkers among them); both packages rebuilt the checkers from their
   docstrings. Tools a round depends on belong in the tree.
+
+### Round 0: groundwork for raising six packages past 8 (yrec-next, 2026-11-10)
+
+The seventh evaluation (`audit/module-evaluation-7-2026-11-10/`) scored
+every package of src/; its PLAN.md takes eos, kap, atm, convection,
+element_diffusion and core past 8. All five reports for those packages
+named the same missing middle layer (kernels that print, tests that pin
+numbers without ok/FAIL checks, READMEs without flow, conventions,
+coverage and traced recipes, the F77 shape), so round 0 built the tools
+once. Three branches, merged after a full check; no Fortran source
+changed except two test programs.
+
+**What was done.**
+- **The deck-comparison harness is in the tree** (`r0-harness`): the
+  scratch `check.py`, its 17 extra decks and its baseline had been
+  deleted by the macOS tmp cleaner. `src/tools/compare_decks.py` runs
+  the 56-deck set, byte-compares every output with a baseline
+  (`.compare_decks/base` in the main checkout, git-ignored) and each
+  log with the 35 `standard/` pins. The extra decks (the rotating
+  variants, the accretion and O24 decks), remade from today's base
+  decks with the generating commands recovered from the session
+  transcripts, are in `src/tools/compare_decks/`, out of pytest's
+  collection; their outputs are byte-identical to the lost decks' last
+  outputs. The tool sets YREC_INPUT and YREC_START to the tree's own
+  directories, where check.py inherited the shell's.
+- **Style ratchet** (`r0-tools`): `src/tools/check_style.py` counts ten
+  metrics per directory (`double precision`, old operators,
+  `endif`/`enddo`, specific intrinsics, ALL-CAPS comments,
+  commented-out code, modules without `private`, `use` without
+  `only:`, explicit-shape dummies, I/O outside a messages module)
+  against `style_counts.tsv`, which only falls; run by test_boundaries.
+- **Kernels print nothing:** check_no_io covers STAR_BLIND_FILES and a
+  KERNEL_FILES list, with an allowance per round for today's eight
+  violators.
+- **One mutation tool:** `src/tools/mutate.py` runs a package's
+  `test/<program>.mutations.toml`; math's 17 and numerics' 71 mutations
+  moved there with the same verdicts.
+- **Build modes and a devel job:** the Makefile records one build mode
+  per make (`src/.build_mode`), so devel and release objects no longer
+  mix; `make devel_tests` and `src/tools/devel_tests.py` run the unit
+  test programs under `-fcheck=all` and the FP traps (32 of 36 cases;
+  test_eos and test_structure's three decks skipped as M92 and O4), and
+  a CI job does the same. `make check` runs every checker and the
+  generators' `--check`.
+- **The README standard** is a checklist in docs/GUIDELINES.md.
+- **bug_sweep §14** (`r0-sweep`): the reports' 79 new defects, M196-M274,
+  each checked in the code and against the F77; O19 widened, M170
+  corrected; M275 and M276 (a test callback past its arrays, and the
+  tools failing under `python3 -I`) found and fixed by the tools.
+
+**Verified** at the merge (40b89712): the 56 decks ALL IDENTICAL against
+the new baseline, 35 pins OK; `make check`; the CI pytest list, 91
+passed and 2 skipped in both modes (after rebuilding the extra-energy
+example, whose binary in the main checkout dated from 10-28); the devel
+run, 0 failures.
+
+#### Learned
+
+- Nothing a round depends on may live only in /private/tmp: the work
+  directory is now outside it, and the harness and its decks are in the
+  tree.
+- The old harness had run every deck with the shell's YREC_INPUT and
+  YREC_START, pointing at the main checkout, so a worktree's own input
+  tables were never the ones tested.
+- A devel build finds what release runs hide: a test callback that read
+  and wrote past its arrays on every run (M275).
