@@ -117,7 +117,7 @@ end subroutine find_valid_columns
 
 !======================================================================
 ! Sources: the F77's SETUPS read (SURFP's table) and its Castelli/Kurucz
-! twin (J. N. Tayar, 6/14); G. Somers (5/15) added the per-row valid
+! twin (JNT 6/14); G. Somers (5/15) added the per-row valid
 ! columns.
 
 end module kurucz_table_reader

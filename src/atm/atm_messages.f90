@@ -348,4 +348,9 @@ subroutine report_atm_error(text)
       call report_error(text)
 end subroutine report_atm_error
 
+!======================================================================
+! Sources: the texts are the F77's (SURFP, ALSURFP, ALFILEIN, ALTABINIT
+! and SURFBC) and the 2026 port's (the open failures, the polint and
+! splint notes, report_atm_error's).
+
 end module atm_messages

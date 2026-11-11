@@ -260,4 +260,10 @@ subroutine atm_note_choice_switch(from_choice, to_choice, log10_teff)
       call note_choice_switch(from_choice, to_choice, log10_teff, allard_tables%log_teff_last)
 end subroutine atm_note_choice_switch
 
+!======================================================================
+! Sources: the F77's SETUPS (the table loads, by KTTAU), ENVINT (the
+! lookup by KTTAU, the gray fallback of ALSURFP's LAlFail) and SURFBC
+! (the switch to gray and back, MHP 9/01); the 2026 port
+! gathered them behind this facade.
+
 end module atm_lib

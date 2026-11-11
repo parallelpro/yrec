@@ -453,8 +453,8 @@ end subroutine sort_shell
 
 !======================================================================
 ! Sources: the F77's ALFILEIN (the reader, both layouts) and ALTABINIT
-! (the limits and the check), M. H. Pinsonneault's Allard atmospheres
-! (6/97) and the 2007 NextGen layout (2008); Numerical Recipes' shell
+! (the limits and the check): the Allard atmospheres (MHP 6/97) and
+! the 2007 NextGen layout (2008); Numerical Recipes' shell
 ! sort (Press et al., section 8.1). The model atmospheres: F. Allard,
 ! P. H. Hauschildt and collaborators (NextGen, AMES-Cond, AMES-Dusty).
 

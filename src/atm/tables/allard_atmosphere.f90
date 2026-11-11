@@ -191,8 +191,8 @@ pure subroutine interpolate_across_rows(tbl, first_row, use_tau100, log_teff, pr
 end subroutine interpolate_across_rows
 
 !======================================================================
-! Sources: the F77's ALSURFP (M. H. Pinsonneault's Allard atmospheres,
-! 6/97; the 2007 NextGen layout, 2008), with its four steps; the model
+! Sources: the F77's ALSURFP (the Allard atmospheres, MHP 6/97; the
+! 2007 NextGen layout, 2008), with its four steps; the model
 ! atmospheres of F. Allard, P. H. Hauschildt and collaborators.
 
 end module allard_atmosphere

@@ -31,8 +31,8 @@ module atm_choices
       integer, parameter :: first_choice = atm_eddington_gray, last_choice = atm_castelli_kurucz
 
 ! The log Teff at and above which the star layer replaces the Kurucz
-! table by the gray relation, and below which it returns to it (M. H.
-! Pinsonneault, 9/01; the table itself reaches log Teff 4.6). The Allard
+! table by the gray relation, and below which it returns to it (MHP
+! 9/01; the table itself reaches log Teff 4.6). The Allard
 ! tables switch at their last log Teff; the Castelli/Kurucz table and the
 ! T-tau relations never.
       real(dp), parameter, public :: kurucz_gray_switch_log_teff = 3.95d0
@@ -80,5 +80,9 @@ pure function atm_choice_name(atm_choice) result(name)
       name = ''
       if (atm_choice_is_known(atm_choice)) name = choices(atm_choice)%name
 end function atm_choice_name
+
+!======================================================================
+! Sources: the F77's KTTAU codes (0-5; 5, Castelli/Kurucz, JNT 6/14),
+! PARMIN's run-log banner, and SURFBC's switch (MHP 9/01).
 
 end module atm_choices
