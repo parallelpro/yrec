@@ -264,17 +264,10 @@ program test_eos
          end do
       end if
 
-! Error paths (2026, docs/ROADMAP.md stage 3): in the eos domain the error
-! conditions behind the converted stops are corrupt-table /
-! misconfiguration cases (out-of-table lookups stay *recoverable* by
-! design here -- in_table flags and sentinels -- unlike kap), so
-! with healthy tables the facade cannot be driven to ierr /= 0. The
-! first check asserts the success path threads ierr = 0 end to end
-! through compute_blended_eos/blend_eos/compute_opal_eos/esac06. The second drives esac06 (a
-! domain internal -- this test is in-domain, white-box by design)
-! with an invalid rad_flag, the same class of internal error the
-! converted stops guarded, and asserts ierr = 1 with no crash; its
-! diagnostic goes to run_log_unit as always.
+! The error paths: with healthy tables the facade's success threads
+! ierr = 0 through the blend and the OPAL lookup (a point outside a table
+! is not an error), and an OPAL interpolator given an invalid rad_flag
+! returns ierr = 1 with its message in the run log.
       write(*,'(a)') "# test_eos: error paths via ierr"
       logt = 6.30d0
       logp = 14.0d0

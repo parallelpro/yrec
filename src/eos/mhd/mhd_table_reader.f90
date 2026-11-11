@@ -26,7 +26,7 @@ contains
 ! for the compositions A, B and C, and the 5 centre-type tables), each
 ! on a new unit, reads them with mhdst and closes them. A file that
 ! cannot be opened, or a table that fails mhdst's checks, returns
-! ierr = 1 with a message in the run log.
+! ierr = 1 with a message to the terminal and the run log.
 subroutine read_mhd_tables(zams_paths, centre_paths, ierr)
       character(len=*), intent(in) :: zams_paths(mhd_n_zams), centre_paths(mhd_n_centre)
       integer, intent(out) :: ierr
@@ -59,7 +59,7 @@ subroutine read_mhd_tables(zams_paths, centre_paths, ierr)
 end subroutine read_mhd_tables
 
 ! open one MHD table (unformatted) on a new unit; ierr = 1, with a
-! message in the run log, when it cannot be opened
+! message to the terminal and the run log, when it cannot be opened
 subroutine open_mhd_table(path, table_unit, ierr)
       character(len=*), intent(in) :: path
       integer, intent(out) :: table_unit, ierr

@@ -89,7 +89,7 @@ end subroutine mhd_lookup
 ! (mhd%mhd_output) into the same thermodynamic derivative set
 ! used by the rest of the EOS machinery. A point outside the tables
 ! (log T outside their range, or log P above a row's highest) returns
-! ierr = 1, with a message in the run log.
+! ierr = 1, with a message to the terminal and the run log (eos_report).
 subroutine compute_mhd_eos(log10_temperature, log10_pressure, &
      hydrogen_fraction, metal_fraction, r, ierr)
 
@@ -171,7 +171,9 @@ end subroutine compute_mhd_eos
 !     MHD interpolation package
 !     pressure as argument interpolation in X, Z fixed
 !
-!     Input   PGL = log10 (gas pressure [dyn/cm2])
+!     Input   PGL = log10 (pressure [dyn/cm2]) (Daeppen's header says
+!             the gas pressure; compute_mhd_eos passes the total, an open
+!             question: eos/README.md section 2.2)
 !             TL  = log10 (temperature [K])
 !             XC  = hydrogen abundance (by mass)
 !
@@ -500,5 +502,10 @@ subroutine interpolate_mhd_table(log10_pressure, log10_temperature, table_data, 
 
       return
 end subroutine interpolate_mhd_table
+!======================================================================
+! Sources: the MHD EOS of Hummer & Mihalas (1988), Mihalas, Daeppen &
+! Hummer (1988) and Daeppen et al. (1988); the interpolation package and
+! its names (mhdpx, mhdpx1, mhdpx2, intpt) are Daeppen's, wrapped for
+! YREC by YC (MEQOS, March 1990).
 
 end module mhd_eos

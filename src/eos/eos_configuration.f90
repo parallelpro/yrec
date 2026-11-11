@@ -13,9 +13,11 @@ module eos_configuration
       use mhd_eos_tables, only: mhd_n_zams, mhd_n_centre
       implicit none
       private
-! The OPAL table vintages eos_settings_t%opal_vintage selects:
-! opal_vintage_conflict is the builder's answer to controls that select
-! more than one, an error at eos_init.
+! The OPAL table vintages eos_settings_t%opal_vintage selects. The
+! controls never select two: derive_controls (io/derived_controls.f90)
+! lets the newest win, with a warning, before the builder copies it.
+! opal_vintage_conflict is a value outside the range, which eos_init
+! refuses (its range check; test_eos passes it).
       integer, parameter, public :: opal_vintage_none = 0, opal_vintage_1995 = 1, &
            opal_vintage_2001 = 2, opal_vintage_2006 = 3, opal_vintage_conflict = -1
 

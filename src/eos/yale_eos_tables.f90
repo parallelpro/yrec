@@ -46,7 +46,7 @@ module yale_eos_tables
 
 ! The composition the Debye-Hueckel correction weights at a zone: X, Y,
 ! Z and the mass fractions of its 18 metals (slots idh_*; eos_get builds
-! it for each call, eos_lib's debye_huckel_composition_of).
+! it for each call, eos_mixture's debye_huckel_composition_of).
       type, public :: debye_huckel_composition
          real(dp) :: hydrogen_fraction = 0.0d0, helium_fraction = 0.0d0, &
               metal_fraction = 0.0d0

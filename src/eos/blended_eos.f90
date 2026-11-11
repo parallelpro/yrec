@@ -468,5 +468,13 @@ subroutine blend_saha_into(saha, ramp_weight, want_derivatives, r)
            f*(saha%adiabatic_gradient_dp - r%adiabatic_gradient_dp)
 end subroutine blend_saha_into
 
+!======================================================================
+! Sources: EQSTAT (compute_blended_eos, its numerical second derivatives
+! by LLP 10-22-06 and 8-5-07) and EQSTAT2 (blend_eos) of the Yale code:
+! the Saha and SCV results, the fully ionized gas, the Saha ramp and the
+! OPAL tables with their edge ramps (MHP 8/98, 7/2003; LLP 10/16/06); the
+! diffusion-of-Z mixture rule is MHP's (3/94). In 2026 blend_eos was cut
+! into named steps, and the table sources were given one descriptor
+! (eos_table_source) and one list (eos_source_list).
 
 end module blended_eos

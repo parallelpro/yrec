@@ -1,0 +1,23 @@
+! eos/retired/opal95_radsub_notes.f90.txt
+!
+! Where from: the OPAL 1995 radiation correction, radsub in
+! eos/opal/opal95_eos.f90 (yrec-next 916ee23a, lines 826-836), now
+! opal_eos's add_radiation_to_gammas. These lines were comments there:
+! a commented-out normalization of cv, and two commented-out rescalings
+! with MHP's open question (10/02) of whether the energy should be
+! rescaled by the energy-unit ratio as the pressure and the entropy are.
+! add_radiation_to_gammas rescales P and S only, as OPAL's code does.
+!
+! How to revive: the rescaling of E would be, in add_radiation_to_gammas
+! after total_entropy is rescaled,
+!     total_energy = total_energy*lay%energy_unit_ratio
+! a change of the 1995 results (a measured commit; no deck uses 1995).
+!
+!     normalize cvt to 3/2 when gas is ideal,non-degenerate,
+!     fully-ionized, and has no radiation correction
+!     cvt=(eos(5)*molenak/tmass+4.*er/t6)
+!    x  /molenak
+! MHP 10/02 EN is never used; should this be ET=ET*REVISE???
+!      EN=EN*REVISE
+! DEDRHOA is never used; should this be DEDRHOAT=DEDRHOAT*REVISE????
+!      Dedrhoa=dedrhoa*revise

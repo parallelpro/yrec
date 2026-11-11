@@ -299,9 +299,6 @@ end subroutine find_table_edge_ramp
 ! density at each T6 row, a/c, and the name in messages. Returns
 ! opal_rho_not_found (-999) when the point is not in the table, and,
 ! with a run-log message, when the search does not converge.
-! (2026 bug sweep, batch 2: the bracket and the tolerance, once loosened
-! to 1e-5 to hide a cv slot rescaled from stale values on every trial
-! call, fixed in batch 0; 2026-10: the 2001 search the same, M41.)
 function opal_density_search(v, vintage, hydrogen_fraction, t6_temperature, &
      pressure_e12, rad_flag, ierr) result(found_density)
       type(opal_eos_vintage), intent(inout) :: v
@@ -774,10 +771,8 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
       if (eos_var_idx > deriv_order) then
       pressure_scale = t6_temperature*density
       v%eos_output(lay%i_p) = v%eos_output(lay%i_p)*pressure_scale ! interpolated in p/po
-! Only slots that this call actually re-interpolated (index <= deriv_order)
-! are rescaled; the original scaled E and cv unconditionally, so the
-! deriv_order=1 trial calls from the rho(P,T) inversion compounded the
-! stale E and cv slots by T6 and moles*R/mu on every call.
+! only the slots this call interpolated (index <= deriv_order) are
+! rescaled
       if (lay%i_e <= deriv_order) &
            v%eos_output(lay%i_e) = v%eos_output(lay%i_e)*t6_temperature ! interpolated in E/T6
       if (rad_flag == 1 .and. deriv_order >= lay%n_vars) then
@@ -1551,5 +1546,18 @@ subroutine report_interpolation_indices(vintage)
          call eos_report(eos_lines)
       end if
 end subroutine report_interpolation_indices
+!======================================================================
+! Sources: the OPAL EOS interpolation codes of Rogers, Swenson & Iglesias
+! (1996; the 1995 tables: esac, rhoofp, radsub, gmass, readco) and Rogers
+! & Nayfonov (2002; the 2001 tables: esac01, rhoofp01, radsub01;
+! the 2006 tables, the 2005 update: esac06, rhoofp06, radsub06), with
+! the YREC edge ramps EQBOUND (MHP 8/98, 1995), EQBOUND01 (MHP 7/2003)
+! and EQBOUND06 (LLP 10/16/06). In 2026: the three vintages' code was
+! written once, driven by opal_layout (the 2001/2006 codes first, the
+! 1995 code with them later); the density searches' bracket and their
+! tolerance, once loosened to 1e-5 to hide a cv slot rescaled from stale
+! values on every trial call, were fixed (the trial calls rescale only
+! the slots they interpolate, as the original did not); the 2001 search
+! the same (M41).
 
 end module opal_eos

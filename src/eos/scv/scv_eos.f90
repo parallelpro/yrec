@@ -175,10 +175,8 @@ subroutine compute_scv_envelope_eos(log10_temperature, hydrogen_fraction, &
             if (idtt < nts-3) then
                temp_needs_smoothing = .true.
                temp_smooth_direction = 1
-! 2026 (bugsweep Batch 2): weight must be 0.5 AT the node and fall
-! to 0 at dist = tol (mirror of the downward branch above); the
-! inherited 0.5*dist/tol was reversed, giving a 0.5|S_n+1 - S_n|
-! jump at 60% of every cell instead of a continuous blend.
+! the weight is 0.5 at the node, falling to 0 at tol_temp_smooth (the
+! mirror of the downward branch)
                temp_smooth_weight = 0.5d0*(1.0d0 - temp_dist_below/tol_temp_smooth)
             end if
          end if
@@ -200,7 +198,7 @@ subroutine compute_scv_envelope_eos(log10_temperature, hydrogen_fraction, &
             if (idp < nptsx(idtt)-3) then
                press_needs_smoothing = .true.
                press_smooth_direction = 1
-! 2026 (bugsweep Batch 2): same reversal as the T branch above.
+! (as in T)
                press_smooth_weight = 0.5d0*(1.0d0 - press_dist_below/tol_pressure_smooth)
             end if
          end if
@@ -923,5 +921,15 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
 
 end subroutine build_scv_envelope_table
 
+!======================================================================
+! Sources: Saumon, Chabrier & Van Horn (1995) for the H and He tables;
+! the metal table was computed with the Prather EOS of the old Yale code.
+! The lookups were EQSCVE (compute_scv_envelope_eos) and EQSCVG
+! (compute_scv_eos), the table build SETSCV. The upward smoothing
+! weights, 0.5 at the node and falling to 0 at the tolerance, were made
+! the mirror of the downward ones in 2026 (the inherited 0.5 dist/tol
+! was reversed, a jump at 60% of every cell). The search start became a
+! defined cell (scv_cell) and the column search was clamped to the table
+! in 2026 (M107).
 
 end module scv_eos

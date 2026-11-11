@@ -183,7 +183,7 @@ contains
 ! to log T and log P: always the first derivatives (dln rho/dln T,
 ! dln rho/dln P, cp, grad_ad), the second ones only with
 ! want_derivatives and not in_atmosphere (otherwise they keep the
-! caller's values). Called from blend_eos.f90
+! caller's values). Called from blended_eos's gas_eos
 ! whenever the temperature is below the ionization cutoff, either
 ! directly (Prather EOS) or ahead of the SCV table lookup (to get
 ! derivatives SCV itself does not supply).
@@ -680,13 +680,11 @@ end subroutine differentiate_saha_solution_twice
 ! = log rho - log mu_e - 1.5 log T from its first abscissa to its last),
 ! where its interpolation extrapolates. Called by blend_eos's gas_eos at
 ! and above the Saha cutoff, and below it within the ramp, where the
-! Saha (or SCV) result is blended into it.
-! DBG 7/92 modified to include Debye-Hueckel correction.
-!     Correction is applied to pressure and all thermodynamic variables.
-!     Treatment is also valid for electron degeneracy.  A ramp function
-!     between the nondegenerate and degernate electron gas cases of the
-!     D-H correction is used (this is not correct but, hopefully is
-!     close enough.)  The constant term is debye_huckel_coefficient.
+! Saha (or SCV) result is blended into it. With the Debye-Hueckel
+! correction its pressure term enters the pressure and every
+! thermodynamic quantity; between the nondegenerate and the degenerate
+! electron gas (eta from debye_huckel_eta_min to _max) its composition
+! factor is interpolated linearly (an approximation, Sources).
 subroutine compute_fully_ionized_eos(log10_temperature, log10_pressure, dh, r, &
      extrapolated, ierr)
       real(dp), intent(in) :: log10_temperature, log10_pressure
@@ -748,7 +746,6 @@ subroutine start_fully_ionized_solution(log10_temperature, log10_pressure, dh, r
       f%emul8 = f%emul
 !  Pe is tabulated as a function of X(=log d - log mue - 3/2log T) and
 !  Y(= log T). Find index(JT1,JT2,JT3) for 3 pt interpolation in Y.
-! MHP 10/02 corrected mixed type
       f%jt1 = int(fermi_rows_per_dex*(log10_temperature - fermi_log10t_origin))
       f%jt1 = max(1, min(f%jt1, fermi_n_t - 2))  ! the 3-row stencil inside the table
       f%jt2 = f%jt1 + 1
@@ -776,7 +773,7 @@ end subroutine start_fully_ionized_solution
 ! Newton iteration on log rho until the electron (Fermi table), ion and
 ! radiation pressures, plus the Debye-Hueckel term, add up to P; steps
 ! are capped at 4 dex, and 20 steps without convergence is a failure
-! (converged false, a message in the run log). For details consult
+! (converged false, its message in the run log). For details consult
 ! Prather's thesis. The electron pressure pe is tabulated against
 ! X = log rho - log mu_e - 1.5 log T (3-point Lagrange, unequal spacing)
 ! and Y = log T (3-point Newton, equal spacing); pa is the ion pressure,
@@ -1111,5 +1108,15 @@ subroutine compute_internal_energy_and_cp(f, r)
       r%adiabatic_gradient_dp = pr4 - r%specific_heat_cp_dp
 end subroutine compute_internal_energy_and_cp
 
+!======================================================================
+! Sources: Prather (1976, thesis), the Yale EOS: EQSAHA (compute_saha_eos)
+! and EQRELV (compute_fully_ionized_eos). The Debye-Hueckel correction is
+! DBG's (Guenther, Demarque, Kim & Pinsonneault 1992), with its ramp
+! between the nondegenerate and degenerate electron gas, which its
+! author called "not correct but, hopefully, close enough". The density
+! iteration's steps were capped at 4 dex (LLP 1/31/07). In 2026: the
+! solvers were cut into the named steps above; the iteration's failure
+! became an error (M93) and leaving the Fermi-Dirac table a warning
+! (M208).
 
 end module yale_eos
