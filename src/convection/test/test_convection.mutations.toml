@@ -299,3 +299,17 @@ check = "semiconvection: stable with the core's composition, it stays"
 file = 'convection/semiconvection.f90'
 old = 'if (gradient_zone_mix < eos_res%adiabatic_gradient) return'
 new = 'if (.false.) return'
+
+[[mutation]]
+id = 'overshoot-11'
+check = 'overshoot, rotating: at least one shell above the core'
+file = 'convection/overshoot.f90'
+old = 'edge == edge_no_overshoot) edge = edge + 1'
+new = 'edge == edge_no_overshoot) edge = edge + 0'
+
+[[mutation]]
+id = 'semiconvection-07'
+check = "semiconvection: an envelope's lower edge moves down while f del_rad"
+file = 'convection/semiconvection.f90'
+old = 'step = -1'
+new = 'step = 1'

@@ -196,8 +196,9 @@ overshoot, envelope: the region below it, bottom..old edge                 0.00E
 overshoot, intermediate: both edges by alpha_int H_P                       0.00E+00  ok
  -----SAHA FAILURE (TL,PL)=  4.906156  8.322135  (E,DE)=      0.651709326372      0.694466572492
  MIXED REGIONS WITHOUT OVERSHOOT[   1-   5 ][  31-  40 ][
- MIXED REGIONS WITH OVERSHOOT   [   1-   5 ][  30-  40 ][
+ MIXED REGIONS WITH OVERSHOOT   [   1-   6 ][  30-  40 ][
 overshoot, rotating: at least one shell below the envelope                 0.00E+00  ok
+overshoot, rotating: at least one shell above the core                     0.00E+00  ok
  MIXED REGIONS WITHOUT OVERSHOOT[   1-   5 ][   9-  12 ][  31-  40 ][
  MIXED REGIONS WITH OVERSHOOT   [   1-  10 ][   7-  13 ][  31-  40 ][
   CONVECTION ZONES MERGED DUE TO OVERSHOOT
@@ -222,4 +223,6 @@ semiconvection merge: an overlapped region joins the core                  0.00E
  CZ OLD EDGE  10 EXTENDED TO- 12 LIMIT=F RAD.GRADS-IN/OUT  0.4450  0.4767
 semiconvection merge: a region sharing the edge shell stays                0.00E+00  ok
 semiconvection: stable with the core's composition, it stays               0.00E+00  ok
+ CZ OLD EDGE  30 EXTENDED TO- 28 LIMIT=F RAD.GRADS-IN/OUT  0.3742  0.3366
+semiconvection: an envelope's lower edge moves down while f del_rad        0.00E+00  ok
 test_convection: done

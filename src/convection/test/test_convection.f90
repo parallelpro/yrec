@@ -48,8 +48,9 @@ program test_convection
            log_m(json), log_t(json), dm(json)
       logical :: convective(json)
 ! the semiconvection model (build_semiconvective_model): its core is
-! shells 1..sc_core, Z = sc_metals everywhere
-      integer, parameter :: sc_core = 10
+! shells 1..sc_core, or its surface convection zone sc_envelope..nz;
+! Z = sc_metals everywhere
+      integer, parameter :: sc_core = 10, sc_envelope = 30
       double precision, parameter :: sc_metals = 0.016232d0
       double precision :: sc_xa(15,json), sc_log_rho(json), sc_log_p(json), &
            sc_log_r(json), sc_log_m(json), sc_log_t(json), sc_lum(json), sc_target(json)
@@ -777,11 +778,16 @@ subroutine overshoot_checks()
       cs%intermediate_overshoot = .false.
       cs%envelope_overshoot = .true.
       cs%overshoot_alpha_envelope = 1.0d-4
+      cs%core_overshoot = .true.
+      cs%overshoot_alpha_core = 1.0d-4
       cs%rotation_active = .true.
       cs%instability_transport_active = .true.
       call find_zones([1, 5, 31, 40])
       call check_that("overshoot, rotating: at least one shell below the envelope", &
            ierr == 0 .and. mix_bounds(2,1) == 30)
+      call check_that("overshoot, rotating: at least one shell above the core", &
+           ierr == 0 .and. mix_bounds(1,2) == 6)
+      cs%core_overshoot = .false.
       cs%rotation_active = .false.
       cs%instability_transport_active = .false.
 ! the merge after overshoot: the regions that meet become one
@@ -920,9 +926,16 @@ end subroutine sc_gradients
 ! shell to 0.3. With the core's composition the first shell's del_rad
 ! is f ~ 0.9 times its own, so semiconvection adds two shells: the third
 ! has del_rad > del_ad but f del_rad < del_ad.
-subroutine build_semiconvective_model(scale)
+! With `envelope`, the same structure has instead a surface convection
+! zone, shells sc_envelope..nz with X = 0.70 above X = 0.45, and the
+! shells below it have del_rad/del_ad = 0.95, 0.90 and 0.80, then 0.1 less a
+! shell to 0.3: with the zone's composition (f ~ 1.15) the first two
+! join it.
+subroutine build_semiconvective_model(scale, envelope)
       double precision, intent(in) :: scale
-      double precision, parameter :: first_targets(3) = [1.30d0, 1.20d0, 1.05d0]
+      logical, intent(in) :: envelope
+      double precision, parameter :: first_targets(3) = [1.30d0, 1.20d0, 1.05d0], &
+           envelope_targets(3) = [0.95d0, 0.90d0, 0.80d0]
       double precision :: f, grad_rad, grad_ad, log_density
       integer :: k
       sc_xa = 0.0d0
@@ -932,7 +945,9 @@ subroutine build_semiconvective_model(scale)
          sc_log_p(k) = 17.0d0 - 2.0d0*f
          sc_log_r(k) = 9.8d0 + 0.8d0*sqrt(f)
          sc_log_m(k) = 33.0d0 + 0.8d0*sqrt(f)
-         if (k <= sc_core) then
+         if (envelope) then
+            sc_xa(1,k) = merge(0.70d0, 0.45d0, k >= sc_envelope)
+         else if (k <= sc_core) then
             sc_xa(1,k) = 0.30d0
          else
             sc_xa(1,k) = 0.45d0 + 0.25d0*dble(k - sc_core - 1)/dble(nz - sc_core - 1)
@@ -943,7 +958,15 @@ subroutine build_semiconvective_model(scale)
               log10(4.0d0/(3.0d0 + 5.0d0*sc_xa(1,k) - sc_xa(3,k)))
          call sc_gradients(k, k, 1.0d0, grad_rad, grad_ad, log_density)
          sc_log_rho(k) = log_density
-         if (k <= sc_core) then
+         if (envelope) then
+            if (k >= sc_envelope) then
+               sc_target(k) = 1.5d0
+            else if (k >= sc_envelope - 3) then
+               sc_target(k) = scale*envelope_targets(sc_envelope - k)
+            else
+               sc_target(k) = scale*max(0.80d0 - 0.1d0*dble(sc_envelope - 3 - k), 0.3d0)
+            end if
+         else if (k <= sc_core) then
             sc_target(k) = 1.5d0
          else if (k <= sc_core + 3) then
             sc_target(k) = scale*first_targets(k - sc_core)
@@ -977,7 +1000,7 @@ subroutine semiconvection_checks()
       cs%solar_luminosity_cgs = 3.828d33
       cs%log10_t_cut = 6.8d0
       call set_convection_settings(cs)
-      call build_semiconvective_model(1.0d0)
+      call build_semiconvective_model(1.0d0, .false.)
 ! the core's edge moves out while f del_rad > del_ad
       bounds = 0
       bounds(1,:) = [1, sc_core]
@@ -1022,13 +1045,33 @@ subroutine semiconvection_checks()
       call check_that("semiconvection merge: a region sharing the edge shell stays", &
            ierr == 0 .and. num == 2 .and. bounds(1,2) == edge .and. bounds(2,1) == edge)
 ! a stable region stays
-      call build_semiconvective_model(0.7d0)
+      call build_semiconvective_model(0.7d0, .false.)
       bounds = 0
       bounds(1,:) = [1, sc_core]
       num = 1
       call semiconvect(bounds, num, 1.0d14)
       call check_that("semiconvection: stable with the core's composition, it stays", &
            ierr == 0 .and. num == 1 .and. bounds(1,2) == sc_core)
+! a surface convection zone: its lower edge moves down
+      call build_semiconvective_model(1.0d0, .true.)
+      bounds = 0
+      bounds(1,:) = [sc_envelope, nz]
+      num = 1
+      call semiconvect(bounds, num, 1.0d14)
+      edge = bounds(1,1)
+      call sc_gradients(sc_envelope - 1, sc_envelope, sc_lum(sc_envelope - 1), grad_mix, &
+           grad_ad, log_density)
+      call sc_gradients(sc_envelope - 1, sc_envelope - 1, sc_lum(sc_envelope - 1), &
+           grad_local, grad_ad, log_density)
+      ratio = grad_mix/grad_local
+      holds = ierr == 0 .and. ratio > 1.0d0 .and. edge < sc_envelope - 1 .and. edge > 1
+      do k = sc_envelope - 2, edge - 1, -1
+         call sc_gradients(k, k, sc_lum(k), grad_rad, grad_ad, log_density)
+         if (k >= edge) holds = holds .and. ratio*grad_rad >= grad_ad
+         if (k == edge - 1) holds = holds .and. ratio*grad_rad < grad_ad
+      end do
+      call check_that("semiconvection: an envelope's lower edge moves down while f del_rad", &
+           holds)
 end subroutine semiconvection_checks
 
 end program test_convection
