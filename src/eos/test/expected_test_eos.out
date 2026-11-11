@@ -634,6 +634,7 @@ ok   envelope tables: a table built for another composition is not used
 # test_eos: configuration yale_only
 # test_eos: configuration debye_huckel
 ok   Debye-Hueckel: it raises rho, the more with the envelope's heavier metals as Fe
+ok   Debye-Hueckel: the two rises of rho are in the ratio of the charge-weighted factor
 # test_eos: configuration yale_only
 # test_eos: configuration debye_huckel
 # test_eos: configuration yale_only

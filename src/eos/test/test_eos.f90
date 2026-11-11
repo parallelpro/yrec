@@ -1606,7 +1606,7 @@ end subroutine set_envelope_mixture
 ! from the envelope mixture, eos_set_mixture).
 subroutine debye_huckel_checks()
       real(dp), parameter :: x = 0.70d0, z = 0.016492d0, lt = 6.8d0, lp = 17.0d0
-      real(dp) :: comp(15), seed(12), raise(2)
+      real(dp) :: comp(15), seed(12), raise(2), predicted(2)
       type(eos_result) :: none, with_dh
       integer :: ierr1, ierr2, k
       logical :: ok
@@ -1630,10 +1630,18 @@ subroutine debye_huckel_checks()
          call eos_at(lt, lp, x, z, with_dh, ierr2, comp=comp)
          ok = ok .and. ierr1 == 0 .and. ierr2 == 0
          raise(k) = with_dh%density/none%density - 1.0d0
+         predicted(k) = debye_huckel_factor(debye_huckel_composition_of(x, z, comp), &
+              with_dh%electron_degeneracy_parameter)
       end do
       call set_envelope_mixture(envelope_hydrogen_fraction, envelope_metal_fraction)
       call check("Debye-Hueckel: it raises rho, the more with the envelope's heavier metals as Fe", &
            ok .and. raise(1) > 0.0d0 .and. raise(2) > raise(1))
+! and by as much as the correction's charge-weighted factor says (the
+! rises' ratio to 3e-3; 1e-3 now, from the two base gases' 1/mu_ion):
+! with every metal given carbon's charge the two rises would be equal,
+! where the factor makes them 2.2% apart
+      call check("Debye-Hueckel: the two rises of rho are in the ratio of the charge-weighted factor", &
+           ok .and. abs((raise(2)/raise(1))/(predicted(2)/predicted(1)) - 1.0d0) < 3.0d-3)
 ! the heavier metals follow the zone's Z: a zone at twice the envelope's
 ! Z (its C, N and O doubled too) gets the density rise of an envelope at
 ! that Z, to 3e-3 (the gas under the correction differs a little: the
@@ -1655,6 +1663,27 @@ subroutine debye_huckel_checks()
            ok .and. abs(raise(1)/raise(2) - 1.0d0) < 3.0d-3)
       call record_metals_check(x, z, comp)
 end subroutine debye_huckel_checks
+
+! The Debye-Hueckel correction's composition factor (DBG 1992), which
+! multiplies its pressure sqrt(rho/T) rho: with S = sum Z_i (Z_i + 1)
+! X_i/A_i (2X + 1.5Y + (Z + sum Z_i X_i)/2, the metals' Z/A taken as 1/2)
+! and S1 = X + Y + sum Z_i X_i/2, S^(3/2) where the electrons are not
+! degenerate (eta below -1), S sqrt(S1) where they are (above 1), and the
+! line between in eta. The metals' charges are the test's own (C, N, O,
+! Ne, Na, Mg, Al, Si, P, S, Cl, Ar, Ca, Ti, Cr, Mn, Fe, Ni).
+pure real(dp) function debye_huckel_factor(dh, eta)
+      type(debye_huckel_composition), intent(in) :: dh
+      real(dp), intent(in) :: eta
+      real(dp), parameter :: charge(18) = [6.0d0, 7.0d0, 8.0d0, 10.0d0, 11.0d0, 12.0d0, &
+           13.0d0, 14.0d0, 15.0d0, 16.0d0, 17.0d0, 18.0d0, 20.0d0, 22.0d0, 24.0d0, 25.0d0, &
+           26.0d0, 28.0d0]
+      real(dp) :: s, s1, weight
+      s = 2.0d0*dh%hydrogen_fraction + 1.5d0*dh%helium_fraction + &
+           0.5d0*(dh%metal_fraction + sum(charge*dh%metals))
+      s1 = dh%hydrogen_fraction + dh%helium_fraction + 0.5d0*sum(charge*dh%metals)
+      weight = min(1.0d0, max(0.0d0, (eta + 1.0d0)/2.0d0))
+      debye_huckel_factor = s**1.5d0 + weight*(s*sqrt(s1) - s**1.5d0)
+end function debye_huckel_factor
 
 ! The record debye_huckel_composition_of builds from a zone's
 ! composition: its metals add up to the zone's Z, those beyond O in the

@@ -103,3 +103,10 @@ check = 'OPAL 2006: an entry only the second X quadratic reads, past 1e20 there,
 file = 'eos/opal/opal_eos.f90'
 old = '''            if (v%x_interp_result_alt(t6_scan_idx,density_scan_idx) > 1.0d+20) &'''
 new = '''            if (v%x_interp_result(t6_scan_idx,density_scan_idx) > 1.0d+20) &'''
+
+[[mutation]]
+id = 'debye_huckel-01'
+check = 'Debye-Hueckel: the two rises of rho are in the ratio of the charge-weighted factor'
+file = 'eos/yale/yale_eos.f90'
+old = '''            almix = almix + debye_huckel_nu(ii)*dh%metals(ii)'''
+new = '''            almix = almix + 6.0d0*dh%metals(ii)'''
