@@ -531,8 +531,8 @@ Resolved from the git rename history of `src/`. Routines merged into a module ar
 | `eqscve`, `eqscvg`, `setscv` | `eos/scv/scv_eos.f90` (`compute_scv_envelope_eos`, `compute_scv_eos`, `build_scv_envelope_table`) |
 | `eqsaha`, `eqrelv` | `eos/yale/yale_eos.f90` (`compute_saha_eos`, `compute_fully_ionized_eos`) |
 | `mu` | `eos/eos_mixture.f90` (`compute_mean_weights`) |
-| `surfp`, `kcsurfp` (`surface_p_interp`) | `atm/tables/kurucz_atmosphere.f90` (`interpolate_surface_pressure`; the reader is `read_surface_pressure_table`) |
-| `alsurfp`, `alfilein`, `altabinit` | `atm/tables/allard_atmosphere.f90` (`interpolate_allard_surface`, `read_allard_tables`, `find_allard_table_bounds`) |
+| `surfp`, `kcsurfp` (`surface_p_interp`) | `atm/tables/kurucz_atmosphere.f90` (`interpolate_surface_pressure`); its reader, `atm/tables/kurucz_table_reader.f90` (`read_surface_pressure_table`) |
+| `alsurfp`, `alfilein`, `altabinit` | `atm/tables/allard_atmosphere.f90` (`interpolate_allard_surface`); `atm/tables/allard_table_reader.f90` (`read_allard_tables`, `find_table_ranges`) |
 | `getopac` (`kap_eval`), `setupopac` (`load_opacity_tables`), `surfopac` (`refresh_surface_tables`) | `kap/kap_lib.f90` (all three) |
 | `ll95tbl`, `getopal95` | `kap/opal95/opal95_opacity.f90` (`read_opal95_tables`, `compute_opal95_opacity`) |
 | `rdlaol`, `gtlaol`, `rdzlaol`, `gtpurz` | `kap/laol89/laol_opacity.f90` (`read_laol_tables`, `compute_laol_opacity`, `read_pure_z_table`, `compute_pure_z_opacity`) |
