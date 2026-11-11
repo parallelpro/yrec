@@ -10,8 +10,7 @@ module opal95_reader
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use opacity_tables, only: n_opal95_d, n_opal95_t, n_opal95_tables, n_opal95_z, &
            n_opal95_x, opal95_missing_opacity, opal95_table_set
-      use kap_messages, only: kap_log, kap_report, kap_terminal, message_length, &
-           unwritten_line
+      use kap_messages, only: kap_report, message_length, unwritten_line
       use opacity_table_files, only: open_table
       implicit none
       private
@@ -70,8 +69,10 @@ subroutine read_opal95_tables(tbl, opal95_table_path, ierr)
       end if
       if (tbl%grid_z(iz) /= zz .or. xxt /= xx) then
        lines = unwritten_line
-       write(lines,*)' OPAL95: Z ERROR INCOMPATIBLE TABLE'
-       call kap_log(lines)
+       write(lines,'(a,i0,a,2(f7.4,a),2(f7.4,a))') 'kap_init: table ', nn, ' of the OPAL 1995 table ' // &
+            trim(opal95_table_path) // ' is at X =', xx, ', Z =', zz, ' where X =', xxt, &
+            ', Z =', tbl%grid_z(iz), ' is expected'
+       call kap_report(lines)
          close(table_unit)
          ierr = 1
          return
@@ -81,9 +82,9 @@ subroutine read_opal95_tables(tbl, opal95_table_path, ierr)
       read(table_unit,20,iostat=read_status) (tbl%grid_logr(i),i=1,n_opal95_d)
       if (read_status < 0) then
          lines = unwritten_line
-         write(lines,*) 'read_opal95_tables: OPAL95 opacity table file ended after ', nn-1, &
-              ' of ', n_opal95_tables, ' tables'
-         call kap_terminal(lines)
+         write(lines,'(a,2(i0,a))') 'kap_init: the OPAL 1995 table ' // trim(opal95_table_path) // &
+              ' ends after ', nn-1, ' of its ', n_opal95_tables, ' tables'
+         call kap_report(lines)
          close(table_unit)
          ierr = 1
          return
@@ -160,9 +161,9 @@ subroutine read_opal95_tables(tbl, opal95_table_path, ierr)
   900 format(/36x,f7.4,11x,f7.4)
       if (read_status < 0) then
          lines = unwritten_line
-         write(lines,*) 'read_opal95_tables: OPAL95 opacity table file ended after ', nn-1, &
-              ' of ', n_opal95_tables, ' tables'
-         call kap_terminal(lines)
+         write(lines,'(a,2(i0,a))') 'kap_init: the OPAL 1995 table ' // trim(opal95_table_path) // &
+              ' ends after ', nn-1, ' of its ', n_opal95_tables, ' tables'
+         call kap_report(lines)
          close(table_unit)
          ierr = 1
          return
@@ -177,8 +178,9 @@ subroutine read_opal95_tables(tbl, opal95_table_path, ierr)
       return
 !     A table header that does not read.
  9997 lines = unwritten_line
-      write(lines,*) 'read_opal95_tables: malformed OPAL95 opacity table (header read failed)'
-      call kap_terminal(lines)
+      write(lines,'(a,i0,a)') 'kap_init: cannot read the header of table ', nn, &
+           ' of the OPAL 1995 table ' // trim(opal95_table_path)
+      call kap_report(lines)
       close(table_unit)
       ierr = 1
       return
@@ -192,8 +194,9 @@ subroutine read_opal95_tables(tbl, opal95_table_path, ierr)
       return
 !     Premature end of file inside a table body (end=9999 above).
  9999 lines = unwritten_line
-      write(lines,*) 'read_opal95_tables: OPAL95 opacity table file ended inside table ', nn
-      call kap_terminal(lines)
+      write(lines,'(a,i0,a)') 'kap_init: the OPAL 1995 table ' // trim(opal95_table_path) // &
+           ' ends inside table ', nn
+      call kap_report(lines)
       close(table_unit)
       ierr = 1
 end subroutine read_opal95_tables

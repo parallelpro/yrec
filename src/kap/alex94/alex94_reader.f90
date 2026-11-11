@@ -10,7 +10,7 @@ module alex94_reader
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use opacity_tables, only: alex94_table_set, n_alex94_d, n_alex94_t, n_alex94_x, &
            n_alex94_z
-      use kap_messages, only: kap_log, message_length, unwritten_line
+      use kap_messages, only: kap_report, message_length, unwritten_line
       use opacity_table_files, only: open_table, read_failed
       implicit none
       private
@@ -40,7 +40,7 @@ subroutine read_alex94_tables(tbl, alex95_table_paths, ierr)
       real(dp) :: row_opacity_temp(n_alex94_d)
       integer :: table_index, i, ii, j, k, row_density_count
       real(dp) :: header_x, header_z, row_temp, row_logr0
-      character(len=message_length) :: lines(2)
+      character(len=message_length) :: lines(1)
       integer :: ios
       character(len=256) :: iomsg
 
@@ -59,11 +59,11 @@ subroutine read_alex94_tables(tbl, alex95_table_paths, ierr)
             if (header_x /= tbl%grid_x(table_index) .or. &
                  header_z /= tbl%grid_z(i)) then
                lines = unwritten_line
-               write(lines,20) header_x, tbl%grid_x(table_index), &
-                    header_z, tbl%grid_z(i)
-               call kap_log(lines)
-   20          format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
-                    1x,'EXPECTED AND ACTUAL X,Z',4f7.2,' RUN STOPPED')
+               write(lines,20) trim(alex95_table_paths(table_index)), tbl%grid_x(table_index), &
+                    header_x, tbl%grid_z(i), header_z
+               call kap_report(lines)
+   20          format('kap_init: the Alexander 1994 table ',a,' expects X =',f7.4, &
+                    ' and has',f7.4,', expects Z =',f7.4,' and has',f7.4)
                close(table_unit)
                ierr = 1
                return
@@ -81,12 +81,12 @@ subroutine read_alex94_tables(tbl, alex95_table_paths, ierr)
                if (row_density_count /= n_alex94_d .or. row_temp /= tbl%grid_logt(j) &
                     .or. row_logr0 /= tbl%grid_logr(1)) then
                   lines = unwritten_line
-                  write(lines,40) row_density_count, row_temp, &
-                       tbl%grid_logt(j), row_logr0, tbl%grid_logr(1)
-                  call kap_log(lines)
-   40             format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
-                       1x,'EXPECTED AND ACTUAL T,RHO',i3,4f7.2, &
-                       ' RUN STOPPED')
+                  write(lines,40) trim(alex95_table_paths(table_index)), n_alex94_d, &
+                       tbl%grid_logt(j), tbl%grid_logr(1), row_density_count, row_temp, row_logr0
+                  call kap_report(lines)
+   40             format('kap_init: the Alexander 1994 table ',a,' expects a row of ',i0, &
+                       ' log R values at log T',f6.3,' from log R',f5.1,', and has ',i0, &
+                       ' at log T',f6.3,' from log R',f5.1)
                   close(table_unit)
                   ierr = 1
                   return

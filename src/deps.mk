@@ -508,25 +508,25 @@ io/test/test_controls.o: controls_buffer.mod controls_reader.mod controls_sync.m
 io/test/test_io.o: controls_reader.mod history_output.mod model_files.mod output_columns.mod output_files.mod profile_output.mod pulsation_output.mod run_cards.mod run_files.mod run_messages.mod star_info_lib.mod stitched_model.mod yrec_output.mod
 io/user_inputs.o: control_slots.mod controls_buffer.mod net_lib.mod
 io/yrec_output.o: history_output.mod math_lib.mod model_files.mod output_columns.mod output_files.mod physical_constants.mod profile_output.mod pulsation_output.mod run_cards.mod run_files.mod run_log.mod run_messages.mod star_info_lib.mod stitched_model.mod
-kap/alex06/alex06_opacity.o: alex06_reader.mod kap_messages.mod math_lib.mod numerics_lib.mod opacity_source.mod opacity_tables.mod physical_constants.mod
+kap/alex06/alex06_opacity.o: alex06_reader.mod math_lib.mod numerics_lib.mod opacity_source.mod opacity_tables.mod physical_constants.mod
 kap/alex06/alex06_reader.o: kap_messages.mod opacity_table_files.mod opacity_tables.mod
-kap/alex94/alex94_opacity.o: alex94_reader.mod kap_messages.mod math_lib.mod numerics_lib.mod opacity_source.mod opacity_tables.mod physical_constants.mod
+kap/alex94/alex94_opacity.o: alex94_reader.mod math_lib.mod numerics_lib.mod opacity_source.mod opacity_tables.mod physical_constants.mod
 kap/alex94/alex94_reader.o: kap_messages.mod opacity_table_files.mod opacity_tables.mod
-kap/conductive/conductive_opacity.o: conductive_reader.mod kap_messages.mod math_lib.mod numerics_lib.mod opacity_source.mod opacity_tables.mod physical_constants.mod
+kap/conductive/conductive_opacity.o: conductive_reader.mod math_lib.mod numerics_lib.mod opacity_source.mod opacity_tables.mod physical_constants.mod
 kap/conductive/conductive_reader.o: kap_messages.mod math_lib.mod opacity_table_files.mod opacity_tables.mod
 kap/kap_lib.o: kap_messages.mod opacity_blending.mod opacity_families.mod opacity_source.mod opacity_tables.mod
 kap/kap_messages.o: run_messages.mod
-kap/kurucz90/kurucz_opacity.o: kap_messages.mod kurucz_reader.mod math_lib.mod numerics_lib.mod opacity_blending.mod opacity_source.mod opacity_tables.mod
+kap/kurucz90/kurucz_opacity.o: kurucz_reader.mod math_lib.mod numerics_lib.mod opacity_blending.mod opacity_source.mod opacity_tables.mod
 kap/kurucz90/kurucz_reader.o: kap_messages.mod math_lib.mod opacity_table_files.mod opacity_tables.mod
-kap/laol89/laol_opacity.o: kap_messages.mod laol_reader.mod math_lib.mod numerics_lib.mod opacity_blending.mod opacity_source.mod opacity_tables.mod
+kap/laol89/laol_opacity.o: laol_reader.mod math_lib.mod numerics_lib.mod opacity_blending.mod opacity_source.mod opacity_tables.mod
 kap/laol89/laol_reader.o: composition_layout.mod kap_messages.mod math_lib.mod opacity_table_files.mod opacity_tables.mod
 kap/opacity_blending.o: math_lib.mod opacity_source.mod physical_constants.mod
 kap/opacity_families.o: alex06_opacity.mod alex94_opacity.mod conductive_opacity.mod kurucz_opacity.mod laol_opacity.mod opacity_source.mod opacity_tables.mod opal92_opacity.mod opal95_opacity.mod
 kap/opacity_source.o: opacity_tables.mod
 kap/opacity_table_files.o: kap_messages.mod
-kap/opal92/opal92_opacity.o: kap_messages.mod math_lib.mod numerics_lib.mod opacity_blending.mod opacity_source.mod opacity_tables.mod opal92_reader.mod
+kap/opal92/opal92_opacity.o: math_lib.mod numerics_lib.mod opacity_blending.mod opacity_source.mod opacity_tables.mod opal92_reader.mod
 kap/opal92/opal92_reader.o: kap_messages.mod math_lib.mod opacity_table_files.mod opacity_tables.mod
-kap/opal95/opal95_opacity.o: kap_messages.mod math_lib.mod numerics_lib.mod opacity_source.mod opacity_tables.mod opal95_reader.mod
+kap/opal95/opal95_opacity.o: math_lib.mod numerics_lib.mod opacity_source.mod opacity_tables.mod opal95_reader.mod
 kap/opal95/opal95_reader.o: kap_messages.mod opacity_table_files.mod opacity_tables.mod
 kap/test/test_kap.o: conductive_opacity.mod conductive_reader.mod kap_lib.mod opacity_blending.mod opacity_source.mod opacity_tables.mod run_messages.mod run_setup.mod star_info_lib.mod
 math/test/test_math.o: math_lib.mod

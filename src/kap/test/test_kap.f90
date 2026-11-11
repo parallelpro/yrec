@@ -619,21 +619,22 @@ contains
             double precision, parameter :: a_h = 1.008d0, a_he = 4.004d0, a_o = 16.0d0
             double precision :: species(3), mix, o, ol, dr, dt, n(3), w(3), f(3), ions(3)
             logical :: got
+            character(len=512) :: msg
             integer :: ierr, k
             call read_conductive_table(cond, trim(yrec_input)// &
                  "/opacity/conductive/potekhin/condall06.d", ierr)
             ions = [1.0d0, 0.0d0, 1.0d0]
             call compute_conductive_opacity(cond, logd, logt, 1.0d0, 0.0d0, species(1), ol, dr, &
-                 dt, ions, got, k)
+                 dt, ions, got, msg, k)
             ierr = ierr + k
             call compute_conductive_opacity(cond, logd, logt, 0.0d0, 0.0d0, species(2), ol, dr, &
-                 dt, ions, got, k)
+                 dt, ions, got, msg, k)
             ierr = ierr + k
             call compute_conductive_opacity(cond, logd, logt, 0.0d0, 1.0d0, species(3), ol, dr, &
-                 dt, ions, got, k)
+                 dt, ions, got, msg, k)
             ierr = ierr + k
             f = [0.5d0, 0.3d0, 0.6d0]
-            call compute_conductive_opacity(cond, logd, logt, x, z, mix, ol, dr, dt, f, got, k)
+            call compute_conductive_opacity(cond, logd, logt, x, z, mix, ol, dr, dt, f, got, msg, k)
             ierr = ierr + k
             n = [x/a_h, (1.0d0 - x - z)/a_he, z/a_o]
             n = n/sum(n)
@@ -655,28 +656,29 @@ contains
             double precision, parameter :: logt = 3.6d0, x = 0.7d0, z = 0.02d0, h = 1.0d-4
             double precision :: below, above, ol, dr, dt, o, ol_plus, ol_minus, f(3)
             logical :: got, got_all
+            character(len=512) :: msg
             integer :: ierr, k
             call read_conductive_table(cond, trim(yrec_input)// &
                  "/opacity/conductive/potekhin/condall06.d", ierr)
             f = [0.5d0, 0.3d0, 0.6d0]
             got_all = .true.
             call compute_conductive_opacity(cond, -6.0d0 - 1.0d-9, logt, x, z, below, ol, dr, dt, &
-                 f, got, k)
+                 f, got, msg, k)
             ierr = ierr + k
             got_all = got_all .and. got
             call compute_conductive_opacity(cond, -6.0d0 + 1.0d-9, logt, x, z, above, ol, dr, dt, &
-                 f, got, k)
+                 f, got, msg, k)
             ierr = ierr + k
             got_all = got_all .and. got
             call report("Potekhin conduction: kappa_c continuous at log rho = -6", &
                  abs(above/below - 1.0d0), 1.0d-7, ierr == 0 .and. got_all)
             call compute_conductive_opacity(cond, -7.0d0 + h, logt, x, z, o, ol_plus, dr, dt, &
-                 f, got, k)
+                 f, got, msg, k)
             ierr = ierr + k
             call compute_conductive_opacity(cond, -7.0d0 - h, logt, x, z, o, ol_minus, dr, dt, &
-                 f, got, k)
+                 f, got, msg, k)
             ierr = ierr + k
-            call compute_conductive_opacity(cond, -7.0d0, logt, x, z, o, ol, dr, dt, f, got, k)
+            call compute_conductive_opacity(cond, -7.0d0, logt, x, z, o, ol, dr, dt, f, got, msg, k)
             ierr = ierr + k
             call report("Potekhin conduction below log rho = -6: dln kappa/dln rho", &
                  abs(dr - (ol_plus - ol_minus)/(2.0d0*h))/max(1.0d0, abs(dr)), 1.0d-8, &

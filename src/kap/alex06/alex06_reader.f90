@@ -9,7 +9,7 @@ module alex06_reader
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use opacity_tables, only: alex06_table_set, n_alex06_d, n_alex06_t, n_alex06_x, &
            n_alex06_z
-      use kap_messages, only: kap_terminal, message_length, unwritten_line
+      use kap_messages, only: kap_report, message_length, unwritten_line
       use opacity_table_files, only: open_table, read_failed
       implicit none
       private
@@ -39,7 +39,7 @@ subroutine read_alex06_tables(tbl, alex06_table_path, ierr)
 ! a table's header X, Z and log R columns, and a row's log T, as read
       real(dp) :: row_logr_check(n_alex06_d), header_x, header_z, row_temp
       integer :: i, ii, j, jj, k, kk
-      character(len=message_length) :: lines(2)
+      character(len=message_length) :: lines(1)
       integer :: ios
       character(len=256) :: iomsg
 
@@ -55,10 +55,11 @@ subroutine read_alex06_tables(tbl, alex06_table_path, ierr)
    10       format(30x,f9.6,7x,f9.6//)
             if (header_x /= tbl%grid_x(i) .or. header_z /= tbl%grid_z(ii)) then
                lines = unwritten_line
-               write(lines,15) tbl%grid_x(i), header_x, tbl%grid_z(ii), header_z
-               call kap_terminal(lines)
-   15          format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
-                    1x,'EXPECTED AND ACTUAL X,Z',4f7.2,' RUN STOPPED')
+               write(lines,15) trim(alex06_table_path), tbl%grid_x(i), header_x, &
+                    tbl%grid_z(ii), header_z
+               call kap_report(lines)
+   15          format('kap_init: the Alexander 2006 table ',a,' expects X =',f7.4, &
+                    ' and has',f7.4,', expects Z =',f7.4,' and has',f7.4)
                close(table_unit)
                ierr = 1
                return
@@ -69,10 +70,11 @@ subroutine read_alex06_tables(tbl, alex06_table_path, ierr)
             do kk=1,n_alex06_d
                if (row_logr_check(kk) /= tbl%grid_logr(kk)) then
                   lines = unwritten_line
-                  write(lines,25) kk, tbl%grid_logr(kk), row_logr_check(kk)
-                  call kap_terminal(lines)
-   25             format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
-                       1x,'EXPECTED AND ACTUAL R',i3,2f7.3,' RUN STOPPED')
+                  write(lines,25) trim(alex06_table_path), tbl%grid_logr(kk), kk, &
+                       row_logr_check(kk)
+                  call kap_report(lines)
+   25             format('kap_init: the Alexander 2006 table ',a,' expects log R',f7.3, &
+                       ' in column ',i0,' and has',f7.3)
                   close(table_unit)
                   ierr = 1
                   return
@@ -87,10 +89,10 @@ subroutine read_alex06_tables(tbl, alex06_table_path, ierr)
    30          format(f5.3,1x,19f7.3)
                if (row_temp /= tbl%grid_logt(j)) then
                   lines = unwritten_line
-                  write(lines,35) j, tbl%grid_logt(j), row_temp
-                  call kap_terminal(lines)
-   35             format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
-                       1x,'EXPECTED AND ACTUAL T',i3,2f7.3,' RUN STOPPED')
+                  write(lines,35) trim(alex06_table_path), tbl%grid_logt(j), j, row_temp
+                  call kap_report(lines)
+   35             format('kap_init: the Alexander 2006 table ',a,' expects log T',f7.3, &
+                       ' in row ',i0,' and has',f7.3)
                   close(table_unit)
                   ierr = 1
                   return
@@ -107,8 +109,9 @@ subroutine read_alex06_tables(tbl, alex06_table_path, ierr)
          if (header_x /= (1.0d0 - tbl%grid_z(ii)) .or. &
               header_z /= tbl%grid_z(ii)) then
             lines = unwritten_line
-            write(lines,15) 1.0d0 - tbl%grid_z(ii), header_x, tbl%grid_z(ii), header_z
-            call kap_terminal(lines)
+            write(lines,15) trim(alex06_table_path), 1.0d0 - tbl%grid_z(ii), header_x, &
+                 tbl%grid_z(ii), header_z
+            call kap_report(lines)
             close(table_unit)
             ierr = 1
             return
@@ -118,8 +121,9 @@ subroutine read_alex06_tables(tbl, alex06_table_path, ierr)
          do kk=1,n_alex06_d
             if (row_logr_check(kk) /= tbl%grid_logr(kk)) then
                lines = unwritten_line
-               write(lines,25) kk, tbl%grid_logr(kk), row_logr_check(kk)
-               call kap_terminal(lines)
+               write(lines,25) trim(alex06_table_path), tbl%grid_logr(kk), kk, &
+                    row_logr_check(kk)
+               call kap_report(lines)
                close(table_unit)
                ierr = 1
                return
@@ -132,8 +136,8 @@ subroutine read_alex06_tables(tbl, alex06_table_path, ierr)
             if (read_failed(ios, iomsg, 'Alexander 2006', alex06_table_path, table_unit, ierr)) return
             if (row_temp /= tbl%grid_logt(j)) then
                lines = unwritten_line
-               write(lines,35) j, tbl%grid_logt(j), row_temp
-               call kap_terminal(lines)
+               write(lines,35) trim(alex06_table_path), tbl%grid_logt(j), j, row_temp
+               call kap_report(lines)
                close(table_unit)
                ierr = 1
                return

@@ -7,8 +7,9 @@ kap  5   1.873391902527546E+00   2.726286387214106E-01   6.513582771829165E-01  
 kap  6   6.032716165595466E-01  -2.194871074061948E-01   2.871589374128601E-01  -1.349364286661363E+00
 kap  7   4.469439149608844E-01  -3.497469711660381E-01   1.586954836500388E-01  -9.102276745558606E-01
 # test_kap: error paths via optional ierr
- LOG T OF   3.500000OUT OF OPAL 95 TABLE RANGE
+kap_get: log T = 3.500000 is outside the OPAL 1995 tables (log T 3.75 to 8.70)
 err out-of-table   ierr =    1
+kap_get: no interior opacity table chosen (use_opal95_tables, use_opal92_tables or use_laol89_tables); X = 0.70000, Z = 0.01623, log T = 6.00000
 err no-table-chosen ierr =    1
 # test_kap: family production
 kap  0.70000  0.01623  3.40000   3.900831256971351E-05  -4.408842836089452E+00   8.356114534535628E-01  -1.437443816766441E+01
@@ -95,16 +96,18 @@ kap_init: two OPAL 1992 tables (use_z_ramp or use_diffusion_z) need two Zs; opal
 kap_init refuses two OPAL92 tables at one Z                                0.00E+00  ok
 kap_init: molecular_opacity_logt_min ( 4.10000E+00) must be below molecular_opacity_logt_max ( 4.10000E+00)
 kap_init refuses molecular_opacity_logt_min >= _max                        0.00E+00  ok
- read_conductive_table: cannot open no_such_table.cond
+kap_init: cannot open the conductive table no_such_table.cond
 kap_init: a missing table returns ierr (and is not created)                0.00E+00  ok
 kap_init: the OPAL 1992 table short_table.opal92 ends early
 kap_init: a short OPAL92 table returns ierr                                0.00E+00  ok
- LOG T OF   8.900000OUT OF OPAL 95 TABLE RANGE
+kap_get: log T = 8.900000 is outside the OPAL 1995 tables (log T 3.75 to 8.70)
 kap_get: log T off the tables returns ierr, res unchanged                  0.00E+00  ok
+kap_get: no interior opacity at Z = 0.15000 and log T = 6.00000: above Z = 0.12 the tables reach only helium-burning cores (log T > 7)
 kap_get: Z above 0.12 below 10^7 K returns ierr                            0.00E+00  ok
-ILLEGAL COMPOSITION (X,Z) =   0.99  0.02 IN ALEX06.RUN STOPPED
-ILLEGAL COMPOSITION (X,Z) =   0.99  0.02 IN ALEX06.RUN STOPPED
+kap_get: the composition X = 0.99000, Z = 0.02000 is outside the Alexander 2006 tables
+kap_get: the composition X = 0.99000, Z = 0.02000 is outside the Alexander 2006 tables
 Alexander 2006: a refused composition fails again on a retry               0.00E+00  ok
 kap_init again: the first lookup is the first run's, bit for bit           0.00E+00  ok
+kap_get: a helium-burning core (Z = 0.60000 above 0.1, log T = 7.80000 above 7) needs the pure-Z table (use_pure_z_table)
 kap_get: a helium core without the pure-Z table returns ierr               0.00E+00  ok
 test_kap: done

@@ -28,8 +28,6 @@ module opal95_opacity
            opacity_table_state
       use opacity_source, only: kap_point, kap_result, kap_source
       use numerics_lib, only: interp, lagrange4
-      use kap_messages, only: kap_log, kap_report, kap_terminal, message_length, &
-           unwritten_line
       use opal95_reader, only: read_opal95_tables
       use math_lib
       implicit none
@@ -73,10 +71,11 @@ contains
 ! interpolation in Z of the full set (tbl%full_opacity), for each X table
 ! from the Z tables it has: X tables 1-8 at every Z, table 9 (X = 0.95)
 ! below Z = 0.04 only, table 10 (X = 1 - Z) below Z = 0.1. A Z above the
-! top node (0.1) is reported and returns ierr = 1.
-subroutine build_opal95_fixed_z_table(tbl, metal_fraction, ierr)
+! top node (0.1) returns ierr = 1 with the reason in message.
+subroutine build_opal95_fixed_z_table(tbl, metal_fraction, message, ierr)
       type(opal95_table_set), intent(inout) :: tbl
 
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
 
       real(dp), intent(in) :: metal_fraction
@@ -84,9 +83,9 @@ subroutine build_opal95_fixed_z_table(tbl, metal_fraction, ierr)
       real(dp) :: table_z_nodes(4), z_weight(4), z_weight_hix(4)
       integer :: i, j, k, z_table_index, z_table_index2
       integer :: table1_index, table2_index, table3_index, table4_index
-      character(len=message_length) :: lines(2)
 
       ierr = 0
+      message = ''
       tbl%fixed_z = metal_fraction
 !  Find 4 nearest tables in Z to desired value.
 ! (the last stencil, the top four nodes, for Z above the next-to-last
@@ -100,13 +99,10 @@ subroutine build_opal95_fixed_z_table(tbl, metal_fraction, ierr)
       if (i > (n_opal95_z-1) .and. metal_fraction <= tbl%grid_z(n_opal95_z)) then
          z_table_index = n_opal95_z - 3
       else if (i > (n_opal95_z-1)) then
-      lines = unwritten_line
-      write(lines,5)metal_fraction
-      call kap_terminal(lines)
-    5 format(1x,'DESIRED Z',f10.6,'OUTSIDE OP95 TABLE RANGE'/ &
-           ' RUN STOPPED')
-      ierr = 1
-      return
+         write(message,'(a,f10.6,a,f5.2,a)') 'opal95_single_table_z =', metal_fraction, &
+              ' is above the OPAL 1995 tables'' top Z (', tbl%grid_z(n_opal95_z), ')'
+         ierr = 1
+         return
       end if
 !  Find interpolation factors in Z.
       do i = 1,4
@@ -270,15 +266,16 @@ end subroutine build_opal95_surface_table
 !     (each within opal95_composition_tol);
 !   3D (X, T, log R) in the fixed-Z table, at the fixed Z and another X;
 !   4D (Z, X, T, log R) in the full set, at any other Z.
-! A log T off the table is reported and returns ierr = 1.
+! A log T off the table returns ierr = 1 with the reason in message.
 subroutine compute_opal95_opacity(tbl, log10_density, log10_temperature, hydrogen_fraction, &
-     metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr)
+     metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, message, ierr)
       type(opal95_table_set), intent(inout) :: tbl
 
       real(dp), intent(in) :: log10_density, log10_temperature, &
            hydrogen_fraction, metal_fraction
       real(dp), intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
 
       real(dp) :: interp_nodes(4), weight(4), dweight(4)
@@ -289,17 +286,16 @@ subroutine compute_opal95_opacity(tbl, log10_density, log10_temperature, hydroge
 ! the call's stencil: its weights and where log R is extrapolated from
 ! (its first indices are tbl's cursors)
       type(opal95_stencil) :: st
-      character(len=message_length) :: lines(1)
 
 !     log R = log rho - 3 log T6, and log T within the table
       ierr = 0
+      message = ''
       st%logr = log10_density - 3.0d0*(log10_temperature-6.0d0)
       if (log10_temperature < tbl%grid_logt(1) .or. &
            log10_temperature > tbl%grid_logt(n_opal95_t)) then
-         lines = unwritten_line
-         write(lines,5) log10_temperature
-    5    format(' LOG T OF',f11.6,'OUT OF OPAL 95 TABLE RANGE')
-         call kap_terminal(lines)
+         write(message,'(a,f9.6,a,2(f5.2,a))') 'log T =', log10_temperature, &
+              ' is outside the OPAL 1995 tables (log T', tbl%grid_logt(1), ' to', &
+              tbl%grid_logt(n_opal95_t), ')'
          ierr = 1
          return
       end if
@@ -710,57 +706,64 @@ function opal95_source(settings) result(source)
       source%core_lookup => core_lookup_opal95
 end function opal95_source
 
-subroutine load_opal95(settings, paths, envelope_hydrogen_fraction, tables, ierr)
+subroutine load_opal95(settings, paths, envelope_hydrogen_fraction, tables, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(kap_table_paths_t), intent(in) :: paths
       real(dp), intent(in) :: envelope_hydrogen_fraction
       type(opacity_table_state), intent(inout) :: tables
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
 
+! (the reader reports its own errors)
+      message = ''
       call read_opal95_tables(tables%opal95, paths%opal95, ierr)
       if (ierr /= 0) return
-      call build_opal95_fixed_z_table(tables%opal95, settings%opal95_single_table_z, ierr)
+      call build_opal95_fixed_z_table(tables%opal95, settings%opal95_single_table_z, message, ierr)
       if (ierr /= 0) return
       call build_opal95_surface_table(tables%opal95, envelope_hydrogen_fraction)
 end subroutine load_opal95
 
-subroutine refresh_opal95(settings, hydrogen_fraction, tables, ierr)
+subroutine refresh_opal95(settings, hydrogen_fraction, tables, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       real(dp), intent(in) :: hydrogen_fraction
       type(opacity_table_state), intent(inout) :: tables
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
 
       ierr = 0
+      message = ''
       call build_opal95_surface_table(tables%opal95, hydrogen_fraction)
 end subroutine refresh_opal95
 
-subroutine lookup_opal95(settings, tables, point, res, in_table, ierr)
+subroutine lookup_opal95(settings, tables, point, res, in_table, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(opacity_table_state), intent(inout) :: tables
       type(kap_point), intent(in) :: point
       type(kap_result), intent(inout) :: res
       logical, intent(out) :: in_table
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
 
       in_table = .true.
       call compute_opal95_opacity(tables%opal95, point%log10_density, &
            point%log10_temperature, point%hydrogen_fraction, point%metal_fraction, &
-           res%opacity, res%log10_opacity, res%dlnkap_dlnrho, res%dlnkap_dlnt, ierr)
+           res%opacity, res%log10_opacity, res%dlnkap_dlnrho, res%dlnkap_dlnt, message, ierr)
 end subroutine lookup_opal95
 
 ! in a helium-burning core: the tables at their top Z
-subroutine core_lookup_opal95(settings, tables, point, res, table_z, ierr)
+subroutine core_lookup_opal95(settings, tables, point, res, table_z, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(opacity_table_state), intent(inout) :: tables
       type(kap_point), intent(in) :: point
       type(kap_result), intent(inout) :: res
       real(dp), intent(out) :: table_z
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
 
       table_z = tables%opal95%grid_z(n_opal95_z)
       call compute_opal95_opacity(tables%opal95, point%log10_density, &
            point%log10_temperature, point%hydrogen_fraction, table_z, &
-           res%opacity, res%log10_opacity, res%dlnkap_dlnrho, res%dlnkap_dlnt, ierr)
+           res%opacity, res%log10_opacity, res%dlnkap_dlnrho, res%dlnkap_dlnt, message, ierr)
 end subroutine core_lookup_opal95
 
 !----------------------------------------------------------------------

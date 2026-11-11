@@ -232,8 +232,8 @@ new = '      else if (.false. .and. .not. (settings%molecular_opacity_logt_min <
 id = 'missing-table'
 check = 'kap_init: a missing table returns ierr (and is not created)'
 file = 'kap/conductive/conductive_reader.f90'
-old = "open(newunit=file_unit, file=path, status='OLD', iostat=ierr)"
-new = "open(newunit=file_unit, file=path, status='UNKNOWN', iostat=ierr)"
+old = "open(newunit=file_unit, file=path, status='old', action='read', iostat=ierr)"
+new = "open(newunit=file_unit, file=path, status='unknown', iostat=ierr)"
 
 [[mutation]]
 id = 'short-table'
@@ -269,8 +269,8 @@ new = '''      call kap_eval(point, result, ierr)
 id = 'z-limit'
 check = 'kap_get: Z above 0.12 below 10^7 K returns ierr'
 file = 'kap/kap_lib.f90'
-old = '      else if ((point%metal_fraction > max_interior_metal_fraction) .or. &'
-new = '      else if ((point%metal_fraction > 1.0d0) .or. &'
+old = '      else if (point%metal_fraction > max_interior_metal_fraction) then'
+new = '      else if (point%metal_fraction > 1.0d0) then'
 
 [[mutation]]
 id = 'alex06-cache'
@@ -294,7 +294,7 @@ new = '      tables%envelope_metal_fraction = 0.0d0'
 id = 'helium-core-without-pure-z'
 check = 'kap_get: a helium core without the pure-Z table returns ierr'
 file = 'kap/kap_lib.f90'
-old = '''              ' NEED PURE Z TABLE TO CONTINUE. Z,LOG T=')
+old = '''              ' above 7) needs the pure-Z table (use_pure_z_table)'
          ierr = 1'''
-new = '''              ' NEED PURE Z TABLE TO CONTINUE. Z,LOG T=')
+new = '''              ' above 7) needs the pure-Z table (use_pure_z_table)'
          ierr = 0'''

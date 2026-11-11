@@ -21,7 +21,6 @@ module alex94_opacity
       use opacity_source, only: kap_point, kap_result, kap_source
       use numerics_lib, only: interp, lagrange4
       use physical_constants, only: ln10
-      use kap_messages, only: kap_log, message_length, unwritten_line
       use alex94_reader, only: read_alex94_tables
       use math_lib
       implicit none
@@ -284,38 +283,45 @@ function alex94_source(settings) result(source)
       source%lookup => lookup_alex94
 end function alex94_source
 
-subroutine load_alex94(settings, paths, envelope_hydrogen_fraction, tables, ierr)
+subroutine load_alex94(settings, paths, envelope_hydrogen_fraction, tables, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(kap_table_paths_t), intent(in) :: paths
       real(dp), intent(in) :: envelope_hydrogen_fraction
       type(opacity_table_state), intent(inout) :: tables
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
 
+! (the reader reports its own errors)
+      message = ''
       call read_alex94_tables(tables%alex94, paths%alex94, ierr)
       if (ierr /= 0) return
       call build_alex94_fixed_z_table(tables%alex94, settings%alex_table_z1)
       call build_alex94_surface_table(tables%alex94, envelope_hydrogen_fraction)
 end subroutine load_alex94
 
-subroutine refresh_alex94(settings, hydrogen_fraction, tables, ierr)
+subroutine refresh_alex94(settings, hydrogen_fraction, tables, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       real(dp), intent(in) :: hydrogen_fraction
       type(opacity_table_state), intent(inout) :: tables
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
 
       ierr = 0
+      message = ''
       call build_alex94_surface_table(tables%alex94, hydrogen_fraction)
 end subroutine refresh_alex94
 
-subroutine lookup_alex94(settings, tables, point, res, in_table, ierr)
+subroutine lookup_alex94(settings, tables, point, res, in_table, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(opacity_table_state), intent(inout) :: tables
       type(kap_point), intent(in) :: point
       type(kap_result), intent(inout) :: res
       logical, intent(out) :: in_table
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
 
       ierr = 0
+      message = ''
       in_table = .true.
       call compute_alex94_opacity(tables%alex94, point%log10_density, &
            point%log10_temperature, point%hydrogen_fraction, point%metal_fraction, &
