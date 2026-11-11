@@ -5,6 +5,15 @@ commit with its measured change on the 56 decks and 35 pins, and the pins reseed
 docs/bug_sweep.md's. "Decision" marks the items that depend on what the code was meant to do; each carries a
 recommendation. core's list comes with round 2.
 
+**The owner's answer (2026-11-11):** "agreed on all except don't do anything to element_diffusion".
+- kap, atm, convection and eos: every item is approved, with its recommendation as written.
+  - An item marked "no recommendation yet" (kap item 8) is researched and brought back with one before any
+    code changes.
+  - convection item 5 (M96) waits for core's M85 in round 2.
+  - The control descriptions in the last section go with their packages' B work.
+- element_diffusion: nothing is done. Its section below stays as a record, and so do its controls'
+  descriptions and its open bug_sweep entries.
+
 ## kap
 1. O18: the opacity ramp's derivatives made the derivatives of the blend. Moves every deck whose models cross the
    ramp, at the solver's level.

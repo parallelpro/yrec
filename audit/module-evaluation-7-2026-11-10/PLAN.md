@@ -343,6 +343,11 @@ Answered on 2026-11-10: yes to all four.
 - element_diffusion joins round 1 (section 5). Its original settling routines' fix-or-retire choice
   goes in its B list.
 
+Round 1's B lists (B_LISTS.md), answered on 2026-11-11: "agreed on all except don't do anything to
+element_diffusion".
+- kap's, atm's, convection's and eos's lists go ahead as written.
+- element_diffusion gets no B work.
+
 The questions as they were asked:
 
 1. Kind B fixes in these rounds, as measured commits, from a list approved per package before the
