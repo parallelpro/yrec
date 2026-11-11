@@ -6,23 +6,21 @@
 ! convective; the routines here turn that into positions:
 !   cz_base_fraction           where del_rad - del_ad changes sign between
 !                              the last convective zone and the one below
-!   pressure_scale_height      H_P = P r^2 / (rho G m), cm
 !   first_zone_above           the lowest zone lying above a radius
 !   locate_surface_mixing_base the base of the surface mixed region
 !                              (convection zone plus envelope overshoot)
 !                              at the start and end of the step, for the
 !                              Li/Be burn
 ! Users: observables (the surface convection zone's mass, radius, T, rho,
-! P and kappa), turnover_timescale (the radius of its base), evolve_step
-! and evolve_angular_momentum (the envelope overshoot depth, alpha_ov
-! H_P), burn_step (burn_li_be). Each caller keeps its own choice of
-! gradients and its own switch for overshoot.
+! P and kappa), turnover_timescale (the radius of its base), burn_step
+! (burn_li_be). Each caller keeps its own choice of gradients and its own
+! switch for overshoot. The overshoot depth alpha_ov H_P and H_P itself
+! are convection_lib's (envelope_overshoot_depth, pressure_scale_height).
 module convection_geometry
       use star_info_lib, only: star_info
       implicit none
       private
-      public :: cz_base_fraction, pressure_scale_height, first_zone_above, &
-           locate_surface_mixing_base
+      public :: cz_base_fraction, first_zone_above, locate_surface_mixing_base
 
 contains
 
@@ -37,19 +35,6 @@ double precision function cz_base_fraction(gap_below, gap)
       double precision, intent(in) :: gap_below, gap
       cz_base_fraction = gap_below/(gap_below - gap)
 end function cz_base_fraction
-
-!----------------------------------------------------------------------
-! pressure_scale_height: H_P = P r^2 / (rho G m) in cm, from log10 P,
-! r, rho and m.
-double precision function pressure_scale_height(log_pressure, log_radius, &
-     log_density, log_mass)
-      use physical_constants, only: clndp, cgl
-      use math_lib
-      double precision, intent(in) :: log_pressure, log_radius, &
-           log_density, log_mass
-      pressure_scale_height = exp(clndp*(log_pressure+2.0D0*log_radius &
-           -log_density-cgl-log_mass))
-end function pressure_scale_height
 
 !----------------------------------------------------------------------
 ! first_zone_above: the lowest zone lying above radius_limit (cm).

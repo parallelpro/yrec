@@ -52,13 +52,11 @@ contains
 !   star reads: card_kind, card_max_age_yr, card_stops_active,
 !     control%rewind_short_file, current_card, grada, gradr, log_L_lsun,
 !     log_Teff, log_total_mass, luminosity_breakdown_lsun, omega,
-!     physics%envelope_overshoot_active, physics%helium_flash_active,
-!     physics%improved_first_guess_flag,
+!     physics%helium_flash_active, physics%improved_first_guess_flag,
 !     physics%instability_transport_active, physics%max_iter_level1,
 !     physics%max_iter_level2, physics%max_iter_level3,
 !     physics%max_iter_level4, physics%new_triangle_init_flag,
-!     physics%overshoot_alpha_envelope, physics%rotation_active,
-!     physics%solver_underrelax_increment,
+!     physics%rotation_active, physics%solver_underrelax_increment,
 !     physics%solver_underrelax_start, physics%use_extended_composition,
 !     physics%use_wind_torque
 !   star writes: age_gyr, convective_flag, core_cz_top_index,
@@ -95,12 +93,12 @@ subroutine evolve_step(s, output, model_iteration, step_status, ierr)
            burn_li_be
       use composition_step, only: advance_composition, predictor_pass, corrector_pass
       use henyey_iteration, only: refresh_surface_bc, henyey_iterate
-      use convection_geometry, only: pressure_scale_height
       use yrec_output, only: output_state, output_write_model
       use observables, only: compute_observables
       use stitched_model, only: build_stitched_model
       use mass_change, only: change_mass
-      use convection_lib, only: find_convection_zones, homogenize_convection_zones
+      use convection_lib, only: find_convection_zones, homogenize_convection_zones, &
+           envelope_overshoot_depth
       use stop_conditions
       implicit none
 ! outputs of the calls below that the step does not use: the timestep
@@ -394,7 +392,8 @@ subroutine rezone_or_snapshot
             if (s%physics%use_extended_composition) then
                s%cz_base_radius_last_call = 0.0D0
                envelope_cz_zone_prev = s%envelope_cz_bottom_index
-               s%envelope_overshoot_depth_start = envelope_overshoot_depth()
+               s%envelope_overshoot_depth_start = envelope_overshoot_depth(s%logP, s%logR, &
+                    s%logRho, s%log_mass, s%envelope_cz_bottom_index)
 ! The Li/Be burning rates of the start-of-step model.
                call store_start_li_be_rates(s)
             endif
@@ -605,7 +604,8 @@ subroutine burn_light_elements
 ! The end-of-step base zone of the surface convection zone and the
 ! envelope overshoot depth below it (alpha_ov H_P).
                envelope_cz_zone_end = s%envelope_cz_bottom_index
-               s%envelope_overshoot_depth_end = envelope_overshoot_depth()
+               s%envelope_overshoot_depth_end = envelope_overshoot_depth(s%logP, s%logR, &
+                    s%logRho, s%log_mass, s%envelope_cz_bottom_index)
 ! The burning rates at the end of the step, from the converged model;
 ! then the burn.
                call store_end_li_be_rates(s, s%xa,s%logRho,s%logT,s%nz)
@@ -683,26 +683,6 @@ subroutine solve_level(level, level_max_iterations, check_surface_bc)
            envelope_recomputed_flag, saha_iterations, envelope_zone_index, &
            iterations_done, ierr)
 end subroutine solve_level
-
-! ---------------------------------------------------------------
-! The envelope-overshoot depth below the base of the surface convection
-! zone, in cm: d_ov = alpha_ov H_P, with alpha_ov =
-! physics%overshoot_alpha_envelope and H_P the pressure scale height at the
-! base zone (envelope_cz_bottom_index); zero when envelope overshoot is
-! off. The same formula serves the start and the end of the step
-! (rezone_or_snapshot, burn_light_elements).
-double precision function envelope_overshoot_depth()
-      use math_lib
-      if (s%physics%envelope_overshoot_active) then
-         envelope_overshoot_depth = s%physics%overshoot_alpha_envelope* &
-              pressure_scale_height(s%logP(s%envelope_cz_bottom_index), &
-              s%logR(s%envelope_cz_bottom_index), &
-              s%logRho(s%envelope_cz_bottom_index), &
-              s%log_mass(s%envelope_cz_bottom_index))
-      else
-         envelope_overshoot_depth = 0.0D0
-      endif
-end function envelope_overshoot_depth
 
 end subroutine evolve_step
 

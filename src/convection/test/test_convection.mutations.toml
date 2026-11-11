@@ -1,0 +1,315 @@
+# Mutations of test_convection: each check must print FAIL under a mutation
+# of the code it covers (convection/README.md section 4). Run, after `make
+# tests` in src/: python3 src/tools/mutate.py convection (src/tools/mutate.py
+# describes this format and the verdicts).
+program = "test_convection"
+timeout = 120
+
+[[mutation]]
+id = 'gradient-01'
+check = 'del_rad = 10^cdelrl kappa L P/(G m T^4) f_T/f_P'
+file = 'convection/temperature_gradients.f90'
+old = 'log_mass - 4d0*log_temperature'
+new = 'log_mass - 4.01d0*log_temperature'
+
+[[mutation]]
+id = 'gradient-02'
+check = 'radiative shell in the overshoot region: del = del_ad'
+file = 'convection/temperature_gradients.f90'
+old = 'if (convection_settings%adiabatic_overshoot .and. in_overshoot_region) &'
+new = 'if (convection_settings%adiabatic_overshoot .and. .not. in_overshoot_region) &'
+
+[[mutation]]
+id = 'gradient-03'
+check = 'radiative shell outside it: del = del_rad, v_c = 0'
+file = 'convection/temperature_gradients.f90'
+old = 'convective_velocity = 0.0d0'
+new = 'convective_velocity = 1.0d-11'
+
+[[mutation]]
+id = 'gradient-04'
+check = "above log10_t_cut: del = del_ad, del_ad's derivatives"
+file = 'convection/temperature_gradients.f90'
+old = 'dgrad_dr_component = 0.0d0'
+new = 'dgrad_dr_component = 1.0d-3'
+
+[[mutation]]
+id = 'gradient-05'
+check = 'MLT: del and v_c as the equations give, cubic by bisection'
+file = 'convection/temperature_gradients.f90'
+old = 'mlt%a3 = 0.75d0*'
+new = 'mlt%a3 = 0.70d0*'
+
+[[mutation]]
+id = 'gradient-06'
+check = 'MLT: del_ad <= del <= del_rad from rho = 1e-21 to 1e3'
+file = 'convection/temperature_gradients.f90'
+old = 'gradient_excess = excess*mlt%v*(mlt%v + mlt%a1)'
+new = 'gradient_excess = excess*mlt%v*(mlt%v + 2.0d0*mlt%a1)'
+
+[[mutation]]
+id = 'gradient-07'
+check = 'MLT efficient limit: (del - del_ad)/Delta ~ rho^-1/3'
+file = 'convection/temperature_gradients.f90'
+old = '(eos_res%specific_heat_cp*sqrt(mlt%radicand))'
+new = '(eos_res%specific_heat_cp*mlt%radicand**0.25d0)'
+
+[[mutation]]
+id = 'gradient-08'
+check = 'MLT inefficient limit: (del_rad - del)/Delta ~ rho^2'
+file = 'convection/temperature_gradients.f90'
+old = '(-eos_res%dlnrho_dlnt)/mlt%scale_height'
+new = '(-eos_res%dlnrho_dlnt)/mlt%scale_height**2'
+
+[[mutation]]
+id = 'gradient-09'
+check = 'derivatives vs centred differences: dln del/dln T'
+file = 'convection/temperature_gradients.f90'
+old = 'qa1t = dlnkap_dlnt_p*(1d0 - w) - eos_res%specific_heat_cp_dt'
+new = 'qa1t = dlnkap_dlnt_p*(1d0 - w) + eos_res%specific_heat_cp_dt'
+
+[[mutation]]
+id = 'gradient-10'
+check = 'derivatives vs centred differences: dln del/dln P'
+file = 'convection/temperature_gradients.f90'
+old = 'qa1p = dlnkap_dlnp_t*(1d0 - w) - w -'
+new = 'qa1p = dlnkap_dlnp_t*(1d0 - w) + w -'
+
+[[mutation]]
+id = 'gradient-11'
+check = 'derivatives vs centred differences: dln del/dln r'
+file = 'convection/temperature_gradients.f90'
+old = 'qa1r = -2.0d0*w + 2.0d0'
+new = 'qa1r = -2.0d0*w + 1.0d0'
+
+[[mutation]]
+id = 'gradient-12'
+check = 'spots, constant contrast: del and v_c as the equations give'
+file = 'convection/temperature_gradients.f90'
+old = 'filling_factor*pow(contrast, 4.0d0)'
+new = 'filling_factor*pow(contrast, 3.0d0)'
+
+[[mutation]]
+id = 'gradient-13'
+check = 'spots, constant contrast: dln del/dln r vs centred difference'
+file = 'convection/temperature_gradients.f90'
+old = 'dexcess_dv = excess*(mlt%a1 + mlt%v + mlt%v)'
+new = 'dexcess_dv = excess*(mlt%a1 + mlt%v)'
+
+[[mutation]]
+id = 'gradient-14'
+check = 'spots, depth-varying contrast: del and v_c as the equations give'
+file = 'convection/temperature_gradients.f90'
+old = 'contrast = 1.0d0 - (1.0d0 - convection_settings%spot_temp_contrast)'
+new = 'contrast = 1.0d0 - (1.1d0 - convection_settings%spot_temp_contrast)'
+
+[[mutation]]
+id = 'gradient-15'
+check = 'spots, depth-varying contrast: dln del/dln r vs centred difference'
+file = 'convection/temperature_gradients.f90'
+old = 'qvr = -(a1_v*qa1r + a3_v3*qa3r)*inverse_slope'
+new = 'qvr = -(a1_v*qa1r - a3_v3*qa3r)*inverse_slope'
+
+[[mutation]]
+id = 'gradient-16'
+check = 'a negative radicand returns convection_unstable_radicand'
+file = 'convection/temperature_gradients.f90'
+old = 'ierr = convection_unstable_radicand'
+new = 'ierr = 0'
+
+[[mutation]]
+id = 'zones-01'
+check = 'zones: runs of more than one shell; a single shell is not one'
+file = 'convection/convection_zones.f90'
+old = 'if (last == first) cycle'
+new = 'if (last < first) cycle'
+
+[[mutation]]
+id = 'zones-02'
+check = 'zones: the mixed and radiative regions tile the model'
+file = 'convection/convection_zones.f90'
+old = 'radiative(num_radiative,2) = mixed(k+1,1) - 1'
+new = 'radiative(num_radiative,2) = mixed(k+1,1)'
+
+[[mutation]]
+id = 'zones-03'
+check = "zones: twelve zones fill the bounds' twelve rows"
+file = 'convection/convection_zones.f90'
+old = 'if (num_found == size(bounds, 1)) then'
+new = 'if (num_found == size(bounds, 1) - 1) then'
+
+[[mutation]]
+id = 'zones-04'
+check = 'zones: a thirteenth zone returns convection_too_many_zones'
+file = 'convection/convection_zones.f90'
+old = 'ierr = convection_too_many_zones'
+new = 'ierr = 0'
+
+[[mutation]]
+id = 'overshoot-01'
+check = 'pressure_scale_height = P r^2/(G m rho)'
+file = 'convection/overshoot.f90'
+old = '2.0d0*log_radius - log_density - &'
+new = '2.0d0*log_radius + log_density - &'
+
+[[mutation]]
+id = 'overshoot-02'
+check = 'envelope_overshoot_depth = 0 with envelope overshoot off'
+file = 'convection/overshoot.f90'
+old = 'if (convection_settings%envelope_overshoot) then'
+new = 'if (.true.) then'
+
+[[mutation]]
+id = 'overshoot-03'
+check = 'envelope_overshoot_depth = alpha_env H_P at the base'
+file = 'convection/overshoot.f90'
+old = 'envelope_overshoot_depth = convection_settings%overshoot_alpha_envelope*'
+new = 'envelope_overshoot_depth = convection_settings%overshoot_alpha_core*'
+
+[[mutation]]
+id = 'overshoot-04'
+check = 'overshoot, core: the last shell within alpha_core H_P above'
+file = 'convection/overshoot.f90'
+old = 'target_radius = exp(ln10*log_radius(edge)) + distance'
+new = 'target_radius = exp(ln10*log_radius(edge)) + 0.5d0*distance'
+
+[[mutation]]
+id = 'overshoot-05'
+check = 'overshoot, core: limited to beta r (Woo & Demarque)'
+file = 'convection/overshoot.f90'
+old = 'distance = min(scale_height_up*'
+new = 'distance = max(scale_height_up*'
+
+[[mutation]]
+id = 'overshoot-06'
+check = 'overshoot, envelope: the deepest shell within alpha_env H_P'
+file = 'convection/overshoot.f90'
+old = 'target_radius = exp(ln10*log_radius(edge)) - distance'
+new = 'target_radius = exp(ln10*log_radius(edge)) - 0.5d0*distance'
+
+[[mutation]]
+id = 'overshoot-07'
+check = 'overshoot, envelope: the region below it, bottom..old edge'
+file = 'convection/overshoot.f90'
+old = '''            overshoot_top = edge
+            overshoot_bottom = mixed_zone_bounds(k,1)
+         else
+'''
+new = '''            overshoot_top = edge + 1
+            overshoot_bottom = mixed_zone_bounds(k,1)
+         else
+'''
+
+[[mutation]]
+id = 'overshoot-08'
+check = 'overshoot, intermediate: both edges by alpha_int H_P'
+file = 'convection/overshoot.f90'
+old = 'distance = scale_height_down*convection_settings%overshoot_alpha_intermediate'
+new = 'distance = scale_height_down*convection_settings%overshoot_alpha_envelope'
+
+[[mutation]]
+id = 'overshoot-09'
+check = 'overshoot, rotating: at least one shell below the envelope'
+file = 'convection/overshoot.f90'
+old = 'edge == edge_no_overshoot) edge = edge - 1'
+new = 'edge == edge_no_overshoot) edge = edge - 0'
+
+[[mutation]]
+id = 'overshoot-10'
+check = 'overshoot merge: met regions become one, first to last shell'
+file = 'convection/convection_zones.f90'
+old = 'bounds(k+1,1) = bounds(k,1)'
+new = 'bounds(k+1,1) = bounds(k+1,1)'
+
+[[mutation]]
+id = 'homogenize-01'
+check = "homogenize: each species' mass in each zone is kept"
+file = 'convection/convection_zones.f90'
+old = 'weight_sum = weight_sum + shell_mass(k)'
+new = 'weight_sum = weight_sum + 1.01d0*shell_mass(k)'
+
+[[mutation]]
+id = 'homogenize-02'
+check = 'homogenize: each zone is uniform'
+file = 'convection/convection_zones.f90'
+old = '''      do k = first, last
+         composition(1:num_species,k) = species_sum'''
+new = '''      do k = first, last - 1
+         composition(1:num_species,k) = species_sum'''
+
+[[mutation]]
+id = 'homogenize-03'
+check = 'homogenize: the radiative shells are untouched'
+file = 'convection/convection_zones.f90'
+old = 'last = k - 1'
+new = 'last = k'
+
+[[mutation]]
+id = 'homogenize-04'
+check = 'homogenize: a uniform composition stays (relative)'
+file = 'convection/convection_zones.f90'
+old = 'species_sum = species_sum/weight_sum'
+new = 'species_sum = species_sum/weight_sum*(1.0d0 + 1.0d-14)'
+
+[[mutation]]
+id = 'homogenize-05'
+check = "homogenize's floors: X >= 0, Z <= 1 - X, O16 >= 0.99e-3 CNO"
+file = 'convection/convection_zones.f90'
+old = 'o16_floor_fraction_of_cno = 0.99d-3'
+new = 'o16_floor_fraction_of_cno = 0.98d-3'
+
+[[mutation]]
+id = 'semiconvection-01'
+check = "semiconvection: the core's upper edge moves out"
+file = 'convection/semiconvection.f90'
+old = 'if (gradient_ratio*gradient < eos_res%adiabatic_gradient) exit'
+new = 'if (.true.) exit'
+
+[[mutation]]
+id = 'semiconvection-02'
+check = 'semiconvection: f del_rad >= del_ad in the shells added, not next'
+file = 'convection/semiconvection.f90'
+old = 'if (gradient_ratio*gradient < eos_res%adiabatic_gradient) exit'
+new = 'if (gradient < eos_res%adiabatic_gradient) exit'
+
+[[mutation]]
+id = 'semiconvection-03'
+check = 'semiconvection: a short timestep adds only the first shell'
+file = 'convection/semiconvection.f90'
+old = 'propagation_speed_divisor = 10.0d0'
+new = 'propagation_speed_divisor = 1.0d-20'
+
+[[mutation]]
+id = 'semiconvection-04'
+check = 'semiconvection merge: an overlapped region joins the core'
+file = 'convection/semiconvection.f90'
+old = '      call merge_overlapping_zones(mixed_zone_bounds, num_zones_mixed, &'
+new = '      if (.false.) call merge_overlapping_zones(mixed_zone_bounds, num_zones_mixed, &'
+
+[[mutation]]
+id = 'semiconvection-05'
+check = 'semiconvection merge: a region sharing the edge shell stays'
+file = 'convection/semiconvection.f90'
+old = 'merge_shared_shell=.false., cause=merged_by_semiconvection'
+new = 'merge_shared_shell=.true., cause=merged_by_semiconvection'
+
+[[mutation]]
+id = 'semiconvection-06'
+check = "semiconvection: stable with the core's composition, it stays"
+file = 'convection/semiconvection.f90'
+old = 'if (gradient_zone_mix < eos_res%adiabatic_gradient) return'
+new = 'if (.false.) return'
+
+[[mutation]]
+id = 'overshoot-11'
+check = 'overshoot, rotating: at least one shell above the core'
+file = 'convection/overshoot.f90'
+old = 'edge == edge_no_overshoot) edge = edge + 1'
+new = 'edge == edge_no_overshoot) edge = edge + 0'
+
+[[mutation]]
+id = 'semiconvection-07'
+check = "semiconvection: an envelope's lower edge moves down while f del_rad"
+file = 'convection/semiconvection.f90'
+old = 'step = -1'
+new = 'step = 1'
