@@ -23,7 +23,7 @@ subroutine model_to_equal(diff_scr, diffusion_coeff1, diffusion_coeff2, composit
      equal_diffusion_coeff1_dx_mid, equal_diffusion_coeff2_dx_mid, &
      equal_radius, equal_hydrogen_fraction, equal_hydrogen_fraction_mid, &
      num_equal_points)
-      use composition_layout, only: json, i_metals
+      use composition_layout, only: json, i_h1, i_metals
       use numerics_lib, only: interp, lagrange4
       implicit none
       type(diffusion_scratch), intent(inout) :: diff_scr
@@ -110,9 +110,9 @@ subroutine model_to_equal(diff_scr, diffusion_coeff1, diffusion_coeff2, composit
       equal_diffusion_coeff2_dx_mid(1)=diffusion_coeff2_dx(interp_search_index-1)+ &
            interp_fraction*(diffusion_coeff2_dx(interp_search_index)- &
            diffusion_coeff2_dx(interp_search_index-1))
-      equal_hydrogen_fraction_mid(1) = composition(1,interp_search_index-1)+ &
-           interp_fraction*(composition(1,interp_search_index)- &
-           composition(1,interp_search_index-1))
+      equal_hydrogen_fraction_mid(1) = composition(i_h1,interp_search_index-1)+ &
+           interp_fraction*(composition(i_h1,interp_search_index)- &
+           composition(i_h1,interp_search_index-1))
       if(diffusion_settings%use_diffusion_z)then
          diff_scr%metal_diffusion_coeff1_mid(1)=diff_scr%src_grid_metal_diffusion_coeff1(interp_search_index-1)+ &
               interp_fraction*(diff_scr%src_grid_metal_diffusion_coeff1(interp_search_index)- &
@@ -178,7 +178,7 @@ subroutine model_to_equal(diff_scr, diffusion_coeff1, diffusion_coeff2, composit
          equal_diffusion_coeff2_dx_mid(zone_index) = lagrange4(interp_factors, &
               diffusion_coeff2_dx(k0:k0+3))
 ! MASS FRACTION OF HYDROGEN
-         equal_hydrogen_fraction_mid(zone_index) = lagrange4(interp_factors, composition(1,k0:k0+3))
+         equal_hydrogen_fraction_mid(zone_index) = lagrange4(interp_factors, composition(i_h1,k0:k0+3))
          if(diffusion_settings%use_diffusion_z)then
 ! METAL DIFFUSION-TREATED AS FULLY IONIZED IRON.
 ! D1
@@ -211,7 +211,7 @@ subroutine model_to_equal(diff_scr, diffusion_coeff1, diffusion_coeff2, composit
 !
 ! FIRST POINT : BY DEFINITION, AT STARTING POINT.
       equal_mass(1) = enclosed_mass(zone_begin)
-      equal_hydrogen_fraction(1) = composition(1,zone_begin)
+      equal_hydrogen_fraction(1) = composition(i_h1,zone_begin)
       equal_diffusion_coeff1(1)=diffusion_coeff1(zone_begin)
       if(diffusion_settings%use_diffusion_z)then
          diff_scr%metal_abundance_change(1) = composition(i_metals,zone_begin)
@@ -255,7 +255,7 @@ subroutine model_to_equal(diff_scr, diffusion_coeff1, diffusion_coeff2, composit
          equal_diffusion_coeff1(zone_index) = lagrange4(interp_factors, diffusion_coeff1(k0:k0+3))
 ! MASS FRACTION OF HYDROGEN
 
-         equal_hydrogen_fraction(zone_index) = lagrange4(interp_factors, composition(1,k0:k0+3))
+         equal_hydrogen_fraction(zone_index) = lagrange4(interp_factors, composition(i_h1,k0:k0+3))
 ! METAL DIFFUSION
          if(diffusion_settings%use_diffusion_z)then
 ! D1
@@ -269,7 +269,7 @@ subroutine model_to_equal(diff_scr, diffusion_coeff1, diffusion_coeff2, composit
 ! LAST POINT : BY DEFINITION, AT ENDING POINT.
 
       equal_mass(num_equal_points) = enclosed_mass(zone_end)
-      equal_hydrogen_fraction(num_equal_points) = composition(1,zone_end)
+      equal_hydrogen_fraction(num_equal_points) = composition(i_h1,zone_end)
       equal_diffusion_coeff1(num_equal_points)=diffusion_coeff1(zone_end)
 
       if(diffusion_settings%use_diffusion_z)then
@@ -283,7 +283,8 @@ end subroutine model_to_equal
 subroutine equal_to_model(diff_scr, timestep, equal_radius, equal_hydrogen_fraction, &
      zone_begin, zone_end, num_equal_points, composition, &
      aux_radial_quantity, radius, enclosed_mass, num_zones, total_mass)
-      use composition_layout, only: json
+      use composition_layout, only: json, i_h1, i_he4, i_metals, i_he3, &
+           i_c12, i_o18
       use numerics_lib, only: interp, lagrange4
       implicit none
       type(diffusion_scratch), intent(inout) :: diff_scr
@@ -319,7 +320,7 @@ subroutine equal_to_model(diff_scr, timestep, equal_radius, equal_hydrogen_fract
 ! SPACED GRID.
       hydrogen_floor = 0.0D0
       do zone_index = zone_begin,1,-1
-         composition(1,zone_index)=max(composition(1,zone_index) + &
+         composition(i_h1,zone_index)=max(composition(i_h1,zone_index) + &
               equal_hydrogen_fraction(1),hydrogen_floor)
       end do
 ! MHP 3/94 ADDED METAL DIFFUSION
@@ -327,20 +328,20 @@ subroutine equal_to_model(diff_scr, timestep, equal_radius, equal_hydrogen_fract
 ! ARE OPPOSITE (GUARDING AGAINST NEGATIVE X AND Z>1 RESPECTIVELY).
       if(diffusion_settings%use_diffusion_z)then
          do zone_index = zone_begin,1,-1
-            metal_max = 1.0D0 - composition(1,zone_index) - composition(4,zone_index)
-            metal_new=min(composition(3,zone_index)+diff_scr%metal_abundance_change(1),metal_max)
-            metal_scale_ratio = metal_new/composition(3,zone_index)
-            composition(3,zone_index) = metal_new
-            do j = 5,11
+            metal_max = 1.0D0 - composition(i_h1,zone_index) - composition(i_he3,zone_index)
+            metal_new=min(composition(i_metals,zone_index)+diff_scr%metal_abundance_change(1),metal_max)
+            metal_scale_ratio = metal_new/composition(i_metals,zone_index)
+            composition(i_metals,zone_index) = metal_new
+            do j = i_c12,i_o18
                composition(j,zone_index) = metal_scale_ratio*composition(j,zone_index)
             end do
-            composition(2,zone_index)=1.0D0-composition(1,zone_index)- &
-                 composition(3,zone_index)-composition(4,zone_index)
+            composition(i_he4,zone_index)=1.0D0-composition(i_h1,zone_index)- &
+                 composition(i_metals,zone_index)-composition(i_he3,zone_index)
          end do
       else
          do zone_index = zone_begin,1,-1
-            composition(2,zone_index)=1.0D0-composition(1,zone_index)- &
-                 composition(3,zone_index)-composition(4,zone_index)
+            composition(i_he4,zone_index)=1.0D0-composition(i_h1,zone_index)- &
+                 composition(i_metals,zone_index)-composition(i_he3,zone_index)
          end do
       endif
       search_start_index=2
@@ -374,48 +375,48 @@ subroutine equal_to_model(diff_scr, timestep, equal_radius, equal_hydrogen_fract
          call interp(radius_table, interp_factors, x_eval=target_radius)
 ! PERFORM 4 POINT LAGRANGIAN INTERPOLATION FOR CHANGE IN X.
          delta_x = lagrange4(interp_factors, equal_hydrogen_fraction(k0:k0+3))
-         hydrogen_max = 1.0D0 - composition(3,zone_index) - composition(4,zone_index)
-         composition(1,zone_index)=min(composition(1,zone_index) + delta_x,hydrogen_max)
+         hydrogen_max = 1.0D0 - composition(i_metals,zone_index) - composition(i_he3,zone_index)
+         composition(i_h1,zone_index)=min(composition(i_h1,zone_index) + delta_x,hydrogen_max)
 ! MHP 3/94 ADDED METAL DIFFUSION
          if(diffusion_settings%use_diffusion_z)then
-            metal_max = 1.0D0 - composition(1,zone_index) - composition(4,zone_index)
+            metal_max = 1.0D0 - composition(i_h1,zone_index) - composition(i_he3,zone_index)
             delta_z = lagrange4(interp_factors, diff_scr%metal_abundance_change(k0:k0+3))
-            metal_new = min(composition(3,zone_index)+delta_z,metal_max)
-            metal_scale_ratio = metal_new/composition(3,zone_index)
-            composition(3,zone_index)=metal_new
-            do j = 5,11
+            metal_new = min(composition(i_metals,zone_index)+delta_z,metal_max)
+            metal_scale_ratio = metal_new/composition(i_metals,zone_index)
+            composition(i_metals,zone_index)=metal_new
+            do j = i_c12,i_o18
                composition(j,zone_index) = metal_scale_ratio*composition(j,zone_index)
             end do
-            composition(2,zone_index)=1.0D0-composition(1,zone_index)- &
-                 composition(3,zone_index)-composition(4,zone_index)
+            composition(i_he4,zone_index)=1.0D0-composition(i_h1,zone_index)- &
+                 composition(i_metals,zone_index)-composition(i_he3,zone_index)
          else
-            composition(2,zone_index)=1.0D0-composition(1,zone_index)- &
-                 composition(3,zone_index)-composition(4,zone_index)
+            composition(i_he4,zone_index)=1.0D0-composition(i_h1,zone_index)- &
+                 composition(i_metals,zone_index)-composition(i_he3,zone_index)
          endif
       end do
       do zone_index = zone_end,num_zones
-         hydrogen_max = 1.0D0 - composition(3,zone_index) - composition(4,zone_index)
-         composition(1,zone_index)=min(composition(1,zone_index) + &
+         hydrogen_max = 1.0D0 - composition(i_metals,zone_index) - composition(i_he3,zone_index)
+         composition(i_h1,zone_index)=min(composition(i_h1,zone_index) + &
               equal_hydrogen_fraction(num_equal_points),hydrogen_max)
       end do
 ! MHP 3/94 ADDED METAL DIFFUSION
       if(diffusion_settings%use_diffusion_z)then
          metal_floor = 0.0D0
          do zone_index = zone_end,num_zones
-            metal_new = max(composition(3,zone_index)+ &
+            metal_new = max(composition(i_metals,zone_index)+ &
                  diff_scr%metal_abundance_change(num_equal_points),metal_floor)
-            metal_scale_ratio = metal_new/composition(3,zone_index)
-            composition(3,zone_index) = metal_new
-            do j = 5,11
+            metal_scale_ratio = metal_new/composition(i_metals,zone_index)
+            composition(i_metals,zone_index) = metal_new
+            do j = i_c12,i_o18
                composition(j,zone_index) = metal_scale_ratio*composition(j,zone_index)
             end do
-            composition(2,zone_index)=1.0D0-composition(1,zone_index)- &
-                 composition(3,zone_index)-composition(4,zone_index)
+            composition(i_he4,zone_index)=1.0D0-composition(i_h1,zone_index)- &
+                 composition(i_metals,zone_index)-composition(i_he3,zone_index)
          end do
       else
          do zone_index = zone_end,num_zones
-            composition(2,zone_index)=1.0D0-composition(1,zone_index)- &
-                 composition(3,zone_index)-composition(4,zone_index)
+            composition(i_he4,zone_index)=1.0D0-composition(i_h1,zone_index)- &
+                 composition(i_metals,zone_index)-composition(i_he3,zone_index)
          end do
       endif
       do zone_index=1,num_zones

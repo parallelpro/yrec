@@ -10,17 +10,18 @@ module microdiff_mapping
       use element_diffusion_configuration, only: diffusion_settings
       use element_diffusion_scratch, only: diffusion_scratch
       use composition_layout, only: json
+      use species_table, only: num_light_diffused
       implicit none
 
 ! One equally spaced radial grid of the microdiff settling pipeline
 ! (Bahcall & Loeb units): structure plus interpolated composition.
-! light is dimensioned for the pipeline's three light elements
-! (Li6/Li7/Be9; num_light in microdiff).
+! light has a row for each light element species_table lists
+! (num_light_diffused: Li6, Li7, Be9).
       type :: microdiff_grid
          double precision :: mass(json), radius(json), density(json), &
               temperature(json), dlnp_dr(json), del_grad(json), &
               hydrogen(json), helium(json), metal(json), &
-              light(3,json)
+              light(num_light_diffused,json)
       end type microdiff_grid
 contains
 
