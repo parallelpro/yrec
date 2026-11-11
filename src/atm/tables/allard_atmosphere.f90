@@ -15,7 +15,7 @@ module allard_atmosphere
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use atm_tables, only: atm_settings, atm_table, atm_table_nga, &
            atm_table_nta
-      use run_messages, only: run_log_unit
+      use run_messages, only: run_log_unit, report_error
       use numerics_lib, only: locate, polint, numerics_status_text
       use math_lib
       implicit none
@@ -377,6 +377,11 @@ subroutine read_allard_tables(allard_table_path, ierr)
       integer, intent(out) :: ierr
       integer :: ios, allard_unit
       logical :: found_first
+! the [Fe/H] and [alpha/Fe] values the file holds, for the message when
+! it has no table at the deck's (allard_target_feh, allard_target_alpha)
+      integer, parameter :: max_file_compositions = 50
+      real(dp) :: file_feh(max_file_compositions), file_alpha(max_file_compositions)
+      integer :: num_file_feh, num_file_alpha
 
       ierr = 0
 
@@ -464,6 +469,8 @@ subroutine read_allard_tables(allard_table_path, ierr)
 !     First we read the file to count the # of Teff,GL,Fe/H and Alpha's
 
       found_first = .false.
+      num_file_feh = 0
+      num_file_alpha = 0
       do
       read(allard_unit,915,iostat=ios) teff_value,gl_value,feh_value,alpha_value
   915      format(f6.0,3f6.2)
@@ -478,6 +485,8 @@ subroutine read_allard_tables(allard_table_path, ierr)
       end if
       if (ios < 0) exit
       irecno=irecno+1
+      call add_distinct(feh_value, file_feh, num_file_feh)
+      call add_distinct(alpha_value, file_alpha, num_file_alpha)
 
 !     If the record does not have the correct FeH and Alpha, we skip it
       if ((abs(feh_value-atm_settings%allard_target_feh) > 1d-5) .or. &
@@ -536,6 +545,13 @@ subroutine read_allard_tables(allard_table_path, ierr)
       end if
 
       end do ! go on to next record
+! no record at the deck's [Fe/H] and [alpha/Fe]: an error, which names
+! the values asked for and those the file holds (M221)
+      if (.not. found_first) then
+         call report_missing_composition()
+         ierr = 1
+         return
+      end if
 
 !       write(*,*) 'nTeff,nGL,nFeH,nALPHA: ',nTeff,nGL,nFeH,nALPHA
 
@@ -640,6 +656,40 @@ subroutine read_allard_tables(allard_table_path, ierr)
 
 contains
 
+! value appended to list(1:n) unless it is there already (to 1e-6)
+pure subroutine add_distinct(value, list, n)
+      real(dp), intent(in) :: value
+      real(dp), intent(inout) :: list(:)
+      integer, intent(inout) :: n
+      if (any(abs(list(1:n) - value) < 1d-6)) return
+      if (n == size(list)) return
+      n = n + 1
+      list(n) = value
+end subroutine add_distinct
+
+! The deck's [Fe/H] and [alpha/Fe] are not in the file: an error, on the
+! terminal and in the run log.
+subroutine report_missing_composition()
+      character(len=1024) :: text
+      character(len=16) :: item
+      integer :: k
+      call sort_shell(num_file_feh, file_feh)
+      call sort_shell(num_file_alpha, file_alpha)
+      write(text,'(a,f6.2,a,f6.2,3a)') 'allard_target_feh =', atm_settings%allard_target_feh, &
+           ' and allard_target_alpha =', atm_settings%allard_target_alpha, &
+           ': the Allard file ', trim(allard_table_path), ' has no table there; its [Fe/H]:'
+      do k = 1, num_file_feh
+         write(item,'(f6.2)') file_feh(k)
+         text = trim(text)//' '//adjustl(item)
+      end do
+      text = trim(text)//'; its [alpha/Fe]:'
+      do k = 1, num_file_alpha
+         write(item,'(f6.2)') file_alpha(k)
+         text = trim(text)//' '//adjustl(item)
+      end do
+      call report_error(trim(text))
+end subroutine report_missing_composition
+
 ! THE ERROR EXIT (was label 9999): announce termination; every caller
 ! then sets ierr = 1 and returns.
 subroutine fail_9999
@@ -735,6 +785,17 @@ subroutine find_allard_table_bounds(ierr)
 
       ierr = 0
 
+! (b) of step 4 first: a table of fewer than 4 rows has no 4-point
+! stencil, and the limits below would read outside it.
+      if (atm_table%allard_num_teff < 4) then
+         write(run_log_unit,910) 'ALTABINIT: Bad input Allard Table: ', &
+            'Less than 4 rows: nTeff = ',atm_table%allard_num_teff
+  910         format(2a,i3)
+         call announce_bad_table()
+         ierr = 1
+         return
+      end if
+
       atm_table%allard_al_teffl_min = atm_table%allard_teffl_grid(1)
       atm_table%allard_al_teffl_max = atm_table%allard_teffl_grid(atm_table%allard_num_teff)
       atm_table%allard_teffl_min = atm_table%allard_teffl_grid(1) - (atm_table%allard_teffl_grid(2)-atm_table%allard_teffl_grid(1))
@@ -791,13 +852,7 @@ subroutine find_allard_table_bounds(ierr)
          enddo
       enddo
 
-!        (b) Ensure that every row has at least 4 valid entries and that there are at least 4 columns.
-      if (atm_table%allard_num_teff < 4) then
-         table_is_bad = .true.
-         write(run_log_unit,910) 'ALTABINIT: Bad input Allard Table: ', &
-            'Less than 4 rows: nTeff = ',atm_table%allard_num_teff
-  910         format(a,i3)
-      endif
+!        (b) Ensure that every row has at least 4 valid entries (the row count is checked above).
       do i = 1, atm_table%allard_num_teff
          j1 = atm_table%allard_gl_index_min(i)
          j2 = atm_table%allard_gl_index_max(i)
@@ -815,14 +870,20 @@ subroutine find_allard_table_bounds(ierr)
       return                  ! If good table, return
 
       end if
+       call announce_bad_table()
+       call print_allard_tables
+       ierr = 1
+
+contains
+
+subroutine announce_bad_table()
        write(*,*)
        write(*,*)'******** ALTABINIT: Program Terminated ********'
        write(*,*)
        write(run_log_unit,*)
        write(run_log_unit,*)'******** ALTABINIT: Program Terminated ********'
        write(run_log_unit,*)
-       call print_allard_tables
-       ierr = 1
+end subroutine announce_bad_table
 
 end subroutine find_allard_table_bounds
 
