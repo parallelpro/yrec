@@ -16,7 +16,7 @@ new = 'if (.false.) then'
 
 [[mutation]]
 id = 'atm_lib-02'
-check = 'atm_init: an atm_choice outside 0-5 returns ierr 1 (M236)'
+check = 'atm_init: an atm_choice that is none of the choices returns ierr 1 (M236)'
 file = 'atm/atm_lib.f90'
 old = 'if (.not. atm_choice_is_known(settings%atm_choice)) then'
 new = 'if (.false.) then'
@@ -41,7 +41,7 @@ new = 'atm_reenters_table = log10_teff <= gray_switch_log_teff(atm_choice)'
 
 [[mutation]]
 id = 'atm_choices-01'
-check = 'atm_choices: 0-5 known, 3-5 tabulated, a name for each known one'
+check = 'atm_choices: the known choices, the tables (3-5), a name for each known one'
 file = 'atm/atm_choices.f90'
 old = "choice_description('Kurucz/Castelli atmosphere tables', .true., .false.)"
 new = "choice_description('Kurucz/Castelli atmosphere tables', .false., .false.)"

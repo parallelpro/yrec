@@ -589,24 +589,26 @@ subroutine facade_checks()
       logical :: failed, holds
       integer :: ierr, choice
 
-      bad%atm_choice = 6
+      bad%atm_choice = atm_last_choice + 1
       call atm_init(bad, atm_table_paths_t("", ""), ierr)
       holds = ierr == 1
       bad%atm_choice = -1
       call atm_init(bad, atm_table_paths_t("", ""), ierr)
-      call report_true("atm_init: an atm_choice outside 0-5 returns ierr 1 (M236)", holds .and. ierr == 1)
+      call report_true("atm_init: an atm_choice that is none of the choices returns ierr 1 (M236)", &
+           holds .and. ierr == 1)
       log_p = 7.0d0
       call atm_get_surface_pt(atm_hsra, 3.7d0, 4.4d0, log_p, log_t, failed, ierr)
       call report_true("atm_get_surface_pt: a choice that is not a table returns ierr 1", &
            ierr == 1 .and. .not. failed .and. log_p == 7.0d0)
 ! the descriptor
       holds = .true.
-      do choice = -2, 7
-         holds = holds .and. (atm_choice_is_known(choice) .eqv. (choice >= 0 .and. choice <= 5))
-         holds = holds .and. (atm_choice_is_tabulated(choice) .eqv. (choice >= 3 .and. choice <= 5))
+      do choice = -2, atm_last_choice + 2
+         holds = holds .and. (atm_choice_is_known(choice) .eqv. (choice >= 0 .and. choice <= atm_last_choice))
+         holds = holds .and. (atm_choice_is_tabulated(choice) .eqv. &
+              any(choice == [atm_kurucz, atm_allard, atm_castelli_kurucz]))
          holds = holds .and. ((len_trim(atm_choice_name(choice)) > 0) .eqv. atm_choice_is_known(choice))
       end do
-      call report_true("atm_choices: 0-5 known, 3-5 tabulated, a name for each known one", holds)
+      call report_true("atm_choices: the known choices, the tables (3-5), a name for each known one", holds)
 ! the switch to gray and back: Kurucz at log Teff 3.95, Allard at its
 ! last log Teff, never for the others
       holds = atm_leaves_table(atm_kurucz, 3.95d0) .and. .not. atm_leaves_table(atm_kurucz, 3.9499d0)
@@ -614,7 +616,7 @@ subroutine facade_checks()
            .not. atm_reenters_table(atm_kurucz, 3.95d0)
       holds = holds .and. atm_leaves_table(atm_allard, atm_allard_teff_max()) .and. &
            atm_reenters_table(atm_allard, atm_allard_teff_max() - 1.0d-6)
-      do choice = 0, 5
+      do choice = 0, atm_last_choice
          if (choice == atm_kurucz .or. choice == atm_allard) cycle
          holds = holds .and. .not. atm_leaves_table(choice, 9.0d0) .and. &
               .not. atm_reenters_table(choice, 0.0d0)

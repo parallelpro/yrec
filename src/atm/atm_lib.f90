@@ -10,7 +10,7 @@
 !     atm_get_surface_pt   log P and log T at (log Teff, log g) from the
 !                          Kurucz, Allard or Castelli/Kurucz table
 !     atm_allard_teff_max  the Allard tables' highest log Teff
-!     atm_eddington_gray ... atm_castelli_kurucz, atm_choice_is_known,
+!     atm_eddington_gray ... atm_castelli_kurucz, atm_last_choice, atm_choice_is_known,
 !     atm_choice_is_tabulated, atm_choice_name
 !                          what each atm_choice is (atm_choices)
 !     atm_leaves_table, atm_reenters_table, atm_note_choice_switch
@@ -29,7 +29,7 @@ module atm_lib
       use atm_tables, only: atm_settings_t, atm_table_paths_t, surface_pressure_table, &
            allard_table, kurucz_num_teff, castelli_num_teff
       use atm_choices, only: atm_eddington_gray, atm_krishna_swamy, atm_hsra, atm_kurucz, &
-           atm_allard, atm_castelli_kurucz, atm_choice_is_known, atm_choice_is_tabulated, &
+           atm_allard, atm_castelli_kurucz, atm_last_choice, atm_choice_is_known, atm_choice_is_tabulated, &
            atm_choice_name, has_gray_switch, kurucz_gray_switch_log_teff
       use kurucz_table_reader, only: read_surface_pressure_table
       use allard_table_reader, only: read_allard_tables
@@ -46,7 +46,8 @@ module atm_lib
       public :: atm_init, atm_get_surface_pt, atm_allard_teff_max
       public :: atm_settings_t, atm_table_paths_t
       public :: atm_eddington_gray, atm_krishna_swamy, atm_hsra, atm_kurucz, atm_allard, &
-           atm_castelli_kurucz, atm_choice_is_known, atm_choice_is_tabulated, atm_choice_name
+           atm_castelli_kurucz, atm_last_choice, atm_choice_is_known, atm_choice_is_tabulated, &
+           atm_choice_name
       public :: atm_leaves_table, atm_reenters_table, atm_note_choice_switch
       public :: ttau_log10_temperature, ttau_start_log10_temperature, &
            ttau_photosphere_x_limit, hsra_t_tau_offset

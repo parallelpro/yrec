@@ -122,9 +122,9 @@ allard reader: a missing file, an empty one, one in neither layout: ierr 1      
 
 
 allard reader: a record whose log P cannot be read returns ierr 1                    0.00E+00  ok
-atm_init: an atm_choice outside 0-5 returns ierr 1 (M236)                            0.00E+00  ok
+atm_init: an atm_choice that is none of the choices returns ierr 1 (M236)            0.00E+00  ok
 atm_get_surface_pt: a choice that is not a table returns ierr 1                      0.00E+00  ok
-atm_choices: 0-5 known, 3-5 tabulated, a name for each known one                     0.00E+00  ok
+atm_choices: the known choices, the tables (3-5), a name for each known one          0.00E+00  ok
 atm_choices: Kurucz and Allard switch to gray at their limit, the rest never         0.00E+00  ok
 
 LOG TEFF OF   3.951 ABOVE 3.95 - SWITCHTO GRAY ATMOSPHERE BOUNDARY CONDITION
