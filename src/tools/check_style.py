@@ -16,7 +16,8 @@ the table is allowed 0, so a new directory starts clean. The check fails
 when a count is above its allowed value, and lists that metric's
 occurrences in that directory. `--update` lowers each allowed value to
 today's count and never raises one; a raise is a hand edit of the table,
-in a commit that says why. test_boundaries.py runs the check.
+in a commit that says why. `make check` in src/ runs the check with the
+other checks, and test_boundaries.py runs it in CI.
 
 Scope. A directory is a file's own directory (core/step and core are two
 directories), not its tree. Production code only: files under a test/

@@ -8,6 +8,7 @@
 #   prof    : Allows use of gprof profiling tool + devel flags + optimization
 #   devel_tests : the test programs with the devel flags (src/tools/devel_tests.py
 #             runs them); a later `make tests` rebuilds them with the release flags
+#   check   : the checkers and the generators' --check (builds nothing)
 #
 # Several compilers are supported.
 #   gfortran : GNU Fortran compiler, the default
@@ -259,7 +260,14 @@ MODE_LDFLAGS_prof = $(PROF_LDFLAGS)
 FFLAGS += $(MODE_FFLAGS_$(BUILD_MODE))
 LDFLAGS += $(MODE_LDFLAGS_$(BUILD_MODE))
 BUILD_MODE_STAMP := .build_mode
+# goals that build nothing leave the stamp as it is, so that a `make check`
+# between two devel builds does not make the second one recompile all
+NO_BUILD_GOALS := check clean install
+ifeq ($(MAKECMDGOALS),)
 $(shell echo '$(BUILD_MODE)' | cmp -s - $(BUILD_MODE_STAMP) || echo '$(BUILD_MODE)' > $(BUILD_MODE_STAMP))
+else ifneq ($(filter-out $(NO_BUILD_GOALS),$(MAKECMDGOALS)),)
+$(shell echo '$(BUILD_MODE)' | cmp -s - $(BUILD_MODE_STAMP) || echo '$(BUILD_MODE)' > $(BUILD_MODE_STAMP))
+endif
 $(OBJS) $(TEST_OBJS): $(BUILD_MODE_STAMP)
 
 # Test for presence of git command for version hash collection.
@@ -469,6 +477,25 @@ clean:
 	@rm -f $(OTHER_ENERGY_DIR)/yrec_extra_heat $(OTHER_ENERGY_DIR)/*.o
 	@rm -f */test/*.o test_eos test_kap test_atm test_net test_reentry test_rotation test_rotation_kernels test_element_diffusion test_numerics test_math test_math_crmath test_convection test_controls test_io test_structure test_triangle_fit test_mass_change test_regrid
 	@rm -rf $(MATH_CRMATH_DIR)
+
+# The checks for every commit (docs/GUIDELINES.md, "A package README"):
+# the domain boundaries, the star contracts, the style ratchet (its
+# scanner's self-test first) and the six generators' --check, each run
+# under `python3 -I` from src/, as CI runs them (test_boundaries.py and
+# ci.yml's "Generated files are current"). It builds nothing; every check
+# runs, and the target fails if any of them fails.
+CHECK_GENERATORS := gen_makefile_deps gen_default_columns gen_controls_state gen_inlist \
+	gen_controls_dump gen_star_docs
+.PHONY: check
+check:
+	@status=0; \
+	python3 -I tools/check_boundaries.py || status=1; \
+	python3 -I tools/check_star_contracts.py || status=1; \
+	python3 -I tools/check_style.py --self-test || status=1; \
+	python3 -I tools/check_style.py || status=1; \
+	for g in $(CHECK_GENERATORS); do python3 -I tools/$$g.py --check || status=1; done; \
+	if [ $$status -ne 0 ]; then echo "make check: a check failed (above)"; fi; \
+	exit $$status
 
 install:
 	install -d $(PREFIX)

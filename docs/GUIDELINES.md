@@ -456,14 +456,18 @@ against the code.
    writing it down: make the change on a throwaway branch and check that
    the files it touched are the files the recipe lists.
 
-The tools hold what the README claims:
+The tools hold what the README claims. `make check` in src/ runs the
+checks every commit passes (check_boundaries, check_star_contracts,
+check_style and the six generators' `--check`), and CI runs them too
+(test_boundaries.py, test_generated_files.py):
 - `src/tools/check_style.py` counts, per directory, the F77 shapes the
   sections above rule out (`double precision`, `.lt.`, `endif`, `dabs`,
   ALL-CAPS comments, commented-out code, modules without `private`, `use`
   without `only:`, explicit-shape dummies, I/O outside `*_messages.f90`)
   against `src/tools/style_counts.tsv`, which only falls (`--update`
-  after a cleanup; a raise is a hand edit whose commit says why). A
-  package round takes its directories to zero. `--report` prints the
+  after a cleanup; a raise is a hand edit whose commit says why). It
+  runs in `make check` and in CI. A package round takes its directories
+  to zero. `--report` prints the
   table and `--list METRIC --dir <pkg>` what is left.
 - `src/tools/check_boundaries.py`'s `check_no_io` keeps every file of
   `STAR_BLIND_FILES` and `KERNEL_FILES` free of I/O and `stop`; a package

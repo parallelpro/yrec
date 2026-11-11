@@ -16,7 +16,8 @@ Comment text is stripped before scanning, so historical `! CALL FOO`
 lines don't trip the check.
 
 Exit status: 0 if the observed cross-domain surface is a subset of the
-allowlist; 1 otherwise, listing each violation.
+allowlist; 1 otherwise, listing each violation. `make check` in src/
+runs it with the other checks, and test_boundaries.py in CI.
 """
 import os
 import re
