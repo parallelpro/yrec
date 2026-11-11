@@ -1,26 +1,29 @@
-"""Standalone eos-domain regression test (phase three, docs/ROADMAP.md stage 2).
+"""The eos package's test program, src/test_eos (built by `make tests` in
+src/), run with YREC_INPUT pointing at the repository's input/ tables.
 
-Runs src/test_eos (built by `make tests` in src/) with YREC_INPUT
-pointing at the repository's input/ tables, and byte-compares its
-stdout against the pinned src/eos/test/expected_test_eos.out.
+The program calls eos without a star: the facade's three entries
+(eos_init, eos_get, eos_set_mixture), blended_eos's test-only
+gamma1_at_density (gamma1 at a density, on its OPAL 2006 and Yale/SCV
+branches) and the OPAL interpolators' entry points, over a fixed grid
+and in every configuration a deck can choose, including branch
+combinations no deck reaches. Two things make this test fail:
+  - the program's ok/FAIL checks (limits, continuity, exactness against
+    synthetic tables, error contracts, derivatives against finite
+    differences; eos/README.md section 4 lists them): a FAIL makes it
+    exit with status 1, which `returncode == 0` tests;
+  - its standard output differs from the pinned
+    src/eos/test/expected_test_eos.out (byte-exact, or within conftest's
+    tolerance under YREC_TEST_TOLERANT=1).
+The MHD section prints SKIPPED unless YREC_MHD_TABLES names real tables
+(none ship with YREC); with them the output differs from the pin, which
+covers the shipped tables only.
 
-Unlike the Stage-0 full-model regression, this exercises the eos
-facade entries (eos_get, eos_get_gamma1) directly over a fixed grid,
-without needing a stellar model to converge -- including branch
-combinations no Stage-0 case reaches (e.g. eos_get_gamma1's Yale/SCV
-branch). The MHD section self-reports SKIPPED unless YREC_MHD_TABLES
-supplies tables (none ship with YREC); when tables are provided the
-output will differ from the pinned baseline, which only covers the
-shipped-data configuration.
+To regenerate the pin after a deliberate eos change: rebuild, run
+src/test_eos with YREC_INPUT set in an empty directory, review the diff
+like any other, and commit the new expected file, saying why.
 
-The derivative check prints each analytic derivative and its finite
-difference; their relative difference, whose leading digits are
-round-off where the two agree, is not printed but checked (ok/FAIL)
-where they must agree, and the binary exits nonzero when a check fails.
-
-To regenerate the baseline after a deliberate eos change: rebuild,
-run src/test_eos with YREC_INPUT set, review the diff like any other,
-and commit the new expected file.
+test_eos_settings_defaults_are_the_controls (below) reads the sources
+instead: the settings record's defaults against the controls'.
 """
 import os
 import pathlib
