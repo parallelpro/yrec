@@ -132,7 +132,9 @@ subroutine compute_opal_eos(vintage, log10_temperature, log10_pressure, &
       if (opal_layout(vintage)%checks_pressure .and. &
            abs((p_e12-output(opal_layout(vintage)%i_p))/p_e12) > pressure_check_tolerance) then
          eos_lines = unwritten_line
-         write(eos_lines,*) p_e12, output(opal_layout(vintage)%i_p)
+         eos_lines(1) = 'OPAL 1995 EOS: the table''s pressure at the density found differs from P ' // &
+              'by more than 5e-7 (P12, table):'
+         write(eos_lines(2),*) p_e12, output(opal_layout(vintage)%i_p)
          call eos_report(eos_lines)
          ierr = 1
          return
@@ -726,7 +728,7 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
                  v%x_interp_workspace(x_index_4,t6_scan_idx,density_scan_idx), &
                  v%x_grid_copy(x_index_2), v%x_grid_copy(x_index_3), &
                  v%x_grid_copy(x_index_4))
-            if (v%x_interp_result(t6_scan_idx,density_scan_idx) > 1.0d+20) &
+            if (v%x_interp_result_alt(t6_scan_idx,density_scan_idx) > 1.0d+20) &
                  call report_x_interpolation(vintage, v, t6_scan_idx, density_scan_idx, &
                  x_index_2)
             v%x_interp_result(t6_scan_idx,density_scan_idx) = &

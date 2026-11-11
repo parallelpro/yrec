@@ -688,6 +688,9 @@ OPALEOS/ESAC06: the OPAL EOS table ends early or is corrupt: X block 1, density 
 ok   OPAL 2006 table: a truncated table returns ierr = 1 on first use, its unit closed
  eos_init: cannot open the OPAL EOS table opal06_missing
 ok   OPAL 2006 table: a missing table returns ierr = 1 at eos_init
+# test_eos: configuration production
+T6RINTEOS06: Interpolation indices out of range;please report conditions.
+ok   OPAL 2006: an entry only the second X quadratic reads, past 1e20 there, is named; ierr = 1
 # test_eos: configuration opal95
 READCO: Error:  56-th T6 value is zero
 ok   OPAL 1995 table: a zero T6 returns ierr = 1 on first use

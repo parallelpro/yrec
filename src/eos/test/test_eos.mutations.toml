@@ -96,3 +96,10 @@ check = "SCV: a lookup's cell does not depend on where its search starts"
 file = 'eos/scv/scv_eos.f90'
 old = '''         idp = max(1, min(nptsx(idtt)-3, jj))'''
 new = '''         idp = min(nptsx(idtt)-3, jj)'''
+
+[[mutation]]
+id = 'opal_x_quadratic-01'
+check = 'OPAL 2006: an entry only the second X quadratic reads, past 1e20 there, is named; ierr = 1'
+file = 'eos/opal/opal_eos.f90'
+old = '''            if (v%x_interp_result_alt(t6_scan_idx,density_scan_idx) > 1.0d+20) &'''
+new = '''            if (v%x_interp_result(t6_scan_idx,density_scan_idx) > 1.0d+20) &'''

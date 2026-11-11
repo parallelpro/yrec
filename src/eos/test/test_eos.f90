@@ -832,7 +832,7 @@ subroutine table_reader_checks()
       type(eos_table_paths_t) :: paths
       type(eos_result) :: r
       integer :: ierr, ierr_missing, ierr_cut, ierr_card, ierr_wide, it
-      logical :: cut_open
+      logical :: cut_open, in_table
       s = eos_settings
       s%opal_vintage = opal_vintage_none
       s%use_scv_eos = .false.
@@ -869,6 +869,16 @@ subroutine table_reader_checks()
       s = eos_settings
       call eos_init(s, paths, ierr_missing)
       call check("OPAL 2006 table: a missing table returns ierr = 1 at eos_init", ierr_missing == 1)
+! the OPAL 2006 table with one entry of its X = 0.6 table (P/P0 at T6 =
+! 1, rho = 0.1, line 94330) made -1e21: at X = 0.3 only the second of
+! the two X quadratics blended there reads it (with the weight -1/8), and
+! its check names it before the T6-rho interpolation's range check
+! returns ierr = 1
+      call copy_editing(opal06_path, "opal06_x_overflow", 94330, 30, "-0.100000E+22")
+      call configure_eos("production", opal2006=.true., scv=.true., file="opal06_x_overflow")
+      call esac06(opal_tables(iv_opal06), 0.3d0, 0.95d0, 0.09d0, 9, 1, ierr, in_table)
+      call check("OPAL 2006: an entry only the second X quadratic reads, past 1e20 there, is named; ierr = 1", &
+           ierr == 1 .and. run_log_contains("OPALEOS/ESAC06: problem it,ir,l3,k3,iq,ip="))
 ! the OPAL 1995 table with its first density column's lowest T6 (row 56,
 ! at line 14718 in the last X block, whose T6 column the grid keeps) made
 ! zero: an error on first use, where the table was read before
@@ -884,6 +894,25 @@ subroutine table_reader_checks()
       call eos_get(5.0d0, 12.8d0, 0.70d0, 0.016492d0, r, .true., .false., it, ierr=ierr)
       if (ierr /= 0) write(*,'(a)') "table_reader_checks: the OPAL table did not read back"
 end subroutine table_reader_checks
+
+! whether a line of the run log written so far holds text (the log is
+! closed, read and opened again to append)
+logical function run_log_contains(text)
+      character(len=*), intent(in) :: text
+      character(len=400) :: line
+      integer :: u, ios
+      flush(run_log_unit)
+      close(run_log_unit)
+      run_log_contains = .false.
+      open(newunit=u, file="test_eos.short", status="old", action="read")
+      do
+         read(u, '(a)', iostat=ios) line
+         if (ios /= 0) exit
+         if (index(line, text) > 0) run_log_contains = .true.
+      end do
+      close(u)
+      open(run_log_unit, file="test_eos.short", status="old", position="append")
+end function run_log_contains
 
 ! the file src into dst, with line line_no's columns from col on
 ! replaced by text

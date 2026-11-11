@@ -589,7 +589,7 @@ subroutine esac(v, hydrogen_fraction, t6_temperature, density, &
                  v%x_interp_workspace(x_index_4,t6_scan_idx,density_scan_idx), &
                  v%x_grid_copy(x_index_2), v%x_grid_copy(x_index_3), &
                  v%x_grid_copy(x_index_4))
-            if (v%x_interp_result(t6_scan_idx,density_scan_idx) > 1.0d+20) then
+            if (v%x_interp_result_alt(t6_scan_idx,density_scan_idx) > 1.0d+20) then
                eos_lines = unwritten_line
                write(eos_lines,'(" PROBLEM IT IR,L3,K3,IQ,IP=", 6I5)') t6_scan_idx, &
                     density_scan_idx, v%density_index_3, v%t6_index_3, v%density_interp_order, &
