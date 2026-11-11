@@ -138,6 +138,20 @@ old = 'weight_he4 = number_fraction_he4 * (ion_fraction(2) + 2D0*ion_fraction(3)
 new = 'weight_he4 = number_fraction_he4 * (ion_fraction(2) + ion_fraction(3))/2D0'
 
 [[mutation]]
+id = 'conductive-low-density-sign'
+check = 'Potekhin conduction: kappa_c continuous at log rho = -6'
+file = 'kap/conductive/conductive_opacity.f90'
+old = 'conductive_log10_opacity = log10_16_sigma_over_3+3.0D0*log10_temperature-conductive_logrho_min-mix_log10_cond'
+new = 'conductive_log10_opacity = log10_16_sigma_over_3+3.0D0*log10_temperature-conductive_logrho_min+mix_log10_cond'
+
+[[mutation]]
+id = 'conductive-low-density-direction'
+check = 'Potekhin conduction below log rho = -6: dln kappa/dln rho'
+file = 'kap/conductive/conductive_opacity.f90'
+old = '                conductive_dlnkap_dlnrho*(log10_density-conductive_logrho_min)'
+new = '                conductive_dlnkap_dlnrho*(conductive_logrho_min-log10_density)'
+
+[[mutation]]
 id = 'opal92-dt'
 check = 'OPAL92 (two Z): derivatives against differences'
 file = 'kap/opal92/opal92_opacity.f90'

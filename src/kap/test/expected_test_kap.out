@@ -79,6 +79,8 @@ OPAL95: kappa continuous at the table's lowest log R                       3.70E
 OPAL95: the 2D path continuous with the 4D path in Z                       5.36E-05  ok
 kap_update_surface_tables: the new 2D path is the old 3D path              0.00E+00  ok
 Potekhin mixture: kappa_c = sum of w_i kappa_i (partly ionized)            1.11E-15  ok
+Potekhin conduction: kappa_c continuous at log rho = -6                    5.30E-09  ok
+Potekhin conduction below log rho = -6: dln kappa/dln rho                  5.97E-12  ok
 OPAL92 (two Z): derivatives against differences                            5.76E-08  ok
 OPAL92 two-Z blend: at opal_table_z1 it is the first table                 0.00E+00  ok
 LAOL89 (secant derivatives): against differences, to 10%                   5.89E-02  ok

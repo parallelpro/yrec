@@ -418,7 +418,7 @@ to users:
 - **`check_solar_calibration`:** `dlum_dalpha = 0.0139` with a comment saying
   0.139; which is right needs the author.
 - **Conductive opacity** low-density extrapolation branch flips the sign of
-  log sigma.
+  log sigma (fixed in round 1B, 2026-11-11: bug_sweep M222).
 - **OPAL95 EOS** (`esac.f90`) has no top-of-table guard at the coolest rows;
   its `radsub` applies the unit revision to P and S but not E and cv.
 - **`eqstat`** ionization-cutoff blend adds raw Saha derivatives instead of

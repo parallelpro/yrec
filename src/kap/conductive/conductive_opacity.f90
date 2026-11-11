@@ -156,10 +156,9 @@ subroutine compute_conductive_opacity(tbl, log10_density, log10_temperature, &
            got_conductive_opacity=.TRUE.
            conductive_opacity = exp10(conductive_log10_opacity)
          end if
-! below the table's lowest density, where log R >= 0: from its value
-! there, extrapolated in log rho. (This branch takes +log10 of the sum
-! where the main one takes -log10, and extrapolates with the opposite
-! sign of the slope: bug_sweep M222, a measured fix in the B list.)
+! below the table's lowest density, where log R >= 0: the main branch's
+! formula at conductive_logrho_min, extrapolated linearly in log rho to
+! the point with its slope there (the H table's slope, not the mixture's)
          if (log10_density < conductive_logrho_min.and.extrapolation_indicator >= 0.0D0) then
            call condopacp(tbl, charge_h1,log10_temperature,conductive_logrho_min,log10_cond_h1, &
                 conductive_dlnkap_dlnrho,conductive_dlnkap_dlnt,ierr)
@@ -175,14 +174,14 @@ subroutine compute_conductive_opacity(tbl, log10_density, log10_temperature, &
            cond_he4 = exp10((-log10_cond_he4))
            cond_ox = exp10((-log10_cond_ox))
 
-           mix_log10_cond = log10(weight_h1*cond_h1 + weight_he4*cond_he4 + &
+           mix_log10_cond = -log10(weight_h1*cond_h1 + weight_he4*cond_he4 + &
                 weight_ox*cond_ox)
 
            conductive_log10_opacity = log10_16_sigma_over_3+3.0D0*log10_temperature-conductive_logrho_min-mix_log10_cond
            conductive_dlnkap_dlnrho = -1.0D0-conductive_dlnkap_dlnrho
            conductive_dlnkap_dlnt = 3.0D0-conductive_dlnkap_dlnt
            conductive_log10_opacity = conductive_log10_opacity + &
-                conductive_dlnkap_dlnrho*(conductive_logrho_min-log10_density)
+                conductive_dlnkap_dlnrho*(log10_density-conductive_logrho_min)
            conductive_opacity = exp10(conductive_log10_opacity)
            got_conductive_opacity=.TRUE.
          end if
