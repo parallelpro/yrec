@@ -13,8 +13,8 @@ module atm_tables
            atm_table_nga, atm_table_nt, atm_table_nta, atm_table_ntc, &
            set_atm_settings, surface_p_table, atm_table_paths_t
 ! The settings record of atm/: which tables atm_init loads (atm_choice
-! 3 and 4 the Kurucz table, 4 also the Allard tables, 5 the
-! Castelli/Kurucz table), whether the Allard lookups return P and T at
+! 3 the Kurucz table, 4 the Allard tables, 5 the Castelli/Kurucz
+! table), whether the Allard lookups return P and T at
 ! tau = 100, and the [Fe/H] and [alpha/Fe] of the Allard table to read.
       type :: atm_settings_t
          integer :: atm_choice = 0
@@ -23,8 +23,8 @@ module atm_tables
       end type atm_settings_t
       type(atm_settings_t), protected :: atm_settings
 ! The tables atm_init reads, by path: the Kurucz or Castelli/Kurucz
-! surface-pressure table (atm_choice 3 and 4, or 5) and the Allard
-! tables (4). The star layer fills it from the controls
+! surface-pressure table (atm_choice 3, or 5) and the Allard tables
+! (4). The star layer fills it from the controls
 ! (atm_table_paths_from_star, setup/atm_settings_builder.f90).
       type :: atm_table_paths_t
          character(len=256) :: surface_pressure = '', allard = ''

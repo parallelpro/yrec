@@ -24,7 +24,7 @@ The atmosphere integration itself (`core/envelope/envelope_integration_kernel.f9
 | 1 | Krishna-Swamy T-tau relation, integrated to tau = 0.312 |
 | 2 | HSRA T-tau relation (legacy) |
 | 3 | Kurucz (1993) table |
-| 4 | Allard tables (with the Kurucz table loaded as well) |
+| 4 | Allard tables |
 | 5 | Castelli & Kurucz (2003) table |
 
 The star layer switches a run between its tabulated choice and gray as Teff leaves and re-enters the table (`core/structure/surface_boundary.f90`), so `atm_get_surface_pt` takes the current choice as an argument. When an Allard lookup falls outside the tables, `lookup_failed` is set and the integrator falls back to gray for that model.

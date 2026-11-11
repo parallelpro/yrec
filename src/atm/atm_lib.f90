@@ -38,8 +38,8 @@ contains
 ! atm_init
 !----------------------------------------------------------------------
 ! Installs the settings and reads the tables they select: the Kurucz
-! table (atm_choice 3 and 4), the Allard tables (4) or the
-! Castelli/Kurucz table (5). An atm_choice outside 0-5, or a table that
+! table (atm_choice 3), the Allard tables (4) or the Castelli/Kurucz
+! table (5). An atm_choice outside 0-5, or a table that
 ! cannot be read, returns ierr = 1 with the diagnostic printed.
 subroutine atm_init(settings, paths, ierr)
       type(atm_settings_t), intent(in) :: settings
@@ -54,16 +54,15 @@ subroutine atm_init(settings, paths, ierr)
       end if
       call set_atm_settings(settings)
 
-      if (settings%atm_choice == 3 .or. settings%atm_choice == 4) then
+      if (settings%atm_choice == 3) then
          call read_surface_pressure_table(paths%surface_pressure, atm_table%kurucz_surface_p, &
               atm_table_nt, ierr)
          if (ierr /= 0) return
-! MHP 6/97: the Allard model atmospheres, used instead of Kurucz below
-! Teff = 10,000 K
-         if (settings%atm_choice == 4) then
-            call read_allard_tables(paths%allard, ierr)
-            if (ierr /= 0) return
-         end if
+! MHP 6/97: the Allard model atmospheres (M239: the Kurucz table, which
+! no choice-4 lookup reads, is no longer loaded with them)
+      else if (settings%atm_choice == 4) then
+         call read_allard_tables(paths%allard, ierr)
+         if (ierr /= 0) return
 ! JNT 6/14: the Kurucz/Castelli atmospheres
       else if (settings%atm_choice == 5) then
          call read_surface_pressure_table(paths%surface_pressure, atm_table%castelli_surface_p, &
