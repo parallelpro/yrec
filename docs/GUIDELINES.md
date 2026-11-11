@@ -399,6 +399,79 @@ them as it is rewritten.
    domain imports no io/ module (`check_physics_no_io`). numerics/ and math/ hold no I/O statement at all
    (`NO_IO_DIRS` in `tools/check_boundaries.py`).
 
+## A package README (the standard) (2026-11)
+
+Each package directory of `src/` has a README.md that a newcomer can work
+from without reading the code first. `src/rotation/README.md` is the
+example: its four sections hold the six items below, in this order (its
+mutations predate `mutate.py`, so it has no manifest yet). A reviewer
+scores a package against this list (the seventh evaluation's rubric,
+`audit/`), so a README is done when every item holds and has been checked
+against the code.
+
+1. **What lives where.** A table with one row per module (its file),
+   covering every production `.f90` of the directory and its
+   sub-directories, saying what each holds and naming its main procedures.
+   It matches the code: no row for a file that is gone, no file without a
+   row, no procedure under the wrong module. Kept commented-out code is in
+   `<dir>/retired/*.f90.txt`, each file with a header saying where it came
+   from and how to revive it, and the README names them below the table.
+2. **The flow.** What calls the package, when, and what it calls in turn,
+   in order: a numbered list of the steps with their procedures, the calls
+   back into other packages named.
+3. **Conventions.**
+   - units: CGS unless the name has a unit suffix (`_msun`, `_gyr`, ...;
+     "Naming" above); log is log10;
+   - errors: a routine that can fail returns `ierr` (positive for an
+     error, named codes where callers tell them apart), never reports a
+     success it did not have, and does not stop the run; say what the
+     package's codes are and who reports them;
+   - messages: the one module they go through (`<pkg>_messages`, or
+     `state/run_messages`), what reaches the terminal and what the run log,
+     and that kernels print nothing;
+   - controls: read from the package's settings record, built in setup/,
+     never from `s%control`/`s%physics`;
+   - what the package keeps by decision, with the reason.
+4. **Tests.** Each test program and its root `test_*.py`: how to run it and
+   what each check checks (a limit, a conservation law, a scaling, an
+   exactness, a continuity, an error contract), printed `ok` or `FAIL`.
+   Every check has a mutation in `<pkg>/test/<program>.mutations.toml`
+   that makes it print FAIL, and `python3 src/tools/mutate.py <pkg>`
+   (after `make tests` in src/) reports every mutation caught; the README
+   gives that count and its date. Say what the pinned outputs hold and how
+   to regenerate them. The program also runs clean under the development
+   flags (`make devel_tests`, `python3 src/tools/devel_tests.py`), or the
+   README names the known failure.
+5. **Coverage.** The line coverage of the package under its tests and the
+   decks, with its date and the command that measured it:
+   `python3 src/tools/coverage.py --work DIR --dir <pkg> --test <program> [--deck PATH ...]`
+   (a -O0 --coverage build in DIR; the README names the decks), and what
+   the lines not run are.
+6. **How to extend.** A recipe for each likely change (a control, a
+   kernel, a table source, a law, ...) naming every file a newcomer must
+   touch, in order: the code, the settings record and its builder, the
+   controls registry and its generators, the checker lists
+   (`STAR_BLIND_FILES`, `KERNEL_FILES`), the test and its manifest entry,
+   the output column, the pins to regenerate. Trace each recipe before
+   writing it down: make the change on a throwaway branch and check that
+   the files it touched are the files the recipe lists.
+
+The tools hold what the README claims:
+- `src/tools/check_style.py` counts, per directory, the F77 shapes the
+  sections above rule out (`double precision`, `.lt.`, `endif`, `dabs`,
+  ALL-CAPS comments, commented-out code, modules without `private`, `use`
+  without `only:`, explicit-shape dummies, I/O outside `*_messages.f90`)
+  against `src/tools/style_counts.tsv`, which only falls (`--update`
+  after a cleanup; a raise is a hand edit whose commit says why). A
+  package round takes its directories to zero. `--report` prints the
+  table and `--list METRIC --dir <pkg>` what is left.
+- `src/tools/check_boundaries.py`'s `check_no_io` keeps every file of
+  `STAR_BLIND_FILES` and `KERNEL_FILES` free of I/O and `stop`; a package
+  round adds its kernels to `KERNEL_FILES` and deletes its
+  `NO_IO_ALLOWANCE` entries.
+- `src/tools/mutate.py` re-runs a package's mutations, so "each check
+  was confirmed to fail under a mutation" can be re-checked by anyone.
+
 ## Verification tiers (2026): match the gate to the blast radius
 
 Running the full battery on every commit is waste; running too little
