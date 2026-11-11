@@ -18,6 +18,7 @@ module opal92_opacity
       use numerics_lib, only: findex, natural_spline, splint, &
            compute_spline_coefficients, numerics_status_text
       use kap_messages, only: kap_log, kap_terminal, message_length, unwritten_line
+      use opacity_table_files, only: open_table, read_failed
       use math_lib
       implicit none
       private
@@ -34,38 +35,26 @@ contains
 ! later by build_opal92_surface_table.f90 and the OPAL92 lookup routine
 ! compute_opal92_opacity.
 !
-! 2026 wave 3 (R5): the verbatim second-Z read loop (into
-! opacity_table%opal92(2)) became the internal read_opal92_table
-! below, called once per set in the original order. The two OPEN
-! statements stay here as they were (the first table on the fixed
-! unit opal92_table_unit, the second on a NEWUNIT); the READ,
-! FORMAT and CLOSE statements moved into the helper verbatim, and the
-! loop's working scalars stay host-associated.
+! Each table is read by the internal read_opal92_table, first the
+! table at opal_table_z1 and then, with use_two_z_tables, the one at
+! opal_table_z2; a table that cannot be opened or is short returns ierr.
 subroutine read_opal92_tables(opal92_table_path, opal92_table2_path, ierr)
-! runtime-allocated unit for the second (Z-ramp) OPAL92 table
-! (formerly io_units's fixed ioopal2 = 64)
-      integer :: opal92b_unit
-
       character(len=256), intent(in) :: opal92_table_path, opal92_table2_path
       integer, intent(out) :: ierr
-! the table file's unit
-      integer :: opal92a_unit
 !     Local_grid_z is a read-list target that is never used afterwards.
       real(dp) :: local_grid_z(n_opal92_x)
-      integer :: i, k, density_index, num_temps_read
+      integer :: i, k, density_index, ios
       real(dp) :: grid_temp_k
+      character(len=256) :: iomsg
       character(len=message_length) :: lines(1)
 
-!     OPEN TABLE
       ierr = 0
-      open(newunit=opal92a_unit,file=opal92_table_path)
-      call read_opal92_table(opal92a_unit, opacity_table%opal92(1), ierr)
+      call read_opal92_table(opal92_table_path, opacity_table%opal92(1), ierr)
       if (ierr /= 0) return
 
 ! DBG 5/94 Second Opacity Table read here
       if (kap_settings%use_two_z_tables) then
-         open(newunit=opal92b_unit,file=opal92_table2_path)
-         call read_opal92_table(opal92b_unit, opacity_table%opal92(2), ierr)
+         call read_opal92_table(opal92_table2_path, opacity_table%opal92(2), ierr)
          if (ierr /= 0) return
       end if
 !
@@ -75,42 +64,49 @@ subroutine read_opal92_tables(opal92_table_path, opal92_table2_path, ierr)
 
 contains
 
-! read_opal92_table: read the already-opened table on `unit` into tbl
-! and close the unit.
-subroutine read_opal92_table(unit, tbl, ierr)
-      integer, intent(in) :: unit
+! read_opal92_table: read the table at path into tbl: n_opal92_x X
+! tables of n_opal92_t temperature rows each (a shorter file is an error).
+subroutine read_opal92_table(path, tbl, ierr)
+      character(len=256), intent(in) :: path
       type(opal92_table_set), intent(inout) :: tbl
       integer, intent(inout) :: ierr   ! left at the caller's 0 on success
+      integer :: unit
 
+      call open_table(path, 'OPAL 1992', unit, ierr)
+      if (ierr /= 0) return
       do i=1,n_opal92_x
 !        Read grid point for abundance
 !        read number of grids for density, and temperature
-        read(unit,190,end=97) tbl%grid_x(i), local_grid_z(i)
+        read(unit,190,iostat=ios,iomsg=iomsg) tbl%grid_x(i), local_grid_z(i)
+        if (read_failed(ios, iomsg, 'OPAL 1992', path, unit, ierr)) return
   190   format(33x,f7.4,2x,f7.4)
-         read(unit,'()')
+         read(unit,'()',iostat=ios,iomsg=iomsg)
+         if (read_failed(ios, iomsg, 'OPAL 1992', path, unit, ierr)) return
 !        Read  log(density/temperature**3)
-            read(unit, 200) (tbl%grid_logr(density_index), density_index=1, n_opal92_d)
+            read(unit, 200, iostat=ios, iomsg=iomsg) (tbl%grid_logr(density_index), density_index=1, n_opal92_d)
+            if (read_failed(ios, iomsg, 'OPAL 1992', path, unit, ierr)) return
   200   format (6x, 17f7.1)
 !        Read grid values for temperature, and opacity table
          do k=1, n_opal92_t
-         read(unit,196,end=93) grid_temp_k, &
+         read(unit,196,iostat=ios,iomsg=iomsg) grid_temp_k, &
               (tbl%log10_opacity(k+(i-1)*n_opal92_t,density_index),density_index=1,n_opal92_d)
+         if (read_failed(ios, iomsg, 'OPAL 1992', path, unit, ierr)) return
          tbl%grid_logt(k)=log10(grid_temp_k)
          end do
-   93    num_temps_read=k-1
   196    format(18f7.3)
 !
       end do
 !     Close the table we have read
-   97 close(unit,err=99)
-      tbl%num_temps = num_temps_read
-      tbl%num_x=i-1
-      return
-   99 continue
-      lines = unwritten_line
-      write(lines,*) 'read_opal92_tables: error closing table file'
-      call kap_terminal(lines)
-      ierr = 1
+      close(unit,iostat=ios)
+      if (ios /= 0) then
+         lines = unwritten_line
+         write(lines,*) 'read_opal92_tables: error closing table file'
+         call kap_terminal(lines)
+         ierr = 1
+         return
+      end if
+      tbl%num_temps = n_opal92_t
+      tbl%num_x = n_opal92_x
 end subroutine read_opal92_table
 
 end subroutine read_opal92_tables

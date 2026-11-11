@@ -23,7 +23,9 @@ module opal95_opacity
            opal95_composition_tol, opal95_missing_opacity, &
            opal95_missing_test, stencil4_locate_opal95
       use numerics_lib, only: interp, lagrange4
-      use kap_messages, only: kap_log, kap_terminal, message_length, unwritten_line
+      use kap_messages, only: kap_log, kap_report, kap_terminal, message_length, &
+           unwritten_line
+      use opacity_table_files, only: open_table
       use math_lib
       implicit none
       private
@@ -58,16 +60,19 @@ subroutine read_opal95_tables(opal95_table_path, ierr)
       character(len=message_length) :: lines(1)
 
 !     Read in opacity tables, skipping header.  Hey, it works.
-      ierr = 0
-      open(newunit=table_unit,file=opal95_table_path,status='OLD',access='SEQUENTIAL')
+      call open_table(opal95_table_path, 'OPAL 1995', table_unit, ierr)
+      if (ierr /= 0) return
       fmt_start=1
+! the table number the messages name (none until the first TABLE line)
+      nn = 0
 
       do
          read(table_unit,1,end=9999) header_line
       if (header_line(fmt_start:fmt_start+4) == 'TABLE') exit
       end do
     1 format(a)
-      read(header_line,'(36X,F7.4,11X,F7.4)') xx,zz
+      read(header_line,'(36X,F7.4,11X,F7.4)',iostat=read_status) xx,zz
+      if (read_status /= 0) goto 9997
       iz = 1
       ix = 1
       nn = 1
@@ -84,6 +89,7 @@ subroutine read_opal95_tables(opal95_table_path, ierr)
        write(lines,*)' OPAL95: Z ERROR INCOMPATIBLE TABLE'
        call kap_log(lines)
          ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
+         close(table_unit)
          ierr = 1
          return
       endif
@@ -99,29 +105,23 @@ subroutine read_opal95_tables(opal95_table_path, ierr)
          ierr = 1
          return
       end if
-      if (read_status > 0) then
-         lines = unwritten_line
-         write(lines,*) 'read_opal95_tables: malformed OPAL95 opacity table (header read failed)'
-         call kap_terminal(lines)
-         ierr = 1
-         return
-      end if
+      if (read_status > 0) goto 9997
    20 format(///,4x,19f7.1,/)
 !     Read in full table: Log cappa as a function of log T and
 !     LOG R = RHO/T6**3
       do i = 1,57
-         read(table_unit,30,end=9999) opacity_table%opal95_grid_logt(i), &
+         read(table_unit,30,end=9999,err=9998) opacity_table%opal95_grid_logt(i), &
               (opacity_table%opal95_full_opacity(n,i,j),j=1,n_opal95_d)
       end do
    30 format(f4.2,19f7.3)
 ! MHP 12/97 now treat corner without data.
-      read(table_unit,31,end=9999) opacity_table%opal95_grid_logt(58), &
+      read(table_unit,31,end=9999,err=9998) opacity_table%opal95_grid_logt(58), &
            (opacity_table%opal95_full_opacity(n,58,j),j=1,n_opal95_d-1)
    31 format(f4.2,18f7.3)
 
       opacity_table%opal95_full_opacity(n,58,n_opal95_d) = opal95_missing_opacity
       do i = 59,60
-         read(table_unit,32,end=9999) opacity_table%opal95_grid_logt(i), &
+         read(table_unit,32,end=9999,err=9998) opacity_table%opal95_grid_logt(i), &
               (opacity_table%opal95_full_opacity(n,i,j),j=1,n_opal95_d-2)
    32    format(f4.2,17f7.3)
          do j = n_opal95_d-1,n_opal95_d
@@ -129,7 +129,7 @@ subroutine read_opal95_tables(opal95_table_path, ierr)
          end do
       end do
       do i = 61,64
-         read(table_unit,33,end=9999) opacity_table%opal95_grid_logt(i), &
+         read(table_unit,33,end=9999,err=9998) opacity_table%opal95_grid_logt(i), &
               (opacity_table%opal95_full_opacity(n,i,j),j=1,n_opal95_d-3)
    33    format(f4.2,16f7.3)
          do j = n_opal95_d-2,n_opal95_d
@@ -137,7 +137,7 @@ subroutine read_opal95_tables(opal95_table_path, ierr)
          end do
       end do
       do i = 65,69
-         read(table_unit,34,end=9999) opacity_table%opal95_grid_logt(i), &
+         read(table_unit,34,end=9999,err=9998) opacity_table%opal95_grid_logt(i), &
               (opacity_table%opal95_full_opacity(n,i,j),j=1,n_opal95_d-4)
    34    format(f4.2,15f7.3)
          do j = n_opal95_d-3,n_opal95_d
@@ -145,7 +145,7 @@ subroutine read_opal95_tables(opal95_table_path, ierr)
          end do
       end do
       i = n_opal95_t
-      read(table_unit,35,end=9999) opacity_table%opal95_grid_logt(i), &
+      read(table_unit,35,end=9999,err=9998) opacity_table%opal95_grid_logt(i), &
            (opacity_table%opal95_full_opacity(n,i,j),j=1,n_opal95_d-5)
    35 format(f4.2,14f7.3)
       do j = n_opal95_d-4,n_opal95_d
@@ -172,9 +172,20 @@ subroutine read_opal95_tables(opal95_table_path, ierr)
          ix = ix + 1
       endif
 
-!     Return to read in next table.
-      read(table_unit,900) xx,zz
+!     Return to read in next table (L10's gap: a file that ends after a
+!     whole table is a short file, not a runtime error).
+      read(table_unit,900,iostat=read_status) xx,zz
   900 format(/36x,f7.4,11x,f7.4)
+      if (read_status < 0) then
+         lines = unwritten_line
+         write(lines,*) 'read_opal95_tables: OPAL95 opacity table file ended after ', nn-1, &
+              ' of ', n_opal95_tables, ' tables'
+         call kap_terminal(lines)
+         close(table_unit)
+         ierr = 1
+         return
+      end if
+      if (read_status > 0) goto 9997
       cycle table_loop
       end if
       exit table_loop
@@ -188,6 +199,21 @@ subroutine read_opal95_tables(opal95_table_path, ierr)
       target_z = kap_settings%opal95_single_table_z
 
       call build_opal95_fixed_z_table(target_z, ierr)
+      return
+!     A table header that does not read.
+ 9997 lines = unwritten_line
+      write(lines,*) 'read_opal95_tables: malformed OPAL95 opacity table (header read failed)'
+      call kap_terminal(lines)
+      close(table_unit)
+      ierr = 1
+      return
+!     A table row that does not read.
+ 9998 lines = unwritten_line
+      write(lines,'(a,i0,2a)') 'kap_init: cannot read a row of table ', nn, &
+           ' of the OPAL 1995 table ', trim(opal95_table_path)
+      call kap_report(lines)
+      close(table_unit)
+      ierr = 1
       return
 !     Premature end of file inside a table body (end=9999 above).
  9999 lines = unwritten_line

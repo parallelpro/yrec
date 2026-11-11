@@ -19,6 +19,7 @@ module kurucz_opacity
            compute_spline_coefficients, numerics_status_text
       use kap_messages, only: kap_log, kap_log_values, kap_report, kap_terminal, &
            message_length, unwritten_line
+      use opacity_table_files, only: open_table, read_failed
       use math_lib
       implicit none
       private
@@ -86,11 +87,15 @@ subroutine read_kurucz_table(path, tbl, ierr)
       integer, intent(inout) :: ierr   ! left at the caller's 0 on success
       integer :: unit
       character(len=message_length) :: lines(1)
+      integer :: ios
+      character(len=256) :: iomsg
 
     1 format(2f5.2,5f7.3,3f9.5,f8.3)
 !     OPEN TABLE
-      open(newunit=unit, file=path, status='OLD')
-      read(unit,'(/)')
+      call open_table(path, 'Kurucz 1990', unit, ierr)
+      if (ierr /= 0) return
+      read(unit,'(/)',iostat=ios,iomsg=iomsg)
+      if (read_failed(ios, iomsg, 'Kurucz 1990', path, unit, ierr)) return
 
       num_read = 0
       prev_grid_temp = 0.0d0
@@ -108,6 +113,7 @@ subroutine read_kurucz_table(path, tbl, ierr)
          write(lines,'(a,i0,2a)') 'read_kurucz_tables: unreadable row after temperature row ', &
               num_read, ' in ', trim(path)
          call kap_report(lines)
+         close(unit)
          ierr = 1
          return
       end if
@@ -118,6 +124,7 @@ subroutine read_kurucz_table(path, tbl, ierr)
             write(lines,*) 'read_kurucz_tables: too many temperature rows in ', &
                  trim(path)
             call kap_terminal(lines)
+            close(unit)
             ierr = 1
             return
          end if
@@ -130,6 +137,7 @@ subroutine read_kurucz_table(path, tbl, ierr)
          write(lines,*) 'read_kurucz_tables: no header row read from ', &
               trim(path)
          call kap_terminal(lines)
+         close(unit)
          ierr = 1
          return
       end if
@@ -138,6 +146,7 @@ subroutine read_kurucz_table(path, tbl, ierr)
          write(lines,'(a,i0,3a)') 'read_kurucz_tables: more than ', kurucz_max_num_densities, &
               ' densities at one temperature in ', trim(path)
          call kap_report(lines)
+         close(unit)
          ierr = 1
          return
       end if

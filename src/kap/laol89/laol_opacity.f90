@@ -20,6 +20,7 @@ module laol_opacity
            laol_table_set, n_laol_rho, n_laol_t, n_laol_x, opacity_table
       use numerics_lib, only: natural_spline, locate, splint, numerics_status_text
       use kap_messages, only: kap_log, message_length, unwritten_line
+      use opacity_table_files, only: open_table, read_failed
       use math_lib
       implicit none
       private
@@ -89,11 +90,14 @@ subroutine read_laol_table(path, tbl, work_array, ierr)
 !     that are never used afterwards.
       real(dp) :: zlot, zhit, debye_huckel_z(18)
       character(len=message_length) :: lines(1)
+      integer :: ios
+      character(len=256) :: iomsg
 
-      open(newunit=laol_unit,file=path, form='FORMATTED', &
-           status='OLD')
+      call open_table(path, 'LAOL 1989', laol_unit, ierr)
+      if (ierr /= 0) return
 !     Read in array sizes
-      read(laol_unit,100) tbl%num_x,tbl%num_rho,tbl%num_t
+      read(laol_unit,100,iostat=ios,iomsg=iomsg) tbl%num_x,tbl%num_rho,tbl%num_t
+      if (read_failed(ios, iomsg, 'LAOL 1989', path, laol_unit, ierr)) return
   100 format(/,18x,i2,9x,i3,14x,i3)
       if (tbl%num_x > n_laol_x-1.or.tbl%num_rho > n_laol_rho.or.tbl%num_t > n_laol_t) then
          lines = unwritten_line
@@ -104,6 +108,7 @@ subroutine read_laol_table(path, tbl, work_array, ierr)
          end if
          call kap_log(lines)
          ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
+         close(laol_unit)
          ierr = 1
          return
       end if
@@ -111,35 +116,43 @@ subroutine read_laol_table(path, tbl, work_array, ierr)
 !     mg,si,ar,fe (the cox&stewart mix).  Mixture is for the zlot part
 !     of the opacity table with LAOL relative abundances scaled
 !     TO SUM TO ZLOT.
-      read(laol_unit,120) zlot, work_array(ix_c), work_array(ix_n), &
+      read(laol_unit,120,iostat=ios,iomsg=iomsg) zlot, work_array(ix_c), work_array(ix_n), &
            work_array(ix_o), work_array(ix_ne), work_array(ix_na), &
            work_array(ix_mg), work_array(ix_al), work_array(ix_si), &
            work_array(ix_ar), work_array(ix_fe)
+      if (read_failed(ios, iomsg, 'LAOL 1989', path, laol_unit, ierr)) return
   120 format(47x,f8.5,//,1p6e12.5,/,1p4e12.5)
 !     Read zhit the metal abundance for the hit part of table.
 ! DBG 7/92 need relative abundances of metals for debye-huckel
 !     correction. 18 elements, c,n,o,ne,na,mg,al,si,p,
 !     S,Cl,Ar,Ca,Ti,Cr,Mn,Fe,Ni scaled to sum to ZHIT
-      read(laol_unit,130) zhit, debye_huckel_z
+      read(laol_unit,130,iostat=ios,iomsg=iomsg) zhit, debye_huckel_z
+      if (read_failed(ios, iomsg, 'LAOL 1989', path, laol_unit, ierr)) return
 ! 130 FORMAT(54X,F8.5,///////)
   130 format(54x,f8.5,/////,1p6e12.5,/,1p6e12.5,/1p6e12.5)
 !     Read in h mass fractions of table
-      read(laol_unit,140) (tbl%grid_x(ii),ii=1,tbl%num_x)
+      read(laol_unit,140,iostat=ios,iomsg=iomsg) (tbl%grid_x(ii),ii=1,tbl%num_x)
+      if (read_failed(ios, iomsg, 'LAOL 1989', path, laol_unit, ierr)) return
   140 format(/,(1p6e12.5))
 !     Read in density grid of table
-      read(laol_unit,150) (tbl%grid_rho(ii),ii=1,tbl%num_rho)
+      read(laol_unit,150,iostat=ios,iomsg=iomsg) (tbl%grid_rho(ii),ii=1,tbl%num_rho)
+      if (read_failed(ios, iomsg, 'LAOL 1989', path, laol_unit, ierr)) return
   150 format(/,(1p6e12.5))
 !     Read in temperature grid of table
-      read(laol_unit,160) (tbl%grid_t(ii),ii=1,tbl%num_t)
+      read(laol_unit,160,iostat=ios,iomsg=iomsg) (tbl%grid_t(ii),ii=1,tbl%num_t)
+      if (read_failed(ios, iomsg, 'LAOL 1989', path, laol_unit, ierr)) return
   160 format(/,(1p6e12.5))
 !     Read in opacities
-      read(laol_unit,170)
+      read(laol_unit,170,iostat=ios,iomsg=iomsg)
+      if (read_failed(ios, iomsg, 'LAOL 1989', path, laol_unit, ierr)) return
   170 format(1x)
       do ix=1,tbl%num_x
          do ir=1,tbl%num_rho
-            read(laol_unit,200)
+            read(laol_unit,200,iostat=ios,iomsg=iomsg)
+            if (read_failed(ios, iomsg, 'LAOL 1989', path, laol_unit, ierr)) return
   200       format(1x)
-            read(laol_unit,210) (tbl%opacity(ix,ir,it),it=1,tbl%num_t)
+            read(laol_unit,210,iostat=ios,iomsg=iomsg) (tbl%opacity(ix,ir,it),it=1,tbl%num_t)
+            if (read_failed(ios, iomsg, 'LAOL 1989', path, laol_unit, ierr)) return
   210       format(1p6e12.5)
          end do
       end do
@@ -416,41 +429,52 @@ subroutine read_pure_z_table(pure_z_table_path, ierr)
       integer :: pure_z_unit
       real(dp) :: dummy(104)
       character(len=message_length) :: lines(1)
+      integer :: ios
+      character(len=256) :: iomsg
 
-      ierr = 0
-      open(newunit=pure_z_unit, file=pure_z_table_path,form='FORMATTED', &
-              status='OLD')
+      call open_table(pure_z_table_path, 'pure-Z', pure_z_unit, ierr)
+      if (ierr /= 0) return
 !     Read in array sizes
-      read(pure_z_unit,100) n,opacity_table%zlaol_num_rho,opacity_table%zlaol_num_t
+      read(pure_z_unit,100,iostat=ios,iomsg=iomsg) n,opacity_table%zlaol_num_rho,opacity_table%zlaol_num_t
+      if (read_failed(ios, iomsg, 'pure-Z', pure_z_table_path, pure_z_unit, ierr)) return
   100 format(/,18x,i2,9x,i3,14x,i3)
       if (n /= 1.or.opacity_table%zlaol_num_rho > n_laol_rho.or.opacity_table%zlaol_num_t > n_laol_t) then
          lines = unwritten_line
          write(lines,*)' Z OPACITY INPUT ERROR.'
          call kap_log(lines)
          ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
+         close(pure_z_unit)
          ierr = 1
          return
       end if
-      read(pure_z_unit,120) (dummy(i),i=1,11)
+      read(pure_z_unit,120,iostat=ios,iomsg=iomsg) (dummy(i),i=1,11)
+      if (read_failed(ios, iomsg, 'pure-Z', pure_z_table_path, pure_z_unit, ierr)) return
   120 format(47x,f8.5,//,1p6e12.5,/,1p4e12.5)
-      read(pure_z_unit,131) dummy(1)
+      read(pure_z_unit,131,iostat=ios,iomsg=iomsg) dummy(1)
+      if (read_failed(ios, iomsg, 'pure-Z', pure_z_table_path, pure_z_unit, ierr)) return
   131 format(54x,f8.5,///////)
 !     Read in h mass fractions of table
-      read(pure_z_unit,140) dummy(1)
+      read(pure_z_unit,140,iostat=ios,iomsg=iomsg) dummy(1)
+      if (read_failed(ios, iomsg, 'pure-Z', pure_z_table_path, pure_z_unit, ierr)) return
   140 format(/,(1p6e12.5))
 !     Read in density grid of table
-      read(pure_z_unit,150) (opacity_table%zlaol_logrho_grid(ii),ii=1,opacity_table%zlaol_num_rho)
+      read(pure_z_unit,150,iostat=ios,iomsg=iomsg) (opacity_table%zlaol_logrho_grid(ii),ii=1,opacity_table%zlaol_num_rho)
+      if (read_failed(ios, iomsg, 'pure-Z', pure_z_table_path, pure_z_unit, ierr)) return
   150 format(/,(1p6e12.5))
 !     Read in temperature grid of table
-      read(pure_z_unit,160) (opacity_table%zlaol_logt_grid(ii),ii=1,opacity_table%zlaol_num_t)
+      read(pure_z_unit,160,iostat=ios,iomsg=iomsg) (opacity_table%zlaol_logt_grid(ii),ii=1,opacity_table%zlaol_num_t)
+      if (read_failed(ios, iomsg, 'pure-Z', pure_z_table_path, pure_z_unit, ierr)) return
   160 format(/,(1p6e12.5))
 !     Read in pure Z opacities
-      read(pure_z_unit,170)
+      read(pure_z_unit,170,iostat=ios,iomsg=iomsg)
+      if (read_failed(ios, iomsg, 'pure-Z', pure_z_table_path, pure_z_unit, ierr)) return
   170 format(1x)
       do ir=1,opacity_table%zlaol_num_rho
-         read(pure_z_unit,200)
+         read(pure_z_unit,200,iostat=ios,iomsg=iomsg)
+         if (read_failed(ios, iomsg, 'pure-Z', pure_z_table_path, pure_z_unit, ierr)) return
   200    format(1x)
-         read(pure_z_unit,210) (opacity_table%zlaol_opacity(ir,it),it=1,opacity_table%zlaol_num_t)
+         read(pure_z_unit,210,iostat=ios,iomsg=iomsg) (opacity_table%zlaol_opacity(ir,it),it=1,opacity_table%zlaol_num_t)
+         if (read_failed(ios, iomsg, 'pure-Z', pure_z_table_path, pure_z_unit, ierr)) return
   210    format(1p6e12.5)
          end do
       close(pure_z_unit)

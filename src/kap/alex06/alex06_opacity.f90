@@ -17,6 +17,7 @@ module alex06_opacity
       use numerics_lib, only: interp, lagrange4
       use physical_constants, only: ln10
       use kap_messages, only: kap_terminal, message_length, unwritten_line
+      use opacity_table_files, only: open_table, read_failed
       use math_lib
       implicit none
       private
@@ -59,9 +60,11 @@ subroutine read_alex06_tables(alex06_table_path, ierr)
 ! longer target them here now that they're use-associated.
       integer :: i, ii, j, jj, k, kk
       character(len=message_length) :: lines(2)
+      integer :: ios
+      character(len=256) :: iomsg
 
-      ierr = 0
-      open(newunit=table_unit,file=alex06_table_path)
+      call open_table(alex06_table_path, 'Alexander 2006', table_unit, ierr)
+      if (ierr /= 0) return
 !     Read in initial X and Z; ensure that they have the expected values.
       do i = 1,n_alex06_x-1
          do ii = 1, n_alex06_z
@@ -70,7 +73,8 @@ subroutine read_alex06_tables(alex06_table_path, ierr)
 !           (0,0),(0,0.1),...(0.9,0),(0.9,0.1).  The final tables are defined
 !           at X = 1-Z except for the 0.1 Z case (already read in at X=0.9).
 !           Header information: X and Z; check for consistency
-            read(table_unit,10) header_x, header_z
+            read(table_unit,10,iostat=ios,iomsg=iomsg) header_x, header_z
+            if (read_failed(ios, iomsg, 'Alexander 2006', alex06_table_path, table_unit, ierr)) return
    10       format(30x,f9.6,7x,f9.6//)
             if (header_x /= opacity_table%alex06_grid_x(i) .or. header_z /= opacity_table%alex06_grid_z(ii)) then
                lines = unwritten_line
@@ -78,10 +82,12 @@ subroutine read_alex06_tables(alex06_table_path, ierr)
                call kap_terminal(lines)
    15          format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
                     1x,'EXPECTED AND ACTUAL X,Z',4f7.2,' RUN STOPPED')
+               close(table_unit)
                ierr = 1
                return
             endif
-            read(table_unit,20) (row_logr_check(k),k=1,n_alex06_d)
+            read(table_unit,20,iostat=ios,iomsg=iomsg) (row_logr_check(k),k=1,n_alex06_d)
+            if (read_failed(ios, iomsg, 'Alexander 2006', alex06_table_path, table_unit, ierr)) return
    20       format(6x,19f7.3)
             do kk=1,n_alex06_d
                if (row_logr_check(kk) /= opacity_table%alex06_grid_logr(kk)) then
@@ -91,6 +97,7 @@ subroutine read_alex06_tables(alex06_table_path, ierr)
    25             format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
                        1x,'EXPECTED AND ACTUAL R',i3,2f7.3,' RUN STOPPED')
                   ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
+                  close(table_unit)
                   ierr = 1
                   return
                endif
@@ -99,7 +106,8 @@ subroutine read_alex06_tables(alex06_table_path, ierr)
 !           Opacity information at each shell: Check for consistency with T.
 !           Store in a numxz*numt*numr array.
             do j = n_alex06_t,1,-1
-               read(table_unit,30) row_temp, (opacity_table%alex06_full_opacity(jj,j,k),k=1,n_alex06_d)
+               read(table_unit,30,iostat=ios,iomsg=iomsg) row_temp, (opacity_table%alex06_full_opacity(jj,j,k),k=1,n_alex06_d)
+               if (read_failed(ios, iomsg, 'Alexander 2006', alex06_table_path, table_unit, ierr)) return
    30          format(f5.3,1x,19f7.3)
                if (row_temp /= opacity_table%alex06_grid_logt(j)) then
                   lines = unwritten_line
@@ -108,6 +116,7 @@ subroutine read_alex06_tables(alex06_table_path, ierr)
    35             format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
                        1x,'EXPECTED AND ACTUAL T',i3,2f7.3,' RUN STOPPED')
                   ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
+                  close(table_unit)
                   ierr = 1
                   return
                endif
@@ -122,23 +131,27 @@ subroutine read_alex06_tables(alex06_table_path, ierr)
 !        (0,0),(0,0.1),...(0.9,0),(0.9,0.1).  The final tables are defined
 !        at X = 1-Z except for the 0.1 Z case (already read in at X=0.9).
 !        Header information: X and Z; check for consistency
-         read(table_unit,10) header_x, header_z
+         read(table_unit,10,iostat=ios,iomsg=iomsg) header_x, header_z
+         if (read_failed(ios, iomsg, 'Alexander 2006', alex06_table_path, table_unit, ierr)) return
          if (header_x /= (1.0d0 - opacity_table%alex06_grid_z(ii)) .or. &
               header_z /= opacity_table%alex06_grid_z(ii)) then
             lines = unwritten_line
             write(lines,15) 1.0d0 - opacity_table%alex06_grid_z(ii), header_x, opacity_table%alex06_grid_z(ii), header_z
             call kap_terminal(lines)
             ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
+            close(table_unit)
             ierr = 1
             return
          endif
-         read(table_unit,20) (row_logr_check(k),k=1,n_alex06_d)
+         read(table_unit,20,iostat=ios,iomsg=iomsg) (row_logr_check(k),k=1,n_alex06_d)
+         if (read_failed(ios, iomsg, 'Alexander 2006', alex06_table_path, table_unit, ierr)) return
          do kk=1,n_alex06_d
             if (row_logr_check(kk) /= opacity_table%alex06_grid_logr(kk)) then
                lines = unwritten_line
                write(lines,25) kk, opacity_table%alex06_grid_logr(kk), row_logr_check(kk)
                call kap_terminal(lines)
                ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
+               close(table_unit)
                ierr = 1
                return
             endif
@@ -147,12 +160,14 @@ subroutine read_alex06_tables(alex06_table_path, ierr)
 !        Opacity information at each shell: Check for consistency with T.
 !        Store in a numxz*numt*numr array.
          do j = n_alex06_t,1,-1
-            read(table_unit,30) row_temp, (opacity_table%alex06_full_opacity(jj,j,k),k=1,n_alex06_d)
+            read(table_unit,30,iostat=ios,iomsg=iomsg) row_temp, (opacity_table%alex06_full_opacity(jj,j,k),k=1,n_alex06_d)
+            if (read_failed(ios, iomsg, 'Alexander 2006', alex06_table_path, table_unit, ierr)) return
             if (row_temp /= opacity_table%alex06_grid_logt(j)) then
                lines = unwritten_line
                write(lines,35) j, opacity_table%alex06_grid_logt(j), row_temp
                call kap_terminal(lines)
                ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
+               close(table_unit)
                ierr = 1
                return
             endif

@@ -17,6 +17,7 @@ module alex94_opacity
       use numerics_lib, only: interp, lagrange4
       use physical_constants, only: ln10
       use kap_messages, only: kap_log, message_length, unwritten_line
+      use opacity_table_files, only: open_table, read_failed
       use math_lib
       implicit none
       private
@@ -62,11 +63,13 @@ subroutine read_alex94_tables(alex95_table_paths, ierr)
       real(dp) :: header_x, header_z, row_temp, row_logr0
       real(dp) :: target_z
       character(len=message_length) :: lines(2)
+      integer :: ios
+      character(len=256) :: iomsg
 
       do table_index=1,n_alex94_x
 !        Open each of the tables at fixed X with a range of Z.
-         open(newunit=table_unit,file=alex95_table_paths(table_index), &
-              status='OLD', form='FORMATTED')
+         call open_table(alex95_table_paths(table_index), 'Alexander 1994', table_unit, ierr)
+         if (ierr /= 0) return
 !        Read in initial X and Z; ensure that they have the expected values.
          do i = n_alex94_z,1,-1
 !           Index for storing tables : 15 sets of metal abundance with 7 sets
@@ -74,7 +77,8 @@ subroutine read_alex94_tables(alex95_table_paths, ierr)
 !           (0,0),(0.1,0),...(0.8,0),(0,0.00001),...
             ii = table_index + 7*(i-1)
 !           Header information: X and Z
-            read(table_unit,10) header_x, header_z
+            read(table_unit,10,iostat=ios,iomsg=iomsg) header_x, header_z
+            if (read_failed(ios, iomsg, 'Alexander 1994', alex95_table_paths(table_index), table_unit, ierr)) return
    10       format(18x,f6.2,2x,f7.2)
             if (header_x /= opacity_table%alex94_grid_x(table_index) .or. &
                  header_z /= opacity_table%alex94_grid_z(i)) then
@@ -85,14 +89,16 @@ subroutine read_alex94_tables(alex95_table_paths, ierr)
    20          format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
                     1x,'EXPECTED AND ACTUAL X,Z',4f7.2,' RUN STOPPED')
                ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
+               close(table_unit)
                ierr = 1
                return
             endif
 !           Opacity information at each shell: Check for consistency with T,
 !           starting R.  Store in a numz*numt*numr array.
             do j = n_alex94_t,1,-1
-               read(table_unit,30) opacity_table%alex94_index_t, row_density_count, &
+               read(table_unit,30,iostat=ios,iomsg=iomsg) opacity_table%alex94_index_t, row_density_count, &
                     row_temp, row_logr0, (row_opacity_temp(k),k=1,n_alex94_d)
+               if (read_failed(ios, iomsg, 'Alexander 1994', alex95_table_paths(table_index), table_unit, ierr)) return
                do k = 1, n_alex94_d
                   opacity_table%alex94_full_opacity(ii,j,k) = row_opacity_temp(k)
                end do
@@ -107,6 +113,7 @@ subroutine read_alex94_tables(alex95_table_paths, ierr)
                        1x,'EXPECTED AND ACTUAL T,RHO',i3,4f7.2, &
                        ' RUN STOPPED')
                   ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
+                  close(table_unit)
                   ierr = 1
                   return
                endif

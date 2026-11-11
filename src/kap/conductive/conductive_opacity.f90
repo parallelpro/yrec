@@ -17,6 +17,7 @@ module conductive_opacity
       use numerics_lib, only: hunt
       use kap_messages, only: kap_terminal, kap_terminal_values, message_length, &
            unwritten_line
+      use opacity_table_files, only: read_failed
       implicit none
       private
       public :: read_conductive_table, compute_conductive_opacity
@@ -50,6 +51,8 @@ subroutine read_conductive_table(path, ierr)
       integer :: file_unit, z_index, t_index, r_index
       real(dp) :: z_grid_value
       character(len=message_length) :: lines(1)
+      integer :: ios
+      character(len=256) :: iomsg
 
       open(newunit=file_unit, file=path, status='OLD', iostat=ierr)
       if (ierr /= 0) then
@@ -59,13 +62,16 @@ subroutine read_conductive_table(path, ierr)
          ierr = 1
          return
       end if
-      read(file_unit,'(A)') ! skip the first line
+      read(file_unit,'(A)',iostat=ios,iomsg=iomsg) ! skip the first line
+      if (read_failed(ios, iomsg, 'conductive', path, file_unit, ierr)) return
       do z_index=1,cond_n_z
-         read(file_unit,*) z_grid_value,(cond_table%temp_grid(t_index),t_index=1,cond_n_temp)
+         read(file_unit,*,iostat=ios,iomsg=iomsg) z_grid_value,(cond_table%temp_grid(t_index),t_index=1,cond_n_temp)
+         if (read_failed(ios, iomsg, 'conductive', path, file_unit, ierr)) return
          cond_table%z_grid(z_index)=log10(z_grid_value)
          do r_index=1,cond_n_rho
-            read(file_unit,*) cond_table%rho_grid(r_index), &
+            read(file_unit,*,iostat=ios,iomsg=iomsg) cond_table%rho_grid(r_index), &
                  (cond_table%log10_kappa_table(t_index,r_index,z_index),t_index=1,cond_n_temp)
+            if (read_failed(ios, iomsg, 'conductive', path, file_unit, ierr)) return
          enddo
       enddo
       close(file_unit)
