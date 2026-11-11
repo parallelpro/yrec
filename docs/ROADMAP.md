@@ -1681,12 +1681,15 @@ commit, and the full battery at 43f852c1):
   - Settling converts star%m to Bahcall & Loeb units and back in
     place; the round trip can change its last bit every step. Working
     on a copy would fix it but changes results at round-off; it needs
-    a measured commit.
+    a measured commit. (Since O16's fix, c66901c9, only the original
+    settling routines do; microdiff converts copies.)
   - Rotation calls core's shell_physics and the light-element burn;
     core's convection_geometry reads mid_scr.
   - burn_and_settle and core's composition_step each size the settling
     sub-steps from the helium settling timescale with near-identical
-    code; element_diffusion could own it.
+    code; element_diffusion could own it. DONE (997f64fa, 2026-11-10,
+    round 1: element_diffusion's `plan_settling_substeps`, which both
+    call).
 
 ### core/ Stage A: modules, layout, named steps, comments (yrec-next, 2026-10-12)
 
@@ -4033,3 +4036,147 @@ run, 0 failures.
   tables were never the ones tested.
 - A devel build finds what release runs hide: a test callback that read
   and wrote past its arrays on every run (M275).
+
+### Round 1: kap, atm, convection, element_diffusion and eos to the standard (yrec-next, 2026-11-10)
+
+The seventh evaluation's plan (`audit/module-evaluation-7-2026-11-10/PLAN.md`)
+takes eos, kap, atm, convection, element_diffusion and core past 8.
+Round 1 took the first five to the standard round 0 wrote down (the
+README checklist in docs/GUIDELINES.md, the style ratchet, kernels that
+print nothing, ok/FAIL checks each caught by a mutation), one agent per
+package, each in its own worktree from round 0's tree (916ee23a). Every
+commit had to be byte-identical: no deck output, pinned log or unit-test
+pin could change. A fix that changes results, and any message whose
+text would change, was not made but put on the package's B list with
+what it is expected to move. The five branches were merged in turn:
+convection (d942e2f3), element_diffusion (50958b1c), kap (42abf994),
+atm (7c259740) and eos (2c9a6ec4). Only check_boundaries.py, where each
+package adds its own entries, and the generated deps.mk conflicted.
+
+**What was done.**
+- **kap** (r1-kap, 9 commits): kap_messages; the settings checked at
+  kap_init; every table open and read checked; the Alexander 2006 cache
+  fixed; the tables in typed sets passed as arguments, private to
+  kap_lib and restarted at each kap_init; the families behind
+  `kap_source` descriptors in one precedence list (`opacity_families`),
+  and kap_eval as named steps over opacity_blending's formulas; each
+  family's reader apart from its lookup (the lookups in
+  STAR_BLIND_FILES). Fixed: M104, M170, M219, M220, M223-M226,
+  M228-M230, L10's remaining gap, and kap's parts of M236, M238 and
+  M240; M227's and M237's texts in kap.
+- **atm** (r1-atm, 11 commits): the lookups are star-blind kernels that
+  take their table and return their result (kurucz_atmosphere,
+  allard_atmosphere), and their readers are separate files; atm_lib
+  keeps the run's tables privately and reports through atm_messages
+  (every message, its text unchanged); atm/atm_choices.f90 says what
+  each `atm_choice` is, and core's envelope kernel and surface boundary
+  and io's banner ask it. Fixed: M221, M231, M232, M234, M239 and atm's
+  parts of M236, M238 and M240; M233 documented; for O19, the tau = 100
+  check moved to atm/retired/ and the tables a run read recorded.
+- **convection** (r1-convection, 9 commits): convection_messages (text
+  unchanged); one zone scan and one merge, M248's limit an error;
+  semiconvection's EOS-opacity-gradient triplet one procedure;
+  overshoot.f90 owning H_P and the envelope overshoot depth, which
+  core's step_driver and rotation now call (the copies that differ are
+  on the B list); compute_temperature_gradients as named steps, with
+  the equations in its header. Fixed: M248, M255, and convection's
+  halves of M256 and M257.
+- **element_diffusion** (r1-element_diffusion, 9 commits):
+  `diffuse_helium` dropped (M251), microdiff's implicit step solved
+  once (M253), the light-element rows from species_table (M252); the
+  settling sub-step policy moved into the domain
+  (`plan_settling_substeps`, which core's composition_step and
+  rotation's burn_and_settle call); one region finder, Coulomb
+  logarithm, grid builder and unit set, and element_diffusion_messages;
+  one map back for both pipelines, and the original settling routines
+  in the standard's style (still selectable: retiring them is a
+  decision on the B list). Its parts of M256, M257 and M258 done; M250
+  documented.
+- **eos** (r1-eos, 21 commits): the table-source descriptor
+  (eos_table_source and eos_source_list: SCV, OPAL and MHD one entry
+  each, which blend_eos, eos_get and eos_init loop over); OPAL 1995 on
+  the shared OPAL code (opal95_eos.f90 deleted; its reads past the
+  table kept by an explicit emulation until M94's measured fix); the
+  readers apart from the kernels (no NO_IO_ALLOWANCE entries left); the
+  test's entries in eos_test_entries, eos_mix protected. Fixed: M87,
+  M93, M105-M107, M136, M137, M144, M207-M211, and the texts of M122,
+  M123, M148, M156 and M157 (all but its MHD question).
+- **In every package:** one messages module holding every text; the
+  style ratchet's counts at 0 in every directory but for the table
+  readers' I/O statements (kap's seven readers and its table-file
+  helper, atm's two readers, eos's four); a test program with ok/FAIL
+  checks of behaviour, each caught by a mutation in the package's
+  manifest; and a README to the checklist (flow, conventions, the
+  checks, a dated coverage figure, recipes traced on a throwaway
+  branch). bug_sweep registers the round: 42 older items fixed (28 of
+  them section 14's), and section 15's 21 new ones, M277-M297, of which
+  three were fixed in the round.
+
+**Verified.** Each agent on its final tree: `compare_decks --set all`,
+RESULT: ALL IDENTICAL on the 56 decks with pins 35 OK (also after each
+phase, and `--set quick` after every commit touching Fortran); `make
+check`; its pytest files, plain and with YREC_TEST_TOLERANT=1; the
+devel build's unit tests, 0 failed (test_eos still skipped at M92, and
+test_structure's three O4 decks); and its mutations and coverage:
+
+| package | ok/FAIL checks | mutations caught | coverage (2026-11-10) |
+|---|---|---|---|
+| kap | 34 | 36 of 36 | 79.4% of 2175 lines |
+| atm | 36 | 38 of 38 | 95.8% of 708 lines |
+| convection | 43 | 43 of 43 | 97.8% of 465 lines |
+| element_diffusion | 21 | 21 of 21 | 97.1% of 829 lines |
+| eos | 62 | 67 of 67 | 88.5% of 3045 lines |
+
+Where no compared deck reaches a path, the agents ran more: convection
+the two UpperMS semiconvection samples, old binary against new;
+element_diffusion a scratch probe of both pipelines
+(settling_num_iterations 0 to 10, tolerance 0); kap 30 error scenarios
+and test_kap's output against 916ee23a; atm a deck with atm_choice 3, 4
+and 5 and the low-mass Kurucz and Allard decks; eos test_eos's run log
+at every commit. Each matched the round-0 tree wherever no fix was
+meant to change it.
+
+Merged-tree verification: PENDING
+
+#### Learned
+
+- A defect recorded as latent from reading the code can be wrong in
+  both directions. M241 is not latent: the shipped UpperMS sample
+  `Sample_m9p0feh+0p0GS98_yaleeos_sc_TAMS` stops in model 110 at the
+  round-0 tree, on stale zone bounds that semiconvection takes for a
+  core. M247's fix, expected to be byte-identical, moved a pinned solar
+  deck from model 250 on (1e-5 dex in log L and log Teff), so its
+  commit was dropped before the merge and the fix went to the B list.
+  Only the full set, and decks beyond it, tell.
+- The 56-deck set does not reach every path. No compared deck runs
+  semiconvection, a table's switch to gray, Castelli/Kurucz or OPAL
+  1995, so the agents added scratch decks and probes; and two shipped
+  low-mass decks outside the set already stop at the round-0 tree
+  (M294).
+- An API outage stopped all five agents mid-round. Each was resumed
+  from its progress note (notes/<PKG>_PROGRESS.md in the work
+  directory: the plan, the commits made, the next step) and finished
+  its plan. A note a fresh agent can resume from belongs to every
+  round's setup.
+- The style counts reached 0 in every package directory but for the
+  readers' I/O, where the standard wants it: the I/O statements left
+  now mark the table readers.
+- The checkers have scope gaps of their own: check_boundaries' flat
+  name map took atm's new internal procedure for a cross-domain call
+  into eos (M295), and its scratch-module check took a `use, intrinsic
+  ::` line for a module variable (M296). Both were worked around in the
+  packages, not fixed in the tool.
+
+#### Next
+
+- The B lists, one per package in bug_sweep numbers, wait for the
+  owner's approval. Then each item is its own measured commit, with its
+  pins reseeded, one package at a time (PLAN.md section 7). The texts
+  the round left for that phase go with them: the control descriptions
+  in io/controls_buffer.f90 that M227, M237, M239, M250, M253 and M258
+  name, and each package's message rewording, one re-pin commit per
+  package.
+- Round 2 is core, with core's B list.
+- docs/TARGET_ARCHITECTURE.md's table of F77 routines still gives the
+  homes of eos's and kap's routines before the round (its atm rows are
+  corrected).
