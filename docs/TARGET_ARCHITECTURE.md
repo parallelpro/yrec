@@ -582,5 +582,5 @@ The first four were confirmed by reading the code; none has been run or fixed ye
    - Fixed (2026-10): `secular_transport` now stops with an error when the flag would take effect.
    - Commented out (2026-10-12, the author's decision): the path, its branches in the live routines, its scratch arrays and henyey's derivative copies; the stop stays.
 5. **`beta14` is defined differently by EOS path** (*reported, not yet checked*). It means 4(1−β)/β on the Yale path but 1−β after OPAL or MHD (`blended_eos.f90:324` vs `:484`).
-6. **Opacity ramp derivatives are inconsistent** (*reported, not yet checked*). The ramp blends κ linearly but averages the dln κ derivatives without weighting them and drops the dw/dln T term (`kap_lib.f90:312–317`).
+6. **Opacity ramp derivatives are inconsistent.** The ramp blended κ linearly but averaged the dln κ derivatives without weighting them and dropped the dw/dln T term (bug_sweep O18). Fixed (2026-11-11, round 1B): `ramp_to_molecular` (kap/opacity_blending.f90) returns the blend's own derivatives.
 7. **`max_delta_j_by_iter(16)` can overflow** (*reported, not yet checked*). It overflows when `max_diffusion_iters > 16` (`check_angular_momentum.f90:91`).

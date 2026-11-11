@@ -92,8 +92,8 @@ new = '      call blend_in_z(res%dlnkap_dlnt, res_z2%dlnkap_dlnrho, &'
 id = 'ramp-min'
 check = 'ramp: kappa continuous at molecular_opacity_logt_min'
 file = 'kap/opacity_blending.f90'
-old = '         res%opacity = ramp_weight*res%opacity + (1.0d0 - ramp_weight)*molecular%opacity'
-new = '         res%opacity = ramp_weight*res%opacity + (1.0d0 - ramp_weight)*molecular%opacity*1.01d0'
+old = '         molecular_part = (1.0d0 - ramp_weight)*molecular%opacity'
+new = '         molecular_part = (1.0d0 - ramp_weight)*molecular%opacity*1.01d0'
 
 [[mutation]]
 id = 'ramp-max'
@@ -101,6 +101,20 @@ check = 'ramp: kappa continuous at molecular_opacity_logt_max'
 file = 'kap/opacity_blending.f90'
 old = '         ramp_weight = (log10_temperature - logt_min) / (logt_max - logt_min)'
 new = '         ramp_weight = (log10_temperature - logt_min) / (logt_max - logt_min + 0.01d0)'
+
+[[mutation]]
+id = 'ramp-dweight'
+check = 'ramp: dln kappa/dln rho, dln T against differences'
+file = 'kap/opacity_blending.f90'
+old = '         dweight_dlnt = 1.0d0 / (ln10*(logt_max - logt_min))'
+new = '         dweight_dlnt = 0.0d0'
+
+[[mutation]]
+id = 'ramp-drho-weights'
+check = 'ramp: dln kappa/dln rho, dln T against differences'
+file = 'kap/opacity_blending.f90'
+old = '              molecular_part*molecular%dlnkap_dlnrho) / res%opacity'
+new = '              molecular_part*molecular%dlnkap_dlnrho) / (interior_part + molecular_part + 1.0d0)'
 
 [[mutation]]
 id = 'opal95-fixed-z'

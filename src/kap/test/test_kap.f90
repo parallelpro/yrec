@@ -323,12 +323,13 @@ contains
 ! mutation in kap/test/test_kap.mutations.toml): exactness at table
 ! nodes on each of OPAL95's three paths and Alexander 2006's; the log
 ! derivatives against centred differences of log kappa, family by
-! family; continuity across the molecular ramp's ends and OPAL95's
-! seams; the Z blend at its ends; the harmonic sum and Hubbard & Lampe's
-! fit; conduction with ionized fractions; and the error contracts
-! (refused settings, a missing or short table, a refused composition, a
-! second kap_init). Each line is the check, its error and ok or FAIL; a
-! FAIL makes the program stop with status 1 after the last check.
+! family and inside the molecular ramp; continuity across the ramp's
+! ends and OPAL95's seams; the Z blend at its ends; the harmonic sum and
+! Hubbard & Lampe's fit; conduction with ionized fractions; and the
+! error contracts (refused settings, a missing or short table, a refused
+! composition, a second kap_init). Each line is the check, its error and
+! ok or FAIL; a FAIL makes the program stop with status 1 after the last
+! check.
       subroutine run_checks()
          use opacity_source, only: kap_result
          use opacity_blending, only: blend_in_z, add_conduction, hubbard_lampe_opacity
@@ -382,6 +383,10 @@ contains
               0.70d0, 0.016232d0, 4.0d0, -3.3d0, 1.0d-7)
          call continuity_check("ramp: kappa continuous at molecular_opacity_logt_max", &
               0.70d0, 0.016232d0, 4.1d0, -3.3d0, 1.0d-7)
+! inside the ramp, off the tables' nodes (log T 4.07): kappa's own
+! derivatives, with the weight's
+         call derivative_check("ramp: dln kappa/dln rho, dln T against differences", &
+              0.70d0, 0.016232d0, 4.07d0, -3.3d0, 1.0d-5)
 ! across the table's lowest log R (-8), below which log kappa is
 ! extrapolated linearly
          call get_point(0.70d0, 0.016232d0, 5.53d0, logd_of(5.53d0, -8.0d0 - 1.0d-9), r, ierr)

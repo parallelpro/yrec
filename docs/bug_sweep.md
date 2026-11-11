@@ -143,7 +143,7 @@ Decided by default in the cleanup round (2026-11-01), revisable: M111 and M171 (
 | O15 | Reversal safeguard inactive; `mu_gradient_scale` inert | Yes | Fixed (removed; documented) |
 | O16 | Settling rewrites m in place; reversed `MOD` | Yes | Fixed |
 | O17 | Magnetic braking: 1/G, wind switch, τ_cz | Yes | Fixed |
-| O18 | `beta14`, opacity ramp derivatives, OPAL 2001 edge, MHD test | Yes | Open (`beta14` fixed, [e87752bc](https://github.com/parallelpro/yrec/commit/e87752bc); MHD tested on synthetic tables) |
+| O18 | `beta14`, opacity ramp derivatives, OPAL 2001 edge, MHD test | Yes | Open (`beta14` fixed, [e87752bc](https://github.com/parallelpro/yrec/commit/e87752bc); the ramp's derivatives fixed in round 1B; MHD tested on synthetic tables) |
 | O19 | Allard reader's misspelled flag; failed lookup used (always, unless atm_choice is 4) | Yes | Open (B list); atm records the tables it read since round 1 |
 | O20 | Calibration dL/dα 0.0139 against the recorded 0.139 | Yes | Open |
 | O21 | Settling stencil out of bounds for a 2-point grid | Yes | Open |
@@ -1487,7 +1487,7 @@ These are found, recorded and left as they are, because each fix changes results
 
 ### O18. EOS and opacity details: two meanings of `beta14`, the opacity ramp's derivatives, OPAL 2001's density edge, and the untested MHD path
 
-- **Status:** open in part. `beta14` has one meaning, 4(1−β)/β, on every path since [e87752bc](https://github.com/parallelpro/yrec/commit/e87752bc) (2026-10-29, byte-identical), and `test_eos` runs the MHD reader and lookup on eight synthetic tables since M35 ([43e9b717](https://github.com/parallelpro/yrec/commit/43e9b717)). The opacity ramp's derivatives, OPAL 2001's density edge (kept as data, `opal01_search_density_index_edge`, since [7bc47cd6](https://github.com/parallelpro/yrec/commit/7bc47cd6)) and a pin on the real MHD tables are open.
+- **Status:** open in part. `beta14` has one meaning, 4(1−β)/β, on every path since [e87752bc](https://github.com/parallelpro/yrec/commit/e87752bc) (2026-10-29, byte-identical), and `test_eos` runs the MHD reader and lookup on eight synthetic tables since M35 ([43e9b717](https://github.com/parallelpro/yrec/commit/43e9b717)). The opacity ramp's derivatives are fixed in round 1B (2026-11-11, kap item 1). OPAL 2001's density edge (kept as data, `opal01_search_density_index_edge`, since [7bc47cd6](https://github.com/parallelpro/yrec/commit/7bc47cd6)) and a pin on the real MHD tables are open.
 - **In the original F77?** Yes for the first three; the missing test is a 2026 matter, since the F77 had no tests.
   - `BETA14` is 4(1−β)/β on the Yale/SCV path but 1−β after OPAL or MHD ([eqstat2.f:126-135](https://github.com/parallelpro/yrec/blob/6cd56739/src/eqstat2.f#L126-L135) against [:281-302](https://github.com/parallelpro/yrec/blob/6cd56739/src/eqstat2.f#L281-L302)):
     ```fortran
@@ -1508,6 +1508,7 @@ These are found, recorded and left as they are, because each fix changes results
   - Blend κ-weighted derivatives and add the dw term; this affects convergence only.
   - Use the loader's edge table, measured on OPAL 2001 decks.
   - Obtain the MHD tables and add a pin.
+- **What we did (the ramp, round 1B, 2026-11-11):** `ramp_to_molecular` (kap/opacity_blending.f90) returns κ's own derivatives: dln κ/dln ρ = (w κ_int d_int + (1−w) κ_mol d_mol)/κ, and in T the same plus (dw/dln T)(κ_int − κ_mol)/κ with dw/dln T = 1/(ln 10 (log T_max − log T_min)); κ itself is unchanged bit for bit. `test_kap` checks the derivatives inside the ramp against differences (7.6e-7 at log T 4.07; two mutations), and its pinned lines at log T 4.00, 4.05 and 4.10 moved in their derivative columns. Measured on the 56-deck set: the derivatives enter only the Henyey Jacobian, so 13 decks moved, those whose interior zones reach log T < 4.1 at some step (pre-main-sequence models, the 0.03 Msun deck): the five `cm_rot_*` decks, `cm_basic_composition`, `Test_m0030_feh0_noGS_ZAMS`, the three solar decks of `run_standard_solar_model` other than `Test_solar_noGS_norot`, the two `test_nuclear_reaction_rates` decks and `rv_basic`; 9 pinned logs moved (the five `cm_rot_*`, `Test_m0030_feh0_noGS_ZAMS` and the three solar decks). No model count and no printed iteration count changed. Final models: |Δ log L| ≤ 4.3e-9, |Δ log Teff| ≤ 2.0e-9, ages within 1.5e-7 relative; the largest changes in any zone, 8.0e-6 in log P, 3.1e-6 in log T, 6.0e-6 in log ρ and 1.3e-6 relative in L, are in the rotating solar deck, whose last timestep moved by 1.7e-3 relative; the logs' text lines moved only where they print 14 digits (the rotational energy and J lines).
 
 ### O19. The Allard reader tests a misspelled flag, and the accretion surface uses a possibly failed Allard lookup (ALFILEIN, MASSLOSS)
 
