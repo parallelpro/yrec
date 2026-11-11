@@ -10,7 +10,9 @@
 !                              log T; in_table is .false. outside the
 !                              table (the first table also has a
 !                              log rho <= -3, log T <= 4.1 range check)
-! The tables live in opacity_tables (tables(1:2)).
+! The tables, their splines and the lookup's cursors are kurucz_table_sets
+! (opacity_tables), which kap_lib holds and passes in. The sources are at
+! the end of the file.
 module kurucz_opacity
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use opacity_tables, only: kurucz_max_num_densities, kurucz_max_num_temps, &
@@ -21,178 +23,28 @@ module kurucz_opacity
            compute_spline_coefficients, numerics_status_text
       use kap_messages, only: kap_log, kap_log_values, kap_report, kap_terminal, &
            message_length, unwritten_line
-      use opacity_table_files, only: open_table, read_failed
+      use kurucz_reader, only: read_kurucz_tables
       use math_lib
       implicit none
       private
       public :: kurucz90_source
-      public :: read_kurucz_tables, compute_kurucz_opacity
+      public :: build_kurucz_splines, compute_kurucz_opacity
 
 contains
 
-!----------------------------------------------------------------------
-! read_kurucz_tables
-!----------------------------------------------------------------------
-! Reads the Kurucz opacity table (and, if a second Z table is
-! requested, a second Kurucz table) into tables(1)/(2),
-! then calls build_kurucz_splines on each for the spline
-! interpolation coefficients used later by kurucz.f90.
-!
-! 2026 wave 3 (R5): the two verbatim read loops (first table on
-! the controls' kurucz_table_unit, second on kurucz_table2_unit) became
-! the internal read_kurucz_table below, called once per set; the
-! order read 1, read 2, splines 1, splines 2 is the original's. The
-! loop's working scalars stay host-associated so that whatever value
-! they carried from the first table into the second is carried
-! exactly as before.
-subroutine read_kurucz_tables(tables, kurucz_table_path, kurucz_table2_path, &
-     two_z_tables, ierr)
-
-! (1) at kurucz_table_z1 and, with two_z_tables, (2) at kurucz_table_z2
-      type(kurucz_table_set), intent(inout) :: tables(:)
-      character(len=256), intent(in) :: kurucz_table_path, kurucz_table2_path
-      logical, intent(in) :: two_z_tables
-      integer, intent(out) :: ierr
-      integer :: num_read, density_index
-      integer :: read_status
-      real(dp) :: prev_grid_temp, grid_temp, pressure, &
-           log10_opacity0, log10_opacity1, log10_opacity2, &
-           log10_opacity4, log10_opacity8, electron_density, &
-           atom_density, density, unused_col
-
-      ierr = 0
-! The early-out range check in kurucz() belongs to the first table
-! only (the former kurucz2.f90 never had it).
-      tables(2)%check_range = .false.
-
-      call read_kurucz_table(kurucz_table_path, &
-           tables(1), ierr)
-      if (ierr /= 0) return
-
-! DBG 12/95 read in second Z table if requested
-      if (two_z_tables) then
-         call read_kurucz_table(kurucz_table2_path, &
-              tables(2), ierr)
-         if (ierr /= 0) return
-      end if
-
-      call build_kurucz_splines(tables(1), ierr)
-      if (ierr /= 0) return
-! DBG 12/95 second Z table
-      if (two_z_tables) then
-         call build_kurucz_splines(tables(2), ierr)
-      end if
-
-      return
-
-contains
-
-! read_kurucz_table: read one Kurucz table file into tbl.
-subroutine read_kurucz_table(path, tbl, ierr)
-      character(len=256), intent(in) :: path
-      type(kurucz_table_set), intent(inout) :: tbl
-      integer, intent(inout) :: ierr   ! left at the caller's 0 on success
-      integer :: unit
-      character(len=message_length) :: lines(1)
-      integer :: ios
-      character(len=256) :: iomsg
-
-    1 format(2f5.2,5f7.3,3f9.5,f8.3)
-!     OPEN TABLE
-      call open_table(path, 'Kurucz 1990', unit, ierr)
-      if (ierr /= 0) return
-      read(unit,'(/)',iostat=ios,iomsg=iomsg)
-      if (read_failed(ios, iomsg, 'Kurucz 1990', path, unit, ierr)) return
-
-      num_read = 0
-      prev_grid_temp = 0.0d0
-      table_read: do
-      read(unit,1,iostat=read_status) grid_temp, pressure, &
-           log10_opacity0, log10_opacity1, log10_opacity2, &
-           log10_opacity4, log10_opacity8, electron_density, &
-           atom_density, density, unused_col
-      if (read_status < 0) exit table_read    ! was end=120
-! a record that does not parse is a header line before the first row
-! (some tables have three), and an error after it
-      if (read_status > 0 .and. num_read == 0) cycle table_read
-      if (read_status > 0) then
-         lines = unwritten_line
-         write(lines,'(a,i0,2a)') 'read_kurucz_tables: unreadable row after temperature row ', &
-              num_read, ' in ', trim(path)
-         call kap_report(lines)
-         close(unit)
-         ierr = 1
-         return
-      end if
-      if (prev_grid_temp /= grid_temp) then
-         num_read = num_read+1
-         if (num_read > kurucz_max_num_temps) then
-            lines = unwritten_line
-            write(lines,*) 'read_kurucz_tables: too many temperature rows in ', &
-                 trim(path)
-            call kap_terminal(lines)
-            close(unit)
-            ierr = 1
-            return
-         end if
-         tbl%grid_logt(num_read) = grid_temp
-         prev_grid_temp = grid_temp
-         density_index = 1
-      endif
-      if (num_read < 1) then
-         lines = unwritten_line
-         write(lines,*) 'read_kurucz_tables: no header row read from ', &
-              trim(path)
-         call kap_terminal(lines)
-         close(unit)
-         ierr = 1
-         return
-      end if
-      if (density_index > kurucz_max_num_densities) then
-         lines = unwritten_line
-         write(lines,'(a,i0,3a)') 'read_kurucz_tables: more than ', kurucz_max_num_densities, &
-              ' densities at one temperature in ', trim(path)
-         call kap_report(lines)
-         close(unit)
-         ierr = 1
-         return
-      end if
-      tbl%log10_rho(num_read, density_index) = density
-      tbl%log10_opacity(num_read, density_index) = exp10(log10_opacity0)
-      density_index = density_index+1
-      end do table_read
-
-      tbl%num_temps = num_read
-!     Close the table we have read
-      close(unit,err=99)
-      return
-   99 continue
-      lines = unwritten_line
-      write(lines,*) 'read_kurucz_tables: error closing table file'
-      call kap_terminal(lines)
-      ierr = 1
-end subroutine read_kurucz_table
-
-end subroutine read_kurucz_tables
 
 !----------------------------------------------------------------------
 ! build_kurucz_splines
 !----------------------------------------------------------------------
-! YCK 3/91. Builds the cubic-spline coefficients (in density) for
-! one Kurucz90 opacity table set tbl. Reads the tbl%grid_logt/
-! log10_rho/log10_opacity grids filled by read_kurucz_tables.f90 and
-! writes the per-row spline coefficients, density start index and
-! count used by kurucz.f90.
-!
-! 2026 wave 3 (R5): was one routine that did this for
-! opacity_table%kurucz_* and then (if use_two_z_tables) repeated the
-! identical loop for kurucz2_*; read_kurucz_tables now calls it once
-! per table set in the same order. The two stdout diagnostics that
-! said "kurucz table" / "second kurucz table" are now generic.
+! Builds, for each T row of tbl, the natural cubic spline of log kappa in
+! log rho over the row's densities with data, as coefficients per
+! interval (tbl%spline_coeffs), with the row's first density index and
+! count. A row that does not start at the first density, or has fewer
+! than 25 points, returns ierr = 1.
 subroutine build_kurucz_splines(tbl, ierr)
       type(kurucz_table_set), intent(inout) :: tbl
       integer, intent(out) :: ierr
-! MHP 10/02 made array dimensions consistent
+! (np: the coefficient array's interval count, more than any row's)
       integer, parameter :: np = 100
 
       real(dp) :: spline_work(4,np), density_nodes(kurucz_max_num_densities), &
@@ -207,7 +59,7 @@ subroutine build_kurucz_splines(tbl, ierr)
          jd = 0
          do id = 1,kurucz_max_num_densities
             chkd = tbl%log10_rho(it,id)
-            chko = tbl%log10_opacity(it,id)
+            chko = tbl%opacity(it,id)
             if (chko <= 0.0d0) cycle
             if (jd <= 0) tbl%density_start_index(it) = id
             jd = jd + 1
@@ -246,29 +98,21 @@ end subroutine build_kurucz_splines
 !----------------------------------------------------------------------
 ! compute_kurucz_opacity (formerly kurucz)
 !----------------------------------------------------------------------
-! kurucz
-! Interpolation facility for Kurucz's opacity tables using a cubic
-! spline interpolation scheme (two-dimensional: temperature and
-! density). in_table is .false. for a point outside the table, where the
-! caller uses the interior opacity alone. (2026-10: this was an F77
-! alternate return, `return 1` to the caller's label 100.)
-!
-! 2026 wave 3 (R5): tbl is the table set to interpolate in --
-! tables(1) (the former kurucz.f90) or
-! tables(2) (the former kurucz2.f90, deleted; it was a
-! member-for-member rename of this file except for the early-out
-! range check below, which it lacked and which tbl%check_range now
-! gates).
+! The opacity at (log rho, log T) and its log derivatives from table set
+! tbl (the first or the second Z's), by cubic splines: in log rho on each
+! T row, then in log T across the rows. in_table is .false. for a point
+! outside the table (and, for the first table, above log rho = -3 or
+! log T = 4.1), where the caller uses the interior opacity alone.
 subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity, &
      log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, in_table, ierr)
 
 !     Two dimensional interpolation for opacity.
-!     tbl%ix_t / tbl%ix_rho ARE THE WARM-START
+!     tbl%ix_t / tbl%ix_rho are the warm-start
 !     cursors (nearest temperature row and density knot) left by the
 !     previous call.  For up to six temperature rows around the point
 !     the row's cubic spline in log rho gives log opacity and its rho
 !     derivative; those are then interpolated in log T (natural_spline and splint) to give
-!     log10_opacity, dlnkap_dlnt AND dlnkap_dlnrho.
+!     log10_opacity, dlnkap_dlnt and dlnkap_dlnrho.
 
       integer :: jerr_gate
 
@@ -320,7 +164,7 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
          row_density_start = tbl%density_start_index(temp_index)
          row_density_end = row_density_start + &
               tbl%density_count(temp_index) - 1
-!        FIND THE 'M3'
+!        the density knot below log rho on this row
          if (tbl%ix_rho < row_density_start .or. &
               tbl%ix_rho > row_density_end) tbl%ix_rho = row_density_end
          density_pointer = tbl%ix_rho
@@ -331,7 +175,7 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
                   density_pointer = density_scan_index
                   density_found = .true.
                   exit
-               endif
+               end if
             end do
          else
             do density_scan_index = density_pointer, row_density_end-1
@@ -340,16 +184,16 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
                   density_pointer = density_scan_index
                   density_found = .true.
                   exit
-               endif
+               end if
             end do
             if (.not. density_found) then
             if (tbl%log10_rho(temp_index, row_density_end) >= &
                  log10_density) then
                density_pointer = row_density_end
                density_found = .true.
-            endif
-            endif
-         endif
+            end if
+            end if
+         end if
          if (.not. density_found) cycle
          tbl%ix_rho = density_pointer
          knot_index = tbl%ix_rho - row_density_start + 1
@@ -377,13 +221,12 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
             temp_index_end = tbl%num_temps
             search_full_range = .false.
             cycle full_search
-         endif
+         end if
          call kap_log_values([log10_density, log10_temperature], &
               'ERROR KURUCZ OP: NO TABLE VALUE ')
-! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
          ierr = 1
          return
-      endif
+      end if
       exit full_search
       end do full_search
       if (temp_subset_logt(1) > log10_temperature .or. &
@@ -396,8 +239,6 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
       call splint(temp_subset_logt, temp_subset_log10_opacity, num_valid_temps, &
            temp_subset_second_derivs, log10_temperature, log10_opacity_interp, &
            jerr_gate, dy=dlnkap_dlnt)
-      ! 2026 numerics-gate opt-in: interpolation failure returns via
-      ! ierr (diagnostic printed at the gate) instead of stopping.
       if (jerr_gate /= 0) then
          lines = unwritten_line
          write(lines,*) 'splint: '//numerics_status_text(jerr_gate)
@@ -407,7 +248,7 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
       end if
       log10_opacity = log10_opacity_interp
       opacity = exp10(log10_opacity)
-!     QOTF = D LN(O)/D LN(T)
+!     (dlnkap_dlnt from the same spline's slope)
 !     find the partial derivative value of ol wrt d in the given T and d
       call natural_spline(temp_subset_logt, temp_subset_dlnkap_dlnrho, &
            num_valid_temps, temp_subset_second_derivs)
@@ -420,7 +261,6 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
          ierr = jerr_gate
          return
       end if
-!     QODF = D LN(O)/D LN(D)
 end subroutine compute_kurucz_opacity
 
 !----------------------------------------------------------------------
@@ -452,6 +292,10 @@ subroutine load_kurucz90(settings, paths, envelope_hydrogen_fraction, tables, ie
 
       call read_kurucz_tables(tables%kurucz, paths%kurucz, paths%kurucz_z2, &
            settings%use_two_z_tables, ierr)
+      if (ierr /= 0) return
+      call build_kurucz_splines(tables%kurucz(1), ierr)
+      if (ierr /= 0) return
+      if (settings%use_two_z_tables) call build_kurucz_splines(tables%kurucz(2), ierr)
 end subroutine load_kurucz90
 
 subroutine lookup_kurucz90(settings, tables, point, res, in_table, ierr)
@@ -478,5 +322,15 @@ subroutine lookup_kurucz90(settings, tables, point, res, in_table, ierr)
               settings%kurucz_table_z1, settings%kurucz_table_z2)
       end if
 end subroutine lookup_kurucz90
+
+!----------------------------------------------------------------------
+! Sources
+!----------------------------------------------------------------------
+! The tables: Kurucz (1990) Rosseland mean opacities, one file per
+! [M/H] in input/opacity/molecular/legacy/kurmol/. The code: YCK's F77
+! spline set-up (3/91), the second Z table (DBG 12/95) and the KURUCZ
+! lookup, converted to Fortran 90 in 2026: the lookup's alternate return
+! became in_table, the two Z tables' copies one routine on a table set
+! passed in, the reads checked and bounded (M220, M229).
 
 end module kurucz_opacity

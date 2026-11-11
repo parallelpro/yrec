@@ -9,7 +9,9 @@
 !                              a table at the zone's (X, Z) built by
 !                              build_alex06_composition_table and
 !                              reused while the composition holds
-! The tables live in opacity_tables (tbl%*).
+! The tables, the built table, its composition (the cache) and the
+! lookup's cursors are an alex06_table_set (opacity_tables), which
+! kap_lib holds and passes in. The sources are at the end of the file.
 module alex06_opacity
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use opacity_tables, only: alex_composition_tol, alex06_table_set, n_alex06_d, &
@@ -19,182 +21,23 @@ module alex06_opacity
       use numerics_lib, only: interp, lagrange4
       use physical_constants, only: ln10
       use kap_messages, only: kap_terminal, message_length, unwritten_line
-      use opacity_table_files, only: open_table, read_failed
+      use alex06_reader, only: read_alex06_tables
       use math_lib
       implicit none
       private
       public :: alex06_source
-      public :: read_alex06_tables, compute_alex06_opacity
+      public :: compute_alex06_opacity
 
 contains
 
-!----------------------------------------------------------------------
-! read_alex06_tables (formerly readalex06)
-!----------------------------------------------------------------------
-! MHP 3/09  subroutine for reading in Alexander low T opacities.
-!
-! Alexander opacities ferguson et al. 2005  apj,623,585
-! FOR EACH  X = 0.0, 0.1, 0.2, 0.35, 0.5, 0.7, 0.8, 0.9, 1-Z
-! increasing order of Z = 0.0, 0.00001, 0.00003, 0.0001, 0.0003,
-!     (16)               0.001, 0.002, 0.004, 0.01, 0.02, 0.03,
-!                        0.04, 0.05, 0.06, 0.08, 0.10
-! descending order of logt 4.5-3.5 in 0.05 dex increments
-!     (85)                 3.5-2.9 in 0.01 dex increments
-!                          2.9-2.7 in 0.05 dex increments
-! ascending order of  logr -8.0 -7.5 -7.0 -6.5 -6.0 -5.5 -5.0 -4.5 -4.0 -3.5
-!     (19)                -3.0 -2.5 -2.0 -1.5 -1.0 -0.5  0.0  0.5  1.0
-! WHERE R = RHO/T_6**3
-! read in all Z values at fixed X.  Then generate surface X,Z table.
-! Interpolation between compositions is 4-point lagrangian.
-!
-! MHP 8/25 Added file name to subroutine call
-subroutine read_alex06_tables(tbl, alex06_table_path, ierr)
-      type(alex06_table_set), intent(inout) :: tbl
-      integer, intent(out) :: ierr
-
-! the table file's unit
-      integer :: table_unit
-      character(len=256), intent(in) :: alex06_table_path
-
-!     LOCAL ARRAYS
-      real(dp) :: row_logr_check(n_alex06_d), header_x, header_z, row_temp
-! alex06_grid_x/alex06_grid_z/alex06_grid_logt/alex06_grid_logr/
-! alex06_cached_x/alex06_cached_z/alex06_index_x/alex06_index_t/
-! alex06_index_r defaults moved to opacity_tables.f90: DATA can no
-! longer target them here now that they're use-associated.
-      integer :: i, ii, j, jj, k, kk
-      character(len=message_length) :: lines(2)
-      integer :: ios
-      character(len=256) :: iomsg
-
-      call open_table(alex06_table_path, 'Alexander 2006', table_unit, ierr)
-      if (ierr /= 0) return
-!     Read in initial X and Z; ensure that they have the expected values.
-      do i = 1,n_alex06_x-1
-         do ii = 1, n_alex06_z
-!           Index for storing tables : 15 sets of metal abundance with 7 sets
-!           of hydrogen for each.  These are stored in the order (X,Z) of
-!           (0,0),(0,0.1),...(0.9,0),(0.9,0.1).  The final tables are defined
-!           at X = 1-Z except for the 0.1 Z case (already read in at X=0.9).
-!           Header information: X and Z; check for consistency
-            read(table_unit,10,iostat=ios,iomsg=iomsg) header_x, header_z
-            if (read_failed(ios, iomsg, 'Alexander 2006', alex06_table_path, table_unit, ierr)) return
-   10       format(30x,f9.6,7x,f9.6//)
-            if (header_x /= tbl%grid_x(i) .or. header_z /= tbl%grid_z(ii)) then
-               lines = unwritten_line
-               write(lines,15) tbl%grid_x(i), header_x, tbl%grid_z(ii), header_z
-               call kap_terminal(lines)
-   15          format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
-                    1x,'EXPECTED AND ACTUAL X,Z',4f7.2,' RUN STOPPED')
-               close(table_unit)
-               ierr = 1
-               return
-            endif
-            read(table_unit,20,iostat=ios,iomsg=iomsg) (row_logr_check(k),k=1,n_alex06_d)
-            if (read_failed(ios, iomsg, 'Alexander 2006', alex06_table_path, table_unit, ierr)) return
-   20       format(6x,19f7.3)
-            do kk=1,n_alex06_d
-               if (row_logr_check(kk) /= tbl%grid_logr(kk)) then
-                  lines = unwritten_line
-                  write(lines,25) kk, tbl%grid_logr(kk), row_logr_check(kk)
-                  call kap_terminal(lines)
-   25             format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
-                       1x,'EXPECTED AND ACTUAL R',i3,2f7.3,' RUN STOPPED')
-                  ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
-                  close(table_unit)
-                  ierr = 1
-                  return
-               endif
-            end do
-            jj = (i-1)*n_alex06_z+ii
-!           Opacity information at each shell: Check for consistency with T.
-!           Store in a numxz*numt*numr array.
-            do j = n_alex06_t,1,-1
-               read(table_unit,30,iostat=ios,iomsg=iomsg) row_temp, (tbl%full_opacity(jj,j,k),k=1,n_alex06_d)
-               if (read_failed(ios, iomsg, 'Alexander 2006', alex06_table_path, table_unit, ierr)) return
-   30          format(f5.3,1x,19f7.3)
-               if (row_temp /= tbl%grid_logt(j)) then
-                  lines = unwritten_line
-                  write(lines,35) j, tbl%grid_logt(j), row_temp
-                  call kap_terminal(lines)
-   35             format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
-                       1x,'EXPECTED AND ACTUAL T',i3,2f7.3,' RUN STOPPED')
-                  ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
-                  close(table_unit)
-                  ierr = 1
-                  return
-               endif
-            end do
-         end do
-      end do
-!     Final set of X tables are defined at X = 1 - Z and there is not one for
-!     Z = 0.1 (already read in at X=0.9).
-      do ii = 1, n_alex06_z-1
-!        Index for storing tables : 15 sets of metal abundance with 7 sets
-!        of hydrogen for each.  These are stored in the order (X,Z) of
-!        (0,0),(0,0.1),...(0.9,0),(0.9,0.1).  The final tables are defined
-!        at X = 1-Z except for the 0.1 Z case (already read in at X=0.9).
-!        Header information: X and Z; check for consistency
-         read(table_unit,10,iostat=ios,iomsg=iomsg) header_x, header_z
-         if (read_failed(ios, iomsg, 'Alexander 2006', alex06_table_path, table_unit, ierr)) return
-         if (header_x /= (1.0d0 - tbl%grid_z(ii)) .or. &
-              header_z /= tbl%grid_z(ii)) then
-            lines = unwritten_line
-            write(lines,15) 1.0d0 - tbl%grid_z(ii), header_x, tbl%grid_z(ii), header_z
-            call kap_terminal(lines)
-            ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
-            close(table_unit)
-            ierr = 1
-            return
-         endif
-         read(table_unit,20,iostat=ios,iomsg=iomsg) (row_logr_check(k),k=1,n_alex06_d)
-         if (read_failed(ios, iomsg, 'Alexander 2006', alex06_table_path, table_unit, ierr)) return
-         do kk=1,n_alex06_d
-            if (row_logr_check(kk) /= tbl%grid_logr(kk)) then
-               lines = unwritten_line
-               write(lines,25) kk, tbl%grid_logr(kk), row_logr_check(kk)
-               call kap_terminal(lines)
-               ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
-               close(table_unit)
-               ierr = 1
-               return
-            endif
-         end do
-         jj = (n_alex06_x-1)*n_alex06_z+ii
-!        Opacity information at each shell: Check for consistency with T.
-!        Store in a numxz*numt*numr array.
-         do j = n_alex06_t,1,-1
-            read(table_unit,30,iostat=ios,iomsg=iomsg) row_temp, (tbl%full_opacity(jj,j,k),k=1,n_alex06_d)
-            if (read_failed(ios, iomsg, 'Alexander 2006', alex06_table_path, table_unit, ierr)) return
-            if (row_temp /= tbl%grid_logt(j)) then
-               lines = unwritten_line
-               write(lines,35) j, tbl%grid_logt(j), row_temp
-               call kap_terminal(lines)
-               ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
-               close(table_unit)
-               ierr = 1
-               return
-            endif
-         end do
-      end do
-      close(unit=table_unit)
-!     Initialize fixed Z,X table, and the cache that names its
-!     composition (X = 0, Z = 0: a second kap_init starts from it too)
-      do i = 1,n_alex06_t
-         do j = 1,n_alex06_d
-            tbl%opacity(i,j)=tbl%full_opacity(1,i,j)
-         end do
-      end do
-      tbl%cached_x = 0.0d0
-      tbl%cached_z = 0.0d0
-end subroutine read_alex06_tables
 
 !----------------------------------------------------------------------
 ! build_alex06_composition_table (formerly alex06tab)
 !----------------------------------------------------------------------
-! Generates the fixed-(X,Z) table for the Alexander 2006 low-
-! temperature opacities by 4-point Lagrangian interpolation, first in
-! Z then in X, from the full set of tables read by read_alex06_tables.f90.
+! Builds tbl%opacity, the table (in log T and log R) at one composition,
+! by 4-point Lagrange interpolation of the full set in Z, then in X. A
+! composition off the tables (X < 0 or > 1 - Z; Z < 0 or more than one
+! node step above the top Z) returns ierr = 1, the table untouched.
 ! The table is built at (hydrogen_fraction, metal_fraction); the caller
 ! (compute_alex06_opacity) records that composition as the cache's only
 ! when the build succeeds.
@@ -210,7 +53,6 @@ subroutine build_alex06_composition_table(tbl, hydrogen_fraction, metal_fraction
       integer :: i, j, iz, k, kk, kk2, kk3, kk4
       character(len=message_length) :: lines(1)
 
-!     Xe = desired X; ze = desired Z
       ierr = 0
       x_max = 1.0d0 - metal_fraction
 !     Check that the requested composition is inside table bounds
@@ -219,26 +61,24 @@ subroutine build_alex06_composition_table(tbl, hydrogen_fraction, metal_fraction
          write(lines,5) hydrogen_fraction, metal_fraction
          call kap_terminal(lines)
     5    format('ILLEGAL COMPOSITION (X,Z) = ',2f6.2,' IN ALEX06.RUN STOPPED')
-! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
          ierr = 1
          return
-      endif
+      end if
 !     Permit extrapolation in Z by up to 1 table element
       z_max = tbl%grid_z(n_alex06_z)+(tbl%grid_z(n_alex06_z)-tbl%grid_z(n_alex06_z-1))
       if (metal_fraction < 0.0d0 .or. metal_fraction > z_max) then
          lines = unwritten_line
          write(lines,5) hydrogen_fraction, metal_fraction
          call kap_terminal(lines)
-! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
          ierr = 1
          return
-      endif
+      end if
 !     Find 4 nearest tables in Z.
       do i = 3,n_alex06_z-2
          if (metal_fraction <= tbl%grid_z(i)) then
             iz = i - 2
             exit
-         endif
+         end if
       end do
       if (i > (n_alex06_z-2)) then
       iz = n_alex06_z - 3
@@ -248,7 +88,7 @@ subroutine build_alex06_composition_table(tbl, hydrogen_fraction, metal_fraction
          if (hydrogen_fraction <= tbl%grid_x(i)) then
             tbl%index_x = i - 2
             exit
-         endif
+         end if
       end do
       if (i > (n_alex06_x-2)) then
 !     No table for X > 0.9 if Z =0.10 or more
@@ -256,7 +96,7 @@ subroutine build_alex06_composition_table(tbl, hydrogen_fraction, metal_fraction
          tbl%index_x = n_alex06_x - 4
       else
          tbl%index_x = n_alex06_x - 3
-      endif
+      end if
       end if
 !     Interpolation factors for Z
       do i = 1,4
@@ -264,10 +104,9 @@ subroutine build_alex06_composition_table(tbl, hydrogen_fraction, metal_fraction
       end do
       interp_target = metal_fraction
       call interp(interp_nodes, weight_z, x_eval=interp_target)
-!     The difference in the number of tables for the Z=0.1 case requires some
-!     care in X interpolation.  First 3 X cases can be treated normally.
-!     (2026 R3: the four Z tables kk, kk+1, kk+2, kk+3 are consecutive
-!     here, so the sum is lagrange4 over the contiguous slice.)
+!     The Z = 0.1 case has one table fewer (its X = 1 - Z table is the
+!     X = 0.9 one), which only the fourth X position meets: the first
+!     three take the four consecutive Z slots of their X.
       do k = 1,3
          kk = n_alex06_z*(tbl%index_x+k-2)+iz
          do i = 1,n_alex06_t
@@ -276,8 +115,9 @@ subroutine build_alex06_composition_table(tbl, hydrogen_fraction, metal_fraction
             end do
          end do
       end do
-!     If in the high Z and high X domain the top table is X = 1-Z (entry numx) except
-!     for the Z=0.10 case (where the X=0.9 case doubles as the X=1-Z case).
+!     At the top X position and the top Z stencil, the Z = 0.1 table of
+!     the X = 1 - Z family is the X = 0.9 table (slot n_alex06_z (X index
+!     + 2), its first).
       if (tbl%index_x == n_alex06_x-3.and.iz == n_alex06_z-3) then
 !        Use different indexing for the last table
          kk = n_alex06_z*(tbl%index_x+2)+iz
@@ -289,7 +129,7 @@ subroutine build_alex06_composition_table(tbl, hydrogen_fraction, metal_fraction
          kk2 = kk + 1
          kk3 = kk2 + 1
          kk4 = kk3 + 1
-      endif
+      end if
 !     (Inline rather than lagrange4: kk4 is not kk+3 in the Z=0.10 case.)
       do i = 1,n_alex06_t
          do j = 1,n_alex06_d
@@ -310,7 +150,7 @@ subroutine build_alex06_composition_table(tbl, hydrogen_fraction, metal_fraction
          interp_nodes(4) = 1.0d0-metal_fraction
       else
          interp_nodes(4) = tbl%grid_x(tbl%index_x+3)
-      endif
+      end if
       interp_target = hydrogen_fraction
       call interp(interp_nodes, weight_x, x_eval=interp_target)
       do i = 1,n_alex06_t
@@ -323,10 +163,12 @@ end subroutine build_alex06_composition_table
 !----------------------------------------------------------------------
 ! compute_alex06_opacity (formerly getalex06)
 !----------------------------------------------------------------------
-! MHP 3/09 Computes Alexander 2006 (Ferguson et al. 2005) low-
-! temperature opacities by 4-point Lagrangian interpolation in log T
-! and log R = rho/T6**3, reloading the fixed-(X,Z) table via
-! build_alex06_composition_table.f90 whenever the requested composition changes.
+! The opacity at (log rho, log T, X, Z) and its log derivatives, by
+! 4-point Lagrange interpolation in log T and log R = log rho - 3 log T6
+! of the table at the composition, rebuilt (build_alex06_composition_table)
+! when X or Z moves more than alex_composition_tol from the cache's. Above
+! the top log R the opacity is extrapolated linearly from the last two
+! columns.
 subroutine compute_alex06_opacity(tbl, log10_density, log10_temperature, hydrogen_fraction, &
      metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr)
       type(alex06_table_set), intent(inout) :: tbl
@@ -353,7 +195,7 @@ subroutine compute_alex06_opacity(tbl, log10_density, log10_temperature, hydroge
          if (ierr /= 0) return
          tbl%cached_z = metal_fraction
          tbl%cached_x = hydrogen_fraction
-      endif
+      end if
 !     Compute R for grid point
       logr = log10_density - 3.0d0*(log10_temperature-6.0d0)
 !     Insure that index IT is within the required array bounds
@@ -378,7 +220,7 @@ subroutine compute_alex06_opacity(tbl, log10_density, log10_temperature, hydroge
          logr = tbl%grid_logr(n_alex06_d)
       else
          extrapolate_linear = .false.
-      endif
+      end if
       do i = 1,4
          interp_nodes(i) = tbl%grid_logr(tbl%index_r+i-1)
       end do
@@ -403,7 +245,7 @@ subroutine compute_alex06_opacity(tbl, log10_density, log10_temperature, hydroge
                  (tbl%grid_logr(n_alex06_d)-tbl%grid_logr(n_alex06_d-1))
          end do
          logr = saved_r
-      endif
+      end if
 !     Interpolate in T
       log10_opacity = lagrange4(weight_t, opacity_row)
 !     D ln cappa/d ln T at fixed R
@@ -454,5 +296,19 @@ subroutine lookup_alex06(settings, tables, point, res, in_table, ierr)
            res%opacity, res%log10_opacity, res%dlnkap_dlnrho, res%dlnkap_dlnt, ierr)
       in_table = ierr == 0
 end subroutine lookup_alex06
+
+!----------------------------------------------------------------------
+! Sources
+!----------------------------------------------------------------------
+! The tables: Ferguson et al. (2005, ApJ 623, 585), the low-temperature
+! opacities YREC calls Alexander 2006 (input/opacity/molecular/
+! alexmol06gs98.tab, at the GS98 mixture). The code: MHP's F77 READALEX06,
+! ALEX06TAB and GETALEX06 (3/09; the path argument 8/25), converted to
+! Fortran 90 in 2026. Since then: a failed build returns ierr (the F77
+! stopped), the cache is set only after a successful build and reset with
+! the table (M219), the header checks all return ierr and cover all 19
+! columns (M230), the fourth X node is 1 - Z where the table there is
+! (M225), the reads are checked (M170), and the tables are a table set
+! passed in.
 
 end module alex06_opacity

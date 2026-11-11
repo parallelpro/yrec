@@ -9,7 +9,9 @@
 !                                 composition, per Z table
 !     compute_opal92_opacity      the opacity and its log derivatives by
 !                                 interpolation in X, T and R
-! The tables live in opacity_tables (tables(1:2)).
+! The tables, their splines, the surface tables and the lookup's cursors
+! are opal92_table_sets (opacity_tables), which kap_lib holds and passes
+! in. The sources are at the end of the file.
 module opal92_opacity
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use opacity_tables, only: n_opal92_d, n_opal92_t, n_opal92_x, &
@@ -20,125 +22,31 @@ module opal92_opacity
       use numerics_lib, only: findex, natural_spline, splint, &
            compute_spline_coefficients, numerics_status_text
       use kap_messages, only: kap_log, kap_terminal, message_length, unwritten_line
-      use opacity_table_files, only: open_table, read_failed
+      use opal92_reader, only: read_opal92_tables
       use math_lib
       implicit none
       private
       public :: opal92_source
-      public :: read_opal92_tables, build_opal92_surface_table, compute_opal92_opacity
+      public :: prepare_opal92_tables, build_opal92_surface_table, compute_opal92_opacity
 
 contains
 
-!----------------------------------------------------------------------
-! read_opal92_tables
-!----------------------------------------------------------------------
-! DBG 5/94 Modified to read in second opacity table at different Z.
-! Reads the OPAL92 (Lawrence Livermore) opacity table(s) and, via
-! prepare_opal92_tables, builds the spline interpolation coefficients used
-! later by build_opal92_surface_table.f90 and the OPAL92 lookup routine
-! compute_opal92_opacity.
-!
-! Each table is read by the internal read_opal92_table, first the
-! table at opal_table_z1 and then, with use_two_z_tables, the one at
-! opal_table_z2; a table that cannot be opened or is short returns ierr.
-subroutine read_opal92_tables(tables, opal92_table_path, opal92_table2_path, &
-     two_z_tables, ierr)
-! (1) at opal_table_z1 and, with two_z_tables, (2) at opal_table_z2
-      type(opal92_table_set), intent(inout) :: tables(:)
-      character(len=256), intent(in) :: opal92_table_path, opal92_table2_path
-      logical, intent(in) :: two_z_tables
-      integer, intent(out) :: ierr
-!     Local_grid_z is a read-list target that is never used afterwards.
-      real(dp) :: local_grid_z(n_opal92_x)
-      integer :: i, k, density_index, ios
-      real(dp) :: grid_temp_k
-      character(len=256) :: iomsg
-      character(len=message_length) :: lines(1)
-
-      ierr = 0
-      call read_opal92_table(opal92_table_path, tables(1), ierr)
-      if (ierr /= 0) return
-
-! DBG 5/94 Second Opacity Table read here
-      if (two_z_tables) then
-         call read_opal92_table(opal92_table2_path, tables(2), ierr)
-         if (ierr /= 0) return
-      end if
-!
-      call prepare_opal92_tables(tables, two_z_tables, ierr)
-
-      return
-
-contains
-
-! read_opal92_table: read the table at path into tbl: n_opal92_x X
-! tables of n_opal92_t temperature rows each (a shorter file is an error).
-subroutine read_opal92_table(path, tbl, ierr)
-      character(len=256), intent(in) :: path
-      type(opal92_table_set), intent(inout) :: tbl
-      integer, intent(inout) :: ierr   ! left at the caller's 0 on success
-      integer :: unit
-
-      call open_table(path, 'OPAL 1992', unit, ierr)
-      if (ierr /= 0) return
-      do i=1,n_opal92_x
-!        Read grid point for abundance
-!        read number of grids for density, and temperature
-        read(unit,190,iostat=ios,iomsg=iomsg) tbl%grid_x(i), local_grid_z(i)
-        if (read_failed(ios, iomsg, 'OPAL 1992', path, unit, ierr)) return
-  190   format(33x,f7.4,2x,f7.4)
-         read(unit,'()',iostat=ios,iomsg=iomsg)
-         if (read_failed(ios, iomsg, 'OPAL 1992', path, unit, ierr)) return
-!        Read  log(density/temperature**3)
-            read(unit, 200, iostat=ios, iomsg=iomsg) (tbl%grid_logr(density_index), density_index=1, n_opal92_d)
-            if (read_failed(ios, iomsg, 'OPAL 1992', path, unit, ierr)) return
-  200   format (6x, 17f7.1)
-!        Read grid values for temperature, and opacity table
-         do k=1, n_opal92_t
-         read(unit,196,iostat=ios,iomsg=iomsg) grid_temp_k, &
-              (tbl%log10_opacity(k+(i-1)*n_opal92_t,density_index),density_index=1,n_opal92_d)
-         if (read_failed(ios, iomsg, 'OPAL 1992', path, unit, ierr)) return
-         tbl%grid_logt(k)=log10(grid_temp_k)
-         end do
-  196    format(18f7.3)
-!
-      end do
-!     Close the table we have read
-      close(unit,iostat=ios)
-      if (ios /= 0) then
-         lines = unwritten_line
-         write(lines,*) 'read_opal92_tables: error closing table file'
-         call kap_terminal(lines)
-         ierr = 1
-         return
-      end if
-      tbl%num_temps = n_opal92_t
-      tbl%num_x = n_opal92_x
-end subroutine read_opal92_table
-
-end subroutine read_opal92_tables
 
 !----------------------------------------------------------------------
 ! prepare_opal92_tables (formerly opal92_table_prep)
 !----------------------------------------------------------------------
-! DBG 5/94 Modified to include ZRAMP and ZDIFF stuff (second opacity
-! table). Builds the cubic-spline coefficients (in density) for the
-! OPAL92 opacity tables, and for the second (different-Z) OPAL92
-! table set when use_two_z_tables is set. Note the two strides for
-! the same logical row: index1 uses the number of temperature rows
-! actually read, while log10_opacity is addressed with the fixed
-! n_opal92_t stride that read_opal92_tables stores with.
-!
-! 2026 wave 3 (R5): the verbatim second-Z loop nest (on
-! tables(2)) became the internal prep_table below,
-! called once per set in the original order; the loop's working
-! scalars stay host-associated. The stdout diagnostic no longer says
-! "second".
+! Builds the natural cubic splines in log R of every (X, T) row of the
+! table(s) (the internal prep_table), as coefficients per interval: the
+! second table's with two_z_tables. Note the two strides for the same
+! row: index1 uses the number of temperature rows read, while
+! log10_opacity is addressed with the fixed n_opal92_t stride that
+! read_opal92_tables stores with (the two are equal: a short table is
+! refused).
 subroutine prepare_opal92_tables(tables, two_z_tables, ierr)
       type(opal92_table_set), intent(inout) :: tables(:)
       logical, intent(in) :: two_z_tables
       integer, intent(out) :: ierr
-! MHP 10/02 made array dimensions consistent
+! (np: the coefficient array's interval count, more than any row's)
       integer, parameter :: np = 100
 
       real(dp) :: spline_work(4,np), density_nodes(n_opal92_d), &
@@ -151,8 +59,6 @@ subroutine prepare_opal92_tables(tables, two_z_tables, ierr)
 
       call prep_table(tables(1), ierr)
       if (ierr /= 0) return
-!
-! DBG 5/94 ZRAMP stuff
       if (two_z_tables) then
          call prep_table(tables(2), ierr)
       end if
@@ -173,7 +79,7 @@ subroutine prep_table(tbl, ierr)
         do id = 1,n_opal92_d
           chkd = tbl%grid_logr(id)
           chko = tbl%log10_opacity(it+n_opal92_t*(ix-1),id)
-!>>>> Check the empty region
+! (an empty cell)
           if (chko <= opal92_missing_opacity) cycle
           if (jd <= 0) then
              tbl%density_start_index(index1) = id
@@ -184,10 +90,9 @@ subroutine prep_table(tbl, ierr)
                 ierr = 1
                 return
              end if
-          endif
+          end if
           jd = jd + 1
           density_nodes(jd) = chkd
-!>>>> Check the opacity value in the table
           row_opacity(jd) = chko
         end do
         tbl%density_count(index1) = jd
@@ -211,20 +116,13 @@ end subroutine prepare_opal92_tables
 !----------------------------------------------------------------------
 ! build_opal92_surface_table (formerly opal92_surface_table)
 !----------------------------------------------------------------------
-! this is the 4th table of the lawrence Livermore opacity tables.
-! It contains the opacities for the surface abundances of X and Z, and
-! is used to avoid many interpolations to the same X. Only the
-! LOG OPACITY IS KEPT; THE DERIVATIVES RETURNED BY interpolate_opal92_2d
-! are not used here.
-!
-! 2026 wave 3 (R5): the verbatim second-Z half (on opacity_table%
-! opal92(2), Z = opal_table_z2, through the former
-! opal92_interp2d_z2) became the internal build_surface_table below,
-! called once per set in the original order. Working scalars stay
-! host-associated (rho_search_index in particular is the warm-start
-! cursor handed to interpolate_opal92_2d and carries over from the first
-! set into the second exactly as before). The stdout diagnostics no
-! longer say "second-Z".
+! Builds each table set's surface table (its "4th X table", at the
+! envelope X, so that lookups there need no X interpolation): log kappa
+! at every (T, log R) node interpolated linearly in X between the two X
+! tables around the envelope X, then splined in log R (only log kappa is
+! kept; interpolate_opal92_2d's derivatives are not used here). The
+! internal build_surface_table does one set; the density cursor
+! rho_search_index carries from the first set into the second.
 subroutine build_opal92_surface_table(tables, hydrogen_fraction, table_z, &
      two_z_tables, ierr)
 ! (1) at table_z(1) and, with two_z_tables, (2) at table_z(2)
@@ -232,7 +130,7 @@ subroutine build_opal92_surface_table(tables, hydrogen_fraction, table_z, &
       type(opal92_table_set), intent(inout) :: tables(:)
       real(dp), intent(in) :: table_z(:)
       logical, intent(in) :: two_z_tables
-! MHP 10/02 made array dimensions consistent
+! (np: the coefficient array's interval count, more than any row's)
       integer, parameter :: np = 100
 
       real(dp), intent(in) :: hydrogen_fraction
@@ -269,7 +167,7 @@ subroutine build_surface_table(tbl, table_z, ierr)
       real(dp), intent(in) :: table_z
       integer, intent(inout) :: ierr   ! left at the caller's 0 on success
 
-!     Keep the composition of the 4th table.
+!     the surface table's composition
       tbl%surface_x=hydrogen_fraction
       tbl%surface_z=table_z
       call findex(tbl%grid_x, n_opal92_x, hydrogen_fraction, x_index)
@@ -327,35 +225,24 @@ end subroutine build_opal92_surface_table
 !----------------------------------------------------------------------
 ! compute_opal92_opacity (formerly opal92_interp3d)
 !----------------------------------------------------------------------
-! this is the interpolation facility for the Livermore (OPAL92)
-! OPACITY TABLES USING CUBIC SPLINE INTERPOLATION. Companion routines
-! in this directory: read_opal92_tables (read), prepare_opal92_tables
-! (spline coefficients), build_opal92_surface_table (surface X,Z table),
-! interpolate_opal92_2d (2D in T,rho).
-!
-! 3D interpolation (X, T, rho) in the OPAL92 opacity tables. Finds
-! the nearest X table(s), converts to the table's internal (T6,
-! rho/T6**3) coordinates, calls interpolate_opal92_2d for the 2D
-! interpolation, and linearly extrapolates/interpolates in X if
-! needed.
-!
-! 2026 wave 3 (R5): tbl is the table set (tables(1) or
-! (2)); the former opal92_interp3d_z2.f90 was a member-for-member
-! rename of this file (its two stdout messages named it; its grdnt
-! line was only continued differently) and is deleted.
+! The opacity at (log rho, log T, X) and its log derivatives from table
+! set tbl (the first or the second Z's): in the table's coordinates
+! (log T6 and log R = log rho - 3 log T6), by cubic splines in log R and
+! log T (interpolate_opal92_2d) in one X table where X matches it (the
+! surface table, or a table of the grid), else in the two X tables
+! around X, interpolated (or extrapolated) linearly in X. A point off
+! the tables returns ierr = 1.
 subroutine compute_opal92_opacity(tbl, log10_density, log10_temperature, hydrogen_fraction, &
      opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr)
 
       type(opal92_table_set), intent(inout) :: tbl
       real(dp), intent(in) :: log10_density, log10_temperature, &
            hydrogen_fraction
-! 2026 ierr campaign: failures return via ierr (kap_eval gates).
       integer, intent(out) :: ierr
       real(dp), intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
 
-! tbl%index_x/index_t/index_rho (the warm-start cursors) default to
-! 1 in opacity_tables.f90 (opal92_table_set).
+! (tbl%index_x, index_t and index_rho are the warm-start cursors)
       logical :: single_x_table
       real(dp) :: t6, rhot3
       integer :: im1
@@ -365,23 +252,22 @@ subroutine compute_opal92_opacity(tbl, log10_density, log10_temperature, hydroge
 
       ierr = 0
       single_x_table = .false.
-! Independent parameter in Livermore opacity table;
-! T6 = LOG10(T/10E6)
+! the table's coordinates: t6 = log10(T/1e6)
       t6 = log10_temperature - 6.0d0
-! RHOT3 = LOG10(RHO/(T/10E6)**3)
+! and rhot3 = log R = log10(rho/T6**3)
       rhot3 = log10_density - 3.0d0*t6
 
       if (abs(tbl%surface_x-hydrogen_fraction) <= opal92_x_match_tol) then
          tbl%index_x = 4
          single_x_table = .true.
-      endif
+      end if
       if (.not. single_x_table) then
       do im1 = 1,n_opal92_x
          if (abs(tbl%grid_x(im1)-hydrogen_fraction) <= opal92_x_match_tol) then
             tbl%index_x = im1
             single_x_table = .true.
             exit
-         endif
+         end if
       end do
       end if
       if (.not. single_x_table) then
@@ -423,8 +309,8 @@ subroutine compute_opal92_opacity(tbl, log10_density, log10_temperature, hydroge
          qodi = (qod1-qod0)*grdnt + qod0
          qoti = (qot1-qot0)*grdnt + qot0
          opacity = exp10(log10_opacity)
-      endif
-! Conversion from the derivative with constant RHOT3 to constant rho
+      end if
+! from the derivative at constant log R to that at constant rho
       dlnkap_dlnrho = qodi
       dlnkap_dlnt = qoti - 3.0d0*dlnkap_dlnrho
 
@@ -433,25 +319,20 @@ end subroutine compute_opal92_opacity
 !----------------------------------------------------------------------
 ! interpolate_opal92_2d (formerly opal92_interp2d)
 !----------------------------------------------------------------------
-! two dimensional interpolation for opacity and the derivatives
-! (OPAL92 tables). abund_index, temp_index, and dens_index are the
-! nearest grid point of abundance, temperature, and density found by
-! compute_opal92_opacity. opacity is opacity, log10_opacity is log(opacity),
-! dlnkap_dlnrho is the partial derivative of opacity wrt density,
-! dlnkap_dlnt is the partial derivative of opacity wrt temperature.
-!
-! 2026 wave 3 (R5): tbl is the table set (tables(1) or
-! (2)); the former opal92_interp2d_z2.f90 was a member-for-member
-! rename of this file (its two stdout messages named it) and is
-! deleted.
+! The opacity in one X table of tbl (abund_index; 4 is the surface
+! table) at (log T6, log R) = (temperature, density): on up to six T rows
+! around temp_index, log kappa and its log R derivative from the row's
+! spline in log R (extrapolated linearly outside the row), then natural
+! splines in log T6 through those, for log kappa, dlnkap_dlnt (at
+! constant log R) and dlnkap_dlnrho. dens_index is the density cursor.
+! A row that does not start at the first density, or a log T6 outside
+! the rows, returns ierr = 1.
 subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_index, &
      dens_index, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr)
 
 
       type(opal92_table_set), intent(inout) :: tbl
       real(dp), intent(in) :: temperature, density
-! 2026 ierr campaign: interpolation/extrapolation failures return
-! via ierr (kap_eval gates); the historical stops are gone.
       integer, intent(out) :: ierr
       integer, intent(in) :: abund_index, temp_index
       integer, intent(inout) :: dens_index
@@ -476,7 +357,7 @@ subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_in
          mm1 = abund_index
       else
          mm1 = tbl%surface_x_index
-      endif
+      end if
       jt = 0
       do it = its,itf
          index1 = it + (mm1-1)*tbl%num_temps
@@ -491,7 +372,7 @@ subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_in
          ndf = ndss + tbl%density_count(index1) - 1
          call findex(tbl%grid_logr, ndf, density, dens_index)
          if (dens_index < 0) then
-! Out side then  linear extrapolation
+! outside the row: linear extrapolation
             dens_index = -dens_index
             knot = dens_index - ndss + 1
             index2 = 4*(knot-1)
@@ -502,11 +383,11 @@ subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_in
             else
                c1 = tbl%surface_spline_coeffs(it,index2+1)
                c2 = tbl%surface_spline_coeffs(it,index2+2)
-            endif
+            end if
             ol0 = c2*dx + c1
             qodi = c2
          else
-! In side then  spline interpolation
+! inside: the spline
             knot = dens_index - ndss + 1
             index2 = 4*(knot-1)
             dx = density - tbl%grid_logr(dens_index)
@@ -520,13 +401,13 @@ subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_in
                c2 = tbl%surface_spline_coeffs(it,index2+2)
                c3 = tbl%surface_spline_coeffs(it,index2+3)
                c4 = tbl%surface_spline_coeffs(it,index2+4)
-            endif
+            end if
 ! Interpolation for opacity(ol) in the entry d and the each T-grid
 ! estimates the partial derivative of ol wrt d
 ! evaluates the interpolation value in the sub-range we determined.
             ol0 = ((c4*dx+c3)*dx+c2)*dx + c1
             qodi = (3.0d0*c4*dx+2.0d0*c3)*dx + c2
-         endif
+         end if
 !
          jt = jt + 1
          xt(jt) = tbl%grid_logt(it)
@@ -540,8 +421,7 @@ subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_in
          ierr = 1
          return
       end if
-!! Interpolation for the opacity in the entry T and d.
-!! Get the partial derivative of ol wrt T.
+! log kappa and its T derivative from the spline in log T6
       call natural_spline(xt, yto, jt, second_derivs)
       call splint(xt, yto, jt, second_derivs, temperature, ol00, ierr, dy=dlnkap_dlnt)
       if (ierr /= 0) then
@@ -552,8 +432,7 @@ subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_in
       end if
       log10_opacity = ol00
       opacity = exp10(log10_opacity)
-! QOTF = D LN(O)/D LN(T)
-!! find the partial derivative value of ol wrt d in the given T and d
+! and the log R derivative, from its own spline in log T6
       call natural_spline(xt, aqod, jt, second_derivs)
       call splint(xt, aqod, jt, second_derivs, temperature, dlnkap_dlnrho, ierr)
       if (ierr /= 0) then
@@ -562,7 +441,6 @@ subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_in
          call kap_log(lines)
          return
       end if
-! QODF = D LN(O)/D LN(D)
 
 end subroutine interpolate_opal92_2d
 
@@ -596,6 +474,8 @@ subroutine load_opal92(settings, paths, envelope_hydrogen_fraction, tables, ierr
 
       call read_opal92_tables(tables%opal92, paths%opal92, paths%opal92_z2, &
            settings%use_two_z_tables, ierr)
+      if (ierr /= 0) return
+      call prepare_opal92_tables(tables%opal92, settings%use_two_z_tables, ierr)
       if (ierr /= 0) return
       call build_opal92_surface_table(tables%opal92, envelope_hydrogen_fraction, &
            [settings%opal_table_z1, settings%opal_table_z2], &
@@ -650,5 +530,16 @@ subroutine core_lookup_opal92(settings, tables, point, res, table_z, ierr)
            res%log10_opacity, res%dlnkap_dlnrho, res%dlnkap_dlnt, ierr)
       table_z = settings%opal_table_z1
 end subroutine core_lookup_opal92
+
+!----------------------------------------------------------------------
+! Sources
+!----------------------------------------------------------------------
+! The tables: the 1992 OPAL opacities (Rogers & Iglesias 1992, ApJS 79,
+! 507), one file per Z in input/opacity/atomic/legacy/opal92/. The code:
+! the F77 SETLLO, LL4TH, YLLO2D and their companions, with DBG's second
+! Z table (5/94) and MHP's array dimensions (10/02), converted to Fortran
+! 90 in 2026: the two tables' copies one routine on a table set passed
+! in, the opens with status 'old' and a short table an error (M220), the
+! findex guesses defined (M104).
 
 end module opal92_opacity

@@ -76,8 +76,8 @@ subroutine kap_get(log10_density, log10_temperature, &
      hydrogen_fraction, metal_fraction, res, ion_fraction, ierr)
       real(dp), intent(in) :: log10_density, log10_temperature, &
            hydrogen_fraction, metal_fraction
-      real(dp), intent(inout) :: res(num_kap_results)
-      real(dp), intent(inout) :: ion_fraction(3)
+      real(dp), intent(inout) :: res(:)
+      real(dp), intent(inout) :: ion_fraction(:)
       integer, intent(out) :: ierr
       type(kap_point) :: point
       type(kap_result) :: result

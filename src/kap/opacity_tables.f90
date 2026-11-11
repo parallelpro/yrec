@@ -24,7 +24,7 @@ module opacity_tables
 ! what the family modules and kap_lib use (each imports its names)
       public :: alex_composition_tol, alex94_surface_slot, &
            kurucz_max_num_densities, kurucz_max_num_temps, kurucz_table_set, &
-           laol_opacity_cap, laol_table_set, n_alex06_d, n_alex06_t, &
+           laol_log10_opacity_cap, laol_opacity_cap, laol_table_set, n_alex06_d, n_alex06_t, &
            n_alex06_x, n_alex06_z, n_alex94_d, n_alex94_t, n_alex94_x, &
            n_alex94_z, n_laol_rho, n_laol_t, n_laol_x, n_opal92_d, &
            n_opal92_t, n_opal92_x, n_opal95_d, n_opal95_t, n_opal95_tables, &
@@ -50,11 +50,9 @@ module opacity_tables
            kurucz_max_num_densities = 50, kurucz_num_x_tables = 1, &
            kurucz_num_x_temp_entries = kurucz_max_num_temps*kurucz_num_x_tables, &
            kurucz_num_spline_coeffs = 4*kurucz_max_num_densities
-! OPAL95 opacity table dimensions. n_opal95_xz is the SLOT count of
-! the unpacked (13 Z rows x 10 X columns) layout used by read_opal95_tables and
-! build_opal95_fixed_z_table (slot = start_index(iz) + ix), not the number
-! of tables in the file (n_opal95_tables = 126). 2026 (bugsweep
-! Batch 2): was 126 with a packed start_index -- see below.
+! OPAL95 opacity table dimensions. n_opal95_xz is the slot count of the
+! unpacked layout (13 Z rows of 10 X slots, slot = table_start_index(iz)
+! + ix), not the number of tables in the file (n_opal95_tables = 126).
       integer, parameter :: n_opal95_t = 70, n_opal95_d = 19, &
            n_opal95_x = 10, n_opal95_z = 13, n_opal95_xz = 130
 ! Number of tables in an OPAL95 table file (read_opal95_tables reads exactly this
@@ -69,9 +67,9 @@ module opacity_tables
 ! LAOL89 table dimensions (array extents; the file-size checks in
 ! read_laol_tables/read_pure_z_table accept at most 11 X columns).
       integer, parameter :: n_laol_x = 12, n_laol_rho = 104, n_laol_t = 52
-! LAOL89 opacity cap returned by compute_laol_opacity/compute_pure_z_opacity when the
-! interpolated log10(opacity) overflows.
-      real(dp), parameter :: laol_opacity_cap = 1.0d35
+! The LAOL89 lookups' cap: where the interpolated log10 kappa exceeds
+! laol_log10_opacity_cap, kappa is laol_opacity_cap (cm^2/g)
+      real(dp), parameter :: laol_opacity_cap = 1.0d35, laol_log10_opacity_cap = 35.0d0
 ! The Potekhin conductive table's grid: log T, log rho, and the ion
 ! charges (log Z)
       integer, parameter, public :: cond_n_temp = 19, cond_n_rho = 64, &
@@ -83,19 +81,17 @@ module opacity_tables
       real(dp), parameter :: opal92_x_match_tol = 1.0d-5
       real(dp), parameter :: opal95_composition_tol = 1.0d-4
 
-! kurucz_table_set: one Kurucz90 molecular-opacity table (former
-! common/gkrz/, krz/, kipm/, intpl2/ and their gkrz2/, krz2/, kipm2/,
-! intpl22/ second-Z mirrors). 2026 wave 3 (R5): the two member sets
-! kurucz_*/kurucz2_* became opacity_table%kurucz(1)/(2) so that one
-! reader/spliner/interpolator serves both. Component names are the
-! former kurucz_* names with the prefix dropped; shapes unchanged.
-! check_range: kurucz.f90's original early-out (skip the table above
-! log rho = -3 or log T = 4.1) was never in kurucz2.f; the merged
-! kurucz() applies it only when this is .true. (read_kurucz_tables
-! clears it for set 2).
+! kurucz_table_set: one Kurucz 1990 table (the first or the second Z's):
+! its T grid, each row's densities and opacities, the rows' splines in
+! log rho, and the lookup's cursors (ix_t, ix_rho). check_range: the
+! lookup's early return above log rho = -3 or log T = 4.1, the first
+! table's only, as in the F77 code (read_kurucz_tables clears it for the
+! second).
       type, public :: kurucz_table_set
            real(dp) :: grid_logt(kurucz_max_num_temps)
-           real(dp) :: log10_opacity(kurucz_num_x_temp_entries,kurucz_max_num_densities), &
+! opacity: kappa (cm^2/g) as read (the files' log10, at no
+! microturbulence, taken to kappa); log10_rho: the row's densities
+           real(dp) :: opacity(kurucz_num_x_temp_entries,kurucz_max_num_densities), &
                 log10_rho(kurucz_num_x_temp_entries,kurucz_max_num_densities)
            integer :: num_temps
            integer :: ix_t = 1, ix_rho = 1
@@ -105,16 +101,11 @@ module opacity_tables
            logical :: check_range = .true.
       end type kurucz_table_set
 
-! laol_table_set: one LAOL89 opacity table (former common/nwlaol/,
-! slaol/ and their nwlaol2/, slaol2/ second-Z mirrors). 2026 wave 3
-! (R5): the two member sets laol_*/slaol_* and laol2_*/slaol2_*
-! became opacity_table%laol(1)/(2) so that one reader/spliner/
-! interpolator serves both. opacity, grid_x, grid_rho, grid_t (build_laol_splines
-! converts grid_t to log10 in place) and the extents num_x/num_rho/
-! num_t are the table as read by read_laol_tables; slaol_* are the
-! spline-prepared rows. Shapes unchanged. table_number (1 or 2,
-! read_laol_tables sets it) selects the "#2"/"SECOND" wording of the
-! run-log diagnostics that named the table in the former clones.
+! laol_table_set: one LAOL89 table (the first or the second Z's): the
+! table as read (opacity, grid_x, grid_rho in g/cm^3, grid_t, which
+! build_laol_splines converts to log10 T in place, and the extents), the
+! rows' splines in log rho (slaol_*), and table_number (2 for the second
+! Z's, whose run-log lines say "#2" and "SECOND").
       type, public :: laol_table_set
            real(dp) :: opacity(n_laol_x,n_laol_rho,n_laol_t), &
                 grid_x(n_laol_x), grid_t(n_laol_t), grid_rho(n_laol_rho)
@@ -129,19 +120,11 @@ module opacity_tables
            real(dp) :: log_extrapolation_tolerance
       end type laol_table_set
 
-! opal92_table_set: one OPAL92 (Livermore) opacity table set (former
-! common/gllot/, llot/, lintpl/, llot4/, kipmll/ and their gllot2/,
-! llot2/, lintpl2/, llot42/, kipmll2/ second-Z mirrors). 2026 wave 3
-! (R5): the two member sets opal92_*/opal92_*_z2 became
-! opacity_table%opal92(1)/(2) so that one reader/prep/surface-table/
-! interpolator serves both. Component names are the former opal92_*
-! names with the prefix dropped; shapes unchanged. index_x/index_t/
-! index_rho are the warm-start cursors: the first set's were
-! DATA-initialized to 1 (kipmll), the second set's never were
-! (kipmll2, so 0 as static storage); both now start at 1 -- findex
-! resets any cursor outside 1..n to 1 before using it, and every
-! read of these cursors goes through findex first, so 0 and 1 are
-! indistinguishable.
+! opal92_table_set: one OPAL92 (Livermore) table (the first or the
+! second Z's): its grids, log kappa in (X, T) rows by log R, the rows'
+! splines, the surface table at the envelope X (surface_*), and the
+! lookup's warm-start cursors index_x, index_t and index_rho (findex
+! resets a cursor outside 1..n to 1, so they start at 1).
       type, public :: opal92_table_set
            real(dp) :: grid_logt(n_opal92_t), &
                 grid_x(n_opal92_x), grid_logr(n_opal92_d)
@@ -311,11 +294,11 @@ module opacity_tables
            type(laol_table_set) :: laol(2)
       end type opacity_table_state
 
-! ---- the opacity settings (2026-10) ----
+! ---- the opacity settings ----
 ! Everything kap needs from the run's configuration, in one record,
 ! installed by kap_init (from the star layer's kap_settings_from_star,
-! setup/kap_settings_builder.f90) or set_kap_settings; nothing else
-! writes it.
+! setup/kap_settings_builder.f90) or kap_lib's set_kap_settings, through
+! install_kap_settings; nothing else writes it.
       type, public :: kap_settings_t
 ! the interior tables (OPAL95-format, OPAL92, LAOL89) and the pure-Z
 ! table for helium-burning cores; the molecular tables (Alexander 2006
@@ -338,7 +321,8 @@ module opacity_tables
          real(dp) :: molecular_opacity_logt_min = 0.0d0, &
               molecular_opacity_logt_max = 0.0d0
 ! how far Z may stray from the envelope's when only the surface table
-! is loaded; the LAOL89 extrapolation limit (tollaol)
+! is loaded; the LAOL tables' extrapolation limit, whose natural log is the
+! distance in log rho (laol_z_tolerance, legacy tollaol)
          real(dp) :: metal_fraction_match_tolerance = 0.0d0, &
               laol_extrapolation_tolerance = 0.0d0
       end type kap_settings_t
@@ -374,12 +358,11 @@ end subroutine install_kap_settings
 ! Warm-start search for the first index idx of the 4-point stencil
 ! grid(idx:idx+3) around x, starting from the previous idx: walk down
 ! while x is below grid(idx+2), otherwise walk up, clamping to
-! 1..n-3. 2026 readability: extracted token-for-token from the four
-! identical copies in compute_alex94_opacity (T, R) and compute_alex06_opacity (T, R);
-! callers must pre-clamp idx to 1..n-2 as they did before.
+! 1..n-3 (the Alexander lookups' T and log R searches); callers clamp idx
+! to 1..n-2 first.
 pure subroutine stencil4_locate(grid, n, x, idx)
       integer, intent(in) :: n
-      real(dp), intent(in) :: grid(n), x
+      real(dp), intent(in) :: grid(:), x
       integer, intent(inout) :: idx
       integer :: i
 
@@ -388,7 +371,7 @@ pure subroutine stencil4_locate(grid, n, x, idx)
             if (x > grid(i)) then
                idx = i - 1
                exit
-            endif
+            end if
          end do
          if (i < (2)) then
          idx = 1
@@ -399,23 +382,22 @@ pure subroutine stencil4_locate(grid, n, x, idx)
                idx = i - 2
                idx = min(n-3,idx)
                exit
-            endif
+            end if
          end do
          if (i > n) then
          idx = n - 3
          end if
-      endif
+      end if
 end subroutine stencil4_locate
 
 ! stencil4_locate_opal95
-! The OPAL95 flavour of stencil4_locate (compute_opal95_opacity's T and rho
-! searches): the up/down decision is ".ge. grid(idx+2)", the upward
-! scan stops at n-1 and there is no min() clamp on the way up.
-! Extracted token-for-token; the two flavours are deliberately not
-! merged so that each family keeps its own tie-breaking.
+! The OPAL95 flavour of stencil4_locate (compute_opal95_opacity's T and
+! log R searches): it walks up when x >= grid(idx+2), the upward scan
+! stops at n-1 and there is no min() clamp on the way up. The two are
+! kept apart so that each family keeps its F77 tie-breaking at nodes.
 pure subroutine stencil4_locate_opal95(grid, n, x, idx)
       integer, intent(in) :: n
-      real(dp), intent(in) :: grid(n), x
+      real(dp), intent(in) :: grid(:), x
       integer, intent(inout) :: idx
       integer :: i
 
@@ -424,7 +406,7 @@ pure subroutine stencil4_locate_opal95(grid, n, x, idx)
             if (x < grid(i)) then
                idx = i - 2
                exit
-            endif
+            end if
          end do
          if (i > (n-1)) then
          idx = n - 3
@@ -434,12 +416,12 @@ pure subroutine stencil4_locate_opal95(grid, n, x, idx)
             if (x > grid(i)) then
                idx = i - 1
                exit
-            endif
+            end if
          end do
          if (i < (2)) then
          idx = 1
          end if
-      endif
+      end if
 end subroutine stencil4_locate_opal95
 
 

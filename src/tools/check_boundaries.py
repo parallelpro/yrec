@@ -68,10 +68,9 @@ PUBLIC = {
     # test-only gamma1_at_density and set_eos_settings are used by
     # eos/test/test_eos.f90 from their own modules).
     "eos": {"eos_get", "eos_init", "eos_set_mixture"},
-    # The kap_lib facade entries (kap_get_r is the named-index
-    # result-array variant of kap_get).
-    # kap_get is the named-index result-array query (the former
-    # kap_get_r); the long-form engine kap_eval is domain-internal.
+    # The kap_lib facade: kap_get (the opacity in the named-index result
+    # array), kap_init and kap_update_surface_tables; kap_eval and its
+    # steps are private to kap_lib.
     "kap": {"kap_get", "kap_init", "kap_update_surface_tables"},
     # atm_lib's entries: the table loads, the tabulated surface lookup,
     # the Allard Teff range, and the analytic T-tau relations the star
@@ -214,6 +213,17 @@ STAR_BLIND_FILES = [
     "eos/opal/opal_eos.f90",
     "eos/opal/opal95_eos.f90",
     "eos/mhd/mhd_eos.f90",
+    # the opacities' lookups and their formulas (2026-11-10; test_kap):
+    # each family's lookup and table builders, their table sets passed
+    # in (the families' table readers are apart), and the blends
+    "kap/opacity_blending.f90",
+    "kap/opal95/opal95_opacity.f90",
+    "kap/opal92/opal92_opacity.f90",
+    "kap/laol89/laol_opacity.f90",
+    "kap/alex06/alex06_opacity.f90",
+    "kap/alex94/alex94_opacity.f90",
+    "kap/kurucz90/kurucz_opacity.f90",
+    "kap/conductive/conductive_opacity.f90",
 ]
 
 # Scratch modules that only their own domain may use (2026-10): their
@@ -1168,7 +1178,16 @@ NO_IO_DIRS = ["numerics", "math"]
 # Star-free kernels that are not star-blind files (a domain's kernels,
 # arguments in and results out). Empty to start: each package round adds
 # its kernels here when its messages module lands (PLAN.md, section 4).
-KERNEL_FILES = []
+KERNEL_FILES = [
+    # kap (2026-11-10): the facade and kap_eval's steps, the families'
+    # descriptor and precedence list, and the state's types; the I/O is
+    # the table readers' (kap/*/*_reader.f90, opacity_table_files) and
+    # kap_messages'
+    "kap/kap_lib.f90",
+    "kap/opacity_families.f90",
+    "kap/opacity_source.f90",
+    "kap/opacity_tables.f90",
+]
 
 # Today's covered files that still print, read tables or stop, each with
 # the round that removes the I/O (PLAN.md's rounds). A round deletes its

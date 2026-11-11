@@ -8,7 +8,11 @@
 !                                 fixed-Z tables at the run's Z
 !     build_alex94_surface_table  the fixed-X table at the envelope X
 !     compute_alex94_opacity      the opacity and its log derivatives
-! The tables live in opacity_tables (tbl%*).
+! The tables, the compositions they were built at and the lookup's
+! cursors are an alex94_table_set (opacity_tables), which kap_lib holds
+! and passes in. The controls name this family alex95 (use_alex95_tables,
+! alex95_table_paths), the code after the paper's year. The sources are
+! at the end of the file.
 module alex94_opacity
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use opacity_tables, only: alex_composition_tol, alex94_surface_slot, &
@@ -18,126 +22,21 @@ module alex94_opacity
       use numerics_lib, only: interp, lagrange4
       use physical_constants, only: ln10
       use kap_messages, only: kap_log, message_length, unwritten_line
-      use opacity_table_files, only: open_table, read_failed
+      use alex94_reader, only: read_alex94_tables
       use math_lib
       implicit none
       private
       public :: alex94_source
-      public :: read_alex94_tables, build_alex94_surface_table, compute_alex94_opacity
+      public :: build_alex94_fixed_z_table, build_alex94_surface_table, compute_alex94_opacity
 
 contains
 
-!----------------------------------------------------------------------
-! read_alex94_tables
-!----------------------------------------------------------------------
-! alxtbl
-! Alexander opacities   apj,437,879,1994
-! in each 7 file for X = 0.0, 0.1, 0.2, 0.35, 0.5, 0.7, 0.8
-! descending order of Z = 0.0, 0.00001, 0.00003, 0.0001, 0.0003,
-!     (15)               0.001, 0.002, 0.004, 0.01, 0.02, 0.03,
-!                        0.04, 0.06, 0.08, 0.10
-! descending order of logt  4.10 4.05 4.00 3.95 3.90 3.85 3.80 3.75
-!     (23)                 3.70 3.65 3.60 3.55 3.50 3.45 3.40 3.35
-!                          3.30 3.25 3.20 3.15 3.10 3.05 3.00
-! ascending order of  logr -7.0 -6.5 -6.0 -5.5 -5.0 -4.5 -4.0 -3.5
-!     (17)                -3.0 -2.5 -2.0 -1.5 -1.0 -0.5  0.0  0.5  1.0
-! WHERE R = RHO/T_6**3
-! read in all Z values at fixed X and generate opacity entries at
-! either one or two fixed values of Z.  Then generate surface X table
-! if model has no diffusion.  Interpolation between compositions is
-! 4-point lagrangian.
-!
-! MHP 8/25 Added file name to subroutine call
-subroutine read_alex94_tables(tbl, alex95_table_paths, table_z, ierr)
-      type(alex94_table_set), intent(inout) :: tbl
-! the Z of the fixed-Z tables (alex_table_z1)
-      real(dp), intent(in) :: table_z
-      integer, intent(out) :: ierr
-
-! the table file's unit
-      integer :: table_unit
-      character(len=256), intent(in) :: alex95_table_paths(7)
-
-! --- local arrays ---
-      real(dp) :: row_opacity_temp(n_alex94_d)
-! alex94_grid_x/alex94_grid_z/alex94_grid_logt/alex94_grid_logr/
-! alex94_cached_x/alex94_cached_z/alex94_index_x/alex94_index_t/
-! alex94_index_r defaults moved to opacity_tables.f90: DATA can no
-! longer target them here now that they're use-associated.
-      integer :: table_index, i, ii, j, k, row_density_count
-      real(dp) :: header_x, header_z, row_temp, row_logr0
-      real(dp) :: target_z
-      character(len=message_length) :: lines(2)
-      integer :: ios
-      character(len=256) :: iomsg
-
-      do table_index=1,n_alex94_x
-!        Open each of the tables at fixed X with a range of Z.
-         call open_table(alex95_table_paths(table_index), 'Alexander 1994', table_unit, ierr)
-         if (ierr /= 0) return
-!        Read in initial X and Z; ensure that they have the expected values.
-         do i = n_alex94_z,1,-1
-!           Index for storing tables : 15 sets of metal abundance with 7 sets
-!           of hydrogen for each.  These are stored in the order (X,Z) of
-!           (0,0),(0.1,0),...(0.8,0),(0,0.00001),...
-            ii = table_index + 7*(i-1)
-!           Header information: X and Z
-            read(table_unit,10,iostat=ios,iomsg=iomsg) header_x, header_z
-            if (read_failed(ios, iomsg, 'Alexander 1994', alex95_table_paths(table_index), table_unit, ierr)) return
-   10       format(18x,f6.2,2x,f7.2)
-            if (header_x /= tbl%grid_x(table_index) .or. &
-                 header_z /= tbl%grid_z(i)) then
-               lines = unwritten_line
-               write(lines,20) header_x, tbl%grid_x(table_index), &
-                    header_z, tbl%grid_z(i)
-               call kap_log(lines)
-   20          format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
-                    1x,'EXPECTED AND ACTUAL X,Z',4f7.2,' RUN STOPPED')
-               ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
-               close(table_unit)
-               ierr = 1
-               return
-            endif
-!           Opacity information at each shell: Check for consistency with T,
-!           starting R.  Store in a numz*numt*numr array.
-            do j = n_alex94_t,1,-1
-               read(table_unit,30,iostat=ios,iomsg=iomsg) tbl%index_t, row_density_count, &
-                    row_temp, row_logr0, (row_opacity_temp(k),k=1,n_alex94_d)
-               if (read_failed(ios, iomsg, 'Alexander 1994', alex95_table_paths(table_index), table_unit, ierr)) return
-               do k = 1, n_alex94_d
-                  tbl%full_opacity(ii,j,k) = row_opacity_temp(k)
-               end do
-   30          format(i2,i3,f6.3,f5.1,8f8.3/9f8.3)
-               if (row_density_count /= n_alex94_d .or. row_temp /= tbl%grid_logt(j) &
-                    .or. row_logr0 /= tbl%grid_logr(1)) then
-                  lines = unwritten_line
-                  write(lines,40) row_density_count, row_temp, &
-                       tbl%grid_logt(j), row_logr0, tbl%grid_logr(1)
-                  call kap_log(lines)
-   40             format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
-                       1x,'EXPECTED AND ACTUAL T,RHO',i3,4f7.2, &
-                       ' RUN STOPPED')
-                  ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
-                  close(table_unit)
-                  ierr = 1
-                  return
-               endif
-            end do
-         end do
-         close(unit=table_unit)
-      end do
-      ierr = 0
-      target_z = table_z
-      call build_alex94_fixed_z_table(tbl, target_z)
-end subroutine read_alex94_tables
 
 !----------------------------------------------------------------------
 ! build_alex94_fixed_z_table (formerly alex94_fixed_z_table)
 !----------------------------------------------------------------------
-! alxztab
-! Generates the fixed-Z table (one table per X, interpolated in Z)
-! from the full set of Alexander 1994 low-temperature opacity tables,
-! by 4-point Lagrangian interpolation in Z.
+! Builds the fixed-Z tables tbl%opacity(1:7,:,:), one per X, by 4-point
+! Lagrange interpolation in Z of the full set, and records their Z.
 subroutine build_alex94_fixed_z_table(tbl, metal_fraction)
       type(alex94_table_set), intent(inout) :: tbl
 
@@ -152,7 +51,7 @@ subroutine build_alex94_fixed_z_table(tbl, metal_fraction)
          if (metal_fraction < tbl%grid_z(i)) then
             idz = i - 2
             exit
-         endif
+         end if
       end do
       if (i > (n_alex94_z-1)) then
       idz = n_alex94_z - 3
@@ -164,8 +63,8 @@ subroutine build_alex94_fixed_z_table(tbl, metal_fraction)
       call interp(interp_z, weight_z, x_eval=metal_fraction)
 !     Interpolate in Z at fixed X.
       do i = 1,n_alex94_x
-!        Indices for tables: Sets of 7 X at fixed Z, starting from
-!        Z= 0 AND GOING TO Z = 0.1.
+!        the slots of the four Z tables of this X (seven X per Z, from
+!        Z = 0 up)
          ii1 = i + n_alex94_x*(idz-1)
          ii2 = ii1 + n_alex94_x
          ii3 = ii2 + n_alex94_x
@@ -185,11 +84,9 @@ end subroutine build_alex94_fixed_z_table
 !----------------------------------------------------------------------
 ! build_alex94_surface_table (formerly alex94_surface_table)
 !----------------------------------------------------------------------
-! alx8th
-! Generates the surface-X (envelope-abundance) table for the
-! Alexander 1994 low-temperature opacity tables by 4-point Lagrangian
-! interpolation in X, storing it in table slot 8 of
-! tbl%full_opacity.
+! Builds the surface table, tbl%opacity(alex94_surface_slot,:,:), at
+! hydrogen_fraction by 4-point Lagrange interpolation in X of the
+! fixed-Z tables, and records its X.
 subroutine build_alex94_surface_table(tbl, hydrogen_fraction)
       type(alex94_table_set), intent(inout) :: tbl
 
@@ -219,10 +116,12 @@ end subroutine build_alex94_surface_table
 !----------------------------------------------------------------------
 ! compute_alex94_opacity (formerly alex94_interp3d)
 !----------------------------------------------------------------------
-! yalo3d
-! MHP 4/98 Computes Alexander 1994 low-temperature opacities by
-! 4-point Lagrangian interpolation in log T and log R = rho/T6**3,
-! and (away from the envelope X, Z) also in X.
+! The opacity at (log rho, log T, X, Z) and its log derivatives, by
+! 4-point Lagrange interpolation in log T and log R = log rho - 3 log T6:
+! in the surface table at its X (extrapolating linearly above the top
+! log R), else also in X among the fixed-Z tables. A Z other than the
+! fixed-Z tables' rebuilds them, and the surface table, at the lookup's
+! composition.
 subroutine compute_alex94_opacity(tbl, log10_density, log10_temperature, hydrogen_fraction, &
      metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
       type(alex94_table_set), intent(inout) :: tbl
@@ -242,15 +141,15 @@ subroutine compute_alex94_opacity(tbl, log10_density, log10_temperature, hydroge
       integer :: i, j, jj, ii
 
       delta_z = abs(metal_fraction-tbl%cached_z)
-!     Ensure that opacity table has the same Z value as the envelope.
+!     tables at this Z
       if (delta_z > alex_composition_tol) then
          call build_alex94_fixed_z_table(tbl, metal_fraction)
          call build_alex94_surface_table(tbl, hydrogen_fraction)
-      endif
+      end if
 !     Compute R for grid point
       logr = log10_density - 3.0d0*(log10_temperature-6.0d0)
 !     Find nearest grid points in T.
-!     Insure that index IT is within the required array bounds  llp  8/19/08
+!     (the T cursor clamped into the stencil's range first)
       if (tbl%index_t < 1) tbl%index_t=1
       if ((tbl%index_t+2) > n_alex94_t) tbl%index_t=n_alex94_t-2
       call stencil4_locate(tbl%grid_logt, n_alex94_t, log10_temperature, tbl%index_t)
@@ -269,7 +168,7 @@ subroutine compute_alex94_opacity(tbl, log10_density, log10_temperature, hydroge
          logr = tbl%grid_logr(n_alex94_d)
       else
          extrapolate_linear = .false.
-      endif
+      end if
       do i = 1,4
          interp_nodes(i) = tbl%grid_logr(tbl%index_r+i-1)
       end do
@@ -298,7 +197,7 @@ subroutine compute_alex94_opacity(tbl, log10_density, log10_temperature, hydroge
                     (tbl%grid_logr(n_alex94_d)-tbl%grid_logr(n_alex94_d-1))
             end do
             logr = saved_r
-         endif
+         end if
 !        Interpolate in T
          log10_opacity = lagrange4(weight_t, opacity_row)
 !        D ln cappa/d ln T at fixed R
@@ -343,7 +242,7 @@ subroutine compute_alex94_opacity(tbl, log10_density, log10_temperature, hydroge
 !        Correct from derivative at fixed R to derivative at fixed rho
          dlnkap_dlnt = dlnkap_dlnt - 3.0d0*dlnkap_dlnrho
          opacity = exp(ln10*log10_opacity)
-      endif
+      end if
 end subroutine compute_alex94_opacity
 
 ! alex_x_stencil_start
@@ -392,8 +291,9 @@ subroutine load_alex94(settings, paths, envelope_hydrogen_fraction, tables, ierr
       type(opacity_table_state), intent(inout) :: tables
       integer, intent(out) :: ierr
 
-      call read_alex94_tables(tables%alex94, paths%alex94, settings%alex_table_z1, ierr)
+      call read_alex94_tables(tables%alex94, paths%alex94, ierr)
       if (ierr /= 0) return
+      call build_alex94_fixed_z_table(tables%alex94, settings%alex_table_z1)
       call build_alex94_surface_table(tables%alex94, envelope_hydrogen_fraction)
 end subroutine load_alex94
 
@@ -421,5 +321,14 @@ subroutine lookup_alex94(settings, tables, point, res, in_table, ierr)
            point%log10_temperature, point%hydrogen_fraction, point%metal_fraction, &
            res%opacity, res%log10_opacity, res%dlnkap_dlnrho, res%dlnkap_dlnt)
 end subroutine lookup_alex94
+
+!----------------------------------------------------------------------
+! Sources
+!----------------------------------------------------------------------
+! The tables: Alexander & Ferguson (1994, ApJ 437, 879), seven files in
+! input/opacity/molecular/legacy/alex/. The code: the F77 ALXTBL,
+! ALXZTAB, ALX8TH and YALO3D (MHP 4/98; the path argument 8/25; the
+! cursor clamp, llp 8/19/08), converted to Fortran 90 in 2026, the tables
+! now a table set passed in and the reads checked (M220).
 
 end module alex94_opacity
