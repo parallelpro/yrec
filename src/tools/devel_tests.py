@@ -77,16 +77,6 @@ for _deck in sorted((REPO / "examples" / "run_config_matrix").glob("*.inlist")):
 _O4 = ("O4 (docs/bug_sweep.md): the starting model's stitched atmosphere reads "
        "env_log10_radius(0), core/diagnostics/stitched_model.f90:475, a bounds error")
 KNOWN_FAILURES = {
-    "test_math": "not a code defect: test_math.f90:112 checks that pow(-2, 0.5) is NaN (and "
-                 ":121 that 0**(-1) is +Inf) on purpose, and -ffpe-trap=invalid stops it at "
-                 "math_lib.f90:147 (with the traps off the run is clean)",
-    "test_math_crmath": "not a code defect: the same NaN check, test_math.f90:112, stopped at "
-                        "math_lib.f90:83 under crmath",
-    "test_numerics": "not a code defect: test_numerics.f90:318-319 gives ludcmp a NaN column on "
-                     "purpose (numerics_bad_input expected; bsstep's NaN cases follow at :500-515), "
-                     "and the ordered compare at numerics/linear_solvers.f90:66 traps under "
-                     "-ffpe-trap=invalid; with the traps off, the test's own callback reads y(2) "
-                     "of a one-equation bsstep (harmonic_derivatives, test_numerics.f90:62)",
     "test_eos": "M92 (docs/bug_sweep.md): SCV's general path takes log10 of a zero mixing "
                 "entropy, eos/scv/scv_eos.f90:497-500, a divide-by-zero trap; behind it M94, "
                 "the OPAL 1995 coverage sums read temperature row 57 of 56 (opal95_eos.f90:488)",
