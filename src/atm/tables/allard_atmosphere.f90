@@ -651,6 +651,7 @@ subroutine read_allard_tables(allard_table_path, ierr)
 
       call find_allard_table_bounds(ierr)   ! Initialize Allard tables
       if (ierr /= 0) return
+      atm_table%allard_loaded = .true.
 
        return
 

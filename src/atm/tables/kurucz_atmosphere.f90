@@ -280,6 +280,7 @@ subroutine read_surface_pressure_table(table_path, tbl, num_teff, ierr)
 !                      if the highest gravity P value for a specific
 !                      temperature is -999 (find_gravity_edges).
       call find_gravity_edges(tbl)
+      tbl%loaded = .true.
 
 contains
 

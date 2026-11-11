@@ -71,6 +71,16 @@ subroutine atm_init(settings, paths, ierr)
       end if
 end subroutine atm_init
 
+! The table of atm_choice (3 or 5) was not read by atm_init: an error,
+! on the terminal and in the run log.
+subroutine report_not_loaded(atm_choice)
+      integer, intent(in) :: atm_choice
+      character(len=200) :: text
+      write(text,'(a,i0,a)') 'atm_get_surface_pt: the table of atm_choice ', atm_choice, &
+           ' was not read (atm_init reads only the deck''s choice''s table)'
+      call report_error(trim(text))
+end subroutine report_not_loaded
+
 ! atm_choice is none of the six: an error, on the terminal and in the
 ! run log (M236: it used to load no table and run the HSRA relation).
 subroutine report_unknown_choice(atm_choice)
@@ -89,8 +99,10 @@ end subroutine report_unknown_choice
 ! log T (log Teff, or T at tau = 100 from the Allard tables with
 ! allard_use_tau100). Both are set only when the lookup succeeds.
 ! lookup_failed: the point is outside the Allard tables (the caller
-! falls back to a gray atmosphere). ierr /= 0: a table interpolation
-! failed. atm_choice is the caller's current choice, which the star
+! falls back to a gray atmosphere), as is every point when atm_init did
+! not read them (their limits are 0; O19). ierr /= 0: a table
+! interpolation failed, or the Kurucz or Castelli/Kurucz table asked
+! for was not read. atm_choice is the caller's current choice, which the star
 ! layer switches between tabulated and gray as Teff changes.
 subroutine atm_get_surface_pt(atm_choice, log_teff, log_g, log10_pressure, &
      log10_temperature, lookup_failed, ierr)
@@ -103,9 +115,19 @@ subroutine atm_get_surface_pt(atm_choice, log_teff, log_g, log10_pressure, &
       ierr = 0
       lookup_failed = .false.
       if (atm_choice == 3) then
+         if (.not. atm_table%kurucz_surface_p%loaded) then
+            call report_not_loaded(atm_choice)
+            ierr = 1
+            return
+         end if
          call interpolate_surface_pressure(atm_table%kurucz_surface_p, log_teff, &
               log_g, .false., ierr)
       else if (atm_choice == 5) then
+         if (.not. atm_table%castelli_surface_p%loaded) then
+            call report_not_loaded(atm_choice)
+            ierr = 1
+            return
+         end if
          call interpolate_surface_pressure(atm_table%castelli_surface_p, log_teff, &
               log_g, .false., ierr)
       else if (atm_choice == 4) then

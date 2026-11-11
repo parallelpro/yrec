@@ -42,6 +42,7 @@ module atm_tables
 ! Kurucz and Castelli/Kurucz tables have different row counts, so the
 ! arrays are allocated by the reader, zero-filled.
       type :: surface_p_table
+           logical :: loaded = .false.
            integer :: num_teff = 0
            real(dp), allocatable :: teff(:), logg(:)
            real(dp), allocatable :: log10_pressure(:,:)
@@ -64,6 +65,10 @@ module atm_tables
                 allard_log10_pressure_tau100(atm_table_nta,atm_table_nga), &
                 allard_log10_temp_tau100(atm_table_nta,atm_table_nga)
            logical :: allard_is_old_nextgen
+! the Allard tables were read (atm_choice 4). Their limits are 0 until
+! then, so that a lookup in them fails the range check (lookup_failed):
+! the accretion surface of a deck whose choice is not 4 (O19)
+           logical :: allard_loaded = .false.
            integer :: allard_num_teff, allard_num_gl, allard_num_feh, &
                 allard_num_alpha
 ! each log Teff row's valid log g range, and the table's ranges
