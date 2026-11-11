@@ -92,8 +92,8 @@ new = '      call blend_in_z(res%dlnkap_dlnt, res_z2%dlnkap_dlnrho, &'
 id = 'ramp-min'
 check = 'ramp: kappa continuous at molecular_opacity_logt_min'
 file = 'kap/opacity_blending.f90'
-old = '         res%opacity = ramp_weight*res%opacity + (1.0d0 - ramp_weight)*molecular%opacity'
-new = '         res%opacity = ramp_weight*res%opacity + (1.0d0 - ramp_weight)*molecular%opacity*1.01d0'
+old = '         molecular_part = (1.0d0 - ramp_weight)*molecular%opacity'
+new = '         molecular_part = (1.0d0 - ramp_weight)*molecular%opacity*1.01d0'
 
 [[mutation]]
 id = 'ramp-max'
@@ -101,6 +101,20 @@ check = 'ramp: kappa continuous at molecular_opacity_logt_max'
 file = 'kap/opacity_blending.f90'
 old = '         ramp_weight = (log10_temperature - logt_min) / (logt_max - logt_min)'
 new = '         ramp_weight = (log10_temperature - logt_min) / (logt_max - logt_min + 0.01d0)'
+
+[[mutation]]
+id = 'ramp-dweight'
+check = 'ramp: dln kappa/dln rho, dln T against differences'
+file = 'kap/opacity_blending.f90'
+old = '         dweight_dlnt = 1.0d0 / (ln10*(logt_max - logt_min))'
+new = '         dweight_dlnt = 0.0d0'
+
+[[mutation]]
+id = 'ramp-drho-weights'
+check = 'ramp: dln kappa/dln rho, dln T against differences'
+file = 'kap/opacity_blending.f90'
+old = '              molecular_part*molecular%dlnkap_dlnrho) / res%opacity'
+new = '              molecular_part*molecular%dlnkap_dlnrho) / (interior_part + molecular_part + 1.0d0)'
 
 [[mutation]]
 id = 'opal95-fixed-z'
@@ -122,6 +136,20 @@ check = 'Potekhin mixture: kappa_c = sum of w_i kappa_i (partly ionized)'
 file = 'kap/conductive/conductive_opacity.f90'
 old = 'weight_he4 = number_fraction_he4 * (ion_fraction(2) + 2D0*ion_fraction(3))/2D0'
 new = 'weight_he4 = number_fraction_he4 * (ion_fraction(2) + ion_fraction(3))/2D0'
+
+[[mutation]]
+id = 'conductive-low-density-sign'
+check = 'Potekhin conduction: kappa_c continuous at log rho = -6'
+file = 'kap/conductive/conductive_opacity.f90'
+old = 'conductive_log10_opacity = log10_16_sigma_over_3+3.0D0*log10_temperature-conductive_logrho_min-mix_log10_cond'
+new = 'conductive_log10_opacity = log10_16_sigma_over_3+3.0D0*log10_temperature-conductive_logrho_min+mix_log10_cond'
+
+[[mutation]]
+id = 'conductive-low-density-direction'
+check = 'Potekhin conduction below log rho = -6: dln kappa/dln rho'
+file = 'kap/conductive/conductive_opacity.f90'
+old = '                conductive_dlnkap_dlnrho*(log10_density-conductive_logrho_min)'
+new = '                conductive_dlnkap_dlnrho*(conductive_logrho_min-log10_density)'
 
 [[mutation]]
 id = 'opal92-dt'
@@ -204,8 +232,8 @@ new = '      else if (.false. .and. .not. (settings%molecular_opacity_logt_min <
 id = 'missing-table'
 check = 'kap_init: a missing table returns ierr (and is not created)'
 file = 'kap/conductive/conductive_reader.f90'
-old = "open(newunit=file_unit, file=path, status='OLD', iostat=ierr)"
-new = "open(newunit=file_unit, file=path, status='UNKNOWN', iostat=ierr)"
+old = "open(newunit=file_unit, file=path, status='old', action='read', iostat=ierr)"
+new = "open(newunit=file_unit, file=path, status='unknown', iostat=ierr)"
 
 [[mutation]]
 id = 'short-table'
@@ -241,8 +269,8 @@ new = '''      call kap_eval(point, result, ierr)
 id = 'z-limit'
 check = 'kap_get: Z above 0.12 below 10^7 K returns ierr'
 file = 'kap/kap_lib.f90'
-old = '      else if ((point%metal_fraction > max_interior_metal_fraction) .or. &'
-new = '      else if ((point%metal_fraction > 1.0d0) .or. &'
+old = '      else if (point%metal_fraction > max_interior_metal_fraction) then'
+new = '      else if (point%metal_fraction > 1.0d0) then'
 
 [[mutation]]
 id = 'alex06-cache'
@@ -266,7 +294,7 @@ new = '      tables%envelope_metal_fraction = 0.0d0'
 id = 'helium-core-without-pure-z'
 check = 'kap_get: a helium core without the pure-Z table returns ierr'
 file = 'kap/kap_lib.f90'
-old = '''              ' NEED PURE Z TABLE TO CONTINUE. Z,LOG T=')
+old = '''              ' above 7) needs the pure-Z table (use_pure_z_table)'
          ierr = 1'''
-new = '''              ' NEED PURE Z TABLE TO CONTINUE. Z,LOG T=')
+new = '''              ' above 7) needs the pure-Z table (use_pure_z_table)'
          ierr = 0'''

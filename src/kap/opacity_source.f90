@@ -26,6 +26,9 @@
 !                 from its single-Z table, and that table's Z, which
 !                 kap_eval blends toward the pure-Z table (null for the
 !                 other roles)
+!                 Each returns ierr /= 0 on a failure with a one-line
+!                 reason in message, which kap_lib reports (message is
+!                 blank where a table reader has reported the error).
 module opacity_source
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use opacity_tables, only: kap_settings_t, kap_table_paths_t, opacity_table_state
@@ -45,40 +48,45 @@ module opacity_source
       end type kap_result
 
       abstract interface
-         subroutine source_load(settings, paths, envelope_hydrogen_fraction, tables, ierr)
+         subroutine source_load(settings, paths, envelope_hydrogen_fraction, tables, &
+              message, ierr)
             import :: dp, kap_settings_t, kap_table_paths_t, opacity_table_state
             type(kap_settings_t), intent(in) :: settings
             type(kap_table_paths_t), intent(in) :: paths
             real(dp), intent(in) :: envelope_hydrogen_fraction
             type(opacity_table_state), intent(inout) :: tables
+            character(len=*), intent(out) :: message
             integer, intent(out) :: ierr
          end subroutine source_load
 
-         subroutine source_refresh(settings, hydrogen_fraction, tables, ierr)
+         subroutine source_refresh(settings, hydrogen_fraction, tables, message, ierr)
             import :: dp, kap_settings_t, opacity_table_state
             type(kap_settings_t), intent(in) :: settings
             real(dp), intent(in) :: hydrogen_fraction
             type(opacity_table_state), intent(inout) :: tables
+            character(len=*), intent(out) :: message
             integer, intent(out) :: ierr
          end subroutine source_refresh
 
-         subroutine source_lookup(settings, tables, point, res, in_table, ierr)
+         subroutine source_lookup(settings, tables, point, res, in_table, message, ierr)
             import :: kap_settings_t, opacity_table_state, kap_point, kap_result
             type(kap_settings_t), intent(in) :: settings
             type(opacity_table_state), intent(inout) :: tables
             type(kap_point), intent(in) :: point
             type(kap_result), intent(inout) :: res
             logical, intent(out) :: in_table
+            character(len=*), intent(out) :: message
             integer, intent(out) :: ierr
          end subroutine source_lookup
 
-         subroutine source_core_lookup(settings, tables, point, res, table_z, ierr)
+         subroutine source_core_lookup(settings, tables, point, res, table_z, message, ierr)
             import :: dp, kap_settings_t, opacity_table_state, kap_point, kap_result
             type(kap_settings_t), intent(in) :: settings
             type(opacity_table_state), intent(inout) :: tables
             type(kap_point), intent(in) :: point
             type(kap_result), intent(inout) :: res
             real(dp), intent(out) :: table_z
+            character(len=*), intent(out) :: message
             integer, intent(out) :: ierr
          end subroutine source_core_lookup
       end interface

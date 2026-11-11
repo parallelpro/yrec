@@ -173,7 +173,7 @@
       ! (legacy name: lcalst)
       calibrate_star_flag = .false.
 
-      ! Use the pure C and N opacity tables (pure_z_opacity_table_file) for metal-enriched mixtures
+      ! Use the pure-Z opacity table (pure_z_opacity_table_file: a pure mixture of equal numbers of C and O, at Z = 1) for helium-burning cores (Z > 0.1 and log T > 7)
       ! (legacy name: lpurez)
       use_pure_z_table = .false.
 

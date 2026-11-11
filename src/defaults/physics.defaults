@@ -458,7 +458,7 @@
       ! (legacy name: tridl)
       tri_delta_logl = 8.0d-2
 
-      ! The LAOL 1989 interpolators extrapolate linearly up to a distance of log10 of this value from a table edge
+      ! The LAOL 1989 interpolators extrapolate linearly up to a distance in log10 rho of the natural log of this value (2.3 dex for 10) from a table edge
       ! (legacy name: tollaol)
       laol_z_tolerance = 10.0d0
 

@@ -27,7 +27,6 @@ module laol_opacity
       use opacity_source, only: kap_point, kap_result, kap_source
       use opacity_blending, only: blend_results_in_z
       use numerics_lib, only: natural_spline, locate, splint, numerics_status_text
-      use kap_messages, only: kap_log, message_length, unwritten_line
       use laol_reader, only: read_laol_tables, read_pure_z_table
       use math_lib
       implicit none
@@ -114,21 +113,23 @@ end subroutine build_laol_splines
 ! derivatives (laol_column_opacity), interpolated linearly in X (or,
 ! outside the X grid, extrapolated). log10 kappa is capped at
 ! laol_log10_opacity_cap. A point no column covers returns ierr = 1 with
-! the run-log line that names the table ("#2" for the second Z's).
+! the reason in message, which names the table (the second Z's too).
 subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_fraction, &
-     opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr)
+     opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, message, ierr)
       type(laol_table_set), intent(inout) :: tbl
       real(dp), intent(in) :: log10_density, log10_temperature, &
            hydrogen_fraction
       real(dp), intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
       real(dp) :: opacity_by_x(2), dlnkap_dlnrho_by_x(2), dlnkap_dlnt_by_x(2), x_values(2)
       integer :: x_grid_index, num_valid_x, x_loop_index, status
       real(dp) :: log10_opacity_value, slope
-      character(len=message_length) :: lines(1)
+      character(len=16) :: table_name
 
       ierr = 0
+      message = ''
       call locate(tbl%grid_x, tbl%num_x, hydrogen_fraction, x_grid_index)
       if (x_grid_index == tbl%num_x) then
           x_grid_index = tbl%num_x-1
@@ -146,27 +147,10 @@ subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_
               opacity_by_x(num_valid_x), dlnkap_dlnrho_by_x(num_valid_x), &
               dlnkap_dlnt_by_x(num_valid_x), status, ierr)
          if (status /= laol_column_ok) then
-            lines = unwritten_line
-            if (status == laol_column_splint_failed) then
-               write(lines,*) 'splint: '//numerics_status_text(ierr)
-            else if (status == laol_column_outside_density .and. tbl%table_number == 2) then
-               write(lines,220) log10_density, log10_temperature
-  220          format(' OUTSIDE OPACITY TABLE #2, IN DENSITY.  ', &
-                    'LOG(RHO)=',1pe12.3, ' LOG(T)=', 1pe12.3)
-            else if (status == laol_column_outside_density) then
-               write(lines,120) log10_density, log10_temperature
-  120          format(' OUTSIDE OPACITY TABLE, IN DENSITY.  ', &
-                    'LOG(RHO)=',1pe12.3, ' LOG(T)=', 1pe12.3)
-            else if (tbl%table_number == 2) then
-               write(lines,221) log10_density, log10_temperature
-  221          format(' OUTSIDE OPACITY TABLE #2, IN TEMPERATURE.  ', &
-                    'LOG(RHO)=',1pe12.3, ' LOG(T)=', 1pe12.3)
-            else
-               write(lines,121) log10_density, log10_temperature
-  121          format(' OUTSIDE OPACITY TABLE, IN TEMPERATURE.  ', &
-                    'LOG(RHO)=',1pe12.3, ' LOG(T)=', 1pe12.3)
-            end if
-            call kap_log(lines)
+            table_name = 'LAOL 1989'
+            if (tbl%table_number == 2) table_name = 'second LAOL 1989'
+            call laol_column_message(status, ierr, table_name, log10_density, &
+                 log10_temperature, message)
             if (status /= laol_column_splint_failed) ierr = 1
             return
          end if
@@ -231,35 +215,25 @@ end subroutine build_pure_z_splines
 ! The pure-Z table's opacity at (log rho, log T): its one column
 ! (laol_column_opacity), log10 kappa capped as compute_laol_opacity's.
 subroutine compute_pure_z_opacity(tbl, log10_density, log10_temperature, opacity, &
-     log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr)
+     log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, message, ierr)
       type(pure_z_table_set), intent(in) :: tbl
       real(dp), intent(in) :: log10_density, log10_temperature
       real(dp), intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
       real(dp) :: log10_opacity_value
       integer :: status
-      character(len=message_length) :: lines(1)
 
       ierr = 0
+      message = ''
       call laol_column_opacity(tbl%spline_opacity, tbl%spline_log_rho, tbl%spline_d2opacity, &
            tbl%spline_num_points, tbl%logt_grid, tbl%num_t, tbl%log_extrapolation_tolerance, &
            log10_density, log10_temperature, log10_opacity_value, dlnkap_dlnrho, &
            dlnkap_dlnt, status, ierr)
       if (status /= laol_column_ok) then
-         lines = unwritten_line
-         if (status == laol_column_splint_failed) then
-            write(lines,*) 'splint: '//numerics_status_text(ierr)
-         else if (status == laol_column_outside_density) then
-            write(lines,120) log10_density, log10_temperature
-  120       format(' OUTSIDE Z OPACITY TABLE, IN DENSITY.  ', &
-                 'LOG(RHO)=',1pe12.3, ' LOG(T)=', 1pe12.3)
-         else
-            write(lines,121) log10_density, log10_temperature
-  121       format(' OUTSIDE Z OPACITY TABLE, IN TEMPERATURE.  ', &
-                 'LOG(RHO)=',1pe12.3, ' LOG(T)=', 1pe12.3)
-         end if
-         call kap_log(lines)
+         call laol_column_message(status, ierr, 'pure-Z', log10_density, &
+              log10_temperature, message)
          if (status /= laol_column_splint_failed) ierr = 1
          return
       end if
@@ -375,6 +349,29 @@ end subroutine laol_column_opacity
 
 ! kappa and log10 kappa from log10_opacity_value, capped at
 ! laol_opacity_cap (log10 kappa laol_log10_opacity_cap) where it overflows
+! The reason a column lookup failed (status, laol_column_opacity's), for
+! the table named: a spline's numerics status (jerr), or the point off
+! the table's rows in log rho or its columns in log T, beyond the
+! extrapolation tolerance.
+subroutine laol_column_message(status, jerr, table_name, log10_density, &
+     log10_temperature, message)
+      integer, intent(in) :: status, jerr
+      character(len=*), intent(in) :: table_name
+      real(dp), intent(in) :: log10_density, log10_temperature
+      character(len=*), intent(out) :: message
+
+      if (status == laol_column_splint_failed) then
+         message = 'the ' // table_name // ' table''s spline in log T failed: ' // &
+              trim(numerics_status_text(jerr))
+      else if (status == laol_column_outside_density) then
+         write(message,'(a,f8.4,a,f8.4,a)') 'log rho =', log10_density, ', log T =', &
+              log10_temperature, ' is outside the ' // table_name // ' table in log rho'
+      else
+         write(message,'(a,f8.4,a,f8.4,a)') 'log rho =', log10_density, ', log T =', &
+              log10_temperature, ' is outside the ' // table_name // ' table in log T'
+      end if
+end subroutine laol_column_message
+
 pure subroutine cap_laol_opacity(log10_opacity_value, opacity, log10_opacity)
       real(dp), intent(in) :: log10_opacity_value
       real(dp), intent(out) :: opacity, log10_opacity
@@ -429,16 +426,19 @@ function laol89_source(settings) result(source)
       source%core_lookup => core_lookup_laol89
 end function laol89_source
 
-subroutine load_laol89(settings, paths, envelope_hydrogen_fraction, tables, ierr)
+subroutine load_laol89(settings, paths, envelope_hydrogen_fraction, tables, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(kap_table_paths_t), intent(in) :: paths
       real(dp), intent(in) :: envelope_hydrogen_fraction
       type(opacity_table_state), intent(inout) :: tables
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
 ! the table header's 12-element metal mixture (read, not used: the
 ! star takes its surface mixture from the controls)
       real(dp) :: laol_header_mixture(12)
 
+! (the reader reports its own errors)
+      message = ''
       laol_header_mixture = 0.0d0
       call read_laol_tables(tables%laol, laol_header_mixture, paths%laol, &
            paths%laol_z2, settings%use_two_z_tables, &
@@ -447,41 +447,43 @@ subroutine load_laol89(settings, paths, envelope_hydrogen_fraction, tables, ierr
       call build_laol_splines(tables%laol, settings%use_two_z_tables)
 end subroutine load_laol89
 
-subroutine lookup_laol89(settings, tables, point, res, in_table, ierr)
+subroutine lookup_laol89(settings, tables, point, res, in_table, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(opacity_table_state), intent(inout) :: tables
       type(kap_point), intent(in) :: point
       type(kap_result), intent(inout) :: res
       logical, intent(out) :: in_table
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
       type(kap_result) :: res_z2
 
       in_table = .true.
       call compute_laol_opacity(tables%laol(1), point%log10_density, &
            point%log10_temperature, point%hydrogen_fraction, res%opacity, &
-           res%log10_opacity, res%dlnkap_dlnrho, res%dlnkap_dlnt, ierr)
+           res%log10_opacity, res%dlnkap_dlnrho, res%dlnkap_dlnt, message, ierr)
       if (ierr /= 0) return
       if (settings%use_two_z_tables) then
          call compute_laol_opacity(tables%laol(2), point%log10_density, &
               point%log10_temperature, point%hydrogen_fraction, res_z2%opacity, &
-              res_z2%log10_opacity, res_z2%dlnkap_dlnrho, res_z2%dlnkap_dlnt, ierr)
+              res_z2%log10_opacity, res_z2%dlnkap_dlnrho, res_z2%dlnkap_dlnt, message, ierr)
          if (ierr /= 0) return
          call blend_results_in_z(res, res_z2, point%metal_fraction, &
               settings%laol_table_z1, settings%laol_table_z2)
       end if
 end subroutine lookup_laol89
 
-subroutine core_lookup_laol89(settings, tables, point, res, table_z, ierr)
+subroutine core_lookup_laol89(settings, tables, point, res, table_z, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(opacity_table_state), intent(inout) :: tables
       type(kap_point), intent(in) :: point
       type(kap_result), intent(inout) :: res
       real(dp), intent(out) :: table_z
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
 
       call compute_laol_opacity(tables%laol(1), point%log10_density, &
            point%log10_temperature, point%hydrogen_fraction, res%opacity, &
-           res%log10_opacity, res%dlnkap_dlnrho, res%dlnkap_dlnt, ierr)
+           res%log10_opacity, res%dlnkap_dlnrho, res%dlnkap_dlnt, message, ierr)
       table_z = settings%laol_table_z1
 end subroutine core_lookup_laol89
 
@@ -497,31 +499,35 @@ function pure_z_source(settings) result(source)
       source%lookup => lookup_pure_z
 end function pure_z_source
 
-subroutine load_pure_z(settings, paths, envelope_hydrogen_fraction, tables, ierr)
+subroutine load_pure_z(settings, paths, envelope_hydrogen_fraction, tables, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(kap_table_paths_t), intent(in) :: paths
       real(dp), intent(in) :: envelope_hydrogen_fraction
       type(opacity_table_state), intent(inout) :: tables
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
 
+! (the reader reports its own errors)
+      message = ''
       call read_pure_z_table(tables%pure_z, paths%pure_z, &
            settings%laol_extrapolation_tolerance, ierr)
       if (ierr /= 0) return
       call build_pure_z_splines(tables%pure_z)
 end subroutine load_pure_z
 
-subroutine lookup_pure_z(settings, tables, point, res, in_table, ierr)
+subroutine lookup_pure_z(settings, tables, point, res, in_table, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(opacity_table_state), intent(inout) :: tables
       type(kap_point), intent(in) :: point
       type(kap_result), intent(inout) :: res
       logical, intent(out) :: in_table
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
 
       in_table = .true.
       call compute_pure_z_opacity(tables%pure_z, point%log10_density, &
            point%log10_temperature, res%opacity, res%log10_opacity, &
-           res%dlnkap_dlnrho, res%dlnkap_dlnt, ierr)
+           res%dlnkap_dlnrho, res%dlnkap_dlnt, message, ierr)
 end subroutine lookup_pure_z
 
 !----------------------------------------------------------------------

@@ -9,7 +9,7 @@
 module opal92_reader
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use opacity_tables, only: n_opal92_d, n_opal92_t, n_opal92_x, opal92_table_set
-      use kap_messages, only: kap_terminal, message_length, unwritten_line
+      use kap_messages, only: kap_report, message_length, unwritten_line
       use opacity_table_files, only: open_table, read_failed
       use math_lib
       implicit none
@@ -84,8 +84,8 @@ subroutine read_opal92_table(path, tbl, ierr)
       close(unit,iostat=ios)
       if (ios /= 0) then
          lines = unwritten_line
-         write(lines,*) 'read_opal92_tables: error closing table file'
-         call kap_terminal(lines)
+         write(lines,'(a)') 'kap_init: cannot close the OPAL 1992 table ' // trim(path)
+         call kap_report(lines)
          ierr = 1
          return
       end if

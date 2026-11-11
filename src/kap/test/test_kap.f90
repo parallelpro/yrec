@@ -323,9 +323,10 @@ contains
 ! mutation in kap/test/test_kap.mutations.toml): exactness at table
 ! nodes on each of OPAL95's three paths and Alexander 2006's; the log
 ! derivatives against centred differences of log kappa, family by
-! family; continuity across the molecular ramp's ends and OPAL95's
-! seams; the Z blend at its ends; the harmonic sum and Hubbard & Lampe's
-! fit; conduction with ionized fractions; and the error contracts
+! family and inside the molecular ramp; continuity across the ramp's
+! ends and OPAL95's seams; the Z blend at its ends; the harmonic sum and
+! Hubbard & Lampe's fit; conduction with ionized fractions and below
+! the conductive table's lowest density; and the error contracts
 ! (refused settings, a missing or short table, a refused composition, a
 ! second kap_init). Each line is the check, its error and ok or FAIL; a
 ! FAIL makes the program stop with status 1 after the last check.
@@ -382,6 +383,10 @@ contains
               0.70d0, 0.016232d0, 4.0d0, -3.3d0, 1.0d-7)
          call continuity_check("ramp: kappa continuous at molecular_opacity_logt_max", &
               0.70d0, 0.016232d0, 4.1d0, -3.3d0, 1.0d-7)
+! inside the ramp, off the tables' nodes (log T 4.07): kappa's own
+! derivatives, with the weight's
+         call derivative_check("ramp: dln kappa/dln rho, dln T against differences", &
+              0.70d0, 0.016232d0, 4.07d0, -3.3d0, 1.0d-5)
 ! across the table's lowest log R (-8), below which log kappa is
 ! extrapolated linearly
          call get_point(0.70d0, 0.016232d0, 5.53d0, logd_of(5.53d0, -8.0d0 - 1.0d-9), r, ierr)
@@ -406,6 +411,7 @@ contains
               1.0d-12, ierr + ierr2 == 0)
          call kap_update_surface_tables(0.70d0, ierr2)
          call conductive_mixture_check()
+         call conductive_low_density_check()
 
 ! --- other families' derivatives
          call configure("opal92 checks", opal92=.true., z1=0.0188d0, z2=0.0200d0, two_z=.true., &
@@ -613,21 +619,22 @@ contains
             double precision, parameter :: a_h = 1.008d0, a_he = 4.004d0, a_o = 16.0d0
             double precision :: species(3), mix, o, ol, dr, dt, n(3), w(3), f(3), ions(3)
             logical :: got
+            character(len=512) :: msg
             integer :: ierr, k
             call read_conductive_table(cond, trim(yrec_input)// &
                  "/opacity/conductive/potekhin/condall06.d", ierr)
             ions = [1.0d0, 0.0d0, 1.0d0]
             call compute_conductive_opacity(cond, logd, logt, 1.0d0, 0.0d0, species(1), ol, dr, &
-                 dt, ions, got, k)
+                 dt, ions, got, msg, k)
             ierr = ierr + k
             call compute_conductive_opacity(cond, logd, logt, 0.0d0, 0.0d0, species(2), ol, dr, &
-                 dt, ions, got, k)
+                 dt, ions, got, msg, k)
             ierr = ierr + k
             call compute_conductive_opacity(cond, logd, logt, 0.0d0, 1.0d0, species(3), ol, dr, &
-                 dt, ions, got, k)
+                 dt, ions, got, msg, k)
             ierr = ierr + k
             f = [0.5d0, 0.3d0, 0.6d0]
-            call compute_conductive_opacity(cond, logd, logt, x, z, mix, ol, dr, dt, f, got, k)
+            call compute_conductive_opacity(cond, logd, logt, x, z, mix, ol, dr, dt, f, got, msg, k)
             ierr = ierr + k
             n = [x/a_h, (1.0d0 - x - z)/a_he, z/a_o]
             n = n/sum(n)
@@ -635,6 +642,48 @@ contains
             call report("Potekhin mixture: kappa_c = sum of w_i kappa_i (partly ionized)", &
                  abs(mix/dot_product(w, species) - 1.0d0), 1.0d-12, ierr == 0)
          end subroutine conductive_mixture_check
+
+! Potekhin conduction below the table's lowest density (log rho = -6,
+! where log R >= 0): kappa_c continuous at log rho = -6, and below it
+! the value at -6 extrapolated linearly in log rho with its slope (the
+! slope returned against differences at log rho = -7), for a partly
+! ionized mixture at log T 3.6
+         subroutine conductive_low_density_check()
+            use opacity_tables, only: conductive_table_set
+            use conductive_reader, only: read_conductive_table
+            use conductive_opacity, only: compute_conductive_opacity
+            type(conductive_table_set), save :: cond
+            double precision, parameter :: logt = 3.6d0, x = 0.7d0, z = 0.02d0, h = 1.0d-4
+            double precision :: below, above, ol, dr, dt, o, ol_plus, ol_minus, f(3)
+            logical :: got, got_all
+            character(len=512) :: msg
+            integer :: ierr, k
+            call read_conductive_table(cond, trim(yrec_input)// &
+                 "/opacity/conductive/potekhin/condall06.d", ierr)
+            f = [0.5d0, 0.3d0, 0.6d0]
+            got_all = .true.
+            call compute_conductive_opacity(cond, -6.0d0 - 1.0d-9, logt, x, z, below, ol, dr, dt, &
+                 f, got, msg, k)
+            ierr = ierr + k
+            got_all = got_all .and. got
+            call compute_conductive_opacity(cond, -6.0d0 + 1.0d-9, logt, x, z, above, ol, dr, dt, &
+                 f, got, msg, k)
+            ierr = ierr + k
+            got_all = got_all .and. got
+            call report("Potekhin conduction: kappa_c continuous at log rho = -6", &
+                 abs(above/below - 1.0d0), 1.0d-7, ierr == 0 .and. got_all)
+            call compute_conductive_opacity(cond, -7.0d0 + h, logt, x, z, o, ol_plus, dr, dt, &
+                 f, got, msg, k)
+            ierr = ierr + k
+            call compute_conductive_opacity(cond, -7.0d0 - h, logt, x, z, o, ol_minus, dr, dt, &
+                 f, got, msg, k)
+            ierr = ierr + k
+            call compute_conductive_opacity(cond, -7.0d0, logt, x, z, o, ol, dr, dt, f, got, msg, k)
+            ierr = ierr + k
+            call report("Potekhin conduction below log rho = -6: dln kappa/dln rho", &
+                 abs(dr - (ol_plus - ol_minus)/(2.0d0*h))/max(1.0d0, abs(dr)), 1.0d-8, &
+                 ierr == 0 .and. got)
+         end subroutine conductive_low_density_check
 
 ! an OPAL95 node: the lookup's log kappa against the file's entry at
 ! TABLE #table_number's row log T and column log R

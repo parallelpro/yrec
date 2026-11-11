@@ -11,7 +11,7 @@ module laol_reader
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use opacity_tables, only: laol_table_set, n_laol_rho, n_laol_t, n_laol_x, &
            pure_z_table_set
-      use kap_messages, only: kap_log, message_length, unwritten_line
+      use kap_messages, only: kap_report, message_length, unwritten_line
       use opacity_table_files, only: open_table, read_failed
       use math_lib
       implicit none
@@ -90,12 +90,10 @@ subroutine read_laol_table(path, tbl, work_array, ierr)
   100 format(/,18x,i2,9x,i3,14x,i3)
       if (tbl%num_x > n_laol_x-1.or.tbl%num_rho > n_laol_rho.or.tbl%num_t > n_laol_t) then
          lines = unwritten_line
-         if (tbl%table_number == 2) then
-         write(lines,*)' SECOND OPACITY ARRAY TOO LARGE.'
-         else
-         write(lines,*)' OPACITY ARRAY TOO LARGE.'
-         end if
-         call kap_log(lines)
+         write(lines,'(a,3(i0,a),3(i0,a))') 'kap_init: the LAOL 1989 table ' // trim(path) // &
+              ' has ', tbl%num_x, ' X, ', tbl%num_rho, ' rho and ', tbl%num_t, &
+              ' T values, more than ', n_laol_x-1, ', ', n_laol_rho, ' and ', n_laol_t
+         call kap_report(lines)
          close(laol_unit)
          ierr = 1
          return
@@ -175,8 +173,10 @@ subroutine read_pure_z_table(tbl, pure_z_table_path, extrapolation_tolerance, ie
   100 format(/,18x,i2,9x,i3,14x,i3)
       if (n /= 1.or.tbl%num_rho > n_laol_rho.or.tbl%num_t > n_laol_t) then
          lines = unwritten_line
-         write(lines,*)' Z OPACITY INPUT ERROR.'
-         call kap_log(lines)
+         write(lines,'(a,3(i0,a),2(i0,a))') 'kap_init: the pure-Z table ' // &
+              trim(pure_z_table_path) // ' has ', n, ' X, ', tbl%num_rho, ' rho and ', &
+              tbl%num_t, ' T values, where it may have 1, up to ', n_laol_rho, ' and ', n_laol_t
+         call kap_report(lines)
          close(pure_z_unit)
          ierr = 1
          return

@@ -9,7 +9,7 @@ module kurucz_reader
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use opacity_tables, only: kurucz_max_num_densities, kurucz_max_num_temps, &
            kurucz_table_set
-      use kap_messages, only: kap_report, kap_terminal, message_length, unwritten_line
+      use kap_messages, only: kap_report, message_length, unwritten_line
       use opacity_table_files, only: open_table, read_failed
       use math_lib
       implicit none
@@ -91,8 +91,8 @@ subroutine read_kurucz_table(path, tbl, ierr)
       if (read_status > 0 .and. num_read == 0) cycle table_read
       if (read_status > 0) then
          lines = unwritten_line
-         write(lines,'(a,i0,2a)') 'read_kurucz_tables: unreadable row after temperature row ', &
-              num_read, ' in ', trim(path)
+         write(lines,'(a,i0)') 'kap_init: the Kurucz 1990 table ' // trim(path) // &
+              ' has an unreadable row after temperature row ', num_read
          call kap_report(lines)
          close(unit)
          ierr = 1
@@ -102,9 +102,9 @@ subroutine read_kurucz_table(path, tbl, ierr)
          num_read = num_read+1
          if (num_read > kurucz_max_num_temps) then
             lines = unwritten_line
-            write(lines,*) 'read_kurucz_tables: too many temperature rows in ', &
-                 trim(path)
-            call kap_terminal(lines)
+            write(lines,'(a,i0,a)') 'kap_init: the Kurucz 1990 table ' // trim(path) // &
+                 ' has more than ', kurucz_max_num_temps, ' temperature rows'
+            call kap_report(lines)
             close(unit)
             ierr = 1
             return
@@ -115,17 +115,17 @@ subroutine read_kurucz_table(path, tbl, ierr)
       end if
       if (num_read < 1) then
          lines = unwritten_line
-         write(lines,*) 'read_kurucz_tables: no header row read from ', &
-              trim(path)
-         call kap_terminal(lines)
+         write(lines,'(a)') 'kap_init: the Kurucz 1990 table ' // trim(path) // &
+              ' has no temperature row before its data'
+         call kap_report(lines)
          close(unit)
          ierr = 1
          return
       end if
       if (density_index > kurucz_max_num_densities) then
          lines = unwritten_line
-         write(lines,'(a,i0,3a)') 'read_kurucz_tables: more than ', kurucz_max_num_densities, &
-              ' densities at one temperature in ', trim(path)
+         write(lines,'(a,i0,a)') 'kap_init: the Kurucz 1990 table ' // trim(path) // &
+              ' has more than ', kurucz_max_num_densities, ' densities at one temperature'
          call kap_report(lines)
          close(unit)
          ierr = 1
@@ -142,8 +142,8 @@ subroutine read_kurucz_table(path, tbl, ierr)
       return
    99 continue
       lines = unwritten_line
-      write(lines,*) 'read_kurucz_tables: error closing table file'
-      call kap_terminal(lines)
+      write(lines,'(a)') 'kap_init: cannot close the Kurucz 1990 table ' // trim(path)
+      call kap_report(lines)
       ierr = 1
 end subroutine read_kurucz_table
 

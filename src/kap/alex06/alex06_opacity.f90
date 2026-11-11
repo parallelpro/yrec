@@ -20,7 +20,6 @@ module alex06_opacity
       use opacity_source, only: kap_point, kap_result, kap_source
       use numerics_lib, only: interp, lagrange4
       use physical_constants, only: ln10
-      use kap_messages, only: kap_terminal, message_length, unwritten_line
       use alex06_reader, only: read_alex06_tables
       use math_lib
       implicit none
@@ -37,39 +36,37 @@ contains
 ! Builds tbl%opacity, the table (in log T and log R) at one composition,
 ! by 4-point Lagrange interpolation of the full set in Z, then in X. A
 ! composition off the tables (X < 0 or > 1 - Z; Z < 0 or more than one
-! node step above the top Z) returns ierr = 1, the table untouched.
+! node step above the top Z) returns ierr = 1 with the reason in
+! message, the table untouched.
 ! The table is built at (hydrogen_fraction, metal_fraction); the caller
 ! (compute_alex06_opacity) records that composition as the cache's only
 ! when the build succeeds.
-subroutine build_alex06_composition_table(tbl, hydrogen_fraction, metal_fraction, ierr)
+subroutine build_alex06_composition_table(tbl, hydrogen_fraction, metal_fraction, message, ierr)
       type(alex06_table_set), intent(inout) :: tbl
 
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
 
       real(dp) :: interp_nodes(4), weight_z(4), weight_x(4)
       real(dp) :: opacity_by_x(4,n_alex06_t,n_alex06_d)
       real(dp) :: x_max, z_max, interp_target
       integer :: i, j, iz, k, kk, kk2, kk3, kk4
-      character(len=message_length) :: lines(1)
 
       ierr = 0
+      message = ''
       x_max = 1.0d0 - metal_fraction
 !     Check that the requested composition is inside table bounds
       if (hydrogen_fraction < 0.0d0 .or. hydrogen_fraction > x_max) then
-         lines = unwritten_line
-         write(lines,5) hydrogen_fraction, metal_fraction
-         call kap_terminal(lines)
-    5    format('ILLEGAL COMPOSITION (X,Z) = ',2f6.2,' IN ALEX06.RUN STOPPED')
+         write(message,5) hydrogen_fraction, metal_fraction
+    5    format('the composition X =',f8.5,', Z =',f8.5,' is outside the Alexander 2006 tables')
          ierr = 1
          return
       end if
 !     Permit extrapolation in Z by up to 1 table element
       z_max = tbl%grid_z(n_alex06_z)+(tbl%grid_z(n_alex06_z)-tbl%grid_z(n_alex06_z-1))
       if (metal_fraction < 0.0d0 .or. metal_fraction > z_max) then
-         lines = unwritten_line
-         write(lines,5) hydrogen_fraction, metal_fraction
-         call kap_terminal(lines)
+         write(message,5) hydrogen_fraction, metal_fraction
          ierr = 1
          return
       end if
@@ -168,9 +165,10 @@ end subroutine build_alex06_composition_table
 ! of the table at the composition, rebuilt (build_alex06_composition_table)
 ! when X or Z moves more than alex_composition_tol from the cache's. Above
 ! the top log R the opacity is extrapolated linearly from the last two
-! columns.
+! columns. A composition off the tables returns ierr with the reason in
+! message.
 subroutine compute_alex06_opacity(tbl, log10_density, log10_temperature, hydrogen_fraction, &
-     metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, ierr)
+     metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, message, ierr)
       type(alex06_table_set), intent(inout) :: tbl
 
 
@@ -178,6 +176,7 @@ subroutine compute_alex06_opacity(tbl, log10_density, log10_temperature, hydroge
            hydrogen_fraction, metal_fraction
       real(dp), intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
 
       real(dp) :: interp_nodes(4), weight_t(4), dweight_t(4), &
@@ -187,11 +186,12 @@ subroutine compute_alex06_opacity(tbl, log10_density, log10_temperature, hydroge
       integer :: i, ii
 
       ierr = 0
+      message = ''
       delta_z = abs(metal_fraction-tbl%cached_z)
       delta_x = abs(hydrogen_fraction-tbl%cached_x)
 !     Ensure that opacity table has the same X,Z value as the point
       if (delta_z > alex_composition_tol .or. delta_x > alex_composition_tol) then
-         call build_alex06_composition_table(tbl, hydrogen_fraction, metal_fraction, ierr)
+         call build_alex06_composition_table(tbl, hydrogen_fraction, metal_fraction, message, ierr)
          if (ierr /= 0) return
          tbl%cached_z = metal_fraction
          tbl%cached_x = hydrogen_fraction
@@ -273,27 +273,31 @@ function alex06_source(settings) result(source)
       source%lookup => lookup_alex06
 end function alex06_source
 
-subroutine load_alex06(settings, paths, envelope_hydrogen_fraction, tables, ierr)
+subroutine load_alex06(settings, paths, envelope_hydrogen_fraction, tables, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(kap_table_paths_t), intent(in) :: paths
       real(dp), intent(in) :: envelope_hydrogen_fraction
       type(opacity_table_state), intent(inout) :: tables
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
 
+! (the reader reports its own errors)
+      message = ''
       call read_alex06_tables(tables%alex06, paths%alex06, ierr)
 end subroutine load_alex06
 
-subroutine lookup_alex06(settings, tables, point, res, in_table, ierr)
+subroutine lookup_alex06(settings, tables, point, res, in_table, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(opacity_table_state), intent(inout) :: tables
       type(kap_point), intent(in) :: point
       type(kap_result), intent(inout) :: res
       logical, intent(out) :: in_table
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
 
       call compute_alex06_opacity(tables%alex06, point%log10_density, &
            point%log10_temperature, point%hydrogen_fraction, point%metal_fraction, &
-           res%opacity, res%log10_opacity, res%dlnkap_dlnrho, res%dlnkap_dlnt, ierr)
+           res%opacity, res%log10_opacity, res%dlnkap_dlnrho, res%dlnkap_dlnt, message, ierr)
       in_table = ierr == 0
 end subroutine lookup_alex06
 

@@ -11,18 +11,16 @@
 !                         helium-core blend toward the pure-Z table)
 !   ramp_to_molecular     the ramp from the molecular opacity (below
 !                         logt_min) to the interior one (above logt_max),
-!                         linear in kappa
+!                         linear in kappa, with the blend's derivatives
 !   hubbard_lampe_applies, hubbard_lampe_opacity
 !                         the conductive opacity of Hubbard & Lampe's
 !                         fit, where the Potekhin table gives none
 !   add_conduction        the radiative and conductive opacities added
 !                         harmonically, 1/kappa = 1/kappa_rad + 1/kappa_cond
-! The ramp's derivatives are the derivatives' blend, not the derivatives
-! of the blend (bug_sweep O18: the weight's own derivative and the
-! kappa-weighting are missing; a measured fix in the B list).
 module opacity_blending
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use opacity_source, only: kap_result
+      use physical_constants, only: ln10
       use math_lib
       implicit none
       private
@@ -75,23 +73,34 @@ pure subroutine blend_results_in_z(res, res_z2, metal_fraction, table_z1, table_
 end subroutine blend_results_in_z
 
 ! res, the interior opacity at log10_temperature, replaced by the ramp's
-! value: w kappa_int + (1 - w) kappa_mol with w = (log T - logt_min) /
-! (logt_max - logt_min) from logt_min up, and the molecular opacity
-! below it
+! value: kappa = w kappa_int + (1 - w) kappa_mol with w = (log T -
+! logt_min) / (logt_max - logt_min) from logt_min up, and the molecular
+! opacity below it. The log derivatives are kappa's own:
+!   dln kappa/dln rho = (w kappa_int d_int + (1 - w) kappa_mol d_mol)/kappa
+!   dln kappa/dln T   = (w kappa_int d_int + (1 - w) kappa_mol d_mol
+!                        + (dw/dln T)(kappa_int - kappa_mol))/kappa,
+! d_int and d_mol the interior and molecular derivatives, and
+! dw/dln T = 1/(ln 10 (logt_max - logt_min)).
 pure subroutine ramp_to_molecular(log10_temperature, logt_min, logt_max, molecular, res)
       real(dp), intent(in) :: log10_temperature, logt_min, logt_max
       type(kap_result), intent(in) :: molecular
       type(kap_result), intent(inout) :: res
-      real(dp) :: ramp_weight
+      real(dp) :: ramp_weight, dweight_dlnt, interior_part, molecular_part
+      type(kap_result) :: interior
 
       if (log10_temperature >= logt_min) then
+         interior = res
          ramp_weight = (log10_temperature - logt_min) / (logt_max - logt_min)
-         res%opacity = ramp_weight*res%opacity + (1.0d0 - ramp_weight)*molecular%opacity
+         dweight_dlnt = 1.0d0 / (ln10*(logt_max - logt_min))
+         interior_part = ramp_weight*interior%opacity
+         molecular_part = (1.0d0 - ramp_weight)*molecular%opacity
+         res%opacity = interior_part + molecular_part
          res%log10_opacity = log10(res%opacity)
-         res%dlnkap_dlnrho = ramp_weight*res%dlnkap_dlnrho + &
-              (1.0d0 - ramp_weight)*molecular%dlnkap_dlnrho
-         res%dlnkap_dlnt = ramp_weight*res%dlnkap_dlnt + &
-              (1.0d0 - ramp_weight)*molecular%dlnkap_dlnt
+         res%dlnkap_dlnrho = (interior_part*interior%dlnkap_dlnrho + &
+              molecular_part*molecular%dlnkap_dlnrho) / res%opacity
+         res%dlnkap_dlnt = (interior_part*interior%dlnkap_dlnt + &
+              molecular_part*molecular%dlnkap_dlnt + &
+              dweight_dlnt*(interior%opacity - molecular%opacity)) / res%opacity
       else
          res = molecular
       end if

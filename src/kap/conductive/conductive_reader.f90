@@ -10,7 +10,7 @@ module conductive_reader
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use math_lib
       use opacity_tables, only: cond_n_rho, cond_n_temp, cond_n_z, conductive_table_set
-      use kap_messages, only: kap_terminal, message_length, unwritten_line
+      use kap_messages, only: kap_report, message_length
       use opacity_table_files, only: read_failed
       implicit none
       private
@@ -29,15 +29,15 @@ subroutine read_conductive_table(tbl, path, ierr)
       integer, intent(out) :: ierr
       integer :: file_unit, z_index, t_index, r_index
       real(dp) :: z_grid_value
-      character(len=message_length) :: lines(1)
+      character(len=message_length) :: line
       integer :: ios
       character(len=256) :: iomsg
 
-      open(newunit=file_unit, file=path, status='OLD', iostat=ierr)
+! (opacity_table_files' open_table would add the compiler's iomsg)
+      open(newunit=file_unit, file=path, status='old', action='read', iostat=ierr)
       if (ierr /= 0) then
-         lines = unwritten_line
-         write(lines,*) 'read_conductive_table: cannot open ', trim(path)
-         call kap_terminal(lines)
+         line = 'kap_init: cannot open the conductive table ' // trim(path)
+         call kap_report([line])
          ierr = 1
          return
       end if

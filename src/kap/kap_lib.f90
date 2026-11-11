@@ -31,7 +31,7 @@ module kap_lib
       use opacity_families, only: select_families
       use opacity_blending, only: blend_results_in_z, ramp_to_molecular, &
            hubbard_lampe_applies, hubbard_lampe_opacity, add_conduction
-      use kap_messages, only: kap_log_values, kap_report, message_length, unwritten_line
+      use kap_messages, only: kap_report, message_length, unwritten_line
       implicit none
       private
       public :: kap_get, kap_init, kap_update_surface_tables
@@ -105,26 +105,35 @@ end subroutine kap_get
 !      molecular to the interior opacity (below it, the molecular one);
 !   4. conduction: the Potekhin conductive opacity, else Hubbard &
 !      Lampe's where it applies, added harmonically.
-! Each step returns ierr from the family it calls, which has written the
-! message.
+! A step that fails returns ierr with the reason in message (its own, or
+! the family's), and kap_eval reports it (kap_report, "kap_get: ...").
 subroutine kap_eval(point, result, ierr)
       type(kap_point), intent(in) :: point
       type(kap_result), intent(out) :: result
       integer, intent(out) :: ierr
+      character(len=message_length) :: message
+
+      message = ''
+      call evaluate_steps()
+      if (ierr /= 0) call report_reason('kap_get', message)
+
+contains
+
+subroutine evaluate_steps()
       type(kap_result) :: molecular_result, conductive_result
       logical :: have_molecular, have_conductive
 
-      call molecular_opacity(point, molecular_result, have_molecular, ierr)
+      call molecular_opacity(point, molecular_result, have_molecular, message, ierr)
       if (ierr /= 0) return
       if (.not. (point%log10_temperature < interior%logt_min .and. have_molecular)) then
-         call interior_opacity(point, result, ierr)
+         call interior_opacity(point, result, message, ierr)
          if (ierr /= 0) return
       end if
       if (have_molecular .and. point%log10_temperature <= molecular%logt_max) then
          call ramp_to_molecular(point%log10_temperature, interior%logt_min, &
               molecular%logt_max, molecular_result, result)
       end if
-      call conductive_opacity(point, conductive_result, have_conductive, ierr)
+      call conductive_opacity(point, conductive_result, have_conductive, message, ierr)
       if (ierr /= 0) return
       if (.not. have_conductive) then
          if (.not. hubbard_lampe_applies(point%log10_density, point%log10_temperature)) return
@@ -132,105 +141,134 @@ subroutine kap_eval(point, result, ierr)
               point%log10_temperature, point%hydrogen_fraction)
       end if
       call add_conduction(result, conductive_result)
+end subroutine evaluate_steps
+
 end subroutine kap_eval
 
 ! Step 1: the molecular family's opacity, where its window reaches the
 ! point; have_molecular is .false. without one, or where its table has
 ! no value (Kurucz 1990).
-subroutine molecular_opacity(point, res, have_molecular, ierr)
+subroutine molecular_opacity(point, res, have_molecular, message, ierr)
       type(kap_point), intent(in) :: point
       type(kap_result), intent(inout) :: res
       logical, intent(out) :: have_molecular
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
 
       ierr = 0
+      message = ''
       have_molecular = .false.
       if (.not. (molecular%selected .and. point%log10_temperature <= molecular%logt_max)) return
-      call molecular%lookup(kap_settings, tables, point, res, have_molecular, ierr)
+      call molecular%lookup(kap_settings, tables, point, res, have_molecular, message, ierr)
       if (ierr /= 0) have_molecular = .false.
 end subroutine molecular_opacity
 
 ! Step 2: the interior family's opacity. A helium-burning core blends it
 ! toward the pure-Z table; above max_interior_metal_fraction, or at a Z
 ! off the envelope's for a family without a table there, there is none.
-subroutine interior_opacity(point, res, ierr)
+subroutine interior_opacity(point, res, message, ierr)
       type(kap_point), intent(in) :: point
       type(kap_result), intent(inout) :: res
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
       logical :: in_table
 
+      ierr = 0
+      message = ''
       if (point%metal_fraction > helium_core_metal_fraction .and. &
            point%log10_temperature > helium_core_logt) then
-         call helium_core_opacity(point, res, ierr)
-      else if ((point%metal_fraction > max_interior_metal_fraction) .or. &
-           ((abs(point%metal_fraction - tables%envelope_metal_fraction) > &
+         call helium_core_opacity(point, res, message, ierr)
+      else if (point%metal_fraction > max_interior_metal_fraction) then
+         write(message,'(a,f8.5,a,f8.5,a)') 'no interior opacity at Z =', &
+              point%metal_fraction, ' and log T =', point%log10_temperature, &
+              ': above Z = 0.12 the tables reach only helium-burning cores (log T > 7)'
+         ierr = 1
+      else if ((abs(point%metal_fraction - tables%envelope_metal_fraction) > &
            kap_settings%metal_fraction_match_tolerance) .and. .not.kap_settings%use_two_z_tables &
-           .and. .not.interior%covers_any_z)) then
-         call kap_log_values([point%metal_fraction, tables%envelope_metal_fraction, &
-              point%log10_temperature], &
-              ' Z>0.12 T < 10^7 K' // &
-              ' OUTSIDE OPAL OPACITY TABLE RANGE OR Z' // &
-              ' OUTSIDE SINGLE TABLE USED.Z,ZENV,LOG T=')
+           .and. .not.interior%covers_any_z) then
+         write(message,'(a,f8.5,a,f8.5,a)') 'no interior opacity at Z =', &
+              point%metal_fraction, ': the ' // trim(interior%name) // &
+              ' table is at the envelope''s Z =', tables%envelope_metal_fraction, &
+              ' (use_z_ramp or use_diffusion_z reads two)'
          ierr = 1
       else if (interior%selected) then
-         call interior%lookup(kap_settings, tables, point, res, in_table, ierr)
+         call interior%lookup(kap_settings, tables, point, res, in_table, message, ierr)
       else
-         call no_interior_family(point, ierr)
+         call no_interior_family(point, message, ierr)
       end if
 end subroutine interior_opacity
 
 ! Step 2 in a helium-burning core: the interior family's single-Z table
 ! (at its Z, table_z) blended linearly in Z toward the pure-Z table,
 ! placed at Z = 1.
-subroutine helium_core_opacity(point, res, ierr)
+subroutine helium_core_opacity(point, res, message, ierr)
       type(kap_point), intent(in) :: point
       type(kap_result), intent(inout) :: res
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
       type(kap_result) :: pure_z_result
       real(dp) :: table_z
       logical :: in_table
 
+      ierr = 0
+      message = ''
       if (.not. helium_core%selected) then
-         call kap_log_values([point%metal_fraction, point%log10_temperature], &
-              ' ERROR: Z>0.10 T > 5 X 10^7 K' // &
-              ' NEED PURE Z TABLE TO CONTINUE. Z,LOG T=')
+         write(message,'(a,f8.5,a,f8.5,a)') 'a helium-burning core (Z =', &
+              point%metal_fraction, ' above 0.1, log T =', point%log10_temperature, &
+              ' above 7) needs the pure-Z table (use_pure_z_table)'
          ierr = 1
          return
       end if
-      call helium_core%lookup(kap_settings, tables, point, pure_z_result, in_table, ierr)
+      call helium_core%lookup(kap_settings, tables, point, pure_z_result, in_table, message, ierr)
       if (ierr /= 0) return
       if (.not. interior%selected) then
 ! (kap_init refuses these settings; set_kap_settings does not check)
-         call no_interior_family(point, ierr)
+         call no_interior_family(point, message, ierr)
          return
       end if
-      call interior%core_lookup(kap_settings, tables, point, res, table_z, ierr)
+      call interior%core_lookup(kap_settings, tables, point, res, table_z, message, ierr)
       if (ierr /= 0) return
       call blend_results_in_z(res, pure_z_result, point%metal_fraction, table_z, 1.0d0)
 end subroutine helium_core_opacity
 
-subroutine no_interior_family(point, ierr)
+subroutine no_interior_family(point, message, ierr)
       type(kap_point), intent(in) :: point
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
 
-      call kap_log_values([point%hydrogen_fraction, point%metal_fraction, &
-           point%log10_temperature], 'NO OPACITY TABLE CHOSEN' // ' RUN STOPPED. X Z TL=')
+      write(message,'(a,3(a,f8.5))') 'no interior opacity table chosen', &
+           ' (use_opal95_tables, use_opal92_tables or use_laol89_tables); X =', &
+           point%hydrogen_fraction, ', Z =', point%metal_fraction, ', log T =', &
+           point%log10_temperature
       ierr = 1
 end subroutine no_interior_family
 
 ! Step 4's table: the Potekhin conductive opacity, where it has one
 ! (have_conductive).
-subroutine conductive_opacity(point, res, have_conductive, ierr)
+subroutine conductive_opacity(point, res, have_conductive, message, ierr)
       type(kap_point), intent(in) :: point
       type(kap_result), intent(inout) :: res
       logical, intent(out) :: have_conductive
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
 
       ierr = 0
+      message = ''
       have_conductive = .false.
       if (.not. conduction%selected) return
-      call conduction%lookup(kap_settings, tables, point, res, have_conductive, ierr)
+      call conduction%lookup(kap_settings, tables, point, res, have_conductive, message, ierr)
 end subroutine conductive_opacity
+
+! A step's or a family's reason for its ierr, reported with the entry
+! point that met it (none when a table reader has reported the error).
+subroutine report_reason(entry_name, message)
+      character(len=*), intent(in) :: entry_name, message
+      character(len=message_length) :: line
+
+      if (len_trim(message) == 0) return
+      line = entry_name // ': ' // trim(message)
+      call kap_report([line])
+end subroutine report_reason
 
 !----------------------------------------------------------------------
 ! kap_init
@@ -239,8 +277,8 @@ end subroutine conductive_opacity
 ! check and install the settings, start from initial_tables, choose the
 ! families (opacity_families) and load their tables: the conductive
 ! table, the interior family's, the pure-Z table and the molecular
-! family's. A setting that cannot work, or a table that cannot be read,
-! returns ierr = 1 with its message written (kap_messages).
+! family's. A setting that cannot work, or a table that cannot be read
+! or built, returns ierr = 1 with its message reported (kap_messages).
 subroutine kap_init(settings, paths, envelope_hydrogen_fraction, &
      envelope_metal_fraction, ierr)
       type(kap_settings_t), intent(in) :: settings
@@ -267,10 +305,12 @@ contains
 subroutine load_family(family, ierr)
       type(kap_source), intent(in) :: family
       integer, intent(out) :: ierr
+      character(len=message_length) :: message
 
       ierr = 0
-      if (family%selected) call family%load(kap_settings, paths, &
-           envelope_hydrogen_fraction, tables, ierr)
+      if (.not. family%selected) return
+      call family%load(kap_settings, paths, envelope_hydrogen_fraction, tables, message, ierr)
+      if (ierr /= 0) call report_reason('kap_init', message)
 end subroutine load_family
 
 end subroutine kap_init
@@ -353,18 +393,24 @@ end subroutine check_kap_settings
 !----------------------------------------------------------------------
 ! Rebuild the interior and molecular families' surface-composition
 ! tables (OPAL 1995-format, OPAL 1992, Alexander 1994) at a new envelope
-! X, from the tables kap_init read.
+! X, from the tables kap_init read. A table that cannot be built returns
+! ierr with its reason reported.
 subroutine kap_update_surface_tables(hydrogen_fraction, ierr)
       real(dp), intent(in) :: hydrogen_fraction
       integer, intent(out) :: ierr
+      character(len=message_length) :: message
 
       ierr = 0
       if (interior%selected .and. associated(interior%refresh)) then
-         call interior%refresh(kap_settings, hydrogen_fraction, tables, ierr)
-         if (ierr /= 0) return
+         call interior%refresh(kap_settings, hydrogen_fraction, tables, message, ierr)
+         if (ierr /= 0) then
+            call report_reason('kap_update_surface_tables', message)
+            return
+         end if
       end if
       if (molecular%selected .and. associated(molecular%refresh)) then
-         call molecular%refresh(kap_settings, hydrogen_fraction, tables, ierr)
+         call molecular%refresh(kap_settings, hydrogen_fraction, tables, message, ierr)
+         if (ierr /= 0) call report_reason('kap_update_surface_tables', message)
       end if
 end subroutine kap_update_surface_tables
 

@@ -21,8 +21,6 @@ module kurucz_opacity
       use opacity_blending, only: blend_results_in_z
       use numerics_lib, only: findex, natural_spline, splint, &
            compute_spline_coefficients, numerics_status_text
-      use kap_messages, only: kap_log, kap_log_values, kap_report, kap_terminal, &
-           message_length, unwritten_line
       use kurucz_reader, only: read_kurucz_tables
       use math_lib
       implicit none
@@ -40,9 +38,10 @@ contains
 ! log rho over the row's densities with data, as coefficients per
 ! interval (tbl%spline_coeffs), with the row's first density index and
 ! count. A row that does not start at the first density, or has fewer
-! than 25 points, returns ierr = 1.
-subroutine build_kurucz_splines(tbl, ierr)
+! than 25 points, returns ierr = 1 with the reason in message.
+subroutine build_kurucz_splines(tbl, message, ierr)
       type(kurucz_table_set), intent(inout) :: tbl
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
 ! (np: the coefficient array's interval count, more than any row's)
       integer, parameter :: np = 100
@@ -52,9 +51,9 @@ subroutine build_kurucz_splines(tbl, ierr)
            row_second_derivs(kurucz_max_num_densities)
       integer :: it, jd, id, index2, j, i
       real(dp) :: chkd, chko
-      character(len=message_length) :: lines(1)
 
       ierr = 0
+      message = ''
       do it = 1,tbl%num_temps
          jd = 0
          do id = 1,kurucz_max_num_densities
@@ -68,16 +67,14 @@ subroutine build_kurucz_splines(tbl, ierr)
          end do
          tbl%density_count(it) = jd
          if (tbl%density_start_index(it) /= 1) then
-            lines = unwritten_line
-            write(lines,*) 'build_kurucz_splines: kurucz table density grid does not start at index 1'
-            call kap_terminal(lines)
+            write(message,'(a,f6.3,a)') 'the Kurucz 1990 table''s row at log T', &
+                 tbl%grid_logt(it), ' does not start at its first density'
             ierr = 1
             return
          end if
          if (tbl%density_count(it) < 25) then
-            lines = unwritten_line
-            write(lines,*) 'build_kurucz_splines: kurucz table has fewer than 25 density points'
-            call kap_terminal(lines)
+            write(message,'(a,f6.3,a)') 'the Kurucz 1990 table''s row at log T', &
+                 tbl%grid_logt(it), ' has fewer than 25 densities'
             ierr = 1
             return
          end if
@@ -102,9 +99,11 @@ end subroutine build_kurucz_splines
 ! tbl (the first or the second Z's), by cubic splines: in log rho on each
 ! T row, then in log T across the rows. in_table is .false. for a point
 ! outside the table (and, for the first table, above log rho = -3 or
-! log T = 4.1), where the caller uses the interior opacity alone.
+! log T = 4.1), where the caller uses the interior opacity alone. A point
+! with fewer than four T rows of data around it, or a failed spline,
+! returns ierr with the reason in message.
 subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity, &
-     log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, in_table, ierr)
+     log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, in_table, message, ierr)
 
 !     Two dimensional interpolation for opacity.
 !     tbl%ix_t / tbl%ix_rho are the warm-start
@@ -121,6 +120,7 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
       real(dp), intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
       logical, intent(out) :: in_table
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
 
       real(dp) :: temp_subset_logt(kurucz_max_num_temps), &
@@ -140,12 +140,12 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
       real(dp) :: delta_logrho, c1, c2, c3, c4
       real(dp) :: log10_opacity_at_rho, dlnkap_dlnrho_at_rho
       real(dp) :: log10_opacity_interp
-      character(len=message_length) :: lines(1)
 
       call findex(tbl%grid_logt, tbl%num_temps, log10_temperature, &
            tbl%ix_t)
 
       ierr = 0
+      message = ''
       in_table = .false.
       if (tbl%check_range) then
       if (.not.(log10_density <= kurucz_logrho_max .and. &
@@ -222,8 +222,8 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
             search_full_range = .false.
             cycle full_search
          end if
-         call kap_log_values([log10_density, log10_temperature], &
-              'ERROR KURUCZ OP: NO TABLE VALUE ')
+         write(message,'(a,f8.4,a,f8.4)') 'the Kurucz 1990 table has no value at log rho =', &
+              log10_density, ', log T =', log10_temperature
          ierr = 1
          return
       end if
@@ -240,9 +240,8 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
            temp_subset_second_derivs, log10_temperature, log10_opacity_interp, &
            jerr_gate, dy=dlnkap_dlnt)
       if (jerr_gate /= 0) then
-         lines = unwritten_line
-         write(lines,*) 'splint: '//numerics_status_text(jerr_gate)
-         call kap_log(lines)
+         message = 'the Kurucz 1990 table''s spline in log T failed: ' // &
+              trim(numerics_status_text(jerr_gate))
          ierr = jerr_gate
          return
       end if
@@ -255,9 +254,8 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
       call splint(temp_subset_logt, temp_subset_dlnkap_dlnrho, num_valid_temps, &
            temp_subset_second_derivs, log10_temperature, dlnkap_dlnrho, jerr_gate)
       if (jerr_gate /= 0) then
-         lines = unwritten_line
-         write(lines,*) 'splint: '//numerics_status_text(jerr_gate)
-         call kap_log(lines)
+         message = 'the Kurucz 1990 table''s spline in log T failed: ' // &
+              trim(numerics_status_text(jerr_gate))
          ierr = jerr_gate
          return
       end if
@@ -283,38 +281,42 @@ function kurucz90_source(settings) result(source)
       source%lookup => lookup_kurucz90
 end function kurucz90_source
 
-subroutine load_kurucz90(settings, paths, envelope_hydrogen_fraction, tables, ierr)
+subroutine load_kurucz90(settings, paths, envelope_hydrogen_fraction, tables, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(kap_table_paths_t), intent(in) :: paths
       real(dp), intent(in) :: envelope_hydrogen_fraction
       type(opacity_table_state), intent(inout) :: tables
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
 
+! (the reader reports its own errors)
+      message = ''
       call read_kurucz_tables(tables%kurucz, paths%kurucz, paths%kurucz_z2, &
            settings%use_two_z_tables, ierr)
       if (ierr /= 0) return
-      call build_kurucz_splines(tables%kurucz(1), ierr)
+      call build_kurucz_splines(tables%kurucz(1), message, ierr)
       if (ierr /= 0) return
-      if (settings%use_two_z_tables) call build_kurucz_splines(tables%kurucz(2), ierr)
+      if (settings%use_two_z_tables) call build_kurucz_splines(tables%kurucz(2), message, ierr)
 end subroutine load_kurucz90
 
-subroutine lookup_kurucz90(settings, tables, point, res, in_table, ierr)
+subroutine lookup_kurucz90(settings, tables, point, res, in_table, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(opacity_table_state), intent(inout) :: tables
       type(kap_point), intent(in) :: point
       type(kap_result), intent(inout) :: res
       logical, intent(out) :: in_table
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
       type(kap_result) :: res_z2
 
       call compute_kurucz_opacity(tables%kurucz(1), point%log10_density, &
            point%log10_temperature, res%opacity, res%log10_opacity, &
-           res%dlnkap_dlnrho, res%dlnkap_dlnt, in_table, ierr)
+           res%dlnkap_dlnrho, res%dlnkap_dlnt, in_table, message, ierr)
       if (ierr /= 0) return
       if (in_table .and. settings%use_two_z_tables) then
          call compute_kurucz_opacity(tables%kurucz(2), point%log10_density, &
               point%log10_temperature, res_z2%opacity, res_z2%log10_opacity, &
-              res_z2%dlnkap_dlnrho, res_z2%dlnkap_dlnt, in_table, ierr)
+              res_z2%dlnkap_dlnrho, res_z2%dlnkap_dlnt, in_table, message, ierr)
          if (ierr /= 0) return
       end if
       if (in_table .and. settings%use_two_z_tables) then

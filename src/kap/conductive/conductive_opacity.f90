@@ -17,21 +17,20 @@ module conductive_opacity
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use math_lib
       use numerics_lib, only: hunt
+      use physical_constants, only: csig
       use opacity_tables, only: cond_n_rho, cond_n_temp, cond_n_z, conductive_table_set, &
            kap_settings_t, kap_table_paths_t, opacity_table_state
       use opacity_source, only: kap_point, kap_result, kap_source
-      use kap_messages, only: kap_terminal, kap_terminal_values, message_length, &
-           unwritten_line
       use conductive_reader, only: read_conductive_table
       implicit none
       private
       public :: conductive_source
       public :: compute_conductive_opacity
 
-! kappa_c = 16 sigma T^3/(3 rho K) for a thermal conductivity K: log10 of
-! 16 sigma/3 (CGS), as the F77 code rounded it (log10(16 sigma/3) from
-! physical_constants' sigma differs at 1e-5: a measured change)
-      real(dp), parameter :: log10_16_sigma_over_3 = -3.5194d0
+! kappa_c = 16 sigma T^3/(3 rho K) for a thermal conductivity K, sigma
+! the Stefan-Boltzmann constant (physical_constants' csig):
+! compute_conductive_opacity takes log10(16 sigma/3) at each call, since a
+! parameter cannot call math_lib's log10 (crmath's in a crmath build)
 ! the table's reach: log T in [conductive_logt_min, conductive_logt_max],
 ! log rho up to conductive_logrho_max; below conductive_logrho_min (the
 ! table's lowest density) the opacity is extrapolated where log R >= 0
@@ -58,11 +57,12 @@ contains
 ! metals fully ionized). got_conductive_opacity is .false. outside the
 ! table's reach (log T 3-9, log rho up to 9.75, and below log rho = -6
 ! only where log R >= 0), where kappa_c = 10**no_conduction_log10_opacity
-! is returned unused.
+! is returned unused. A lookup the table cannot give returns ierr with
+! the reason in message (written nowhere).
 subroutine compute_conductive_opacity(tbl, log10_density, log10_temperature, &
      hydrogen_fraction, metal_fraction, conductive_opacity, &
      conductive_log10_opacity, conductive_dlnkap_dlnrho, &
-     conductive_dlnkap_dlnt, ion_fraction, got_conductive_opacity, ierr)
+     conductive_dlnkap_dlnt, ion_fraction, got_conductive_opacity, message, ierr)
 
 
       type(conductive_table_set), intent(in) :: tbl
@@ -73,6 +73,7 @@ subroutine compute_conductive_opacity(tbl, log10_density, log10_temperature, &
            conductive_dlnkap_dlnt
       real(dp), intent(in) :: ion_fraction(:)
       logical, intent(out) :: got_conductive_opacity
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
 ! atomic weights of H, He4 and the oxygen proxy for the metals
       real(dp), parameter :: atomic_weight_h1 = 1.008D0, &
@@ -88,11 +89,13 @@ subroutine compute_conductive_opacity(tbl, log10_density, log10_temperature, &
       real(dp) :: log10_cond_he4, dlnkap_dlnrho_he4, dlnkap_dlnt_he4
       real(dp) :: log10_cond_ox, dlnkap_dlnrho_ox, dlnkap_dlnt_ox
       real(dp) :: cond_h1, cond_he4, cond_ox
-      real(dp) :: mix_log10_cond
+      real(dp) :: mix_log10_cond, log10_16_sigma_over_3
       real(dp) :: unused_deriv1, unused_deriv2
 
 ! the number fractions of H1, He4 and the metals (as O)
       ierr = 0
+      message = ''
+      log10_16_sigma_over_3 = log10(16.0d0*csig/3.0d0)
       helium_fraction=1.0D0-hydrogen_fraction-metal_fraction
       number_fraction_h1  = (hydrogen_fraction/atomic_weight_h1)  / &
            (hydrogen_fraction/atomic_weight_h1 + &
@@ -124,13 +127,13 @@ subroutine compute_conductive_opacity(tbl, log10_density, log10_temperature, &
            .and.log10_density <= conductive_logrho_max) then
          if (log10_density >= conductive_logrho_min) then
            call condopacp(tbl, charge_h1,log10_temperature,log10_density, &
-                log10_cond_h1,dlnkap_dlnrho_h1,dlnkap_dlnt_h1,ierr)
+                log10_cond_h1,dlnkap_dlnrho_h1,dlnkap_dlnt_h1,message,ierr)
            if (ierr /= 0) return
            call condopacp(tbl, charge_he4,log10_temperature,log10_density, &
-                log10_cond_he4,dlnkap_dlnrho_he4,dlnkap_dlnt_he4,ierr)
+                log10_cond_he4,dlnkap_dlnrho_he4,dlnkap_dlnt_he4,message,ierr)
            if (ierr /= 0) return
            call condopacp(tbl, charge_ox,log10_temperature,log10_density, &
-                log10_cond_ox,dlnkap_dlnrho_ox,dlnkap_dlnt_ox,ierr)
+                log10_cond_ox,dlnkap_dlnrho_ox,dlnkap_dlnt_ox,message,ierr)
            if (ierr /= 0) return
 
            cond_h1 = exp10((-log10_cond_h1))
@@ -156,33 +159,32 @@ subroutine compute_conductive_opacity(tbl, log10_density, log10_temperature, &
            got_conductive_opacity=.TRUE.
            conductive_opacity = exp10(conductive_log10_opacity)
          end if
-! below the table's lowest density, where log R >= 0: from its value
-! there, extrapolated in log rho. (This branch takes +log10 of the sum
-! where the main one takes -log10, and extrapolates with the opposite
-! sign of the slope: bug_sweep M222, a measured fix in the B list.)
+! below the table's lowest density, where log R >= 0: the main branch's
+! formula at conductive_logrho_min, extrapolated linearly in log rho to
+! the point with its slope there (the H table's slope, not the mixture's)
          if (log10_density < conductive_logrho_min.and.extrapolation_indicator >= 0.0D0) then
            call condopacp(tbl, charge_h1,log10_temperature,conductive_logrho_min,log10_cond_h1, &
-                conductive_dlnkap_dlnrho,conductive_dlnkap_dlnt,ierr)
+                conductive_dlnkap_dlnrho,conductive_dlnkap_dlnt,message,ierr)
            if (ierr /= 0) return
            call condopacp(tbl, charge_he4,log10_temperature,conductive_logrho_min,log10_cond_he4, &
-                unused_deriv1,unused_deriv2,ierr)
+                unused_deriv1,unused_deriv2,message,ierr)
            if (ierr /= 0) return
            call condopacp(tbl, charge_ox,log10_temperature,conductive_logrho_min,log10_cond_ox, &
-                unused_deriv1,unused_deriv2,ierr)
+                unused_deriv1,unused_deriv2,message,ierr)
            if (ierr /= 0) return
 
            cond_h1 = exp10((-log10_cond_h1))
            cond_he4 = exp10((-log10_cond_he4))
            cond_ox = exp10((-log10_cond_ox))
 
-           mix_log10_cond = log10(weight_h1*cond_h1 + weight_he4*cond_he4 + &
+           mix_log10_cond = -log10(weight_h1*cond_h1 + weight_he4*cond_he4 + &
                 weight_ox*cond_ox)
 
            conductive_log10_opacity = log10_16_sigma_over_3+3.0D0*log10_temperature-conductive_logrho_min-mix_log10_cond
            conductive_dlnkap_dlnrho = -1.0D0-conductive_dlnkap_dlnrho
            conductive_dlnkap_dlnt = 3.0D0-conductive_dlnkap_dlnt
            conductive_log10_opacity = conductive_log10_opacity + &
-                conductive_dlnkap_dlnrho*(conductive_logrho_min-log10_density)
+                conductive_dlnkap_dlnrho*(log10_density-conductive_logrho_min)
            conductive_opacity = exp10(conductive_log10_opacity)
            got_conductive_opacity=.TRUE.
          end if
@@ -201,6 +203,7 @@ end subroutine compute_conductive_opacity
 ! Output: log10_conductivity - Log_{10} thermal conductivity (kappa) [CGS units]
 !         dlnkappa_dlnrho - d log kappa / d log rho
 !         dlnkappa_dlnt - d log kappa / d log T
+!         message, ierr - off the table: the reason, and ierr = 1
 !!!      (it is also possible to obtain all second derivatives)      !!!
 !
 !     This Subroutine interpolates thermal conductivity from
@@ -217,13 +220,14 @@ end subroutine compute_conductive_opacity
 !     Please address any questions/comments to Alexander Potekhin:
 !     e-mail: palex@astro.ioffe.rssi.ru
 subroutine condopacp(tbl, ion_charge, log10_temperature, log10_density, &
-     log10_conductivity, dlnkappa_dlnrho, dlnkappa_dlnt, ierr)
+     log10_conductivity, dlnkappa_dlnrho, dlnkappa_dlnt, message, ierr)
       type(conductive_table_set), intent(in) :: tbl
 
       real(dp), intent(in) :: ion_charge, log10_temperature, &
            log10_density
       real(dp), intent(out) :: log10_conductivity, &
            dlnkappa_dlnrho, dlnkappa_dlnt
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
 ! (the grid sizes cond_n_* are opacity_tables', and must be the table
 ! file's)
@@ -244,12 +248,10 @@ subroutine condopacp(tbl, ion_charge, log10_temperature, log10_density, &
       real(dp) :: ckt1, drkt1, dr2kt1
       real(dp) :: cktp, drktp, dr2ktp
       real(dp) :: dt2k, drtk, drt2k, xt
-      character(len=message_length) :: lines(1)
 
+      message = ''
       if (.not. tbl%loaded) then
-         lines = unwritten_line
-         write(lines,*) 'condopacp: the conductive-opacity table is not loaded (kap_init)'
-         call kap_terminal(lines)
+         message = 'the Potekhin conductive table is not loaded (kap_init reads it)'
          ierr = 1
          return
       end if
@@ -262,31 +264,24 @@ subroutine condopacp(tbl, ion_charge, log10_temperature, log10_density, &
       r_index = 0
       call hunt(tbl%z_grid,cond_n_z,log10_ion_charge,z_index)
       if (z_index == 0.or.z_index == cond_n_z) then
-         lines = unwritten_line
-         write(lines,*) 'CONINTER: Z out of range'
-         call kap_terminal(lines)
+         write(message,'(a,f5.2,a)') 'the ion charge', ion_charge, &
+              ' is outside the Potekhin conductive table'
          ierr = 1
          return
       end if
       call hunt(tbl%temp_grid,cond_n_temp,log10_temperature,t_index)
 
       if (t_index == 0.or.t_index == cond_n_temp) then
-                  call kap_terminal_values(tbl%z_grid)
-                  lines = unwritten_line
-                  write(lines,*) cond_n_z, log10_temperature, z_index
-                  call kap_terminal(lines)
-                  lines = unwritten_line
-                  write(lines,*) 'CONINTER: T out of range'
-                  call kap_terminal(lines)
-                  ierr = 1
-                  return
+         write(message,'(a,f9.6,a)') 'log T =', log10_temperature, &
+              ' is outside the Potekhin conductive table'
+         ierr = 1
+         return
       end if
 
       call hunt(tbl%rho_grid,cond_n_rho,log10_density,r_index)
       if (r_index == 0.or.r_index == cond_n_rho) then
-         lines = unwritten_line
-         write(lines,*) 'CONINTER: rho out of range'
-         call kap_terminal(lines)
+         write(message,'(a,f10.6,a)') 'log rho =', log10_density, &
+              ' is outside the Potekhin conductive table'
          ierr = 1
          return
       end if
@@ -302,7 +297,7 @@ subroutine condopacp(tbl, ion_charge, log10_temperature, log10_density, &
            tbl%log10_kappa_table(t_index_lo,r_index,z_index), &
            tbl%log10_kappa_table(t_index_lo,r_index+1,z_index), &
            tbl%log10_kappa_table(t_index_lo,r_index_hi,z_index), &
-           cktmz0,drktmz0,dr2ktmz0,xr,ierr)
+           cktmz0,drktmz0,dr2ktmz0,xr,message,ierr)
       if (ierr /= 0) return
       call cinterp3(tbl%rho_grid(r_index_lo),tbl%rho_grid(r_index),tbl%rho_grid(r_index+1), &
            tbl%rho_grid(r_index_hi),log10_density,r_index,cond_n_rho, &
@@ -310,7 +305,7 @@ subroutine condopacp(tbl, ion_charge, log10_temperature, log10_density, &
            tbl%log10_kappa_table(t_index,r_index,z_index), &
            tbl%log10_kappa_table(t_index,r_index+1,z_index), &
            tbl%log10_kappa_table(t_index,r_index_hi,z_index), &
-           ckt0z0,drkt0z0,dr2kt0z0,xr,ierr)
+           ckt0z0,drkt0z0,dr2kt0z0,xr,message,ierr)
       if (ierr /= 0) return
       call cinterp3(tbl%rho_grid(r_index_lo),tbl%rho_grid(r_index),tbl%rho_grid(r_index+1), &
            tbl%rho_grid(r_index_hi),log10_density,r_index,cond_n_rho, &
@@ -318,7 +313,7 @@ subroutine condopacp(tbl, ion_charge, log10_temperature, log10_density, &
            tbl%log10_kappa_table(t_index+1,r_index,z_index), &
            tbl%log10_kappa_table(t_index+1,r_index+1,z_index), &
            tbl%log10_kappa_table(t_index+1,r_index_hi,z_index), &
-           ckt1z0,drkt1z0,dr2kt1z0,xr,ierr)
+           ckt1z0,drkt1z0,dr2kt1z0,xr,message,ierr)
       if (ierr /= 0) return
       call cinterp3(tbl%rho_grid(r_index_lo),tbl%rho_grid(r_index),tbl%rho_grid(r_index+1), &
            tbl%rho_grid(r_index_hi),log10_density,r_index,cond_n_rho, &
@@ -326,7 +321,7 @@ subroutine condopacp(tbl, ion_charge, log10_temperature, log10_density, &
            tbl%log10_kappa_table(t_index_hi,r_index,z_index), &
            tbl%log10_kappa_table(t_index_hi,r_index+1,z_index), &
            tbl%log10_kappa_table(t_index_hi,r_index_hi,z_index), &
-           cktpz0,drktpz0,dr2ktpz0,xr,ierr)
+           cktpz0,drktpz0,dr2ktpz0,xr,message,ierr)
       if (ierr /= 0) return
 ! Z1:
       call cinterp3(tbl%rho_grid(r_index_lo),tbl%rho_grid(r_index),tbl%rho_grid(r_index+1), &
@@ -335,7 +330,7 @@ subroutine condopacp(tbl, ion_charge, log10_temperature, log10_density, &
            tbl%log10_kappa_table(t_index_lo,r_index,z_index+1), &
            tbl%log10_kappa_table(t_index_lo,r_index+1,z_index+1), &
            tbl%log10_kappa_table(t_index_lo,r_index_hi,z_index+1), &
-           cktmz1,drktmz1,dr2ktmz1,xr,ierr)
+           cktmz1,drktmz1,dr2ktmz1,xr,message,ierr)
       if (ierr /= 0) return
       call cinterp3(tbl%rho_grid(r_index_lo),tbl%rho_grid(r_index),tbl%rho_grid(r_index+1), &
            tbl%rho_grid(r_index_hi),log10_density,r_index,cond_n_rho, &
@@ -343,7 +338,7 @@ subroutine condopacp(tbl, ion_charge, log10_temperature, log10_density, &
            tbl%log10_kappa_table(t_index,r_index,z_index+1), &
            tbl%log10_kappa_table(t_index,r_index+1,z_index+1), &
            tbl%log10_kappa_table(t_index,r_index_hi,z_index+1), &
-           ckt0z1,drkt0z1,dr2kt0z1,xr,ierr)
+           ckt0z1,drkt0z1,dr2kt0z1,xr,message,ierr)
       if (ierr /= 0) return
       call cinterp3(tbl%rho_grid(r_index_lo),tbl%rho_grid(r_index),tbl%rho_grid(r_index+1), &
            tbl%rho_grid(r_index_hi),log10_density,r_index,cond_n_rho, &
@@ -351,7 +346,7 @@ subroutine condopacp(tbl, ion_charge, log10_temperature, log10_density, &
            tbl%log10_kappa_table(t_index+1,r_index,z_index+1), &
            tbl%log10_kappa_table(t_index+1,r_index+1,z_index+1), &
            tbl%log10_kappa_table(t_index+1,r_index_hi,z_index+1), &
-           ckt1z1,drkt1z1,dr2kt1z1,xr,ierr)
+           ckt1z1,drkt1z1,dr2kt1z1,xr,message,ierr)
       if (ierr /= 0) return
       call cinterp3(tbl%rho_grid(r_index_lo),tbl%rho_grid(r_index),tbl%rho_grid(r_index+1), &
            tbl%rho_grid(r_index_hi),log10_density,r_index,cond_n_rho, &
@@ -359,7 +354,7 @@ subroutine condopacp(tbl, ion_charge, log10_temperature, log10_density, &
            tbl%log10_kappa_table(t_index_hi,r_index,z_index+1), &
            tbl%log10_kappa_table(t_index_hi,r_index+1,z_index+1), &
            tbl%log10_kappa_table(t_index_hi,r_index_hi,z_index+1), &
-           cktpz1,drktpz1,dr2ktpz1,xr,ierr)
+           cktpz1,drktpz1,dr2ktpz1,xr,message,ierr)
       if (ierr /= 0) return
 ! Linear interpolation in ZLG:
       xz1=(log10_ion_charge-tbl%z_grid(z_index))/(tbl%z_grid(z_index+1)-tbl%z_grid(z_index))
@@ -380,12 +375,12 @@ subroutine condopacp(tbl, ion_charge, log10_temperature, log10_density, &
       call cinterp3(tbl%temp_grid(t_index_lo),tbl%temp_grid(t_index),tbl%temp_grid(t_index+1), &
            tbl%temp_grid(t_index_hi),log10_temperature,t_index,cond_n_temp, &
            cktm,ckt0,ckt1,cktp, & ! input: values of lg kappa
-           log10_conductivity,dlnkappa_dlnt,dt2k,xt,ierr) ! lg kappa, d lg k / d lg T, d2 lg k / d2 lg T
+           log10_conductivity,dlnkappa_dlnt,dt2k,xt,message,ierr) ! lg kappa, d lg k / d lg T, d2 lg k / d2 lg T
       if (ierr /= 0) return
       call cinterp3(tbl%temp_grid(t_index_lo),tbl%temp_grid(t_index),tbl%temp_grid(t_index+1), &
            tbl%temp_grid(t_index_hi),log10_temperature,t_index,cond_n_temp, &
            drktm,drkt0,drkt1,drktp, & ! input: values of d lg k / d lg rho
-           dlnkappa_dlnrho,drtk,drt2k,xt,ierr) ! d lg k / d lg rho, d2 lgk/(d lgT d lg rho)
+           dlnkappa_dlnrho,drtk,drt2k,xt,message,ierr) ! d lg k / d lg rho, d2 lgk/(d lgT d lg rho)
       if (ierr /= 0) return
 end subroutine condopacp
 
@@ -396,9 +391,10 @@ end subroutine condopacp
 !           interp_deriv2 - interpolated second derivative
 !           interp_frac - fraction of the path from grid_index to
 !                         grid_index+1
+!           message, ierr - a grid index off the grid: the reason, and 1
 subroutine cinterp3(grid_lo2,grid_lo1,grid_hi1,grid_hi2,grid_target, &
      grid_index,grid_size,val_lo2,val_lo1,val_hi1,val_hi2, &
-     interp_value,interp_deriv,interp_deriv2,interp_frac, ierr)
+     interp_value,interp_deriv,interp_deriv2,interp_frac, message, ierr)
 
 
       real(dp), intent(in) :: grid_lo2, grid_lo1, grid_hi1, &
@@ -407,16 +403,16 @@ subroutine cinterp3(grid_lo2,grid_lo1,grid_hi1,grid_hi2,grid_target, &
       real(dp), intent(in) :: val_lo2, val_lo1, val_hi1, val_hi2
       real(dp), intent(out) :: interp_value, interp_deriv, &
            interp_deriv2, interp_frac
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
 
       real(dp) :: x, h, hm, v01, hp, v11, c2, c3
-      character(len=message_length) :: lines(1)
 
       ierr = 0
+      message = ''
       if (grid_index <= 0.or.grid_index >= grid_size) then
-         lines = unwritten_line
-         write(lines,*) 'CINTERP: N0 out of range'
-         call kap_terminal(lines)
+         write(message,'(a,i0,a,i0)') 'Potekhin''s interpolation (cinterp3) was given grid index ', &
+              grid_index, ' of ', grid_size
          ierr = 1
          return
       end if
@@ -470,28 +466,32 @@ function conductive_source(settings) result(source)
       source%lookup => lookup_conductive
 end function conductive_source
 
-subroutine load_conductive(settings, paths, envelope_hydrogen_fraction, tables, ierr)
+subroutine load_conductive(settings, paths, envelope_hydrogen_fraction, tables, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(kap_table_paths_t), intent(in) :: paths
       real(dp), intent(in) :: envelope_hydrogen_fraction
       type(opacity_table_state), intent(inout) :: tables
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
 
+! (the reader reports its own errors)
+      message = ''
       call read_conductive_table(tables%conductive, paths%conductive, ierr)
 end subroutine load_conductive
 
-subroutine lookup_conductive(settings, tables, point, res, in_table, ierr)
+subroutine lookup_conductive(settings, tables, point, res, in_table, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(opacity_table_state), intent(inout) :: tables
       type(kap_point), intent(in) :: point
       type(kap_result), intent(inout) :: res
       logical, intent(out) :: in_table
+      character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
 
       call compute_conductive_opacity(tables%conductive, point%log10_density, &
            point%log10_temperature, point%hydrogen_fraction, point%metal_fraction, &
            res%opacity, res%log10_opacity, res%dlnkap_dlnrho, res%dlnkap_dlnt, &
-           point%ion_fraction, in_table, ierr)
+           point%ion_fraction, in_table, message, ierr)
 end subroutine lookup_conductive
 
 !----------------------------------------------------------------------
@@ -505,6 +505,9 @@ end subroutine lookup_conductive
 ! Fortran 90 (2026): the derivatives are the mixture's (the 2026-08 bug
 ! sweep: they multiplied by mix and took the rho derivatives for T), the
 ! table is read once per run at kap_init and passed in as a table set,
-! and the range stops return ierr.
+! and the range stops return ierr. Round 1B (2026-11-11): below log rho
+! = -6 the mixture term's sign and the extrapolation's direction
+! corrected (bug_sweep M222), and log10(16 sigma/3) computed from sigma
+! where the F77 code wrote -3.5194 (log10(16 csig/3) = -3.51938).
 
 end module conductive_opacity
