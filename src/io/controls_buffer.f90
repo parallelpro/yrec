@@ -320,8 +320,9 @@ module controls_buffer
 ! Use the Ferguson et al. 2005 molecular opacity tables
 ! (alex06_opacity_table_file)
       logical :: use_alex06_tables = .false.
-! Use the pure C and N opacity tables (pure_z_opacity_table_file) for
-! metal-enriched mixtures
+! Use the pure-Z opacity table (pure_z_opacity_table_file: a pure mixture of
+! equal numbers of C and O, at Z = 1) for helium-burning cores (Z > 0.1 and
+! log T > 7)
       logical :: use_pure_z_table = .false.
 ! Metallicity of the first LAOL89 opacity table
       real(dp) :: laol_table_z1 = 0
@@ -806,8 +807,8 @@ module controls_buffer
 ! log10 T above which only the atomic opacities are used (a ramp joins the
 ! two)
       real(dp) :: molecular_opacity_logt_max = 4.1d0
-! The LAOL 1989 interpolators extrapolate linearly up to a distance of log10
-! of this value from a table edge
+! The LAOL 1989 interpolators extrapolate linearly up to a distance in log10
+! rho of the natural log of this value (2.3 dex for 10) from a table edge
       real(dp) :: laol_extrapolation_tolerance = 10.0d0
 ! Use the conductive opacity tables (conductive_opacity_table_file)
       logical :: use_conductive_opacity = .false.
