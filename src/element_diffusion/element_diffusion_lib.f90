@@ -14,9 +14,11 @@ module element_diffusion_lib
       use element_diffusion_configuration, only: diffusion_settings_t, &
            diffusion_settings, set_diffusion_settings
       use element_diffusion_scratch, only: diffusion_scratch
+      use settling_substeps, only: settling_substep_plan, plan_settling_substeps
       implicit none
       private
-      public :: diffuse_elements, diffusion_settings_t, set_diffusion_settings
+      public :: diffuse_elements, diffusion_settings_t, set_diffusion_settings, &
+           settling_substep_plan, plan_settling_substeps
 
 contains
 
