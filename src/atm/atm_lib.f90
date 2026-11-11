@@ -4,43 +4,57 @@
 ! The public interface of atm/, the surface boundary condition:
 ! everything code outside atm/ may use, here and only here
 ! (check_boundaries enforces it).
-!     atm_init             install the settings (atm_settings_t, built
-!                          by the star layer's atm_settings_from_star) and
-!                          read the tables they select
+!     atm_init             check and install the settings (atm_settings_t,
+!                          built by the star layer's atm_settings_from_star)
+!                          and read the table they select
 !     atm_get_surface_pt   log P and log T at (log Teff, log g) from the
 !                          Kurucz, Allard or Castelli/Kurucz table
 !     atm_allard_teff_max  the Allard tables' highest log Teff
-!     set_atm_settings     install settings without reading tables
 !     ttau_log10_temperature, ttau_start_log10_temperature,
 !     ttau_photosphere_x_limit, hsra_t_tau_offset
 !                          the analytic T-tau relations (t_tau_relations)
-! The atmosphere integration that uses the T-tau relations, and its
-! results, belong to the star layer (core/envelope_integration_kernel,
-! core/atmosphere_derivs). atm reads no star.
+! It keeps the run's settings and tables, and it reports what the table
+! lookups return (atm_messages); the lookups and the T-tau relations are
+! star-blind kernels. The atmosphere integration that uses the T-tau
+! relations, and its results, belong to the star layer
+! (core/envelope/envelope_integration_kernel.f90). atm reads no star.
 module atm_lib
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use kurucz_atmosphere, only: read_surface_pressure_table, interpolate_surface_pressure
-      use allard_atmosphere, only: read_allard_tables, interpolate_allard_surface
+      use atm_tables, only: atm_settings_t, atm_table_paths_t, surface_pressure_table, &
+           allard_table, kurucz_num_teff, castelli_num_teff
+      use kurucz_table_reader, only: read_surface_pressure_table
+      use allard_table_reader, only: read_allard_tables
+      use kurucz_atmosphere, only: interpolate_surface_pressure
+      use allard_atmosphere, only: interpolate_allard_surface, allard_lookup_result
       use t_tau_relations, only: ttau_log10_temperature, &
            ttau_start_log10_temperature, ttau_photosphere_x_limit, hsra_t_tau_offset
-      use atm_tables, only: atm_settings_t, atm_table, atm_table_nt, &
-           atm_table_ntc, set_atm_settings, atm_table_paths_t
-      use run_messages, only: report_error
+      use atm_messages, only: report_atm_error, report_surface_pressure_outside, &
+           log_spline_failure, report_allard_teff_above, report_allard_gravity_outside, &
+           report_allard_teff_below, report_allard_gravity_outside_row, &
+           report_polint_failure, log_allard_lookup
       implicit none
       private
       public :: atm_init, atm_get_surface_pt, atm_allard_teff_max
-      public :: atm_settings_t, set_atm_settings, atm_table_paths_t
+      public :: atm_settings_t, atm_table_paths_t
       public :: ttau_log10_temperature, ttau_start_log10_temperature, &
            ttau_photosphere_x_limit, hsra_t_tau_offset
+
+! The run's settings and tables: atm_init installs them, and nothing else
+! writes them. A table atm_init did not read keeps its type's defaults
+! (not loaded; the Allard tables' limits 0).
+      type(atm_settings_t) :: installed_settings
+      type(surface_pressure_table) :: kurucz_table, castelli_table
+      type(allard_table) :: allard_tables
+
 contains
 
 !----------------------------------------------------------------------
 ! atm_init
 !----------------------------------------------------------------------
-! Installs the settings and reads the tables they select: the Kurucz
-! table (atm_choice 3), the Allard tables (4) or the Castelli/Kurucz
-! table (5). An atm_choice outside 0-5, or a table that
-! cannot be read, returns ierr = 1 with the diagnostic printed.
+! Checks the settings, installs them, and reads the table they select:
+! the Kurucz table (atm_choice 3), the Allard tables (4) or the
+! Castelli/Kurucz table (5). An atm_choice outside 0-5, or a table that
+! cannot be read, returns ierr = 1 after its message.
 subroutine atm_init(settings, paths, ierr)
       type(atm_settings_t), intent(in) :: settings
       type(atm_table_paths_t), intent(in) :: paths
@@ -52,43 +66,29 @@ subroutine atm_init(settings, paths, ierr)
          ierr = 1
          return
       end if
-      call set_atm_settings(settings)
+      installed_settings = settings
 
-      if (settings%atm_choice == 3) then
-         call read_surface_pressure_table(paths%surface_pressure, atm_table%kurucz_surface_p, &
-              atm_table_nt, ierr)
-         if (ierr /= 0) return
-! MHP 6/97: the Allard model atmospheres (M239: the Kurucz table, which
-! no choice-4 lookup reads, is no longer loaded with them)
-      else if (settings%atm_choice == 4) then
-         call read_allard_tables(paths%allard, ierr)
-         if (ierr /= 0) return
-! JNT 6/14: the Kurucz/Castelli atmospheres
-      else if (settings%atm_choice == 5) then
-         call read_surface_pressure_table(paths%surface_pressure, atm_table%castelli_surface_p, &
-              atm_table_ntc, ierr)
-         if (ierr /= 0) return
-      end if
+      select case (settings%atm_choice)
+      case (3)
+         call read_surface_pressure_table(paths%surface_pressure, kurucz_num_teff, &
+              kurucz_table, ierr)
+      case (4)
+         call read_allard_tables(paths%allard, settings%allard_target_feh, &
+              settings%allard_target_alpha, allard_tables, ierr)
+      case (5)
+         call read_surface_pressure_table(paths%surface_pressure, castelli_num_teff, &
+              castelli_table, ierr)
+      end select
 end subroutine atm_init
 
-! The table of atm_choice (3 or 5) was not read by atm_init: an error,
-! on the terminal and in the run log.
-subroutine report_not_loaded(atm_choice)
-      integer, intent(in) :: atm_choice
-      character(len=200) :: text
-      write(text,'(a,i0,a)') 'atm_get_surface_pt: the table of atm_choice ', atm_choice, &
-           ' was not read (atm_init reads only the deck''s choice''s table)'
-      call report_error(trim(text))
-end subroutine report_not_loaded
-
-! atm_choice is none of the six: an error, on the terminal and in the
-! run log (M236: it used to load no table and run the HSRA relation).
+! atm_choice is none of the six: an error (M236: it used to load no table
+! and run the HSRA relation).
 subroutine report_unknown_choice(atm_choice)
       integer, intent(in) :: atm_choice
       character(len=200) :: text
       write(text,'(a,i0,a)') 'atm_choice = ', atm_choice, ' is not an atmosphere choice' // &
            ' (0 Eddington gray, 1 Krishna-Swamy, 2 HSRA, 3 Kurucz, 4 Allard, 5 Castelli/Kurucz)'
-      call report_error(trim(text))
+      call report_atm_error(trim(text))
 end subroutine report_unknown_choice
 
 !----------------------------------------------------------------------
@@ -100,10 +100,12 @@ end subroutine report_unknown_choice
 ! allard_use_tau100). Both are set only when the lookup succeeds.
 ! lookup_failed: the point is outside the Allard tables (the caller
 ! falls back to a gray atmosphere), as is every point when atm_init did
-! not read them (their limits are 0; O19). ierr /= 0: a table
-! interpolation failed, or the Kurucz or Castelli/Kurucz table asked
-! for was not read. atm_choice is the caller's current choice, which the star
-! layer switches between tabulated and gray as Teff changes.
+! not read them (their limits are 0; O19). ierr /= 0: the point is
+! outside a Kurucz table or below the Allard tables (1), an interpolation
+! failed (its numerics_status), the Kurucz or Castelli/Kurucz table was
+! not read, or atm_choice is not a table (1). The messages go through
+! atm_messages. atm_choice is the caller's current choice, which the
+! star layer switches between tabulated and gray as Teff changes.
 subroutine atm_get_surface_pt(atm_choice, log_teff, log_g, log10_pressure, &
      log10_temperature, lookup_failed, ierr)
       integer, intent(in) :: atm_choice
@@ -114,28 +116,84 @@ subroutine atm_get_surface_pt(atm_choice, log_teff, log_g, log10_pressure, &
 
       ierr = 0
       lookup_failed = .false.
-      if (atm_choice == 3) then
-         if (.not. atm_table%kurucz_surface_p%loaded) then
-            call report_not_loaded(atm_choice)
-            ierr = 1
-            return
-         end if
-         call interpolate_surface_pressure(atm_table%kurucz_surface_p, log_teff, &
-              log_g, .false., ierr)
-      else if (atm_choice == 5) then
-         if (.not. atm_table%castelli_surface_p%loaded) then
-            call report_not_loaded(atm_choice)
-            ierr = 1
-            return
-         end if
-         call interpolate_surface_pressure(atm_table%castelli_surface_p, log_teff, &
-              log_g, .false., ierr)
-      else if (atm_choice == 4) then
-         call interpolate_allard_surface(log_teff, log_g, .false., lookup_failed, ierr)
+      select case (atm_choice)
+      case (3)
+         call look_up_surface_pressure(kurucz_table)
+      case (5)
+         call look_up_surface_pressure(castelli_table)
+      case (4)
+         call look_up_allard()
+      case default
+         call report_not_a_table()
+         ierr = 1
+      end select
+
+contains
+
+! a Kurucz or Castelli/Kurucz table: log P, with log T = log Teff
+subroutine look_up_surface_pressure(tbl)
+      type(surface_pressure_table), intent(in) :: tbl
+      integer :: spline_status
+
+      if (.not. tbl%loaded) then
+         call report_not_loaded()
+         ierr = 1
+         return
       end if
-      if (ierr /= 0 .or. lookup_failed) return
-      log10_pressure = atm_table%atm_log10_pressure
-      log10_temperature = atm_table%atm_log10_temperature
+      call interpolate_surface_pressure(tbl, log_teff, log_g, log10_pressure, ierr, &
+           spline_status)
+      if (spline_status /= 0) then
+         call log_spline_failure(spline_status)
+      else if (ierr /= 0) then
+         call report_surface_pressure_outside(log_teff, log_g)
+      end if
+      if (ierr /= 0) return
+      log10_temperature = log_teff
+end subroutine look_up_surface_pressure
+
+! the Allard tables: each reason the point is outside them, in the order
+! the lookup tests them; then the result, noted in the run log (M235)
+subroutine look_up_allard()
+      type(allard_lookup_result) :: lookup
+      integer :: row
+
+      call interpolate_allard_surface(allard_tables, installed_settings%allard_use_tau100, &
+           log_teff, log_g, lookup)
+      if (lookup%teff_above) call report_allard_teff_above(allard_tables%log_teff_min, &
+           log_teff, allard_tables%log_teff_max)
+      if (lookup%gravity_outside) call report_allard_gravity_outside(allard_tables%log_g_min, &
+           log_g, allard_tables%log_g_max)
+      if (lookup%teff_below) call report_allard_teff_below(allard_tables%log_teff_min, &
+           log_teff, allard_tables%log_teff_max)
+      row = lookup%row_outside
+      if (row > 0) call report_allard_gravity_outside_row(allard_tables%row_log_g_min(row), &
+           log_g, allard_tables%row_log_g_max(row))
+      if (lookup%polint_status /= 0) call report_polint_failure(lookup%polint_status)
+
+      lookup_failed = lookup%teff_above .or. lookup%gravity_outside .or. row > 0
+      if (lookup%teff_below) ierr = 1
+      if (lookup%polint_status /= 0) ierr = lookup%polint_status
+      if (lookup_failed .or. ierr /= 0) return
+      call log_allard_lookup(installed_settings%allard_use_tau100, log_teff, log_g, &
+           lookup%log10_temperature, lookup%log10_pressure)
+      log10_pressure = lookup%log10_pressure
+      log10_temperature = lookup%log10_temperature
+end subroutine look_up_allard
+
+subroutine report_not_loaded()
+      character(len=200) :: text
+      write(text,'(a,i0,a)') 'atm_get_surface_pt: the table of atm_choice ', atm_choice, &
+           ' was not read (atm_init reads only the deck''s choice''s table)'
+      call report_atm_error(trim(text))
+end subroutine report_not_loaded
+
+subroutine report_not_a_table()
+      character(len=200) :: text
+      write(text,'(a,i0,a)') 'atm_get_surface_pt: atm_choice ', atm_choice, &
+           ' is not a table (3 Kurucz, 4 Allard, 5 Castelli/Kurucz)'
+      call report_atm_error(trim(text))
+end subroutine report_not_a_table
+
 end subroutine atm_get_surface_pt
 
 !----------------------------------------------------------------------
@@ -145,7 +203,7 @@ end subroutine atm_get_surface_pt
 ! switches to a gray atmosphere above it).
 pure function atm_allard_teff_max() result(log_teff_max)
       real(dp) :: log_teff_max
-      log_teff_max = atm_table%allard_al_teffl_max
+      log_teff_max = allard_tables%log_teff_last
 end function atm_allard_teff_max
 
 end module atm_lib

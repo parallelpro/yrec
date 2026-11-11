@@ -77,7 +77,7 @@ PUBLIC = {
     # the Allard Teff range, and the analytic T-tau relations the star
     # layer's envelope integrator uses.
     "atm": {"atm_init", "atm_get_surface_pt", "atm_allard_teff_max",
-            "set_atm_settings", "ttau_log10_temperature",
+            "ttau_log10_temperature",
             "ttau_start_log10_temperature", "ttau_photosphere_x_limit",
             "hsra_t_tau_offset"},
     # net/'s public procedures: what net_lib re-exports (2026-10 names;
@@ -184,6 +184,10 @@ STAR_BLIND_FILES = [
     # the rezone's regridding arithmetic (2026-10, GUIDELINES star rule 6)
     "core/model/regridding.f90",
     "atm/t_tau_relations.f90",
+    # atm's table lookups (2026-11-10): the table in, the result and a
+    # status out; atm_lib reports through atm_messages
+    "atm/tables/kurucz_atmosphere.f90",
+    "atm/tables/allard_atmosphere.f90",
     # rotation's kernels (2026-10, star rule 6; test_rotation_kernels):
     # the rotation curve from j, the moments of inertia, the shape and
     # its quadratures, the angular momentum diffusion system and its
@@ -1168,7 +1172,12 @@ NO_IO_DIRS = ["numerics", "math"]
 # Star-free kernels that are not star-blind files (a domain's kernels,
 # arguments in and results out). Empty to start: each package round adds
 # its kernels here when its messages module lands (PLAN.md, section 4).
-KERNEL_FILES = []
+KERNEL_FILES = [
+    # atm (round 1): the T-tau relations and the two table lookups
+    "atm/t_tau_relations.f90",
+    "atm/tables/kurucz_atmosphere.f90",
+    "atm/tables/allard_atmosphere.f90",
+]
 
 # Today's covered files that still print, read tables or stop, each with
 # the round that removes the I/O (PLAN.md's rounds). A round deletes its
