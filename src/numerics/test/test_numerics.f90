@@ -31,10 +31,12 @@ module test_numerics_callbacks
       use numerics_lib, only: ode_system
       implicit none
 
-! dy1/dx = y2, dy2/dx = -y1, dy3/dx = -decay*y3: a rotation and a decay.
-! Counts its calls; fails past x = 0.75 when fail is set, and once it
-! has been called fail_after_calls times; returns a NaN derivative for
-! component nan_component (0: none).
+! dy1/dx = y2, dy2/dx = -y1, dy3/dx = -decay*y3: a rotation and a decay,
+! on the size(y) components a call has (three; one in the single-equation
+! NaN case, whose dy1/dx is 0 before the NaN). Counts its calls; fails
+! past x = 0.75 when fail is set, and once it has been called
+! fail_after_calls times; returns a NaN derivative for component
+! nan_component (0: none).
       type, extends(ode_system) :: harmonic_system
          real(dp) :: decay = 0.3d0
          integer :: calls = 0
@@ -59,10 +61,14 @@ subroutine harmonic_derivatives(self, x, y, dydx, ierr)
          ierr = 3
          return
       end if
-      dydx(1) = y(2)
-      dydx(2) = -y(1)
-      dydx(3) = -self%decay*y(3)
-      if (self%nan_component > 0) dydx(self%nan_component) = ieee_value(1.0d0, ieee_quiet_nan)
+      dydx = 0.0d0
+      if (size(y) >= 2) then
+         dydx(1) = y(2)
+         dydx(2) = -y(1)
+      end if
+      if (size(y) >= 3) dydx(3) = -self%decay*y(3)
+      if (self%nan_component > 0 .and. self%nan_component <= size(y)) &
+           dydx(self%nan_component) = ieee_value(1.0d0, ieee_quiet_nan)
 end subroutine harmonic_derivatives
 
 end module test_numerics_callbacks
