@@ -214,6 +214,12 @@ STAR_BLIND_FILES = [
     "eos/opal/opal_eos.f90",
     "eos/opal/opal95_eos.f90",
     "eos/mhd/mhd_eos.f90",
+    # convection's kernels (2026-11, test_convection): the temperature
+    # gradient, the zones with overshoot and their homogenization, and
+    # semiconvection; their messages go through convection_messages
+    "convection/temperature_gradients.f90",
+    "convection/convection_zones.f90",
+    "convection/semiconvection.f90",
 ]
 
 # Scratch modules that only their own domain may use (2026-10): their
@@ -1168,7 +1174,12 @@ NO_IO_DIRS = ["numerics", "math"]
 # Star-free kernels that are not star-blind files (a domain's kernels,
 # arguments in and results out). Empty to start: each package round adds
 # its kernels here when its messages module lands (PLAN.md, section 4).
-KERNEL_FILES = []
+KERNEL_FILES = [
+    # convection (round 1): its messages go through convection_messages
+    "convection/temperature_gradients.f90",
+    "convection/convection_zones.f90",
+    "convection/semiconvection.f90",
+]
 
 # Today's covered files that still print, read tables or stop, each with
 # the round that removes the I/O (PLAN.md's rounds). A round deletes its

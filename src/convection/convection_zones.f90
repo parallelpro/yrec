@@ -10,7 +10,8 @@ module convection_zones
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use convection_configuration, only: convection_settings
       use eos_lib, only: eos_result, eos_get
-      use run_messages, only: run_log_unit
+      use convection_messages, only: log_too_many_zones, log_mixed_regions, &
+           log_zones_merged, merged_by_overshoot
       use physical_constants, only: ln10
       use math_lib
       implicit none
@@ -108,8 +109,7 @@ subroutine find_convection_zones(composition, log_density, log_pressure, log_rad
             j_idx = j_idx + 1
          end if
          if (j_idx.lt.size(mixed_zone_bounds, 1)) cycle
-         write(run_log_unit,661)
-  661    format(' -----TOO MANY MIX ZONES')
+         call log_too_many_zones()
          exit
       end do
 
@@ -171,11 +171,8 @@ subroutine find_convection_zones(composition, log_density, log_pressure, log_rad
 !  CHECK IF 'TOP' OF ONE REGION IS ABOVE 'BOTTOM' OF THE NEXT ONE.
       if (mixed_zone_bounds(j_idx,2).ge.mixed_zone_bounds(j_idx+1,1)) then
 !  IF THIS OCCURS, TWO CONVECTION ZONES HAVE MERGED.
-         write(run_log_unit,93) ((mixed_zone_bounds(k_idx,pair_idx), &
-              pair_idx=1,2),k_idx=j_idx,j_idx+1), mixed_zone_bounds(j_idx,1), &
-              mixed_zone_bounds(j_idx+1,2)
-   93    format(2x,'CONVECTION ZONES MERGED DUE TO OVERSHOOT'/2x, &
-              'OLD',2('[',i3,'-',i3,']'),' NEW','[',i3,'-',i3,']')
+         call log_zones_merged(merged_by_overshoot, mixed_zone_bounds(j_idx,:), &
+              mixed_zone_bounds(j_idx+1,:))
          mixed_zone_bounds(j_idx+1,1) = mixed_zone_bounds(j_idx,1)
          do k_idx = j_idx, num_mixed_zones-1
             do pair_idx = 1, 2
@@ -375,14 +372,8 @@ subroutine extend_by_overshoot(composition, log_density, log_pressure, log_radiu
          end if
       end do
 ! OUTPUT : THE OLD AND NEW MIXED REGIONS ARE PRINTED OUT IN ISHORT.
-      write(run_log_unit,200) ((mixed_zone_bounds_no_overshoot( &
-           zone_idx,j_idx), j_idx=1,2), zone_idx=1,num_mixed_zones)
-  200 format(1x,'MIXED REGIONS WITHOUT OVERSHOOT', &
-           4('[',i4,'-',i4,' ]'))
-      write(run_log_unit,210) ((mixed_zone_bounds(zone_idx,j_idx), &
-           j_idx=1,2), zone_idx=1,num_mixed_zones)
-  210 format(1x,'MIXED REGIONS WITH OVERSHOOT   ', &
-           4('[',i4,'-',i4,' ]'))
+      call log_mixed_regions(mixed_zone_bounds_no_overshoot, mixed_zone_bounds, &
+           num_mixed_zones)
 
       return
 end subroutine extend_by_overshoot

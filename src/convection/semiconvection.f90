@@ -12,7 +12,8 @@ module semiconvection
       use temperature_gradients, only: compute_temperature_gradients
       use eos_lib, only: eos_result, eos_get
       use kap_lib, only: kap_get, num_kap_results
-      use run_messages, only: run_log_unit
+      use convection_messages, only: log_semiconvective_edge, log_zones_merged, &
+           merged_by_semiconvection
       use physical_constants
       use math_lib
       implicit none
@@ -295,11 +296,9 @@ subroutine extend_by_semiconvection(timestep, composition, log_density, luminosi
                mixed_zone_bounds(zone_idx,edge_side) = search_zone_idx - 1
                new_edge_idx = search_zone_idx - 1
             end if
-            write(run_log_unit,601) cz_edge_idx, new_edge_idx, &
+            call log_semiconvective_edge(cz_edge_idx, new_edge_idx, &
                  reached_max_extent, perturbed_radiative_gradient, &
-                 local_radiative_gradient
-  601       format(1x,'CZ OLD EDGE ',i3,' EXTENDED TO-', &
-                 i3,' LIMIT=',l1,' RAD.GRADS-IN/OUT',2f8.4)
+                 local_radiative_gradient)
          end do
 !  CHECK FOR MERGERS OF NEARBY CONVECTION ZONES CAUSED BY SEMI-CONVECTION.
       if (num_zones_mixed.le.1) return
@@ -308,12 +307,8 @@ subroutine extend_by_semiconvection(timestep, composition, log_density, luminosi
 !  CHECK IF 'TOP' OF ONE REGION IS ABOVE 'BOTTOM' OF THE NEXT ONE.
       if (mixed_zone_bounds(k_idx,2).gt.mixed_zone_bounds(k_idx+1,1)) then
 !  IF THIS OCCURS, TWO CONVECTION ZONES HAVE MERGED.
-         write(run_log_unit,93) ((mixed_zone_bounds(zone_idx,pair_idx), &
-              pair_idx=1,2),zone_idx=k_idx,k_idx+1), &
-              mixed_zone_bounds(k_idx,1), mixed_zone_bounds(k_idx+1,2)
-   93    format(2x,'MIXED ZONES MERGED DUE TO SEMICONVECTION' &
-              /2x,'OLD',2('[',i3,'-',i3,']'), &
-              ' NEW','[',i3,'-',i3,']')
+         call log_zones_merged(merged_by_semiconvection, mixed_zone_bounds(k_idx,:), &
+              mixed_zone_bounds(k_idx+1,:))
          mixed_zone_bounds(k_idx+1,1) = mixed_zone_bounds(k_idx,1)
          do zone_idx = k_idx, num_zones_mixed-1
             do pair_idx = 1, 2

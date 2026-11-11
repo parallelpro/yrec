@@ -46,7 +46,7 @@ subroutine compute_temperature_gradients(log_temperature, log_pressure, &
       use eos_lib, only: eos_result
       use kap_lib, only: num_kap_results, i_kap, i_dlnkap_dlnrho, &
            i_dlnkap_dlnt
-      use run_messages, only: run_log_unit
+      use convection_messages, only: warn_unstable_radicand, log_cubic_nonconvergence
       use physical_constants
       use math_lib
       implicit none
@@ -178,14 +178,9 @@ subroutine compute_temperature_gradients(log_temperature, log_pressure, &
          a1 = cmixl3*phiphi*temperature**3*opacity/(specific_heat_cp*dsqrt(test))
       else
 ! ODD CONVERGENCE PROBLEM; WRITE DIAGNOSTIC AND CONTINUE.
-         write(*,201)deldel,dlnrho_dlnt,test
- 201     format('***WARNING***'/'TPGRAD TRIED TO TAKE SQUARE ROOT', &
-                ' OF NEGATIVE NUMBER - ASSUMED ADIABATIC CONVECTION'/ &
-                ' DELDEL ',1pe12.3,' QDT ',e12.3,' DISC. ',e12.3)
-      write(*,911)opacity,luminosity_lsun,log_pressure,log_mass,log_temperature, &
-           temperature_rotation_factor,pressure_rotation_factor,radiative_gradient, &
-           adiabatic_gradient,log_radius
- 911  format(1p10e12.3)
+         call warn_unstable_radicand(deldel, dlnrho_dlnt, test, opacity, luminosity_lsun, &
+              log_pressure, log_mass, log_temperature, temperature_rotation_factor, &
+              pressure_rotation_factor, radiative_gradient, adiabatic_gradient, log_radius)
           ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the driver-side
           ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
           ! preserve the historical stop on a nonzero return.
@@ -205,10 +200,8 @@ subroutine compute_temperature_gradients(log_temperature, log_pressure, &
        if(dabs(vd).lt.vtol) exit
       end do
       if (iter > max_cubic_iterations) then
-      write(run_log_unit,20) log_pressure,log_temperature,opacity, &
-           specific_heat_cp,dlnrho_dlnt
-   20 format(' -----CUBIC NON-CONVERGENCE(PL,TL,CAPPA,CP,QDT)=' &
-             ,2f10.6/1p3e12.6)
+      call log_cubic_nonconvergence(log_pressure, log_temperature, opacity, &
+           specific_heat_cp, dlnrho_dlnt)
 ! ASSUME ADIABATIC CONVECTION
       convective_velocity = 1.0d-11
       if(want_derivatives) then
