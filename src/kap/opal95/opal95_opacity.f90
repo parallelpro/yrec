@@ -357,7 +357,9 @@ subroutine compute_opal95_opacity(tbl, log10_density, log10_temperature, hydroge
                st%extrap_hi_row(k) = .false.
             end if
          end do
-!        Find 4 nearest elements within the table at each of the 4 temperatures.
+!        Find 4 nearest elements within the table at each of the 4 temperatures
+!        (each row's last filled log R column in the fixed-Z table, the
+!        table tested above).
          x_table_index = tbl%index_x(1,1)
          density_base_index = tbl%index_rho(1)
          do i = 1,4
@@ -365,7 +367,7 @@ subroutine compute_opal95_opacity(tbl, log10_density, log10_temperature, hydroge
             if (tbl%fixed_z_opacity(x_table_index,temp_row_index, &
                  density_base_index+3) > opal95_missing_test) then
                do j = density_base_index+2,1,-1
-                  if (tbl%full_opacity(x_table_index,temp_row_index,j) <= opal95_missing_test) then
+                  if (tbl%fixed_z_opacity(x_table_index,temp_row_index,j) <= opal95_missing_test) then
                      tbl%index_rho(i) = j - 3
                      density_base_index = j - 3
                      exit
@@ -774,6 +776,8 @@ end subroutine core_lookup_opal95
 ! M220); the fixed-Z table reaches Z = 0.10 (M224); the low corner's
 ! flags reset at each call (M223); the tables and cursors in a table set
 ! passed in, the per-call stencil local (KA-12); the three interpolators
-! sharing one row helper and one log R extrapolation.
+! sharing one row helper and one log R extrapolation; the high-R shift's
+! search in the fixed-Z table, where the F77 code searched the full set's
+! Z = 0 slot (round 1B, M277).
 
 end module opal95_opacity
