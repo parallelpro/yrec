@@ -10,6 +10,12 @@
 !     atm_get_surface_pt   log P and log T at (log Teff, log g) from the
 !                          Kurucz, Allard or Castelli/Kurucz table
 !     atm_allard_teff_max  the Allard tables' highest log Teff
+!     atm_eddington_gray ... atm_castelli_kurucz, atm_choice_is_known,
+!     atm_choice_is_tabulated, atm_choice_name
+!                          what each atm_choice is (atm_choices)
+!     atm_leaves_table, atm_reenters_table, atm_note_choice_switch
+!                          when the star layer replaces a table by the
+!                          gray relation and returns to it, and the note
 !     ttau_log10_temperature, ttau_start_log10_temperature,
 !     ttau_photosphere_x_limit, hsra_t_tau_offset
 !                          the analytic T-tau relations (t_tau_relations)
@@ -22,6 +28,9 @@ module atm_lib
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use atm_tables, only: atm_settings_t, atm_table_paths_t, surface_pressure_table, &
            allard_table, kurucz_num_teff, castelli_num_teff
+      use atm_choices, only: atm_eddington_gray, atm_krishna_swamy, atm_hsra, atm_kurucz, &
+           atm_allard, atm_castelli_kurucz, atm_choice_is_known, atm_choice_is_tabulated, &
+           atm_choice_name, has_gray_switch, kurucz_gray_switch_log_teff
       use kurucz_table_reader, only: read_surface_pressure_table
       use allard_table_reader, only: read_allard_tables
       use kurucz_atmosphere, only: interpolate_surface_pressure
@@ -31,11 +40,14 @@ module atm_lib
       use atm_messages, only: report_atm_error, report_surface_pressure_outside, &
            log_spline_failure, report_allard_teff_above, report_allard_gravity_outside, &
            report_allard_teff_below, report_allard_gravity_outside_row, &
-           report_polint_failure, log_allard_lookup
+           report_polint_failure, log_allard_lookup, note_choice_switch
       implicit none
       private
       public :: atm_init, atm_get_surface_pt, atm_allard_teff_max
       public :: atm_settings_t, atm_table_paths_t
+      public :: atm_eddington_gray, atm_krishna_swamy, atm_hsra, atm_kurucz, atm_allard, &
+           atm_castelli_kurucz, atm_choice_is_known, atm_choice_is_tabulated, atm_choice_name
+      public :: atm_leaves_table, atm_reenters_table, atm_note_choice_switch
       public :: ttau_log10_temperature, ttau_start_log10_temperature, &
            ttau_photosphere_x_limit, hsra_t_tau_offset
 
@@ -61,7 +73,7 @@ subroutine atm_init(settings, paths, ierr)
       integer, intent(out) :: ierr
 
       ierr = 0
-      if (settings%atm_choice < 0 .or. settings%atm_choice > 5) then
+      if (.not. atm_choice_is_known(settings%atm_choice)) then
          call report_unknown_choice(settings%atm_choice)
          ierr = 1
          return
@@ -69,13 +81,13 @@ subroutine atm_init(settings, paths, ierr)
       installed_settings = settings
 
       select case (settings%atm_choice)
-      case (3)
+      case (atm_kurucz)
          call read_surface_pressure_table(paths%surface_pressure, kurucz_num_teff, &
               kurucz_table, ierr)
-      case (4)
+      case (atm_allard)
          call read_allard_tables(paths%allard, settings%allard_target_feh, &
               settings%allard_target_alpha, allard_tables, ierr)
-      case (5)
+      case (atm_castelli_kurucz)
          call read_surface_pressure_table(paths%surface_pressure, castelli_num_teff, &
               castelli_table, ierr)
       end select
@@ -117,11 +129,11 @@ subroutine atm_get_surface_pt(atm_choice, log_teff, log_g, log10_pressure, &
       ierr = 0
       lookup_failed = .false.
       select case (atm_choice)
-      case (3)
+      case (atm_kurucz)
          call look_up_surface_pressure(kurucz_table)
-      case (5)
+      case (atm_castelli_kurucz)
          call look_up_surface_pressure(castelli_table)
-      case (4)
+      case (atm_allard)
          call look_up_allard()
       case default
          call report_not_a_table()
@@ -205,5 +217,47 @@ pure function atm_allard_teff_max() result(log_teff_max)
       real(dp) :: log_teff_max
       log_teff_max = allard_tables%log_teff_last
 end function atm_allard_teff_max
+
+!----------------------------------------------------------------------
+! atm_leaves_table, atm_reenters_table, atm_note_choice_switch
+!----------------------------------------------------------------------
+! The star layer's switch of its working choice (star%atm_choice_in_use,
+! core/structure/surface_boundary.f90): a table whose choice has a gray
+! switch (has_gray_switch: Kurucz, Allard) hands the surface over to the
+! Eddington gray relation at and above its switch's log Teff, and takes
+! it back below: kurucz_gray_switch_log_teff for the Kurucz table, the
+! last log Teff read for the Allard tables. Neither holds for any other
+! choice.
+pure logical function atm_leaves_table(atm_choice, log10_teff)
+      integer, intent(in) :: atm_choice
+      real(dp), intent(in) :: log10_teff
+      atm_leaves_table = .false.
+      if (has_gray_switch(atm_choice)) atm_leaves_table = log10_teff >= gray_switch_log_teff(atm_choice)
+end function atm_leaves_table
+
+pure logical function atm_reenters_table(atm_choice, log10_teff)
+      integer, intent(in) :: atm_choice
+      real(dp), intent(in) :: log10_teff
+      atm_reenters_table = .false.
+      if (has_gray_switch(atm_choice)) atm_reenters_table = log10_teff < gray_switch_log_teff(atm_choice)
+end function atm_reenters_table
+
+! the log Teff of a choice's gray switch
+pure real(dp) function gray_switch_log_teff(atm_choice)
+      integer, intent(in) :: atm_choice
+      if (atm_choice == atm_allard) then
+         gray_switch_log_teff = allard_tables%log_teff_last
+      else
+         gray_switch_log_teff = kurucz_gray_switch_log_teff
+      end if
+end function gray_switch_log_teff
+
+! the terminal's note of a switch from from_choice to to_choice at
+! log10_teff (atm_messages' note_choice_switch)
+subroutine atm_note_choice_switch(from_choice, to_choice, log10_teff)
+      integer, intent(in) :: from_choice, to_choice
+      real(dp), intent(in) :: log10_teff
+      call note_choice_switch(from_choice, to_choice, log10_teff, allard_tables%log_teff_last)
+end subroutine atm_note_choice_switch
 
 end module atm_lib

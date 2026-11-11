@@ -169,7 +169,7 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
       use eos_lib
       use kap_lib
       use atm_lib, only: atm_get_surface_pt, ttau_start_log10_temperature, &
-           ttau_photosphere_x_limit
+           ttau_photosphere_x_limit, atm_choice_is_tabulated
       use run_messages, only: run_log_unit, terminal_unit, solver_diagnostics
       use physical_constants
       use numerics_lib, only: bsstep, bsstep_max_extrap_order, bsstep_max_stages, &
@@ -289,7 +289,7 @@ contains
 
 ! ---------------------------------------------------------------
 ! The surface boundary: the EOS flags of the atmosphere, then, for a
-! tabulated atmosphere (atm_choice 3 Kurucz, 4 Allard, 5
+! tabulated atmosphere (atm_choice_is_tabulated: 3 Kurucz, 4 Allard, 5
 ! Castelli/Kurucz), the surface log P and log T from the table. When
 ! the point lies outside the Allard tables, falls back to the Eddington
 ! gray atmosphere (atm_choice 0), which integrate_atmosphere then
@@ -303,7 +303,7 @@ subroutine prepare_surface_boundary
 
 ! Interpolate the surface log P and log T in the table (legacy ATMPL).
       tabulated_bc = .false.
-      if (cfg%atm_choice == 3 .or. cfg%atm_choice == 4 .or. cfg%atm_choice == 5) then
+      if (atm_choice_is_tabulated(cfg%atm_choice)) then
          call atm_get_surface_pt(cfg%atm_choice, log10_teff, log10_gravity, &
               atm_point%log10_pressure, atm_point%log10_temperature, &
               allard_lookup_failed, jerr)

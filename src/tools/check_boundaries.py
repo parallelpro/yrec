@@ -74,9 +74,13 @@ PUBLIC = {
     # kap_get_r); the long-form engine kap_eval is domain-internal.
     "kap": {"kap_get", "kap_init", "kap_update_surface_tables"},
     # atm_lib's entries: the table loads, the tabulated surface lookup,
-    # the Allard Teff range, and the analytic T-tau relations the star
-    # layer's envelope integrator uses.
+    # the Allard Teff range, what each atm_choice is (atm_choices: known,
+    # tabulated, its name, the switch to gray and back, and its note),
+    # and the analytic T-tau relations the star layer's envelope
+    # integrator uses.
     "atm": {"atm_init", "atm_get_surface_pt", "atm_allard_teff_max",
+            "atm_choice_is_known", "atm_choice_is_tabulated", "atm_choice_name",
+            "atm_leaves_table", "atm_reenters_table", "atm_note_choice_switch",
             "ttau_log10_temperature",
             "ttau_start_log10_temperature", "ttau_photosphere_x_limit",
             "hsra_t_tau_offset"},

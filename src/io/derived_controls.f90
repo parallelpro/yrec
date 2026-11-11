@@ -40,6 +40,7 @@ module derived_controls
            use_kurucz90_tables, use_new_diffusion_routines, use_opal2001_eos, &
            use_opal2006_eos, use_opal95_eos, use_pure_z_table, use_thoul_diffusion, &
            use_thoul_fit, value_relative_to_h
+      use atm_lib, only: atm_choice_is_known, atm_choice_name
       use eos_lib, only: opal_vintage_none, opal_vintage_1995, opal_vintage_2001, &
            opal_vintage_2006
       implicit none
@@ -324,20 +325,8 @@ subroutine write_run_log_header
 
       write(version_fmt, banner_format_format) max(1, len_trim(yrec_version_string)), &
            max(1, len_trim(git_hash_string))
-      select case (atm_choice)
-      case (0)
-         call log_line(' surface boundary: Eddington gray T(tau) relation')
-      case (1)
-         call log_line(' surface boundary: Krishna-Swamy T(tau) relation')
-      case (2)
-         call log_line(' surface boundary: Harvard-Smithsonian reference atmosphere')
-      case (3)
-         call log_line(' surface boundary: Kurucz atmosphere tables')
-      case (4)
-         call log_line(' surface boundary: Allard atmosphere tables')
-      case (5)
-         call log_line(' surface boundary: Kurucz/Castelli atmosphere tables')
-      end select
+      if (atm_choice_is_known(atm_choice)) &
+           call log_line(' surface boundary: ' // trim(atm_choice_name(atm_choice)))
       if (use_pure_z_table) call log_line(' opacity: pure C and N tables enabled')
       call log_line('')
       call log_line(' ' // repeat('=', 100))

@@ -42,6 +42,10 @@
 !                                        what is wrong: run log
 !     report_allard_table_bad            the table is refused: both
 !     log_allard_tables                  the table refused: run log
+!   the star layer's switch between a table and the gray relation
+!     note_choice_switch                 at the table's limit: terminal
+!                                        (core/structure/surface_boundary's
+!                                        note, kept as it was)
 !   the 2026 checks
 !     report_atm_error                   "ERROR: <text>": terminal, run log
 !                                        (run_messages' report_error)
@@ -50,6 +54,7 @@ module atm_messages
       use run_messages, only: run_log_unit, terminal_unit, report_error
       use numerics_lib, only: numerics_status_text
       use atm_tables, only: allard_table
+      use atm_choices, only: atm_kurucz, atm_allard
       use math_lib
       implicit none
       private
@@ -64,6 +69,7 @@ module atm_messages
       public :: log_allard_bad_entry, log_allard_few_rows, log_allard_short_row, &
            report_allard_table_bad, log_allard_tables
       public :: report_atm_error
+      public :: note_choice_switch
 
 contains
 
@@ -299,6 +305,40 @@ subroutine write_row(i, values)
 end subroutine write_row
 
 end subroutine log_allard_tables
+
+! ======================================================================
+! The switch between a table and the gray relation: from_choice to
+! to_choice at log10_teff; allard_log_teff_last, the Allard tables'
+! switch
+
+subroutine note_choice_switch(from_choice, to_choice, log10_teff, allard_log_teff_last)
+      integer, intent(in) :: from_choice, to_choice
+      real(dp), intent(in) :: log10_teff, allard_log_teff_last
+      character(len=*), parameter :: kurucz_to_gray = &
+           "('LOG TEFF OF ',F7.3,' ABOVE 3.95 - SWITCH','TO GRAY ATMOSPHERE BOUNDARY CONDITION')"
+      character(len=*), parameter :: allard_to_gray = &
+           "('LOG TEFF OF ',F7.3,' ABOVE Allard Table max ',F7.3," // &
+           "'  - SWITCH TO GRAY ATMOSPHERE BOUNDARY CONDITION')"
+      character(len=*), parameter :: gray_to_kurucz = &
+           "('LOG TEFF OF ',F7.3,' BELOW 3.95 - SWITCH',' BACK TO KURUCZ ATMOSPHERE BOUNDARY CONDITION')"
+      character(len=*), parameter :: gray_to_allard = &
+           "('LOG TEFF OF ',F7.3,' below Allard Table max ',F7.3," // &
+           "'  - SWITCH BACK TO ALLARD ATMOSPHERE BOUNDARY CONDITION')"
+
+      if (from_choice == atm_kurucz) then
+         write(output_unit,*)
+         write(output_unit,kurucz_to_gray) log10_teff
+         write(output_unit,*)
+      else if (from_choice == atm_allard) then
+         write(output_unit,*)
+         write(output_unit,allard_to_gray) log10_teff, allard_log_teff_last
+         write(output_unit,*)
+      else if (to_choice == atm_kurucz) then
+         write(output_unit,gray_to_kurucz) log10_teff
+      else if (to_choice == atm_allard) then
+         write(output_unit,gray_to_allard) log10_teff, allard_log_teff_last
+      end if
+end subroutine note_choice_switch
 
 ! ======================================================================
 ! The 2026 checks' errors

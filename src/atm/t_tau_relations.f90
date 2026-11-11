@@ -20,6 +20,7 @@
 module t_tau_relations
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use physical_constants, only: cc23
+      use atm_choices, only: atm_eddington_gray, atm_krishna_swamy, atm_hsra
       use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
       use math_lib
       implicit none
@@ -47,12 +48,12 @@ pure function ttau_log10_temperature(tau, log10_teff, atm_choice, hsra_log_t_off
       real(dp) :: log10_t
 
       select case (atm_choice)
-      case (0)
+      case (atm_eddington_gray)
          log10_t = log10_teff - 0.031235d0 + 0.25d0*log10(tau + cc23)
-      case (1)
+      case (atm_krishna_swamy)
          log10_t = log10_teff - 0.031235d0 + 0.25d0*log10(tau + &
               1.39d0 - 0.815d0*exp(-2.54d0*tau) - 0.025d0*exp(-30.0d0*tau))
-      case (2)
+      case (atm_hsra)
          log10_t = log10_teff + harvard_t_tau(tau) - hsra_log_t_offset
       case default
          log10_t = not_a_relation()
@@ -69,11 +70,11 @@ pure function ttau_start_log10_temperature(log10_teff, atm_choice, hsra_log_t_of
       real(dp) :: log10_t
 
       select case (atm_choice)
-      case (0)
+      case (atm_eddington_gray)
          log10_t = log10_teff - 0.031235d0 + 0.25d0*log10(cc23)
-      case (1)
+      case (atm_krishna_swamy)
          log10_t = log10_teff - 0.031235d0 + 0.25d0*log10(0.550d0)
-      case (2)
+      case (atm_hsra)
          log10_t = log10_teff + harvard_t_tau(cc23) - hsra_log_t_offset
       case default
          log10_t = not_a_relation()
@@ -89,9 +90,9 @@ pure function ttau_photosphere_x_limit(atm_choice) result(x_limit)
       real(dp) :: x_limit
 
       select case (atm_choice)
-      case (1)
+      case (atm_krishna_swamy)
          x_limit = -0.505627854d0
-      case (0, 2)
+      case (atm_eddington_gray, atm_hsra)
          x_limit = -0.176091259d0
       case default
          x_limit = not_a_relation()
