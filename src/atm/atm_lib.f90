@@ -25,6 +25,7 @@ module atm_lib
            ttau_start_log10_temperature, ttau_photosphere_x_limit, hsra_t_tau_offset
       use atm_tables, only: atm_settings_t, atm_table, atm_table_nt, &
            atm_table_ntc, set_atm_settings, atm_table_paths_t
+      use run_messages, only: report_error
       implicit none
       private
       public :: atm_init, atm_get_surface_pt, atm_allard_teff_max
@@ -38,14 +39,19 @@ contains
 !----------------------------------------------------------------------
 ! Installs the settings and reads the tables they select: the Kurucz
 ! table (atm_choice 3 and 4), the Allard tables (4) or the
-! Castelli/Kurucz table (5). A table that cannot be read returns
-! ierr = 1, with the diagnostic printed.
+! Castelli/Kurucz table (5). An atm_choice outside 0-5, or a table that
+! cannot be read, returns ierr = 1 with the diagnostic printed.
 subroutine atm_init(settings, paths, ierr)
       type(atm_settings_t), intent(in) :: settings
       type(atm_table_paths_t), intent(in) :: paths
       integer, intent(out) :: ierr
 
       ierr = 0
+      if (settings%atm_choice < 0 .or. settings%atm_choice > 5) then
+         call report_unknown_choice(settings%atm_choice)
+         ierr = 1
+         return
+      end if
       call set_atm_settings(settings)
 
       if (settings%atm_choice == 3 .or. settings%atm_choice == 4) then
@@ -65,6 +71,16 @@ subroutine atm_init(settings, paths, ierr)
          if (ierr /= 0) return
       end if
 end subroutine atm_init
+
+! atm_choice is none of the six: an error, on the terminal and in the
+! run log (M236: it used to load no table and run the HSRA relation).
+subroutine report_unknown_choice(atm_choice)
+      integer, intent(in) :: atm_choice
+      character(len=200) :: text
+      write(text,'(a,i0,a)') 'atm_choice = ', atm_choice, ' is not an atmosphere choice' // &
+           ' (0 Eddington gray, 1 Krishna-Swamy, 2 HSRA, 3 Kurucz, 4 Allard, 5 Castelli/Kurucz)'
+      call report_error(trim(text))
+end subroutine report_unknown_choice
 
 !----------------------------------------------------------------------
 ! atm_get_surface_pt

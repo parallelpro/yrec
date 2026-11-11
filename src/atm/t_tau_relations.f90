@@ -8,7 +8,7 @@
 ! three functions.
 !
 ! Choices (atm_choice; 3, 4 and 5 are the tables, handled by
-! atm_get_surface_pt):
+! atm_get_surface_pt, for which the three functions return NaN):
 !   0  Eddington gray
 !   1  Krishna-Swamy (ApJ 145, 176, 1966; solar fit)
 !   2  Harvard-Smithsonian reference atmosphere (a polynomial fit;
@@ -20,6 +20,7 @@
 module t_tau_relations
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use physical_constants, only: cc23
+      use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
       use math_lib
       implicit none
       private
@@ -27,6 +28,15 @@ module t_tau_relations
            ttau_photosphere_x_limit, hsra_t_tau_offset
 
 contains
+
+! The value of the three functions below for an atm_choice that is not a
+! T-tau relation (a table, 3-5, or an unknown choice, which atm_init
+! refuses): NaN. The envelope integrates a T-tau relation only when no
+! table gave the surface, so with a choice of 0, 1 or 2.
+pure function not_a_relation()
+      real(dp) :: not_a_relation
+      not_a_relation = ieee_value(1.0_dp, ieee_quiet_nan)
+end function not_a_relation
 
 ! ---------------------------------------------------------------
 ! log10 T at optical depth tau for the chosen relation.
@@ -36,14 +46,17 @@ pure function ttau_log10_temperature(tau, log10_teff, atm_choice, hsra_log_t_off
       integer, intent(in) :: atm_choice
       real(dp) :: log10_t
 
-      if (atm_choice == 0) then
+      select case (atm_choice)
+      case (0)
          log10_t = log10_teff - 0.031235d0 + 0.25d0*log10(tau + cc23)
-      else if (atm_choice == 1) then
+      case (1)
          log10_t = log10_teff - 0.031235d0 + 0.25d0*log10(tau + &
               1.39d0 - 0.815d0*exp(-2.54d0*tau) - 0.025d0*exp(-30.0d0*tau))
-      else
+      case (2)
          log10_t = log10_teff + harvard_t_tau(tau) - hsra_log_t_offset
-      end if
+      case default
+         log10_t = not_a_relation()
+      end select
 end function ttau_log10_temperature
 
 ! ---------------------------------------------------------------
@@ -55,13 +68,16 @@ pure function ttau_start_log10_temperature(log10_teff, atm_choice, hsra_log_t_of
       integer, intent(in) :: atm_choice
       real(dp) :: log10_t
 
-      if (atm_choice == 0) then
+      select case (atm_choice)
+      case (0)
          log10_t = log10_teff - 0.031235d0 + 0.25d0*log10(cc23)
-      else if (atm_choice == 1) then
+      case (1)
          log10_t = log10_teff - 0.031235d0 + 0.25d0*log10(0.550d0)
-      else
+      case (2)
          log10_t = log10_teff + harvard_t_tau(cc23) - hsra_log_t_offset
-      end if
+      case default
+         log10_t = not_a_relation()
+      end select
 end function ttau_start_log10_temperature
 
 ! ---------------------------------------------------------------
@@ -72,11 +88,14 @@ pure function ttau_photosphere_x_limit(atm_choice) result(x_limit)
       integer, intent(in) :: atm_choice
       real(dp) :: x_limit
 
-      if (atm_choice == 1) then
+      select case (atm_choice)
+      case (1)
          x_limit = -0.505627854d0
-      else
+      case (0, 2)
          x_limit = -0.176091259d0
-      end if
+      case default
+         x_limit = not_a_relation()
+      end select
 end function ttau_photosphere_x_limit
 
 

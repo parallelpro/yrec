@@ -337,7 +337,7 @@ yrec_version.mod: core/run/yrec_version.o
 
 # real prerequisites: each object depends on the .mod
 # files of every module it uses
-atm/atm_lib.o: allard_atmosphere.mod atm_tables.mod kurucz_atmosphere.mod t_tau_relations.mod
+atm/atm_lib.o: allard_atmosphere.mod atm_tables.mod kurucz_atmosphere.mod run_messages.mod t_tau_relations.mod
 atm/t_tau_relations.o: math_lib.mod physical_constants.mod
 atm/tables/allard_atmosphere.o: atm_tables.mod math_lib.mod numerics_lib.mod run_messages.mod
 atm/tables/kurucz_atmosphere.o: atm_tables.mod numerics_lib.mod run_messages.mod
