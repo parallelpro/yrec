@@ -57,11 +57,11 @@ subroutine evolve_angular_momentum(s, full_timestep, max_domega_step, wind_loss_
       use mid_timestep_model
       use secular_transport
       use magnetic_braking, only: brake_convection_zone, wind_conditions
-      use convection_lib, only: find_convection_zones, homogenize_convection_zones
+      use convection_lib, only: find_convection_zones, homogenize_convection_zones, &
+           pressure_scale_height
       use star_info_lib, only: star_info, json, n_species_basic, n_species_extended
       use physical_constants
       use burn_step, only: store_end_li_be_rates, burn_li_be
-      use convection_geometry, only: pressure_scale_height
       use math_lib
       implicit none
 ! di_domega of omega_from_j and enforce_rotation_profile, which the

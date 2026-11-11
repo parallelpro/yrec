@@ -219,6 +219,7 @@ STAR_BLIND_FILES = [
     # semiconvection; their messages go through convection_messages
     "convection/temperature_gradients.f90",
     "convection/convection_zones.f90",
+    "convection/overshoot.f90",
     "convection/semiconvection.f90",
 ]
 
@@ -1178,6 +1179,7 @@ KERNEL_FILES = [
     # convection (round 1): its messages go through convection_messages
     "convection/temperature_gradients.f90",
     "convection/convection_zones.f90",
+    "convection/overshoot.f90",
     "convection/semiconvection.f90",
 ]
 
