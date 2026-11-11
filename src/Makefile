@@ -6,6 +6,8 @@
 #   devel   : standard development flags, display all warnings, trap exceptions
 #   debug   : Default flags + debug flags, address sanitizer enabled
 #   prof    : Allows use of gprof profiling tool + devel flags + optimization
+#   devel_tests : the test programs with the devel flags (src/tools/devel_tests.py
+#             runs them); a later `make tests` rebuilds them with the release flags
 #
 # Several compilers are supported.
 #   gfortran : GNU Fortran compiler, the default
@@ -55,6 +57,8 @@ PREFIX ?= /usr/local/bin
 # below.
 SRCS := $(shell find . -name '*.f90' -not -path '*/test/*' | sed 's|^\./||')
 OBJS := $(patsubst %.f90,%.o,$(SRCS))
+TEST_OBJS := $(patsubst %.f90,%.o,$(shell find . -path '*/test/*.f90' -not -path './math/test/crmath/*' \
+	| sed 's|^\./||'))
 
 # Fortran module and include dependencies are GENERATED -- deps.mk
 # defines MODULE_SRCS (every module-defining source), an order-only
@@ -229,6 +233,35 @@ else
 	REL_FFLAGS = $(GNU_REL_FFLAGS)
 endif
 
+# Build modes (2026-11). make does not track flags, and every object (with
+# its .mod files) lives beside its source whatever flags built it, so one
+# build has one set of flags, chosen by its goals: devel and devel_tests
+# the development flags (DEV_FFLAGS, and -g for the line of a trap), debug
+# and prof theirs, every other goal (the default, release, tests, lib,
+# libs, other_energy, ...) the release flags. .build_mode holds the mode of
+# the last build, rewritten when the mode changes, and every object
+# depends on it: a build in another mode recompiles every object rather
+# than linking objects compiled with other flags, so devel objects never
+# reach a release yrec or a release test program.
+BUILD_MODE := $(sort $(patsubst devel_tests,devel,$(filter devel devel_tests debug prof,$(MAKECMDGOALS))))
+ifeq ($(BUILD_MODE),)
+BUILD_MODE := release
+endif
+ifneq ($(words $(BUILD_MODE)),1)
+$(error one build mode per make, not $(BUILD_MODE))
+endif
+MODE_FFLAGS_release = $(REL_FFLAGS)
+MODE_FFLAGS_devel = $(DEV_FFLAGS) -g
+MODE_FFLAGS_debug = $(DEV_FFLAGS) $(DBG_FFLAGS)
+MODE_FFLAGS_prof = $(DEV_FFLAGS) $(PROF_FFLAGS)
+MODE_LDFLAGS_debug = $(DBG_LDFLAGS)
+MODE_LDFLAGS_prof = $(PROF_LDFLAGS)
+FFLAGS += $(MODE_FFLAGS_$(BUILD_MODE))
+LDFLAGS += $(MODE_LDFLAGS_$(BUILD_MODE))
+BUILD_MODE_STAMP := .build_mode
+$(shell echo '$(BUILD_MODE)' | cmp -s - $(BUILD_MODE_STAMP) || echo '$(BUILD_MODE)' > $(BUILD_MODE_STAMP))
+$(OBJS) $(TEST_OBJS): $(BUILD_MODE_STAMP)
+
 # Test for presence of git command for version hash collection.
 GIT_AVAIL := $(shell command -v git)
 ifdef GIT_AVAIL
@@ -301,69 +334,54 @@ yrec_libs: core/main.o $(LIBS)
 # Standalone per-domain test programs (phase three, docs/ROADMAP.md stage
 # 2). Each links the full object set minus core/main.o (the flat-link
 # transitional form; library-based linking can follow the yrec
-# executable's own transition). Compiled with the release flags so
-# pinned expected outputs are flag-stable.
-test_eos: FFLAGS += $(REL_FFLAGS)
+# executable's own transition). Compiled with the build mode's flags
+# (release for `make tests`, so the pinned expected outputs are
+# flag-stable; devel for `make devel_tests`).
 test_eos: eos/test/test_eos.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
-test_kap: FFLAGS += $(REL_FFLAGS)
 test_kap: kap/test/test_kap.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
-test_atm: FFLAGS += $(REL_FFLAGS)
 test_atm: atm/test/test_atm.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
-test_reentry: FFLAGS += $(REL_FFLAGS)
 test_reentry: core/test/test_reentry.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
-test_rotation: FFLAGS += $(REL_FFLAGS)
 test_rotation: rotation/test/test_rotation.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
-test_rotation_kernels: FFLAGS += $(REL_FFLAGS)
 test_rotation_kernels: rotation/test/test_rotation_kernels.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
-test_element_diffusion: FFLAGS += $(REL_FFLAGS)
 test_element_diffusion: element_diffusion/test/test_element_diffusion.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
-test_convection: FFLAGS += $(REL_FFLAGS)
 test_convection: convection/test/test_convection.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
-test_structure: FFLAGS += $(REL_FFLAGS)
 test_structure: core/test/test_structure.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
-test_triangle_fit: FFLAGS += $(REL_FFLAGS)
 test_triangle_fit: core/test/test_triangle_fit.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
-test_mass_change: FFLAGS += $(REL_FFLAGS)
 test_mass_change: core/test/test_mass_change.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
-test_regrid: FFLAGS += $(REL_FFLAGS)
 test_regrid: core/test/test_regrid.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
-test_controls: FFLAGS += $(REL_FFLAGS)
 test_controls: io/test/test_controls.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
-test_io: FFLAGS += $(REL_FFLAGS)
 test_io: io/test/test_io.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
-test_numerics: FFLAGS += $(REL_FFLAGS)
 test_numerics: numerics/test/test_numerics.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
-test_net: FFLAGS += $(REL_FFLAGS)
 test_net: net/test/test_net.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
@@ -371,7 +389,6 @@ test_net: net/test/test_net.o $(filter-out core/main.o,$(OBJS))
 # backend; test_math_crmath under crmath whenever the MESA SDK is
 # installed, its own copy of math_lib compiled in math/test/crmath/ (apart
 # from the build's objects and modules, which it leaves alone).
-test_math: FFLAGS += $(REL_FFLAGS)
 test_math: math/test/test_math.o math/math_lib.o
 	$(FC) $(LDFLAGS) -o $@ $^ $(CRMATH_LIBS)
 
@@ -379,11 +396,12 @@ MATH_CRMATH_DIR := math/test/crmath
 ifneq ($(wildcard $(MESASDK_DIR)/include/crmath.mod),)
 TEST_MATH_CRMATH := test_math_crmath
 endif
-test_math_crmath: math/math_lib.f90 math/test/test_math.f90
+CRMATH_TEST_FFLAGS = $(if $(filter release,$(BUILD_MODE)),-O3,$(MODE_FFLAGS_$(BUILD_MODE)))
+test_math_crmath: math/math_lib.f90 math/test/test_math.f90 $(BUILD_MODE_STAMP)
 	@mkdir -p $(MATH_CRMATH_DIR)
-	cd $(MATH_CRMATH_DIR) && $(FC) -O3 -ffp-contract=off -cpp -ffree-line-length-none \
+	cd $(MATH_CRMATH_DIR) && $(FC) $(CRMATH_TEST_FFLAGS) -ffp-contract=off -cpp -ffree-line-length-none \
 	     -DYREC_CRMATH -I$(MESASDK_DIR)/include -c $(CURDIR)/math/math_lib.f90 -o math_lib.o
-	cd $(MATH_CRMATH_DIR) && $(FC) -O3 -ffp-contract=off -cpp -ffree-line-length-none \
+	cd $(MATH_CRMATH_DIR) && $(FC) $(CRMATH_TEST_FFLAGS) -ffp-contract=off -cpp -ffree-line-length-none \
 	     -c $(CURDIR)/math/test/test_math.f90 -o test_math.o
 	$(FC) $(LDFLAGS) -o $@ $(MATH_CRMATH_DIR)/test_math.o $(MATH_CRMATH_DIR)/math_lib.o \
 	     $(MESASDK_DIR)/lib/libcrmath.a $(MESASDK_DIR)/lib/libcrlibm.a $(MESASDK_DIR)/lib/libscs.a
@@ -393,32 +411,28 @@ test_math_crmath: math/math_lib.f90 math/test/test_math.f90
 # registers its own sources before run_yrec. `make other_energy` builds
 # examples/other_energy/yrec_extra_heat.
 OTHER_ENERGY_DIR := ../examples/other_energy
-$(OTHER_ENERGY_DIR)/yrec_extra_heat.o: core/run/run_driver.o core/structure/energy_sources.o
-$(OTHER_ENERGY_DIR)/yrec_extra_heat: FFLAGS += $(REL_FFLAGS)
+$(OTHER_ENERGY_DIR)/yrec_extra_heat.o: core/run/run_driver.o core/structure/energy_sources.o \
+	$(BUILD_MODE_STAMP)
 $(OTHER_ENERGY_DIR)/yrec_extra_heat: $(OTHER_ENERGY_DIR)/yrec_extra_heat.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 .PHONY: other_energy
 other_energy: $(OTHER_ENERGY_DIR)/yrec_extra_heat
 
-.PHONY: tests
+# devel_tests: the same programs, built in the devel mode (above); CI's
+# devel job and src/tools/devel_tests.py run them.
+.PHONY: tests devel_tests
+devel_tests: tests
 tests: test_eos test_kap test_atm test_net test_reentry test_rotation test_rotation_kernels test_element_diffusion test_numerics test_math $(TEST_MATH_CRMATH) test_convection test_controls test_io test_structure test_triangle_fit test_mass_change test_regrid
 
-# Targets
-default: FFLAGS += $(REL_FFLAGS)
+# Targets (each builds yrec; the build mode above sets the flags)
 default: $(NAME)
 
-devel: FFLAGS += $(DEV_FFLAGS)
 devel: $(NAME)
 
-debug: FFLAGS += $(DEV_FFLAGS) $(DBG_FFLAGS)
-debug: LDFLAGS += $(DBG_LDFLAGS)
 debug: $(NAME)
 
-release: FFLAGS += $(REL_FFLAGS)
 release: $(NAME)
 
-prof: FFLAGS += $(DEV_FFLAGS) $(PROF_FFLAGS)
-prof: LDFLAGS += $(PROF_LDFLAGS)
 prof: $(NAME)
 
 $(NAME): $(OBJS)
@@ -448,7 +462,7 @@ lib: $(SHLIB)
 # star%ctrl%report_solver_diagnostics this way).
 clean:
 	@rm -f $(NAME)
-	@rm -f *.mod $(HASH_STAMP) .controls_generated
+	@rm -f *.mod $(HASH_STAMP) $(BUILD_MODE_STAMP) .controls_generated
 	@rm -f $(OBJS)
 	@rm -f $(LIBS)
 	@rm -f libyrec.dylib libyrec.so
