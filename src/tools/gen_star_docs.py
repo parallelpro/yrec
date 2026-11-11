@@ -68,6 +68,9 @@ import pathlib
 import re
 import sys
 
+# The sibling modules below are found under `python3 -I` too, which
+# leaves the script's directory off sys.path.
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import check_star_contracts as csc
 from generated_files import emit, finish
 
