@@ -44,22 +44,22 @@ subroutine read_scv_tables(scv_h_table_path, scv_he_table_path, scv_z_table_path
       call open_scv_table(scv_h_table_path, units(1), ierr)
       if (ierr == 0) call open_scv_table(scv_he_table_path, units(2), ierr)
       if (ierr == 0) call open_scv_table(scv_z_table_path, units(3), ierr)
-      if (ierr == 0) call read_scv_rows(units, [character(len=len(scv_h_table_path)) :: &
-           scv_h_table_path, scv_he_table_path, scv_z_table_path], ierr)
+      if (ierr == 0) call read_scv_rows(units, scv_h_table_path, scv_he_table_path, &
+           scv_z_table_path, ierr)
       scv_tables_loaded = ierr == 0
       do k = 1, 3
          if (units(k) /= 0) close(units(k))
       end do
 end subroutine read_scv_tables
 
-! The rows of the three tables, on units(1:3) (H, He, Z; paths(1:3)
+! The rows of the three tables, on units(1:3) (H, He, Z; their paths
 ! for the messages): for each T row its log T and point count, then its
 ! points; the metal table lists them from the highest pressure down. The
 ! He and Z tables' log T, point counts and log P_gas must be the H
 ! table's (off_grid names the first that is not).
-subroutine read_scv_rows(units, paths, ierr)
+subroutine read_scv_rows(units, h_path, he_path, z_path, ierr)
       integer, intent(in) :: units(:)
-      character(len=*), intent(in) :: paths(:)
+      character(len=*), intent(in) :: h_path, he_path, z_path
       integer, intent(out) :: ierr
       character(len=message_length) :: eos_lines(4)
       integer :: t_idx, p_idx, col_idx, ios, off_grid
@@ -99,13 +99,18 @@ subroutine read_scv_rows(units, paths, ierr)
       if (ios /= 0) then
          eos_lines = unwritten_line
          write(eos_lines,'(a,i0,a,a)') 'eos_init: an SCV table ends early or is corrupt, at T row ', &
-              t_idx, '; the H table: ', trim(paths(1))
+              t_idx, '; the H table: ', trim(h_path)
          call eos_report(eos_lines)
          ierr = 1
       else if (off_grid /= 0) then
          eos_lines = unwritten_line
-         write(eos_lines,'(a,i0,a,a)') 'eos_init: an SCV table''s grid (log T, point count or log P_gas) ' // &
-              'is not the H table''s, at T row ', t_idx, ': ', trim(paths(off_grid))
+         if (off_grid == 2) then
+            write(eos_lines,'(a,i0,a,a)') 'eos_init: an SCV table''s grid (log T, point count or ' // &
+                 'log P_gas) is not the H table''s, at T row ', t_idx, ': ', trim(he_path)
+         else
+            write(eos_lines,'(a,i0,a,a)') 'eos_init: an SCV table''s grid (log T, point count or ' // &
+                 'log P_gas) is not the H table''s, at T row ', t_idx, ': ', trim(z_path)
+         end if
          call eos_report(eos_lines)
          ierr = 1
       end if
