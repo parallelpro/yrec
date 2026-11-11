@@ -17,6 +17,7 @@ module conductive_opacity
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use math_lib
       use numerics_lib, only: hunt
+      use physical_constants, only: csig
       use opacity_tables, only: cond_n_rho, cond_n_temp, cond_n_z, conductive_table_set, &
            kap_settings_t, kap_table_paths_t, opacity_table_state
       use opacity_source, only: kap_point, kap_result, kap_source
@@ -28,10 +29,10 @@ module conductive_opacity
       public :: conductive_source
       public :: compute_conductive_opacity
 
-! kappa_c = 16 sigma T^3/(3 rho K) for a thermal conductivity K: log10 of
-! 16 sigma/3 (CGS), as the F77 code rounded it (log10(16 sigma/3) from
-! physical_constants' sigma differs at 1e-5: a measured change)
-      real(dp), parameter :: log10_16_sigma_over_3 = -3.5194d0
+! kappa_c = 16 sigma T^3/(3 rho K) for a thermal conductivity K, sigma
+! the Stefan-Boltzmann constant (physical_constants' csig):
+! compute_conductive_opacity takes log10(16 sigma/3) at each call, since a
+! parameter cannot call math_lib's log10 (crmath's in a crmath build)
 ! the table's reach: log T in [conductive_logt_min, conductive_logt_max],
 ! log rho up to conductive_logrho_max; below conductive_logrho_min (the
 ! table's lowest density) the opacity is extrapolated where log R >= 0
@@ -88,11 +89,12 @@ subroutine compute_conductive_opacity(tbl, log10_density, log10_temperature, &
       real(dp) :: log10_cond_he4, dlnkap_dlnrho_he4, dlnkap_dlnt_he4
       real(dp) :: log10_cond_ox, dlnkap_dlnrho_ox, dlnkap_dlnt_ox
       real(dp) :: cond_h1, cond_he4, cond_ox
-      real(dp) :: mix_log10_cond
+      real(dp) :: mix_log10_cond, log10_16_sigma_over_3
       real(dp) :: unused_deriv1, unused_deriv2
 
 ! the number fractions of H1, He4 and the metals (as O)
       ierr = 0
+      log10_16_sigma_over_3 = log10(16.0d0*csig/3.0d0)
       helium_fraction=1.0D0-hydrogen_fraction-metal_fraction
       number_fraction_h1  = (hydrogen_fraction/atomic_weight_h1)  / &
            (hydrogen_fraction/atomic_weight_h1 + &
@@ -504,6 +506,9 @@ end subroutine lookup_conductive
 ! Fortran 90 (2026): the derivatives are the mixture's (the 2026-08 bug
 ! sweep: they multiplied by mix and took the rho derivatives for T), the
 ! table is read once per run at kap_init and passed in as a table set,
-! and the range stops return ierr.
+! and the range stops return ierr. Round 1B (2026-11-11): below log rho
+! = -6 the mixture term's sign and the extrapolation's direction
+! corrected (bug_sweep M222), and log10(16 sigma/3) computed from sigma
+! where the F77 code wrote -3.5194 (log10(16 csig/3) = -3.51938).
 
 end module conductive_opacity
