@@ -16,7 +16,7 @@
 module scv_eos
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use eos_results, only: eos_result
-      use scv_eos_tables, only: idp, idtt, iscv_dlnrho_dlnp, iscv_dlnrho_dlnt, &
+      use scv_eos_tables, only: scv_cell, last_scv_cell, iscv_dlnrho_dlnp, iscv_dlnrho_dlnt, &
            iscv_dlns_dlnt, iscv_frac_atom_ion1, iscv_frac_neutral, &
            iscv_log10_p, iscv_log10_rho, iscv_log10_s, iscvenv_cp, &
            iscvenv_dlnrho_dlnp, iscvenv_dlnrho_dlnt, iscvenv_du_dt, &
@@ -93,6 +93,8 @@ subroutine compute_scv_envelope_eos(log10_temperature, hydrogen_fraction, &
       logical :: temp_needs_smoothing, press_needs_smoothing, t_centred, p_centred
       integer :: temp_smooth_direction, press_smooth_direction
       integer :: i, ii, j, k
+! the cell's first T row and first P_gas column (find_scv_cell)
+      integer :: idtt, idp
       ierr = 0
       if (abs(hydrogen_fraction-tablenv_hydrogen_fraction) > scv_composition_tolerance &
            .or. abs(metal_fraction-tablenv_metal_fraction) > scv_composition_tolerance) then
@@ -104,9 +106,11 @@ subroutine compute_scv_envelope_eos(log10_temperature, hydrogen_fraction, &
       beta_complement = 1.0d0 - r%beta
       log10_gas_pressure = log10(r%beta*r%pressure)
 ! the table's cell around the point (idtt, idp), if it covers it
-      call find_scv_cell(log10_temperature, log10_gas_pressure, covers, &
+      call find_scv_cell(log10_temperature, log10_gas_pressure, last_scv_cell, covers, &
            t_centred, p_centred)
       if (.not. covers) return
+      idtt = last_scv_cell%first_row
+      idp = last_scv_cell%first_column
       temp_needs_smoothing = .false.
       if (t_centred) then
          temp_dist_above = log10_temperature - &
@@ -282,7 +286,8 @@ subroutine compute_scv_envelope_eos(log10_temperature, hydrogen_fraction, &
               idp+k-1,iscvenv_log10_p)
       end do
       call interp(interp_nodes, press_interp_weights, x_eval=log10_gas_pressure)
-      call scv_ionization_fractions(temp_interp_weights, press_interp_weights, r%ion_fraction)
+      call scv_ionization_fractions(idtt, idp, temp_interp_weights, press_interp_weights, &
+           r%ion_fraction)
 
 contains
 
@@ -392,12 +397,16 @@ subroutine compute_scv_eos(log10_temperature, hydrogen_fraction, &
            log10_du_dt_pure_z, du_dt_pure_z
       logical :: t_centred, p_centred
       integer :: i, ii, k
+! the cell's first T row and first P_gas column (find_scv_cell)
+      integer :: idtt, idp
       beta_complement = 1.0d0 - r%beta
       log10_gas_pressure = log10(r%beta*r%pressure)
 ! the tables' cell around the point (idtt, idp), if they cover it
-      call find_scv_cell(log10_temperature, log10_gas_pressure, covers, &
+      call find_scv_cell(log10_temperature, log10_gas_pressure, last_scv_cell, covers, &
            t_centred, p_centred)
       if (.not. covers) return
+      idtt = last_scv_cell%first_row
+      idp = last_scv_cell%first_column
       do k = 1,4
          interp_nodes(k) = tlogx(k+idtt-1)
       end do
@@ -531,7 +540,8 @@ subroutine compute_scv_eos(log10_temperature, hydrogen_fraction, &
            r%specific_heat_cp
 
 ! the ionization fractions, from the pure H and He tables at the cell
-      call scv_ionization_fractions(temp_interp_weights, press_interp_weights, r%ion_fraction)
+      call scv_ionization_fractions(idtt, idp, temp_interp_weights, press_interp_weights, &
+           r%ion_fraction)
 
 end subroutine compute_scv_eos
 
@@ -541,18 +551,23 @@ end subroutine compute_scv_eos
 ! The 4 x 4 cell of the SCV tables around (log T, log P_gas): its first
 ! row idtt and first column idp, on the H table's grid (tlogx and the log
 ! P_gas column, which the He, Z and envelope tables share), searched from
-! the last lookup's cell (it moves to this one). covers is false outside
-! the tables: log T beyond their rows, log P_gas below
-! scv_min_log10_gas_pressure or above the row's highest. t_centred and
-! p_centred tell whether the cell is centred on the point (not clamped
-! at the table's edge), where the envelope lookup smooths across cells.
-subroutine find_scv_cell(log10_temperature, log10_gas_pressure, covers, t_centred, &
+! the cell given (the last lookup's), which becomes this one; a column
+! below the table's first is clamped to it. covers is false outside the
+! tables: log T beyond their rows, log P_gas below
+! scv_min_log10_gas_pressure or above the row's highest (the cell is then
+! left as it was found). t_centred and p_centred tell whether the cell
+! is centred on the point (not clamped at the table's edge), where the
+! envelope lookup smooths across cells.
+subroutine find_scv_cell(log10_temperature, log10_gas_pressure, cell, covers, t_centred, &
      p_centred)
       real(dp), intent(in) :: log10_temperature, log10_gas_pressure
+      type(scv_cell), intent(inout) :: cell
       logical, intent(out) :: covers, t_centred, p_centred
       integer, parameter :: nts = scv_nt
-      integer :: i, ii, j, jj, jjj
+      integer :: i, ii, j, jj, jjj, idtt, idp
 
+      idtt = cell%first_row
+      idp = cell%first_column
       covers = .false.
       t_centred = .false.
       p_centred = .false.
@@ -579,6 +594,7 @@ subroutine find_scv_cell(log10_temperature, log10_gas_pressure, covers, t_centre
       idtt = max(1,ii)
       idtt = min(nts-3,idtt)
       t_centred = idtt == ii
+      cell%first_row = idtt
 ! the columns, at the cell's first row (the one with the fewest points)
       jjj = min(nptsx(idtt)-3, idp)
       if (log10_gas_pressure < tablex(idtt,jjj+1,iscv_log10_p)) then
@@ -599,10 +615,11 @@ subroutine find_scv_cell(log10_temperature, log10_gas_pressure, covers, t_centre
             end if
          end do
          if (j > nptsx(idtt)) return
-         idp = min(nptsx(idtt)-3, jj)
+         idp = max(1, min(nptsx(idtt)-3, jj))
       end if
       covers = .true.
       p_centred = idp == jj
+      cell%first_column = idp
 end subroutine find_scv_cell
 
 !----------------------------------------------------------------------
@@ -614,7 +631,9 @@ end subroutine find_scv_cell
 ! neutral He and He+, interpolated in P at the cell's four rows and then
 ! in T; the H+, electron and He++ fractions follow from the
 ! conservation of particles and of charge.
-subroutine scv_ionization_fractions(temp_interp_weights, press_interp_weights, ion_fraction)
+subroutine scv_ionization_fractions(idtt, idp, temp_interp_weights, press_interp_weights, &
+     ion_fraction)
+      integer, intent(in) :: idtt, idp
       real(dp), intent(in) :: temp_interp_weights(:), press_interp_weights(:)
       real(dp), intent(out) :: ion_fraction(:)
       real(dp) :: temp_grid(4,2)
@@ -663,8 +682,8 @@ end subroutine scv_ionization_fractions
 ! envelope_metal_fraction) into tablenv's six columns, which
 ! compute_scv_envelope_eos interpolates. Nothing to do before
 ! read_scv_tables has read the tables, or when the table is built for
-! this composition already. The lookups' warm-start cell (idtt, idp) is
-! not touched.
+! this composition already. The lookups' warm-start cell (last_scv_cell)
+! is not touched.
 subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
      envelope_metal_fraction)
 ! the envelope composition the table is built for

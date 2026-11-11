@@ -89,3 +89,10 @@ old = '''            if (v%t6_list(1,t6_scan_idx) == 0.0d0) then
                zero_t6_row = t6_scan_idx'''
 new = '''            if (v%t6_list(1,t6_scan_idx) == -1.0d0) then
                zero_t6_row = t6_scan_idx'''
+
+[[mutation]]
+id = 'scv_search-01'
+check = "SCV: a lookup's cell does not depend on where its search starts"
+file = 'eos/scv/scv_eos.f90'
+old = '''         idp = max(1, min(nptsx(idtt)-3, jj))'''
+new = '''         idp = min(nptsx(idtt)-3, jj)'''

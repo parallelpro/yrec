@@ -412,7 +412,7 @@ eos/opal/opal95_eos.o: eos_messages.mod math_lib.mod opal_eos_tables.mod physica
 eos/opal/opal_eos.o: eos_messages.mod eos_mixture.mod eos_results.mod math_lib.mod opal95_eos.mod opal_eos_tables.mod physical_constants.mod
 eos/opal_eos_tables.o: eos_configuration.mod eos_messages.mod math_lib.mod
 eos/scv/scv_eos.o: eos_messages.mod eos_mixture.mod eos_results.mod math_lib.mod numerics_lib.mod physical_constants.mod scv_eos_tables.mod
-eos/test/test_eos.o: blended_eos.mod eos_configuration.mod eos_lib.mod eos_messages.mod eos_mixture.mod mhd_eos.mod opal95_eos.mod opal_eos.mod opal_eos_tables.mod physical_constants.mod run_messages.mod yale_eos_tables.mod
+eos/test/test_eos.o: blended_eos.mod eos_configuration.mod eos_lib.mod eos_messages.mod eos_mixture.mod mhd_eos.mod opal95_eos.mod opal_eos.mod opal_eos_tables.mod physical_constants.mod run_messages.mod scv_eos_tables.mod yale_eos_tables.mod
 eos/yale/yale_eos.o: eos_configuration.mod eos_messages.mod eos_mixture.mod eos_results.mod math_lib.mod physical_constants.mod yale_eos_tables.mod
 eos/yale_eos_tables.o: physical_constants.mod
 io/controls_buffer.o: control_slots.mod reaction_layout.mod

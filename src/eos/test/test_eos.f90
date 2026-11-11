@@ -41,6 +41,7 @@ program test_eos
       use opal95_eos, only: esac
       use physical_constants, only: gas_constant
       use mhd_eos, only: interpolate_mhd_table
+      use scv_eos_tables, only: scv_cell, last_scv_cell
       use eos_messages, only: eos_warned, once_fermi_extrapolation
       use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
@@ -1179,7 +1180,33 @@ subroutine scv_mean_weight_checks()
       call check("SCV: R/mu and 1/mu_e continuous at the Saha ramp's foot", ierr1 == 0 .and. ierr2 == 0 .and. &
            abs(above%specific_gas_constant/below%specific_gas_constant - 1.0d0) < 1.0d-6 .and. &
            abs(above%electron_mean_weight_inverse - below%electron_mean_weight_inverse) < 1.0d-6)
+      call scv_search_checks()
 end subroutine scv_mean_weight_checks
+
+! SCV's cell search starts from the last lookup's cell: off the tables'
+! nodes its result does not depend on that start, from a far cell, from
+! the tables' first cell, or from a column below the table (which once
+! made a lookup in the lowest pressure interval, log P_gas 4 to 4.2, read
+! column 0). The program's own search start is kept.
+subroutine scv_search_checks()
+      real(dp), parameter :: x = 0.70d0, z = 0.016492d0, lt = 3.73d0, lp = 4.1d0
+      type(scv_cell) :: kept
+      type(eos_result) :: from_far, from_below, from_first
+      integer :: ierr1, ierr2, ierr3
+      kept = last_scv_cell
+      last_scv_cell = scv_cell(first_row=40, first_column=40)
+      call eos_at(lt, lp, x, z, from_far, ierr1)
+      last_scv_cell = scv_cell(first_row=1, first_column=0)
+      call eos_at(lt, lp, x, z, from_below, ierr2)
+      last_scv_cell = scv_cell()
+      call eos_at(lt, lp, x, z, from_first, ierr3)
+      last_scv_cell = kept
+      call check("SCV: a lookup's cell does not depend on where its search starts", &
+           ierr1 == 0 .and. ierr2 == 0 .and. ierr3 == 0 .and. &
+           from_below%log10_density == from_far%log10_density .and. &
+           from_first%log10_density == from_far%log10_density .and. &
+           from_below%adiabatic_gradient == from_far%adiabatic_gradient)
+end subroutine scv_search_checks
 
 ! cp and grad_ad of an ideal gas plus radiation with gas-pressure
 ! fraction b and R/mu = r_mu: with delta = (4 - 3b)/b,
