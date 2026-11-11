@@ -315,8 +315,8 @@ subroutine derive_diffusion_switches
 end subroutine derive_diffusion_switches
 
 ! ---------------------------------------------------------------
-! The surface boundary condition, the pure C and N opacity tables, and
-! the version and description banner.
+! The surface boundary condition, the pure C and O opacity table (Z = 1,
+! for helium-burning cores), and the version and description banner.
 subroutine write_run_log_header
 ! the banner's format, fitted to the version strings (a zero width is
 ! illegal)
@@ -327,7 +327,7 @@ subroutine write_run_log_header
            max(1, len_trim(git_hash_string))
       if (atm_choice_is_known(atm_choice)) &
            call log_line(' surface boundary: ' // trim(atm_choice_name(atm_choice)))
-      if (use_pure_z_table) call log_line(' opacity: pure C and N tables enabled')
+      if (use_pure_z_table) call log_line(' opacity: pure C and O tables enabled')
       call log_line('')
       call log_line(' ' // repeat('=', 100))
       write(line, version_fmt) yrec_version_string, git_hash_string
