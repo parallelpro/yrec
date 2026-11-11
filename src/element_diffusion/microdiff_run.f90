@@ -11,24 +11,37 @@
 ! solve_tridiagonal (diffusion_scheme, numerics_lib), on the two equally
 ! spaced grids (eq, eq_mid).
 module microdiff_run
-      use element_diffusion_scratch, only: diffusion_scratch
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use element_diffusion_configuration, only: diffusion_settings
       use diffusion_scheme, only: lax_wendroff_step1, lax_wendroff_step2, implicit_diffusion_coeffs
       implicit none
+
+! What one species' solve did, for its driver's messages
+! (element_diffusion_messages): the passes of the implicit solve the
+! settings ask for, counted until one's change is below
+! settling_tolerance (pass 1 solves, each later pass would repeat it
+! and changes nothing), whether one was, pass 1's largest signed change
+! of the abundance and its equally spaced shell; and, with ierr nonzero,
+! the numerics routine that failed.
+      type :: species_solve_report
+         integer :: num_passes = 0
+         logical :: converged = .false.
+         real(dp) :: change = 0.0d0
+         integer :: change_shell = 0
+         character(len=24) :: failed_routine = ''
+      end type species_solve_report
 contains
 
-subroutine run_microdiff(diff_scr, grid_spacing, timestep, total_mass, num_eq_points, &
+subroutine run_microdiff(grid_spacing, timestep, total_mass, num_eq_points, &
      eq, species_fraction, hydrogen_dlnc_dr, &
      eq_mid, species_fraction_mid, hydrogen_dlnc_dr_mid, &
-     atomic_weight_diffused, atomic_charge_diffused, species_col, ierr)
+     atomic_weight_diffused, atomic_charge_diffused, species_col, report, ierr)
       use microdiff_mapping, only: microdiff_grid
       use microdiff_coefficients
       use composition_layout, only: json
-      use run_messages, only: run_log_unit, terminal_unit, solver_diagnostics
       use physical_constants
-      use numerics_lib, only: solve_tridiagonal, numerics_status_text
+      use numerics_lib, only: solve_tridiagonal
       implicit none
-      type(diffusion_scratch), intent(inout) :: diff_scr
       double precision, intent(in) :: grid_spacing
       double precision, intent(in) :: timestep
       double precision, intent(in) :: total_mass
@@ -41,6 +54,7 @@ subroutine run_microdiff(diff_scr, grid_spacing, timestep, total_mass, num_eq_po
       double precision, intent(in) :: atomic_weight_diffused, &
            atomic_charge_diffused
       integer, intent(in) :: species_col
+      type(species_solve_report), intent(out) :: report
       integer, intent(out) :: ierr
 ! --- locals ---
       double precision :: diffused_abundance(json), diffused_abundance_mid(json), &
@@ -52,12 +66,7 @@ subroutine run_microdiff(diff_scr, grid_spacing, timestep, total_mass, num_eq_po
       double precision :: alpha(json), sub_diag(json), diag(json), &
            super_diag(json)
       integer :: i, iter, num_mid_points, max_change_zone
-! use_generic_diffusion_vectors (originally LDOLI): set true so that
-! lax_wendroff_step1/2 skip their separate metal-diffusion pass
-! (rot_scr%metal_* vectors, used only by gravitational_settling).
-      logical :: use_generic_diffusion_vectors
       double precision :: fac, max_abundance_change, dx
-      logical :: converged
 
 !
 ! CREATE DUMMY VECTORS FOR THE DIFFUSING ELEMENT. THIS ALLOWS A SINGLE
@@ -80,10 +89,7 @@ subroutine run_microdiff(diff_scr, grid_spacing, timestep, total_mass, num_eq_po
       enddo
       diffused_abundance_orig(num_eq_points) = diffused_abundance(num_eq_points)
 !
-!  SET THE FLAG LDOLI = TRUE, SO THAT THE LAX-WENDROF ROUTINES KNOW TO NOT
-!  USE THE OLD METAL DIFFUSION VECTORS.
       ierr = 0
-      use_generic_diffusion_vectors = .true.
 !
 ! NOW USE THE EQUALLY SPACED GRID TO CALUCLATE DIFFUSION COEFFICIENTS IN THE
 ! METHOD OF THE THOUL ROUTINE. MUCH OF THE FOLLOWING CODE WAS TAKEN FROM
@@ -92,7 +98,10 @@ subroutine run_microdiff(diff_scr, grid_spacing, timestep, total_mass, num_eq_po
       call compute_microdiff_coefficients(num_eq_points, species_fraction, eq, &
            diffusion_coeff1, diffusion_coeff2, hydrogen_dlnc_dr, &
            atomic_weight_diffused, atomic_charge_diffused, species_col, ierr)
-      if (ierr /= 0) return
+      if (ierr /= 0) then
+         report%failed_routine = 'ludcmp'
+         return
+      end if
 !
 ! FIRST STEP OF TWO STEP LAX-WENDROFF METHOD. COMPUTE NEW ABUNDANCES AT ZONE
 ! MIDPOINTS USING THE LAX SCHEME :
@@ -100,8 +109,8 @@ subroutine run_microdiff(diff_scr, grid_spacing, timestep, total_mass, num_eq_po
 ! WHERE N IS THE TIME VARIABLE, J IS THE SPATIAL ONE, AND COD1 IS THE
 ! DIFFUSION COEFFICIENT.
 !
-      call lax_wendroff_step1(diff_scr, timestep, diffusion_coeff1, eq%mass, num_eq_points, &
-           total_mass, diffused_abundance_mid, use_generic_diffusion_vectors)
+      call lax_wendroff_step1(timestep, diffusion_coeff1, eq%mass, num_eq_points, &
+           total_mass, diffused_abundance_mid)
 !
 ! UPDATE ESPEC WITH THE NEW RUN OF ED_H, FOR THE PURPOSE OF
 ! CALUCLATING NEW DIFFUSION COEFFICIENTS.
@@ -120,7 +129,10 @@ subroutine run_microdiff(diff_scr, grid_spacing, timestep, total_mass, num_eq_po
            diffusion_coeff1_mid, diffusion_coeff2_mid, &
            hydrogen_dlnc_dr_mid, atomic_weight_diffused, &
            atomic_charge_diffused, species_col, ierr)
-      if (ierr /= 0) return
+      if (ierr /= 0) then
+         report%failed_routine = 'ludcmp'
+         return
+      end if
 !
 ! USING THE NEW COEFFICIENTS, SOLVE FOR THE NEW RUN OF ABUNDANCES.
 ! NOTE : THE SR ACTUALLY RETURNS THE *CHANGE* IN THE ABUNDANCE AS A FUNCTION
@@ -128,9 +140,8 @@ subroutine run_microdiff(diff_scr, grid_spacing, timestep, total_mass, num_eq_po
 ! COMPUTING A NEW RUN OF ABUNDANCE AND TRANSFORMING IT BACK.  THIS IS DONE
 ! TO MINIMIZE ERRORS FROM THE INTERPOLATION.
 !
-      call lax_wendroff_step2(diff_scr, timestep, diffusion_coeff1_mid, eq_mid%mass, &
-           diffused_abundance, num_eq_points, total_mass, &
-           use_generic_diffusion_vectors)
+      call lax_wendroff_step2(timestep, diffusion_coeff1_mid, eq_mid%mass, &
+           diffused_abundance, num_eq_points, total_mass)
 !
 !  NOW IMPLICITLY SOLVE FOR THE SECOND TERM (INVOLVING THE SECOND
 !  DERIVATIVE OF THE COMPOSITION GRADIENT). FIRST DEFINE VECTOR ED_P,
@@ -184,7 +195,7 @@ subroutine run_microdiff(diff_scr, grid_spacing, timestep, total_mass, num_eq_po
          call solve_tridiagonal(sub_diag, diag, super_diag, diffused_abundance_prime, &
               num_eq_points, diffused_abundance, ierr)
          if (ierr /= 0) then
-            write(*,*) 'solve_tridiagonal: '//numerics_status_text(ierr)
+            report%failed_routine = 'solve_tridiagonal'
             return
          end if
 !  THE LARGEST (SIGNED) CHANGE OF THE SOLVE.
@@ -196,32 +207,20 @@ subroutine run_microdiff(diff_scr, grid_spacing, timestep, total_mass, num_eq_po
             endif
          enddo
       end if
-! The passes' report: the change of pass 1, then zero, until one is below
-! the tolerance.
-      converged = .false.
+! The passes: pass 1's change, then zero, until one is below the
+! tolerance.
+      report%change = max_abundance_change
+      report%change_shell = max_change_zone
       do iter=1,diffusion_settings%settling_num_iterations
+         report%num_passes = iter
          if (iter > 1) then
             max_abundance_change = 0.0d0
-            max_change_zone = 0
          end if
-! solver forensics
-         if (solver_diagnostics()) &
-              write(run_log_unit,90)iter,max_abundance_change,max_change_zone
-   90    format(1x,'ITERATION ',i3,' DXMAX ',1pe10.2,' IMAX ',i4)
          if(max_abundance_change.lt.diffusion_settings%settling_tolerance)then
-            converged = .true.
+            report%converged = .true.
             exit
          end if
       end do
-      if (.not. converged) then
-      write(terminal_unit,110)diffusion_settings%settling_tolerance,diffusion_settings%settling_num_iterations, &
-           max_abundance_change,max_change_zone
-      write(run_log_unit,110)diffusion_settings%settling_tolerance,diffusion_settings%settling_num_iterations, &
-           max_abundance_change,max_change_zone
-  110 format(1x,'MICRODIFF FAILED TO CONVERGE TO WITHIN ',1pe9.3,' IN ',i3, &
-           'ITERATIONS'/1x,'LAST ITERATION CHANGE IN D ',1pe9.3, &
-           ' IN EQUALLY SPACED SHELL ',i5)
-      end if
 !
 !  STORE THE RUN OF CHANGES IN THE DIFFUSED ELEMENT.
       do i = 1,num_eq_points

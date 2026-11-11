@@ -5,7 +5,6 @@
 ! and its setup.
 module microdiff_driver
       use element_diffusion_configuration, only: diffusion_settings
-      use element_diffusion_scratch, only: diffusion_scratch
       implicit none
       private
       public :: microdiff
@@ -57,23 +56,21 @@ contains
 !  BOUNDARIES OF CONVECTIVE CORE AND ENVELOPE IF APPLICABLE;
 !  COLLECT PHYSICAL VARIABLES FOR DIFFCO CALCULATION.
 !
-! The pipeline: microdiff_setup (the diffusion region, the unit
-! conversion), map_microdiff_to_equal_grid (microdiff_mapping: the
+! The pipeline (diffuse_elements has found the settling region):
+! microdiff_setup (the unit conversion), map_microdiff_to_equal_grid (microdiff_mapping: the
 ! equally spaced grid), run_microdiff (microdiff_run, with the
 ! coefficients from microdiff_coefficients) once each for hydrogen, the
 ! metals and each light element, and microdiff_etm (microdiff_mapping:
 ! back to the model grid).
-subroutine microdiff(diff_scr, timestep, composition, dlnp_dr, log_radius, &
+subroutine microdiff(timestep, composition, dlnp_dr, log_radius, &
      log_density, enclosed_mass, log_temperature, del_grad, &
-     convective_flag, num_zones, total_mass, &
-     suspension_reported, ierr)
+     num_zones, total_mass, zone_begin, zone_end, ierr)
       use microdiff_mapping
       use microdiff_run
       use composition_layout, only: json
       use species_table, only: thoul_fe, thoul_col_h, thoul_col_he, &
            thoul_col_metal, num_light_diffused, light_diffused, light_diffused_row
       implicit none
-      type(diffusion_scratch), intent(inout) :: diff_scr
 ! SET NLIGHT TO THE NUMBER OF LIGHT ELEMENTS TO BE DIFFUSED.
       integer, parameter :: num_light = num_light_diffused
 
@@ -83,12 +80,11 @@ subroutine microdiff(diff_scr, timestep, composition, dlnp_dr, log_radius, &
       double precision, intent(in) :: log_radius(json), log_density(json)
       double precision, intent(in) :: enclosed_mass(json)
       double precision, intent(in) :: log_temperature(json), del_grad(json)
-      logical, intent(in) :: convective_flag(json)
       integer, intent(in) :: num_zones
       double precision, intent(in) :: total_mass
+! the settling region (settling_region)
+      integer, intent(in) :: zone_begin, zone_end
       integer, intent(out) :: ierr
-      ! the run log's suspension latch
-      logical, intent(inout) :: suspension_reported
 ! --- locals ---
 ! The timestep, dlnP/dr, mass coordinate and total mass in Bahcall and
 ! Loeb units: copies, so that the model's own are left exactly as they
@@ -109,10 +105,11 @@ subroutine microdiff(diff_scr, timestep, composition, dlnp_dr, log_radius, &
 !
 !     THE LIGHT ELEMENTS DIFFUSED (ROW, WEIGHT, CHARGE) ARE
 !     light_diffused_row / light_diffused OF species_table.
-      integer :: i, ii, zone_begin, zone_end, num_eq_points, species_col
-      logical :: settling_skipped_flag
+      integer :: i, ii, num_eq_points, species_col
       double precision :: grid_spacing, atomic_weight_diffused, &
            atomic_charge_diffused
+! what each species' solve did (microdiff_run), for its messages
+      type(species_solve_report) :: report
 
 !  CONVERT MODEL QUANTITIES TO BAHCALL AND LOEB UNITS; LOCATE
 !  BOUNDARIES OF CONVECTIVE CORE AND ENVELOPE IF APPLICABLE;
@@ -123,14 +120,9 @@ subroutine microdiff(diff_scr, timestep, composition, dlnp_dr, log_radius, &
       dlnp_dr_bl = dlnp_dr
       enclosed_mass_bl = enclosed_mass
       total_mass_bl = total_mass
-      call microdiff_setup(diff_scr, timestep_bl, dlnp_dr_bl, log_radius, log_density, &
-           enclosed_mass_bl, log_temperature, convective_flag, num_zones, &
-           total_mass_bl, composition, radius_bl, temperature_bl, zone_begin, &
-           zone_end, settling_skipped_flag, density_orig, temperature_orig, &
-           suspension_reported)
-!
-! SKIP SETTLING FOR FULLY CONVECTIVE (OR H/HE-EXHAUSTED) MODELS.
-      if(settling_skipped_flag) return
+      call microdiff_setup(timestep_bl, dlnp_dr_bl, log_radius, log_density, &
+           enclosed_mass_bl, log_temperature, num_zones, &
+           total_mass_bl, radius_bl, temperature_bl, density_orig, temperature_orig)
 !  TRANSFORM TO AN EQUALLY SPACED GRID IN RADIUS.
 !  NOTE : PREFIX E ALONE=VARIABLE AT EQUALLY SPACED GRID POINTS.
 !         PREFIX E + SUFFIX _H= VARIABLE AT MIDPOINT BETWEEN EQUALLY
@@ -175,11 +167,12 @@ subroutine microdiff(diff_scr, timestep, composition, dlnp_dr, log_radius, &
          enddo
          species_fraction(thoul_col_metal,num_eq_points) = eq%metal(num_eq_points)
 !        PASS THE EVEN GRID INTO MICRODIFF_RUN TO PERFORM THE DIFFUSION.
-         call run_microdiff(diff_scr, grid_spacing, timestep_bl, total_mass_bl, &
+         call run_microdiff(grid_spacing, timestep_bl, total_mass_bl, &
               num_eq_points, eq, species_fraction, &
               hydrogen_dlnc_dr, eq_mid, &
               species_fraction_mid, hydrogen_dlnc_dr_mid, &
-              atomic_weight_diffused, atomic_charge_diffused, species_col, ierr)
+              atomic_weight_diffused, atomic_charge_diffused, species_col, report, ierr)
+         call report_species_solve(report, ierr)
          if (ierr /= 0) return
 !        STORE THE RUN OF CHANGES TO HYDROGEN
          do i = 1,num_eq_points
@@ -206,11 +199,12 @@ subroutine microdiff(diff_scr, timestep, composition, dlnp_dr, log_radius, &
          enddo
          species_fraction(thoul_col_metal,num_eq_points) = eq%metal(num_eq_points)
 !        PASS THE EVEN GRID INTO MICRODIFF_RUN TO PERFORM THE DIFFUSION.
-         call run_microdiff(diff_scr, grid_spacing, timestep_bl, total_mass_bl, &
+         call run_microdiff(grid_spacing, timestep_bl, total_mass_bl, &
               num_eq_points, eq, species_fraction, &
               hydrogen_dlnc_dr, eq_mid, &
               species_fraction_mid, hydrogen_dlnc_dr_mid, &
-              atomic_weight_diffused, atomic_charge_diffused, species_col, ierr)
+              atomic_weight_diffused, atomic_charge_diffused, species_col, report, ierr)
+         call report_species_solve(report, ierr)
          if (ierr /= 0) return
 !        STORE THE RUN OF CHANGES TO HEAVY METALS
          do i=1,num_eq_points
@@ -236,11 +230,12 @@ subroutine microdiff(diff_scr, timestep, composition, dlnp_dr, log_radius, &
             enddo
             species_fraction(thoul_col_metal,num_eq_points) = eq%light(ii,num_eq_points)
 !           PASS THE EVEN GRID INTO MICRODIFF_RUN TO PERFORM THE DIFFUSION.
-            call run_microdiff(diff_scr, grid_spacing, timestep_bl, total_mass_bl, &
+            call run_microdiff(grid_spacing, timestep_bl, total_mass_bl, &
                  num_eq_points, eq, species_fraction, &
                  hydrogen_dlnc_dr, eq_mid, &
                  species_fraction_mid, hydrogen_dlnc_dr_mid, &
-                 atomic_weight_diffused, atomic_charge_diffused, species_col, ierr)
+                 atomic_weight_diffused, atomic_charge_diffused, species_col, report, ierr)
+            call report_species_solve(report, ierr)
             if (ierr /= 0) return
 !           STORE THE NEW RUN OF LIGHT METALS
             do i=1,num_eq_points
@@ -254,162 +249,89 @@ subroutine microdiff(diff_scr, timestep, composition, dlnp_dr, log_radius, &
 ! TRANSFORM BACK TO ORIGINAL MODEL GRID; UPDATE HELIUM ARRAY USING
 ! X+Y+Z=1.  PRINT DIAGNOSTIC OUTPUT.
 !
-      call microdiff_etm(diff_scr, timestep_bl, eq%radius, eq_delta_hydrogen, &
+      call microdiff_etm(eq%radius, eq_delta_hydrogen, &
            eq_delta_metal, eq_delta_light, zone_begin, zone_end, &
-           num_eq_points, composition, dlnp_dr_bl, radius_bl, enclosed_mass_bl, &
-           num_zones, total_mass_bl, num_light, light_diffused_row)
+           num_eq_points, composition, radius_bl, &
+           num_zones, num_light, light_diffused_row)
       return
 end subroutine microdiff
 
 ! ---------------------------------------------------------------
-! The first stage of microdiff: locates the diffusion region (between any central
-! convective core and any surface convection zone, and bounded by
-! hydrogen/helium exhaustion), and converts the needed model quantities
-! to Bahcall & Loeb (1990) natural units.
-!
-!     OUTPUT VARIABLES :
-!
-!     radius_bl - VECTOR OF UNLOGGED RADII IN BAHCALL AND LOEB UNITS.
-!     temperature_bl - VECTOR OF UNLOGGED TEMPERATURES IN BAHCALL AND
-!          LOEB UNITS.
-!     zone_begin - FIRST ZONE FOR DIFFUSION PURPOSES (EITHER THE FIRST
-!          MODEL POINT OR THE OUTERMOST POINT OF A CENTRAL CONVECTION
-!          ZONE).
-!     zone_end - LAST ZONE FOR DIFFUSION PURPOSES (EITHER THE LAST
-!          MODEL POINT OR THE INNERMOST POINT OF A SURFACE CONVECTION
-!          ZONE).
-!     THE VECTORS dlnp_dr AND enclosed_mass, AND THE SCALARS timestep
-!     AND total_mass, ARE ALSO CONVERTED TO BAHCALL AND LOEB UNITS.
-!     CONSTANTS DEFINED :
-!     ln10 = CONVERSION FACTOR FROM LN TO LOG10
-!     CRSUN_BAH = SOLAR RADIUS (CM)
-!     CSECYR_BAH = NUMBER OF SECONDS IN A YEAR.
-!
-! enclosed_mass (HS1) is the enclosed mass at the model points,
-! unlogged, not the per-shell mass.
-subroutine microdiff_setup(diff_scr, timestep, dlnp_dr, log_radius, log_density, &
-     enclosed_mass, log_temperature, convective_flag, num_zones, &
-     total_mass, composition, radius_bl, temperature_bl, zone_begin, &
-     zone_end, settling_skipped_flag, density_orig, temperature_orig, &
-     suspension_reported)
+! The messages of one species' solve (element_diffusion_messages): the
+! numerics routine that failed (ierr nonzero); else each pass of the
+! implicit solve under solver diagnostics (pass 1's change, then zero),
+! and a solve that missed settling_tolerance in its
+! settling_num_iterations passes, with the last pass's change.
+subroutine report_species_solve(report, ierr)
+      use microdiff_run, only: species_solve_report
+      use element_diffusion_messages, only: note_solve_pass, report_unconverged, &
+           report_numerics_failure
+      type(species_solve_report), intent(in) :: report
+      integer, intent(in) :: ierr
+      integer :: pass
 
-      use composition_layout, only: json, i_h1, i_he4
-      use bahcall_loeb_units, only: set_bahcall_loeb_scales
-      use run_messages, only: run_log_unit, solver_diagnostics
-      use physical_constants
+      if (ierr /= 0) then
+         call report_numerics_failure(trim(report%failed_routine), ierr)
+         return
+      end if
+      do pass = 1, report%num_passes
+         if (pass == 1) then
+            call note_solve_pass(pass, report%change, report%change_shell)
+         else
+            call note_solve_pass(pass, 0.0d0, 0)
+         end if
+      end do
+      if (report%converged) return
+      if (report%num_passes <= 1) then
+         call report_unconverged('MICRODIFF', 'D', diffusion_settings%settling_tolerance, &
+              diffusion_settings%settling_num_iterations, report%change, report%change_shell)
+      else
+         call report_unconverged('MICRODIFF', 'D', diffusion_settings%settling_tolerance, &
+              diffusion_settings%settling_num_iterations, 0.0d0, 0)
+      end if
+end subroutine report_species_solve
+
+! ---------------------------------------------------------------
+! The first stage of microdiff: the model's quantities in Bahcall &
+! Loeb (1990) units (bahcall_loeb_units), on microdiff's copies.
+!   timestep, dlnp_dr, enclosed_mass, total_mass  converted in place
+!       (s, 1/cm, g, g in; Bahcall & Loeb units out);
+!   radius_bl, temperature_bl   the unlogged radius and temperature in
+!       Bahcall & Loeb units;
+!   density_orig, temperature_orig  the unlogged density (g/cm^3) and
+!       temperature (K), for the equally spaced grids.
+subroutine microdiff_setup(timestep, dlnp_dr, log_radius, log_density, &
+     enclosed_mass, log_temperature, num_zones, &
+     total_mass, radius_bl, temperature_bl, density_orig, temperature_orig)
+
+      use composition_layout, only: json
+      use bahcall_loeb_units, only: bl_radius_scale, bl_mass_scale, &
+           bl_temp_scale, bl_time_scale
+      use physical_constants, only: ln10
       use math_lib
       implicit none
-      type(diffusion_scratch), intent(inout) :: diff_scr
-
       double precision, intent(inout) :: timestep
       double precision, intent(inout) :: dlnp_dr(json)
       double precision, intent(in) :: log_radius(json), log_density(json)
       double precision, intent(inout) :: enclosed_mass(json)
       double precision, intent(in) :: log_temperature(json)
-      logical, intent(in) :: convective_flag(json)
       integer, intent(in) :: num_zones
       double precision, intent(inout) :: total_mass
-      double precision, intent(in) :: composition(15,json)
       double precision, intent(out) :: radius_bl(json), temperature_bl(json)
-      integer, intent(out) :: zone_begin, zone_end
-      logical, intent(out) :: settling_skipped_flag
       double precision, intent(out) :: density_orig(json), &
            temperature_orig(json)
-! the run log's latch: a suspension of settling is reported once
-      logical, intent(inout) :: suspension_reported
       integer :: i
 
-!     settling_skipped_flag=T IF SETTLING IS SKIPPED THIS MODEL (FULLY
-!     CONVECTIVE, HYDROGEN-EXHAUSTED OR HELIUM-EXHAUSTED).
-      settling_skipped_flag=.false.
-!     CHECK FOR CONVECTIVE CORE.
-      if(convective_flag(1))then
-         do i=2,num_zones
-            if(.not.convective_flag(i))exit
-         end do
-         if (i > num_zones) then
-!        DIFFUSION NOT COMPUTED FOR FULLY CONVECTIVE MODELS.
-         settling_skipped_flag=.true.
-! print once per suspension; every model only under
-! report_solver_diagnostics
-         if (solver_diagnostics() .or. &
-              .not. suspension_reported) then
-            write(run_log_unit,15)
-   15       format(1x,' FULLY CONVECTIVE MODEL - NO SETTLING')
-            suspension_reported = .true.
-         end if
-         return
-         end if
-!        COMPUTE OVERSHOOT (TO BE ADDED).
-         zone_begin = i-1
-      else
-         zone_begin = 1
-      endif
-! MHP 6/90 CHECK FOR HYDROGEN-EXHAUSTED CORE.
-      do i = zone_begin,num_zones
-         if(composition(i_h1,i).gt.diffusion_settings%hydrogen_diffusion_floor)exit
-      end do
-      if (i > num_zones) then
-!     HYDROGEN-FREE MODEL - EXIT.
-! print once per suspension; every model only under
-! report_solver_diagnostics
-      if (solver_diagnostics() .or. &
-           .not. suspension_reported) then
-         write(run_log_unit,16)diffusion_settings%hydrogen_diffusion_floor
-   16    format(1x,'X BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
-         suspension_reported = .true.
-      end if
-      settling_skipped_flag = .true.
-      return
-      end if
-      zone_begin = i
-!     CHECK FOR CONVECTIVE ENVELOPE.
-      if(convective_flag(num_zones))then
-         do i=num_zones-1,2,-1
-            if(.not.convective_flag(i))exit
-         end do
-!        COMPUTE OVERSHOOT (TO BE ADDED).
-         zone_end = i+1
-      else
-         zone_end = num_zones
-      endif
-!     CHECK FOR HELIUM-EXHAUSTED SURFACE.
-!     OUTER POINT IS SET WHEREVER Y>YMIN.
-      do i=zone_end,1,-1
-         if(composition(i_he4,i).gt.diffusion_settings%helium_diffusion_min) exit
-      end do
-      if (i < 1) then
-!     HELIUM-EXHAUSTED MODEL - EXIT.
-! print once per suspension; every model only under
-! report_solver_diagnostics
-      if (solver_diagnostics() .or. &
-           .not. suspension_reported) then
-         write(run_log_unit,17)diffusion_settings%helium_diffusion_min
-   17    format(1x,'Y BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
-         suspension_reported = .true.
-      end if
-      settling_skipped_flag = .true.
-      return
-      end if
-      zone_end = i
-! all suspension checks passed: settling proceeds this model
-      if (suspension_reported) then
-         write(run_log_unit,916)
-  916    format(1x,' SETTLING RESUMED')
-         suspension_reported = .false.
-      end if
-!     SET THE star%bl_*_scale CONVERSION FACTORS.
-      call set_bahcall_loeb_scales(diff_scr)
 !     CONVERT LOG(RADIUS) AND LOG(TEMPERATURE) TO NATURAL UNITS.
 !     ALSO CONVERT NATURAL UNITS TO BAHCALL AND LOEB UNITS.
       do i=1,num_zones
-         radius_bl(i)=exp(ln10*log_radius(i))*diff_scr%bl_radius_scale
-         temperature_bl(i)=exp(ln10*log_temperature(i))*diff_scr%bl_temp_scale
-         enclosed_mass(i)=enclosed_mass(i)*diff_scr%bl_mass_scale
-         dlnp_dr(i)=dlnp_dr(i)/diff_scr%bl_radius_scale
+         radius_bl(i)=exp(ln10*log_radius(i))*bl_radius_scale
+         temperature_bl(i)=exp(ln10*log_temperature(i))*bl_temp_scale
+         enclosed_mass(i)=enclosed_mass(i)*bl_mass_scale
+         dlnp_dr(i)=dlnp_dr(i)/bl_radius_scale
       end do
-      timestep=timestep/diff_scr%bl_time_scale
-      total_mass=total_mass*diff_scr%bl_mass_scale
+      timestep=timestep/bl_time_scale
+      total_mass=total_mass*bl_mass_scale
 !
 ! COLLECT THE NECESSARY QUANTITIES (NAMELY RHO AND T) FOR LATER
 ! TRANSFORMATION TO THE EQUALLY SPACED GRID.

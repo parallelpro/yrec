@@ -19,6 +19,7 @@
 module microdiff_coefficients
       use element_diffusion_configuration, only: diffusion_settings
       use thoul_solver, only: thoul_diffusion
+      use coulomb_logarithm, only: compute_concentrations, compute_coulomb_logarithms
       implicit none
 contains
 
@@ -32,6 +33,7 @@ subroutine compute_microdiff_coefficients(num_eq_points, species_fraction, grid,
            thoul_col_h, thoul_col_he, thoul_col_metal, thoul_col_electron
       use physical_constants
       use math_lib
+      use bahcall_loeb_units, only: bl_temp_scale
       implicit none
       integer, intent(in) :: num_eq_points
       double precision, intent(in) :: species_fraction(3,json)
@@ -50,13 +52,11 @@ subroutine compute_microdiff_coefficients(num_eq_points, species_fraction, grid,
            coeff_scale(json), pressure_term(json), temp_term(json), &
            hydrogen_term(json), diffusion_term(json), &
            hydrogen_concen(json)
-      double precision :: zxa, ac, ni, cz, xij, ne, ao, lambda_debye, &
-           lambda, concen(4)
+      double precision :: concen(4)
       double precision :: ln_lambda
       integer :: num_species
       data num_species/4/
-      integer :: i, ii, jj
-      double precision, parameter :: bl_temp_scale_local = 1.0d-7
+      integer :: i
       double precision :: hru_i, htu_i, fac, ap, at, ah, ad, dlncdr, coni, conip1, conim1, &
            dradi, t1, t2, rho, t
 
@@ -81,15 +81,8 @@ subroutine compute_microdiff_coefficients(num_eq_points, species_fraction, grid,
          if (mass_frac(thoul_col_h).lt.1.0d-24) mass_frac(thoul_col_h) = 1.0d-24
          if (mass_frac(thoul_col_he).lt.1.0d-24) mass_frac(thoul_col_he) = 1.0d-24
          if (mass_frac(thoul_col_metal).lt.1.0d-24) mass_frac(thoul_col_metal) = 1.0d-24
-!        calculate concentrations from mass fractions:
-         zxa=0.d0
-         do ii=1,num_species-1
-             zxa=zxa+atomic_charge(ii)*mass_frac(ii)/atomic_weight(ii)
-         enddo
-         do ii=1,num_species-1
-            concen(ii)=mass_frac(ii)/(atomic_weight(ii)*zxa)
-         enddo
-         concen(num_species)=1.d0
+!        the concentrations per electron (coulomb_logarithm)
+         call compute_concentrations(atomic_weight, atomic_charge, mass_frac, concen)
 !        save the hydrogen concentration when X is diffused.
          if(species_col.eq.thoul_col_h) hydrogen_concen(i) = concen(thoul_col_h)
 !        now check whether the Thoul routine must be run. if not,
@@ -112,34 +105,9 @@ subroutine compute_microdiff_coefficients(num_eq_points, species_fraction, grid,
 !        set relevant physical variables.
          rho = grid%density(i)
          t = grid%temperature(i)
-!        calculate density of electrons (NE) from mass density (RHO):
-         ac=0.d0
-         do ii=1,num_species
-          ac=ac+atomic_weight(ii)*concen(ii)
-         enddo
-         ne=rho/(m_proton_cgs*ac)
-!        calculate interionic distance (AO):
-         ni=0.d0
-         do ii=1,num_species-1
-            ni=ni+concen(ii)*ne
-         enddo
-         ao=pow((0.23873d0/ni), cc13)
-!        calculate Debye length (LAMBDAD):
-         cz=0.d0
-         do ii=1,num_species
-          cz=cz+concen(ii)*atomic_charge(ii)**2
-         enddo
-         lambda_debye=6.9010d0*sqrt(t/(ne*cz))
-!        calculate LAMBDA to use in Coulomb logarithm:
-         lambda=max(lambda_debye,ao)
-!        calculate Coulomb logarithms:
-         do ii=1,num_species
-            do jj=1,num_species
-               xij=2.3939d3*t*lambda/abs(atomic_charge(ii)*atomic_charge(jj))
-               coulomb_log(ii,jj)=0.81245d0 &
-               *log(1.d0+0.18769d0*pow(xij, 1.2d0))
-          enddo
-         enddo
+!        the pairwise Coulomb logarithms (coulomb_logarithm)
+         call compute_coulomb_logarithms(atomic_weight, atomic_charge, concen, &
+              rho, t, coulomb_log)
 !
 !        calculate the diffusion coefficients
 !
@@ -148,7 +116,7 @@ subroutine compute_microdiff_coefficients(num_eq_points, species_fraction, grid,
          if (ierr /= 0) return
 !
          hru_i = grid%radius(i)
-         htu_i = t*bl_temp_scale_local
+         htu_i = t*bl_temp_scale
 !        JvS 01/26 Added support for FGRY and FGRZ modifications
 !        to diffusion coefficients.
          fac=hru_i**2*pow(htu_i, 2.5d0)/ln_lambda

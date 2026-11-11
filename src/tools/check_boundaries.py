@@ -214,6 +214,16 @@ STAR_BLIND_FILES = [
     "eos/opal/opal_eos.f90",
     "eos/opal/opal95_eos.f90",
     "eos/mhd/mhd_eos.f90",
+    # element diffusion's kernels without module state (2026-11-10;
+    # test_element_diffusion): the Coulomb logarithms, the equal grids
+    # and their maps, the Lax-Wendroff and implicit scheme, the settling
+    # region, the sub-step plan, the Thoul et al. solve
+    "element_diffusion/coulomb_logarithm.f90",
+    "element_diffusion/diffusion_grid.f90",
+    "element_diffusion/diffusion_scheme.f90",
+    "element_diffusion/settling_region.f90",
+    "element_diffusion/settling_substeps.f90",
+    "element_diffusion/thoul_solver.f90",
 ]
 
 # Scratch modules that only their own domain may use (2026-10): their
@@ -1168,7 +1178,15 @@ NO_IO_DIRS = ["numerics", "math"]
 # Star-free kernels that are not star-blind files (a domain's kernels,
 # arguments in and results out). Empty to start: each package round adds
 # its kernels here when its messages module lands (PLAN.md, section 4).
-KERNEL_FILES = []
+KERNEL_FILES = [
+    # element diffusion's kernels that read its settings record
+    # (2026-11-10): microdiff's coefficients, grids and one-species solve,
+    # and the original routines' grid maps
+    "element_diffusion/microdiff_coefficients.f90",
+    "element_diffusion/microdiff_mapping.f90",
+    "element_diffusion/microdiff_run.f90",
+    "element_diffusion/settling_grid.f90",
+]
 
 # Today's covered files that still print, read tables or stop, each with
 # the round that removes the I/O (PLAN.md's rounds). A round deletes its

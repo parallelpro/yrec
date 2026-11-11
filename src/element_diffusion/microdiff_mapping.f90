@@ -8,7 +8,6 @@
 ! abundance changes back to the model grid.
 module microdiff_mapping
       use element_diffusion_configuration, only: diffusion_settings
-      use element_diffusion_scratch, only: diffusion_scratch
       use composition_layout, only: json
       use species_table, only: num_light_diffused
       implicit none
@@ -31,7 +30,8 @@ subroutine map_microdiff_to_equal_grid(num_light, light_element_id, composition,
      temperature_orig, eq, eq_mid)
 
       use composition_layout, only: json, i_h1, i_he4, i_metals
-      use numerics_lib, only: interp, lagrange4
+      use diffusion_grid, only: equal_grid_map, size_equal_grid, place_equal_grids, &
+           build_equal_grid_map, map_field
       implicit none
 
       integer, intent(in) :: num_light
@@ -44,206 +44,33 @@ subroutine map_microdiff_to_equal_grid(num_light, light_element_id, composition,
       double precision, intent(in) :: density_orig(json), temperature_orig(json)
       type(microdiff_grid), intent(out) :: eq, eq_mid
 ! --- locals ---
-      integer :: i, ii, iu, j, jmin, k, k0, kk
-      double precision :: drtot, drmin, fx, tabler(4), gridrad, &
-           facinterp(4), facderiv(4)
+! the zones each grid point is interpolated from (diffusion_grid)
+      type(equal_grid_map) :: map
+! the grid's spacing is the narrowest of the region's outer zones (the
+! 20 below the surface convection zone)
+      integer, parameter :: num_spacing_zones = 20
+      integer :: kk
 
-!  FIND MINIMUM MODEL POINT SPACING IN RADIUS.
-      drtot = radius_bl(zone_end)-radius_bl(zone_begin)
-      drmin = drtot
-!  ID THE MINIMUM SPACING IN THE 20 LAYERS BELOW THE SURFACE CZ.
-      ii = max(zone_end-20,zone_begin+1)
-      do i = ii,zone_end
-         drmin=min(drmin,radius_bl(i)-radius_bl(i-1))
-      end do
-!  ASSIGN THE MINIMUM NUMBER OF EQUALLY SPACED GRID POINTS SUCH THAT
-!  DR <= DRMIN.
-      num_eq_points=int(drtot/drmin)
-      if(mod(drtot,drmin).ne.0.0d0)num_eq_points=num_eq_points+1
-! JVS add additional trap to deal with models with NPT=1
-      if (num_eq_points .eq. 1) num_eq_points=num_eq_points+1
-!  ENSURE THAT NUMBER OF POINTS DOES NOT EXCEED JSON.
-      num_eq_points=min(num_eq_points,json)
-      grid_spacing = drtot/dfloat(num_eq_points-1)
-!  SET UP VECTOR OF EQUALLY SPACED RADII AT ZONE MIDPOINTS.
-      eq_mid%radius(1)=radius_bl(zone_begin)+0.5d0*grid_spacing
-! JVS added logic trap (IF statement)
-      if (num_eq_points .eq. 2) then
-         eq_mid%radius(2)=eq_mid%radius(1)+grid_spacing
-      else
-         do i = 2,num_eq_points-1
-            eq_mid%radius(i)=eq_mid%radius(i-1)+grid_spacing
+      call size_equal_grid(radius_bl, zone_begin, zone_end, &
+           max(zone_end-num_spacing_zones, zone_begin+1), num_eq_points, grid_spacing)
+      call place_equal_grids(radius_bl(zone_begin), grid_spacing, num_eq_points, &
+           eq%radius, eq_mid%radius)
+      call build_equal_grid_map(radius_bl, zone_begin, zone_end, num_zones, &
+           num_eq_points, eq%radius, eq_mid%radius, map)
+      call map_field(map, enclosed_mass, eq%mass, eq_mid%mass)
+      call map_field(map, density_orig, eq%density, eq_mid%density)
+      call map_field(map, temperature_orig, eq%temperature, eq_mid%temperature)
+      call map_field(map, dlnp_dr, eq%dlnp_dr, eq_mid%dlnp_dr)
+      call map_field(map, del_grad, eq%del_grad, eq_mid%del_grad)
+      call map_field(map, composition(i_h1,:), eq%hydrogen, eq_mid%hydrogen)
+      call map_field(map, composition(i_he4,:), eq%helium, eq_mid%helium)
+      call map_field(map, composition(i_metals,:), eq%metal, eq_mid%metal)
+      if (diffusion_settings%diffuse_lithium) then
+         do kk = 1, num_light
+            call map_field(map, composition(light_element_id(kk),:), eq%light(kk,:), &
+                 eq_mid%light(kk,:))
          end do
-      endif
-
-!  NOW USE 4-POINT LAGRANGIAN INTERPOLATION TO FIND RUN OF VARIABLES
-!  AT EQUALLY SPACED ZONE MIDPOINTS.
-!
-!  FIRST POINT : LINEAR INTERPOLATION BETWEEN STARTING POINT AND 2ND PT.
-      do iu=2,num_eq_points
-         if(radius_bl(iu).ge.eq_mid%radius(1))exit
-      end do
-      if (iu > num_eq_points) then
-      iu=num_eq_points
       end if
-      fx=(eq_mid%radius(1)-radius_bl(iu-1))/(radius_bl(iu)-radius_bl(iu-1))
-      eq_mid%mass(1) = enclosed_mass(iu-1)+fx*(enclosed_mass(iu)-enclosed_mass(iu-1))
-      eq_mid%density(1) = density_orig(iu-1)+fx*(density_orig(iu)-density_orig(iu-1))
-      eq_mid%temperature(1) = temperature_orig(iu-1)+ &
-           fx*(temperature_orig(iu)-temperature_orig(iu-1))
-      eq_mid%dlnp_dr(1) = dlnp_dr(iu-1)+fx*(dlnp_dr(iu)-dlnp_dr(iu-1))
-      eq_mid%del_grad(1) = del_grad(iu-1)+fx*(del_grad(iu)-del_grad(iu-1))
-      eq_mid%hydrogen(1) = composition(i_h1,iu-1)+fx*(composition(i_h1,iu)-composition(i_h1,iu-1))
-      eq_mid%helium(1) = composition(i_he4,iu-1)+fx*(composition(i_he4,iu)-composition(i_he4,iu-1))
-      eq_mid%metal(1) = composition(i_metals,iu-1)+fx*(composition(i_metals,iu)-composition(i_metals,iu-1))
-      if(diffusion_settings%diffuse_lithium)then
-         do kk=1,num_light
-            ii = light_element_id(kk)
-            eq_mid%light(kk,1) = composition(ii,iu-1)+ &
-                 fx*(composition(ii,iu)-composition(ii,iu-1))
-         end do
-      endif
-
-!  FOR OTHER POINTS: FIRST FIND 4 NEAREST (IN RADIUS) MODEL POINTS
-!  AND THEN FIND LAGRANGIAN INTERPOLATION FACTORS. APPLY THEM TO FIND
-!  MODEL QUANTITIES AT THE EQUALLY SPACED GRID POINTS.
-!  JMIN IS THE UPPERMOST MODEL POINT ABOVE THE PREVIOUS EQUALLY SPACED
-!  GRID POINT (IN RADIUS).
-      jmin=zone_begin+1
-      do i=2,num_eq_points-1
-         do j = jmin,zone_end
-!  FIND 4 MODEL POINTS CLOSEST TO THE EQUALLY SPACED GRID POINT.
-            if(radius_bl(j).ge.eq_mid%radius(i))then
-!  ENSURE THAT FIRST INTERPOLATION POINT NO LESS THAN FIRST MODEL POINT.
-               k0 = max(j-2,1)
-!  ENSURE THAT LAST INTERPOLATION POINT NO GREATER THAN LAST MODEL POINT.
-               k0 = min(k0,num_zones-3)
-               jmin=j
-               exit
-            endif
-         end do
-         if (j > zone_end) then
-         k0 = num_zones-3
-         jmin=num_zones
-         end if
-         do k=1,4
-            tabler(k)=radius_bl(k0+k-1)
-         end do
-         gridrad=eq_mid%radius(i)
-!  FIND 4 POINT LAGRANGIAN INTERPOLATION FACTORS.
-!  FACINTERP=INTERPOLATION FACTORS FOR POINT GRIDRAD GIVEN THE 4 TABLE
-!  RADII IN TABLER; FACDERIV=SAME FOR DERIVATIVES AT POINT GRIDRAD.
-         call interp(tabler,facinterp,facderiv,gridrad)
-!  PERFORM 4 POINT LAGRANGIAN INTERPOLATION FOR DESIRED QUANTITIES:
-!  MASS WITHIN THE RADIUS ER
-         eq_mid%mass(i) = lagrange4(facinterp, enclosed_mass(k0:k0+3))
-!  RELAVENT PHYSICAL VARIABLES
-         eq_mid%density(i) = lagrange4(facinterp, density_orig(k0:k0+3))
-         eq_mid%temperature(i) = lagrange4(facinterp, temperature_orig(k0:k0+3))
-         eq_mid%dlnp_dr(i) = lagrange4(facinterp, dlnp_dr(k0:k0+3))
-         eq_mid%del_grad(i) = lagrange4(facinterp, del_grad(k0:k0+3))
-!  MASS FRACTION OF HYDROGEN
-         eq_mid%hydrogen(i)=lagrange4(facinterp, composition(i_h1,k0:k0+3))
-!  MASS FRACTION OF HELIUM
-         eq_mid%helium(i)=lagrange4(facinterp, composition(i_he4,k0:k0+3))
-!  MASS FRACTION OF METALS
-         eq_mid%metal(i)=lagrange4(facinterp, composition(i_metals,k0:k0+3))
-!  MASS FRACTION OF LIGHT ELEMENTS
-         if(diffusion_settings%diffuse_lithium)then
-            do kk=1,num_light
-               ii = light_element_id(kk)
-               eq_mid%light(kk,i)=lagrange4(facinterp, composition(ii,k0:k0+3))
-            end do
-         endif
-      end do
-
-!  SET UP VECTOR OF EQUALLY SPACED RADII AT ZONE CENTERS.
-      eq%radius(1)=radius_bl(zone_begin)
-      do i = 2,num_eq_points
-         eq%radius(i)=eq%radius(i-1)+grid_spacing
-      end do
-
-!  NOW USE 4-POINT LAGRANGIAN INTERPOLATION TO FIND RUN OF VARIABLES
-!  AT EQUALLY SPACED ZONE CENTERS.
-!
-!  FIRST POINT : BY DEFINITION, AT STARTING POINT.
-! G Somers; added interpolation for Xfrac, Rho, T, and HQPR.
-      eq%mass(1) = enclosed_mass(zone_begin)
-      eq%density(1) = density_orig(zone_begin)
-      eq%temperature(1) = temperature_orig(zone_begin)
-      eq%dlnp_dr(1) = dlnp_dr(zone_begin)
-      eq%del_grad(1) = del_grad(zone_begin)
-      eq%hydrogen(1) = composition(i_h1,zone_begin)
-      eq%helium(1) = composition(i_he4,zone_begin)
-      eq%metal(1) = composition(i_metals,zone_begin)
-      if(diffusion_settings%diffuse_lithium)then
-         do kk=1,num_light
-            ii = light_element_id(kk)
-            eq%light(kk,1) = composition(ii,zone_begin)
-         end do
-      endif
-!  FOR OTHER POINTS: FIRST FIND 4 NEAREST (IN RADIUS) MODEL POINTS
-!  AND THEN FIND LAGRANGIAN INTERPOLATION FACTORS. APPLY THEM TO FIND
-!  MODEL QUANTITIES AT THE EQUALLY SPACED GRID POINTS.
-!  JMIN IS THE UPPERMOST MODEL POINT ABOVE THE PREVIOUS EQUALLY SPACED
-!  GRID POINT (IN RADIUS).
-      jmin=zone_begin+1
-      do i=2,num_eq_points-1
-         do j = jmin,zone_end
-!  FIND 4 MODEL POINTS CLOSEST TO THE EQUALLY SPACED GRID POINT.
-            if(radius_bl(j).ge.eq%radius(i))then
-!  ENSURE THAT FIRST INTERPOLATION POINT NO LESS THAN FIRST MODEL POINT.
-               k0 = max(j-2,1)
-!  ENSURE THAT LAST INTERPOLATION POINT NO GREATER THAN LAST MODEL POINT.
-               k0 = min(k0,num_zones-3)
-               jmin=j
-               exit
-            endif
-         end do
-         if (j > zone_end) then
-         k0 = num_zones-3
-         jmin=num_zones
-         end if
-         do k=1,4
-            tabler(k)=radius_bl(k0+k-1)
-         end do
-         gridrad=eq%radius(i)
-!  FIND 4 POINT LAGRANGIAN INTERPOLATION FACTORS.
-!  FACINTERP=INTERPOLATION FACTORS FOR POINT GRIDRAD GIVEN THE 4 TABLE
-!  RADII IN TABLER; FACDERIV=SAME FOR DERIVATIVES AT POINT GRIDRAD.
-         call interp(tabler,facinterp,facderiv,gridrad)
-!  PERFORM 4 POINT LAGRANGIAN INTERPOLATION FOR DESIRED QUANTITIES:
-!  MASS WITHIN THE RADIUS ER
-         eq%mass(i) = lagrange4(facinterp, enclosed_mass(k0:k0+3))
-         eq%density(i) = lagrange4(facinterp, density_orig(k0:k0+3))
-         eq%temperature(i) = lagrange4(facinterp, temperature_orig(k0:k0+3))
-         eq%dlnp_dr(i) = lagrange4(facinterp, dlnp_dr(k0:k0+3))
-         eq%del_grad(i) = lagrange4(facinterp, del_grad(k0:k0+3))
-         eq%hydrogen(i)=lagrange4(facinterp, composition(i_h1,k0:k0+3))
-         eq%helium(i)=lagrange4(facinterp, composition(i_he4,k0:k0+3))
-         eq%metal(i)=lagrange4(facinterp, composition(i_metals,k0:k0+3))
-         if(diffusion_settings%diffuse_lithium)then
-            do kk=1,num_light
-               ii = light_element_id(kk)
-               eq%light(kk,i)=lagrange4(facinterp, composition(ii,k0:k0+3))
-            end do
-         endif
-      end do
-!  LAST POINT : BY DEFINITION, AT ENDING POINT.
-      eq%mass(num_eq_points) = enclosed_mass(zone_end)
-      eq%density(num_eq_points) = density_orig(zone_end)
-      eq%temperature(num_eq_points) = temperature_orig(zone_end)
-      eq%dlnp_dr(num_eq_points) = dlnp_dr(zone_end)
-      eq%del_grad(num_eq_points) = del_grad(zone_end)
-      eq%hydrogen(num_eq_points) = composition(i_h1,zone_end)
-      eq%helium(num_eq_points) = composition(i_he4,zone_end)
-      eq%metal(num_eq_points) = composition(i_metals,zone_end)
-      if(diffusion_settings%diffuse_lithium)then
-         do kk=1,num_light
-            ii = light_element_id(kk)
-            eq%light(kk,num_eq_points) = composition(ii,zone_end)
-         end do
-      endif
       return
 end subroutine map_microdiff_to_equal_grid
 
@@ -256,17 +83,15 @@ end subroutine map_microdiff_to_equal_grid
 ! reads it afterwards).
 !  TRANSFORM BACK TO ORIGINAL GRID OF MODEL POINTS FROM EQUALLY
 !  SPACED GRID.
-subroutine microdiff_etm(diff_scr, timestep, eq_radius, eq_delta_hydrogen, &
+subroutine microdiff_etm(eq_radius, eq_delta_hydrogen, &
      eq_delta_metal, eq_delta_light, zone_begin, zone_end, num_eq_points, &
-     composition, dlnp_dr, radius_bl, enclosed_mass, &
-     num_zones, total_mass, num_light, light_element_id)
+     composition, radius_bl, num_zones, num_light, light_element_id)
       use composition_layout, only: json, i_h1, i_he4, i_metals, i_he3, &
            i_c12, i_o18
       use numerics_lib, only: interp, lagrange4
+      use diffusion_grid, only: locate_stencil
       implicit none
-      type(diffusion_scratch), intent(inout) :: diff_scr
 
-      double precision, intent(in) :: timestep
       double precision, intent(in) :: eq_radius(json), &
            eq_delta_hydrogen(json), eq_delta_metal(json)
       integer, intent(in) :: num_light
@@ -274,13 +99,12 @@ subroutine microdiff_etm(diff_scr, timestep, eq_radius, eq_delta_hydrogen, &
       integer, intent(in) :: zone_begin, zone_end, num_eq_points
       double precision, intent(inout) :: composition(15,json)
       double precision, intent(in) :: radius_bl(json)
-      double precision, intent(in) :: dlnp_dr(json), enclosed_mass(json)
       integer, intent(in) :: num_zones
-      double precision, intent(in) :: total_mass
       integer, intent(in) :: light_element_id(num_light)
 ! --- locals ---
-      double precision :: tabler(4), facinterp(4)
-      integer :: i, ii, j, jmin, k, k0, kk
+      double precision :: facinterp(4)
+      integer :: i, ii, j, jmin, k0, kk
+      logical :: found
       double precision :: x_min_floor, z_max, zz, zz2, radmod, dxmod, &
            x_max, dzmod
 
@@ -322,30 +146,16 @@ subroutine microdiff_etm(diff_scr, timestep, eq_radius, eq_delta_hydrogen, &
 !
       jmin=2
       do i=zone_begin+1,zone_end-1
-         do j=jmin,num_eq_points
-!  FIND EQUALLY SPACED GRID POINTS CLOSEST TO THE MODEL POINT.
-            if(eq_radius(j).ge.radius_bl(i))then
-!  ENSURE THAT FIRST INTERP. POINT NO LESS THAN FIRST EQUALLY SPACED POINT.
-               k0 = max(j-2,1)
-!  ENSURE THAT LAST INTERP. POINT NO GREATER THAN LAST EQUALLY SPACED POINT.
-               k0 = min(k0,num_eq_points-3)
-! JVS fix for NPT = 3?
-               if (k0 .eq. 0) k0=1
-               jmin=j
-               exit
-            endif
-         end do
-         if (j > num_eq_points) then
-         k0 = num_eq_points-3
-         jmin=num_eq_points
-         end if
-
-         do k=1,4
-            tabler(k)=eq_radius(k0+k-1)
-         end do
+!  THE FOUR EQUALLY SPACED GRID POINTS AROUND THE MODEL POINT
+!  (diffusion_grid). A grid of three points gets the stencil from point
+!  1 (the one it has); one of two points does not, and reads outside the
+!  grid (docs/bug_sweep.md O21).
+         call locate_stencil(eq_radius, num_eq_points, radius_bl(i), jmin, &
+              num_eq_points, k0, found)
+         if (found .and. k0 == 0) k0 = 1
          radmod=radius_bl(i)
 !  FIND 4 POINT LAGRANGIAN INTERPOLATION FACTORS.
-         call interp(tabler, facinterp, x_eval=radmod)
+         call interp(eq_radius(k0:k0+3), facinterp, x_eval=radmod)
 !  PERFORM 4 POINT LAGRANGIAN INTERPOLATION FOR CHANGE IN X.
          dxmod = lagrange4(facinterp, eq_delta_hydrogen(k0:k0+3))
          x_max = 1.0d0 - composition(i_metals,i) - composition(i_he3,i)

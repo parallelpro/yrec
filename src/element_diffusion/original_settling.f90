@@ -9,6 +9,7 @@ module original_settling
       use settling_grid, only: model_to_equal, equal_to_model
       use diffusion_scheme, only: lax_wendroff_step1, lax_wendroff_step2, implicit_diffusion_coeffs
       use thoul_solver, only: thoul_diffusion
+      use coulomb_logarithm, only: compute_concentrations, compute_coulomb_logarithms
       implicit none
       private
       public :: gravitational_settling
@@ -65,13 +66,14 @@ contains
 !
 subroutine gravitational_settling(diff_scr, &
      timestep, composition, dlnp_dr, log_radius, log_density, &
-     mass_grams, log_temperature, del_grad, convective_flag, num_zones, total_mass, &
-     suspension_reported, ierr)
+     mass_grams, log_temperature, del_grad, num_zones, total_mass, &
+     zone_begin, zone_end, ierr)
 
       use composition_layout, only: json
-      use run_messages, only: run_log_unit, terminal_unit, solver_diagnostics
       use physical_constants
-      use numerics_lib, only: solve_tridiagonal, numerics_status_text
+      use numerics_lib, only: solve_tridiagonal
+      use element_diffusion_messages, only: note_solve_pass, report_unconverged, &
+           report_numerics_failure
       implicit none
       type(diffusion_scratch), intent(inout) :: diff_scr
 
@@ -81,12 +83,11 @@ subroutine gravitational_settling(diff_scr, &
       double precision, intent(in) :: log_radius(json), log_density(json), &
            log_temperature(json), del_grad(json)
       double precision, intent(inout) :: mass_grams(json)
-      logical, intent(in) :: convective_flag(json)
       integer, intent(in) :: num_zones
       double precision, intent(inout) :: total_mass
+! the settling region (settling_region)
+      integer, intent(in) :: zone_begin, zone_end
       integer, intent(out) :: ierr
-      ! the run log's latch: a suspension of settling is reported once
-      logical, intent(inout) :: suspension_reported
 ! --- locals ---
 ! Names below are chosen to match the dummy-argument names of the
 ! callees (gravitational_settling_setup/model_to_equal/lax_wendroff_step1/
@@ -107,10 +108,7 @@ subroutine gravitational_settling(diff_scr, &
            equal_diffusion_coeff1_dx_mid(json), &
            equal_diffusion_coeff2_dx_mid(json)
       double precision :: metal_x_orig(json)
-      integer :: zone_begin, zone_end
-      logical :: settling_skipped_flag
       integer :: eq_idx
-      logical :: use_generic_diffusion_vectors
       double precision :: grid_spacing
       integer :: num_equal_points
       double precision :: alpha_prefactor
@@ -123,14 +121,11 @@ subroutine gravitational_settling(diff_scr, &
 
       call gravitational_settling_setup(diff_scr, &
            timestep,dlnp_dr,log_radius,log_density,mass_grams, &
-           log_temperature,del_grad,convective_flag,num_zones,total_mass, &
+           log_temperature,del_grad,num_zones,total_mass, &
            diffusion_coeff1,diffusion_coeff2,composition,radius_bl, &
-           temperature_bl,zone_begin,zone_end,settling_skipped_flag, &
-           diffusion_coeff1_dx,diffusion_coeff2_dx, suspension_reported, ierr)
+           temperature_bl, &
+           diffusion_coeff1_dx,diffusion_coeff2_dx, ierr)
       if (ierr /= 0) return
-!
-! SKIP SETTLING FOR FULLY CONVECTIVE (OR H/HE-EXHAUSTED) MODELS.
-      if(settling_skipped_flag) return
 !  TRANSFORM TO AN EQUALLY SPACED GRID IN RADIUS.
 !  NOTE : PREFIX E ALONE=VARIABLE AT EQUALLY SPACED GRID POINTS.
 !         PREFIX E + SUFFIX _H= VARIABLE AT MIDPOINT BETWEEN EQUALLY
@@ -166,14 +161,15 @@ subroutine gravitational_settling(diff_scr, &
 ! WHERE N IS THE TIME VARIABLE, J IS THE SPATIAL ONE, AND diffusion_coeff1
 ! IS THE DIFFUSION COEFFICIENT.
 !
-! SOLVE FOR NEW ABUNDANCES AT THE ZONE MIDPOINTS USING THE ABOVE D.C.
-! WITH use_generic_diffusion_vectors = FALSE, SIGNIFYING THAT LAX_WENDROF
-! SHOULD DIFFUSE Z.
+! SOLVE FOR NEW ABUNDANCES AT THE ZONE MIDPOINTS USING THE ABOVE D.C.,
+! FOR X AND (use_diffusion_z) FOR Z.
 !
-      use_generic_diffusion_vectors = .false.
-      call lax_wendroff_step1(diff_scr, timestep,equal_diffusion_coeff1,equal_mass, &
-           num_equal_points,total_mass,equal_hydrogen_fraction_mid, &
-           use_generic_diffusion_vectors)
+      call lax_wendroff_step1(timestep,equal_diffusion_coeff1,equal_mass, &
+           num_equal_points,total_mass,equal_hydrogen_fraction_mid)
+      if(diffusion_settings%use_diffusion_z)then
+         call lax_wendroff_step1(timestep,diff_scr%metal_diffusion_coeff1,equal_mass, &
+              num_equal_points,total_mass,diff_scr%metal_abundance_change_mid)
+      endif
 !
 ! NOW COMPUTE NEW DIFFUSION COEFFICIENTS AT THE ZONE MIDPOINTS USING THE
 ! PROVISIONAL SOLUTION FOR X AT THE ZONE MIDPOINTS.
@@ -202,9 +198,12 @@ subroutine gravitational_settling(diff_scr, &
 ! COMPUTING A NEW RUN OF ABUNDANCE AND TRANSFORMING IT BACK.  THIS IS DONE
 ! TO MINIMIZE ERRORS FROM THE INTERPOLATION.
 !
-      call lax_wendroff_step2(diff_scr, timestep,equal_diffusion_coeff1_mid,equal_mass_mid, &
-           equal_hydrogen_fraction,num_equal_points,total_mass, &
-           use_generic_diffusion_vectors)
+      call lax_wendroff_step2(timestep,equal_diffusion_coeff1_mid,equal_mass_mid, &
+           equal_hydrogen_fraction,num_equal_points,total_mass)
+      if(diffusion_settings%use_diffusion_z)then
+         call lax_wendroff_step2(timestep,diff_scr%metal_diffusion_coeff1_mid,equal_mass_mid, &
+              diff_scr%metal_abundance_change,num_equal_points,total_mass)
+      endif
 !
 !  NOW IMPLICITLY SOLVE FOR THE SECOND TERM (INVOLVING THE SECOND
 !  DERIVATIVE OF THE COMPOSITION GRADIENT).
@@ -249,7 +248,7 @@ subroutine gravitational_settling(diff_scr, &
          call solve_tridiagonal(sub_diag,diag,super_diag,hydrogen_x_prime, &
               num_equal_points,equal_hydrogen_fraction, ierr)
          if (ierr /= 0) then
-            write(*,*) 'solve_tridiagonal: '//numerics_status_text(ierr)
+            call report_numerics_failure('solve_tridiagonal', ierr)
             return
          end if
 !
@@ -265,20 +264,13 @@ subroutine gravitational_settling(diff_scr, &
             endif
          end do
 ! solver forensics
-         if (solver_diagnostics()) &
-              write(run_log_unit,90)iter_count,max_delta_x,max_delta_x_zone
- 90      format(1x,'ITERATION ',i3,' DXMAX ',1pe10.2,' IMAX ',i4)
+         call note_solve_pass(iter_count, max_delta_x, max_delta_x_zone)
 !  EXIT ITERATION LOOP IF SYSTEM HAS CONVERGED.
          if(max_delta_x.lt.diffusion_settings%settling_tolerance)exit
       end do
       if (iter_count > diffusion_settings%settling_num_iterations) then
-      write(terminal_unit,110)diffusion_settings%settling_tolerance,diffusion_settings%settling_num_iterations,max_delta_x, &
-           max_delta_x_zone
-      write(run_log_unit,110)diffusion_settings%settling_tolerance,diffusion_settings%settling_num_iterations, &
-           max_delta_x,max_delta_x_zone
- 110  format(1x,'GRSETT FAILED TO CONVERGE TO WITHIN ',1pe9.3,' IN ',i3, &
-           'ITERATIONS'/1x,'LAST ITERATION CHANGE IN X ',1pe9.3, &
-           ' IN EQUALLY SPACED SHELL ',i5)
+         call report_unconverged('GRSETT', 'X', diffusion_settings%settling_tolerance, &
+              diffusion_settings%settling_num_iterations, max_delta_x, max_delta_x_zone)
       end if
 !  FIND RUN OF CHANGES IN X.
       do eq_idx = 1,num_equal_points
@@ -313,19 +305,19 @@ end subroutine gravitational_settling
 ! thoul_diffusion, LTHOUL true) with a choice of Coulomb-logarithm prescription
 ! selected by coulomb_log_choice.
 subroutine gravitational_settling_setup(diff_scr, timestep_seconds, dlnp_dr, log_radius, &
-     log_density, mass_grams, log_temperature, del_grad, convective_flag, &
+     log_density, mass_grams, log_temperature, del_grad, &
      num_zones, total_mass, diffusion_coeff1, diffusion_coeff2, &
-     composition, radius_bl, temperature_bl, zone_begin, zone_end, &
-     settling_skipped_flag, diffusion_coeff1_dx, diffusion_coeff2_dx, &
-     suspension_reported, ierr)
+     composition, radius_bl, temperature_bl, &
+     diffusion_coeff1_dx, diffusion_coeff2_dx, ierr)
 
       use composition_layout, only: json, i_h1, i_he4, i_metals, i_he3
       use species_table, only: thoul_h1, thoul_he4, thoul_fe, thoul_electron, &
            thoul_col_h, thoul_col_he, thoul_col_metal
-      use bahcall_loeb_units, only: set_bahcall_loeb_scales
-      use run_messages, only: run_log_unit, solver_diagnostics
+      use bahcall_loeb_units, only: bl_radius_scale, bl_mass_scale, &
+           bl_temp_scale, bl_time_scale
       use physical_constants
       use math_lib
+      use element_diffusion_messages, only: report_numerics_failure
       implicit none
       type(diffusion_scratch), intent(inout) :: diff_scr
 
@@ -336,18 +328,13 @@ subroutine gravitational_settling_setup(diff_scr, timestep_seconds, dlnp_dr, log
 ! del_grad: DEL (=DLNT/DLNP) per zone, from the caller (was star%gradT)
       double precision, intent(in) :: del_grad(json)
       double precision, intent(inout) :: mass_grams(json)
-      logical, intent(in) :: convective_flag(json)
       integer, intent(in) :: num_zones
       double precision, intent(inout) :: total_mass
       double precision, intent(out) :: diffusion_coeff1(json), &
            diffusion_coeff2(json)
       double precision, intent(in) :: composition(15,json)
       double precision, intent(out) :: radius_bl(json), temperature_bl(json)
-      integer, intent(out) :: zone_begin, zone_end
-      logical, intent(out) :: settling_skipped_flag
       integer, intent(out) :: ierr
-      ! the run log's latch: a suspension of settling is reported once
-      logical, intent(inout) :: suspension_reported
       double precision, intent(out) :: diffusion_coeff1_dx(json), &
            diffusion_coeff2_dx(json)
 ! MHP 8/94 ADDED ATOMIC WEIGHTS AND CHARGES FOR H,HE,FE,ELECTRONS -
@@ -355,14 +342,8 @@ subroutine gravitational_settling_setup(diff_scr, timestep_seconds, dlnp_dr, log
       double precision :: atomic_weight(4), atomic_charge(4), &
            settling_ap(4), settling_at(4), settling_ac(4,4), &
            coulomb_log(4,4), species_mass_fraction(4)
-!     additional variables to be declared for variable ln lambda
-!     intermediate variables:
-! mass_weighted_conc (originally AC): concentration-weighted atomic
-! weight sum used to get the electron density (coulomb_log_choice==4).
-      double precision :: charge_to_mass_sum, mass_weighted_conc, &
-           ion_number_density, mean_charge_sq, coulomb_xij, &
-           electron_number_density, interion_distance, debye_length, &
-           coulomb_lambda, concentration(4)
+! the concentrations per electron (coulomb_log_choice 4)
+      double precision :: concentration(4)
       double precision :: ln_lambda
       data atomic_weight/thoul_h1%weight,thoul_he4%weight,thoul_fe%weight, &
            thoul_electron%weight/
@@ -387,109 +368,20 @@ subroutine gravitational_settling_setup(diff_scr, timestep_seconds, dlnp_dr, log
 !     radius_bl - VECTOR OF UNLOGGED RADII IN BAHCALL AND LOEB UNITS.
 !     temperature_bl - VECTOR OF UNLOGGED TEMPERATURES IN BAHCALL AND
 !          LOEB UNITS.
-!     zone_begin - FIRST ZONE FOR DIFFUSION PURPOSES (EITHER THE FIRST
-!          MODEL POINT OR THE OUTERMOST POINT OF A CENTRAL CONVECTION
-!          ZONE).
-!     zone_end - LAST ZONE FOR DIFFUSION PURPOSES (EITHER THE LAST
-!          MODEL POINT OR THE INNERMOST POINT OF A SURFACE CONVECTION
-!          ZONE).
 !     THE VECTORS dlnp_dr AND mass_grams, AND THE SCALARS
 !     timestep_seconds AND total_mass, ARE ALSO CONVERTED TO BAHCALL
 !     AND LOEB UNITS.
-!     CONSTANTS DEFINED :
-!     ln10 = CONVERSION FACTOR FROM LN TO LOG10
-!     settling_skipped_flag=T IF SETTLING IS SKIPPED THIS MODEL (FULLY
-!     CONVECTIVE, HYDROGEN-EXHAUSTED OR HELIUM-EXHAUSTED).
       ierr = 0
-      settling_skipped_flag=.false.
-!     CHECK FOR CONVECTIVE CORE.
-      if(convective_flag(1))then
-         do zone_idx=2,num_zones
-            if(.not.convective_flag(zone_idx))exit
-         end do
-         if (zone_idx > num_zones) then
-!        DIFFUSION NOT COMPUTED FOR FULLY CONVECTIVE MODELS.
-         settling_skipped_flag=.true.
-! print once per suspension; every model only under
-! report_solver_diagnostics
-         if (solver_diagnostics() .or. &
-              .not. suspension_reported) then
-            write(run_log_unit,15)
-   15       format(1x,' FULLY CONVECTIVE MODEL - NO SETTLING')
-            suspension_reported = .true.
-         end if
-         return
-         end if
-!        COMPUTE OVERSHOOT (TO BE ADDED).
-         zone_begin = zone_idx-1
-      else
-         zone_begin = 1
-      endif
-! MHP 6/90 CHECK FOR HYDROGEN-EXHAUSTED CORE.
-      do zone_idx = zone_begin,num_zones
-         if(composition(i_h1,zone_idx).gt.diffusion_settings%hydrogen_diffusion_floor)exit
-      end do
-      if (zone_idx > num_zones) then
-!     HYDROGEN-FREE MODEL - EXIT.
-! print once per suspension; every model only under
-! report_solver_diagnostics
-      if (solver_diagnostics() .or. &
-           .not. suspension_reported) then
-         write(run_log_unit,16)diffusion_settings%hydrogen_diffusion_floor
-   16    format(1x,'X BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
-         suspension_reported = .true.
-      end if
-      settling_skipped_flag = .true.
-      return
-      end if
-      zone_begin = zone_idx
-!     CHECK FOR CONVECTIVE ENVELOPE.
-      if(convective_flag(num_zones))then
-         do zone_idx=num_zones-1,2,-1
-            if(.not.convective_flag(zone_idx))exit
-         end do
-!        COMPUTE OVERSHOOT (TO BE ADDED).
-         zone_end = zone_idx+1
-      else
-         zone_end = num_zones
-      endif
-!     CHECK FOR HELIUM-EXHAUSTED SURFACE.
-!     OUTER POINT IS SET WHEREVER Y>YMIN.
-      do zone_idx=zone_end,1,-1
-         if(composition(i_he4,zone_idx).gt.diffusion_settings%helium_diffusion_min) exit
-      end do
-      if (zone_idx < 1) then
-!     HELIUM-EXHAUSTED MODEL - EXIT.
-! print once per suspension; every model only under
-! report_solver_diagnostics
-      if (solver_diagnostics() .or. &
-           .not. suspension_reported) then
-         write(run_log_unit,17)diffusion_settings%helium_diffusion_min
-   17    format(1x,'Y BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
-         suspension_reported = .true.
-      end if
-      settling_skipped_flag = .true.
-      return
-      end if
-      zone_end = zone_idx
-! all suspension checks passed: settling proceeds this model
-      if (suspension_reported) then
-         write(run_log_unit,916)
-  916    format(1x,' SETTLING RESUMED')
-         suspension_reported = .false.
-      end if
-!     SET THE star%bl_*_scale CONVERSION FACTORS.
-      call set_bahcall_loeb_scales(diff_scr)
 !     CONVERT LOG(RADIUS) AND LOG(TEMPERATURE) TO NATURAL UNITS.
 !     ALSO CONVERT NATURAL UNITS TO BAHCALL AND LOEB UNITS.
       do zone_idx=1,num_zones
-         radius_bl(zone_idx)=exp(ln10*log_radius(zone_idx))*diff_scr%bl_radius_scale
-         temperature_bl(zone_idx)=exp(ln10*log_temperature(zone_idx))*diff_scr%bl_temp_scale
-         mass_grams(zone_idx)=mass_grams(zone_idx)*diff_scr%bl_mass_scale
-         dlnp_dr(zone_idx)=dlnp_dr(zone_idx)/diff_scr%bl_radius_scale
+         radius_bl(zone_idx)=exp(ln10*log_radius(zone_idx))*bl_radius_scale
+         temperature_bl(zone_idx)=exp(ln10*log_temperature(zone_idx))*bl_temp_scale
+         mass_grams(zone_idx)=mass_grams(zone_idx)*bl_mass_scale
+         dlnp_dr(zone_idx)=dlnp_dr(zone_idx)/bl_radius_scale
       end do
-      timestep_seconds=timestep_seconds/diff_scr%bl_time_scale
-      total_mass=total_mass*diff_scr%bl_mass_scale
+      timestep_seconds=timestep_seconds/bl_time_scale
+      total_mass=total_mass*bl_mass_scale
 !     SET UP DIFFUSION COEFFICIENTS.
 !     MODIFIED BY BC MAY/90 -- VALID FOR ALL X WITH VARIABLE LN LAMBDA
 !     GENERAL EQUATION IS
@@ -542,46 +434,11 @@ subroutine gravitational_settling_setup(diff_scr, timestep_seconds, dlnp_dr, log
                if(diffusion_settings%coulomb_log_choice.eq.4)then
                   rho_local = exp(ln10*log_density(zone_idx))
                   temp_local = exp(ln10*log_temperature(zone_idx))
-!                 calculate concentrations from mass fractions:
-                  charge_to_mass_sum=0.d0
-                  do species_a_idx=1,num_species-1
-                   charge_to_mass_sum=charge_to_mass_sum+atomic_charge(species_a_idx)* &
-                        species_mass_fraction(species_a_idx)/atomic_weight(species_a_idx)
-                  enddo
-                  do species_a_idx=1,num_species-1
-                     concentration(species_a_idx)=species_mass_fraction(species_a_idx)/ &
-                          (atomic_weight(species_a_idx)*charge_to_mass_sum)
-                  enddo
-                  concentration(num_species)=1.d0
-!                 calculate density of electrons (NE) from mass density (RHO):
-                  mass_weighted_conc=0.d0
-                  do species_a_idx=1,num_species
-                   mass_weighted_conc=mass_weighted_conc+atomic_weight(species_a_idx)*concentration(species_a_idx)
-                  enddo
-                  electron_number_density=rho_local/(m_proton_cgs*mass_weighted_conc)
-!                 calculate interionic distance (AO):
-                  ion_number_density=0.d0
-                  do species_a_idx=1,num_species-1
-                     ion_number_density=ion_number_density+concentration(species_a_idx)*electron_number_density
-                  enddo
-                  interion_distance=pow((0.23873d0/ion_number_density), cc13)
-!                 calculate Debye length (LAMBDAD):
-                  mean_charge_sq=0.d0
-                  do species_a_idx=1,num_species
-                   mean_charge_sq=mean_charge_sq+concentration(species_a_idx)*atomic_charge(species_a_idx)**2
-                  enddo
-                  debye_length=6.9010d0*sqrt(temp_local/(electron_number_density*mean_charge_sq))
-!                 calculate LAMBDA to use in Coulomb logarithm:
-                  coulomb_lambda=max(debye_length,interion_distance)
-!                 calculate Coulomb logarithms:
-                  do species_a_idx=1,num_species
-                   do species_b_idx=1,num_species
-                      coulomb_xij=2.3939d3*temp_local*coulomb_lambda/ &
-                           abs(atomic_charge(species_a_idx)*atomic_charge(species_b_idx))
-                      coulomb_log(species_a_idx,species_b_idx)=0.81245d0 &
-                             *log(1.d0+0.18769d0*pow(coulomb_xij, 1.2d0))
-                   enddo
-                  enddo
+!                 the pairwise Coulomb logarithms (coulomb_logarithm)
+                  call compute_concentrations(atomic_weight, atomic_charge, &
+                       species_mass_fraction, concentration)
+                  call compute_coulomb_logarithms(atomic_weight, atomic_charge, &
+                       concentration, rho_local, temp_local, coulomb_log)
                else
                   do species_a_idx = 1,num_species
                      do species_b_idx = 1,num_species
@@ -592,7 +449,10 @@ subroutine gravitational_settling_setup(diff_scr, timestep_seconds, dlnp_dr, log
                call thoul_diffusion(num_species,atomic_weight,atomic_charge, &
                     species_mass_fraction,coulomb_log,settling_ap,settling_at,settling_ac, &
                     ierr)
-               if (ierr /= 0) return
+               if (ierr /= 0) then
+                  call report_numerics_failure('ludcmp', ierr)
+                  return
+               end if
                settling_coeff_p = -settling_ap(thoul_col_h)
                settling_coeff_t = -del_grad(zone_idx)*settling_at(thoul_col_h)
             else

@@ -3,8 +3,7 @@
 !----------------------------------------------------------------------
 ! The settling routines' own working state (diff_scr): the metal
 ! diffusion coefficients on the model and the equally spaced grids, the
-! change of the metal abundance, and the Bahcall & Loeb (1990) unit
-! scales. diffuse_elements owns the step's instance and passes it down
+! change of the metal abundance. diffuse_elements owns the step's instance and passes it down
 ! as an argument; this module holds only the type. Nothing in it
 ! outlives a step: each settling call writes what it reads (poisoned at
 ! every step start, 2026-10-13 and 2026-10-28: every pinned deck
@@ -31,9 +30,6 @@ module element_diffusion_scratch
                 src_grid_metal_diffusion_coeff1_dz(json), &
                 src_grid_metal_diffusion_coeff2_dz(json)
            double precision :: metal_abundance_change(json)
-! the Bahcall & Loeb units (set_bahcall_loeb_scales)
-           double precision :: bl_radius_scale, bl_mass_scale, &
-                bl_temp_scale, bl_time_scale
       end type diffusion_scratch
 
 end module element_diffusion_scratch

@@ -59,7 +59,7 @@ contains
 subroutine thoul_diffusion(num_species, atomic_weight, charge, mass_fraction, &
      coulomb_log, pressure_coeff, temp_coeff, conc_coeff, ierr)
 
-      use numerics_lib, only: lubksb, ludcmp, numerics_status_text
+      use numerics_lib, only: lubksb, ludcmp
       implicit none
       integer, parameter :: mmax=20, nmax=42
 
@@ -284,11 +284,10 @@ subroutine thoul_diffusion(num_species, atomic_weight, charge, mass_fraction, &
 ! For I=N-1, we get the electric field
 ! For I=N, we get the gravitational force g
 
+! A singular system returns ludcmp's status in ierr (its callers report
+! it).
       call ludcmp(delta,n,nmax,indx,d,ierr)
-      if (ierr /= 0) then
-         write(*,*) 'ludcmp: '//numerics_status_text(ierr)
-         return
-      end if
+      if (ierr /= 0) return
 
       call lubksb(delta,n,nmax,indx,alpha)
       call lubksb(delta,n,nmax,indx,nu)
