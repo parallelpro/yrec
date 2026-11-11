@@ -693,10 +693,13 @@ end function gmass01
 !----------------------------------------------------------------------
 ! open_opal_eos_table
 !----------------------------------------------------------------------
-! Opens the OPAL EOS table the settings select on a new unit
-! (opal_shared%table_unit), closing one left open by an earlier
-! eos_init. The vintage's reader reads it on first use.
-subroutine open_opal_eos_table(opal_eos_table_path, ierr)
+! Opens the OPAL EOS table of the vintage the settings select on a new
+! unit (opal_shared%table_unit), closing one left open by an earlier
+! eos_init, and marks the vintage's table unread, so that its reader
+! reads this file on first use (refilling the table first) whatever an
+! earlier eos_init loaded.
+subroutine open_opal_eos_table(vintage, opal_eos_table_path, ierr)
+      integer, intent(in) :: vintage
       character(len=*), intent(in) :: opal_eos_table_path
       integer, intent(out) :: ierr
       character(len=message_length) :: eos_lines(4)
@@ -706,6 +709,8 @@ subroutine open_opal_eos_table(opal_eos_table_path, ierr)
          inquire(unit=opal_shared%table_unit, opened=is_open)
          if (is_open) close(opal_shared%table_unit)
       end if
+      opal_shared%table_loaded_flag(vintage) = 0
+      opal_shared%readco_init_flag(vintage) = 0
       open(newunit=opal_shared%table_unit, file=opal_eos_table_path, status='OLD', &
            iostat=ierr)
       if (ierr /= 0) then

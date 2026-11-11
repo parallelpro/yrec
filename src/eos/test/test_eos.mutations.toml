@@ -1,0 +1,13 @@
+# Mutations of test_eos: each check must print FAIL under a mutation of
+# the code it covers (eos/README.md, section 4). Run: python3 src/tools/mutate.py
+# eos (src/tools/mutate.py describes this format and the verdicts).
+program = "test_eos"
+timeout = 300
+
+[[mutation]]
+id = 'opal_reread-01'
+check = 'OPAL 2006 table: a truncated table returns ierr = 1 on first use, its unit closed'
+file = 'eos/opal_eos_tables.f90'
+old = '''      opal_shared%table_loaded_flag(vintage) = 0
+      opal_shared%readco_init_flag(vintage) = 0'''
+new = '''      opal_shared%readco_init_flag(vintage) = 0'''

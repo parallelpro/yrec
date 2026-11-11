@@ -118,7 +118,7 @@ subroutine eos_init(settings, paths, ierr)
       end if
       call set_eos_settings(settings)
       if (settings%opal_vintage /= opal_vintage_none) then
-         call open_opal_eos_table(trim(paths%opal), ierr)
+         call open_opal_eos_table(settings%opal_vintage, trim(paths%opal), ierr)
          if (ierr /= 0) return
       end if
       if (settings%use_mhd_eos) then

@@ -822,9 +822,9 @@ end subroutine check_physics
 
 ! The Fermi-Dirac reader (at eos_init) and the OPAL 2006 reader (on
 ! first use): a missing table and one cut short return ierr = 1, the
-! cut table's unit closed. (The OPAL table is read once per process:
-! its loaded flag is cleared here to read the cut copy, and again to
-! read the real table back.)
+! cut table's unit closed. The OPAL table read before stays loaded
+! until eos_init names another file, which its reader then reads (the
+! cut copy here, then the real table back).
 subroutine table_reader_checks()
       type(eos_settings_t) :: s
       type(eos_table_paths_t) :: paths
@@ -845,7 +845,6 @@ subroutine table_reader_checks()
            ierr_missing == 1 .and. ierr_cut == 1 .and. .not. cut_open)
       call copy_head(opal06_path, "opal06_truncated", 3000)
       call configure_eos("production", opal2006=.true., scv=.true., file="opal06_truncated")
-      opal_shared%table_loaded_flag(iv_opal06) = 0
       it = 0
       r = eos_result()
       call eos_get(5.0d0, 12.8d0, 0.70d0, 0.016492d0, r, .true., .false., it, ierr=ierr)
