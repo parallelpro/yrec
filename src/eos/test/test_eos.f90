@@ -29,22 +29,11 @@
 ! run log (test_eos.short) gets eos's messages.
 program test_eos
       use run_messages, only: run_log_unit
-      use eos_lib
-      use eos_configuration, only: eos_settings, set_eos_settings
-      use blended_eos, only: gamma1_at_density
-      use eos_mixture, only: debye_huckel_composition_of
-      use yale_eos_tables, only: debye_huckel_composition, idh_c, idh_n, idh_o, idh_ne, &
-           idh_na, idh_mg, idh_al, idh_si, idh_ar, idh_fe
-      use opal_eos_tables, only: opal_tables, opal_shared, i_opal_cv, i_opal01_cv, &
-           i_opal_p, i_opal01_p
-      use opal_eos, only: esac95, esac06, esac01, compute_opal_eos, iv_opal95, iv_opal01, iv_opal06
+      use eos_lib, only: eos_init, eos_get, eos_set_mixture, eos_result, eos_settings_t, &
+           eos_table_paths_t, opal_vintage_none, opal_vintage_1995, opal_vintage_2001, &
+           opal_vintage_2006, opal_vintage_conflict
+      use eos_test_entries
       use physical_constants, only: gas_constant
-      use mhd_eos, only: interpolate_mhd_table
-      use scv_eos_tables, only: scv_cell, last_scv_cell
-      use eos_messages, only: eos_warned, once_fermi_extrapolation
-      use eos_table_source, only: eos_table_source_t, stage_in_place_of_saha, stage_over_the_gas, &
-           stage_whole_eos
-      use eos_source_list, only: table_sources, n_table_sources
       use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
       type(eos_settings_t) :: settings

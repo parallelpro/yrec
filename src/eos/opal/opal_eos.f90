@@ -9,9 +9,8 @@
 !     find_opal_edge_ramp  whether the vintage's table holds the point,
 !                          and the OPAL weight near its edge
 ! Under these: opal_density_search (OPAL's rhoofp, rhoofp01 and
-! rhoofp06), interpolate_opal_eos (OPAL's esac, esac01 and esac06, which
-! remain its entry points, public for blended_eos's gamma1_at_density
-! and test_eos), t6rinteos, the radiation corrections (add_radiation;
+! rhoofp06), interpolate_opal_eos (OPAL's esac, esac01 and esac06, whose
+! names are its entry points in eos_test_entries), t6rinteos, the radiation corrections (add_radiation;
 ! 1995: add_radiation_to_gammas), readcoeos (the table reader, run once
 ! per vintage), and the edge ramps find_table_edge_ramp (1995, 2001) and
 ! find_ragged_edge_ramp (2006). This code is written once: what the
@@ -42,9 +41,7 @@ module opal_eos
       use math_lib
       implicit none
       private
-      public :: compute_opal_eos, find_opal_edge_ramp, esac06, opal_table_source
-! for test_eos: the 1995 and 2001 interpolators' entry points
-      public :: esac95, esac01
+      public :: compute_opal_eos, find_opal_edge_ramp, interpolate_opal_eos, opal_table_source
       public :: iv_opal95, iv_opal01, iv_opal06, opal_layout
 
 contains
@@ -462,8 +459,8 @@ end function opal_density_search
 !----------------------------------------------------------------------
 ! interpolate_opal_eos (formerly esac, esac01 and esac06)
 !----------------------------------------------------------------------
-! The OPAL interpolation (OPAL's esac, esac01 and esac06, which are its
-! entry points): the EOS variables at (X, T6, rho) by quadratic
+! The OPAL interpolation (OPAL's esac, esac01 and esac06, entered so by
+! eos_test_entries): the EOS variables at (X, T6, rho) by quadratic
 ! interpolation in X at each node of a 3 x 3 (or 4 x 4) stencil in T6 and
 ! rho, blending the two quadratics that overlap where X lies inside the
 ! grid, then in T6 and rho (t6rinteos), blending the overlapping
@@ -936,43 +933,6 @@ pure real(dp) function stencil_entry(v, lay, x_table, variable, t6_row, density_
       stencil_entry = v%eos_table(ix,iv,it,ir)
 end function stencil_entry
 
-!----------------------------------------------------------------------
-! esac95, esac01, esac06
-!----------------------------------------------------------------------
-! OPAL's entry points for the 1995, 2001 and 2006 tables
-! (interpolate_opal_eos).
-subroutine esac95(v, hydrogen_fraction, t6_temperature, density, &
-     deriv_order, rad_flag, ierr, in_table)
-      type(opal_eos_vintage), intent(inout) :: v
-      real(dp), intent(in) :: hydrogen_fraction, t6_temperature, density
-      integer, intent(in) :: deriv_order, rad_flag
-      integer, intent(out) :: ierr
-      logical, intent(out) :: in_table
-      call interpolate_opal_eos(v, iv_opal95, hydrogen_fraction, t6_temperature, &
-           density, deriv_order, rad_flag, ierr, in_table)
-end subroutine esac95
-
-subroutine esac01(v, hydrogen_fraction, t6_temperature, density, &
-     deriv_order, rad_flag, ierr, in_table)
-      type(opal_eos_vintage), intent(inout) :: v
-      real(dp), intent(in) :: hydrogen_fraction, t6_temperature, density
-      integer, intent(in) :: deriv_order, rad_flag
-      integer, intent(out) :: ierr
-      logical, intent(out) :: in_table
-      call interpolate_opal_eos(v, iv_opal01, hydrogen_fraction, t6_temperature, &
-           density, deriv_order, rad_flag, ierr, in_table)
-end subroutine esac01
-
-subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
-     deriv_order, rad_flag, ierr, in_table)
-      type(opal_eos_vintage), intent(inout) :: v
-      real(dp), intent(in) :: hydrogen_fraction, t6_temperature, density
-      integer, intent(in) :: deriv_order, rad_flag
-      integer, intent(out) :: ierr
-      logical, intent(out) :: in_table
-      call interpolate_opal_eos(v, iv_opal06, hydrogen_fraction, t6_temperature, &
-           density, deriv_order, rad_flag, ierr, in_table)
-end subroutine esac06
 
 
 !----------------------------------------------------------------------

@@ -22,8 +22,6 @@ module blended_eos
       use yale_eos_tables, only: debye_huckel_composition
       use eos_table_source, only: eos_table_source_t, stage_in_place_of_saha, stage_over_the_gas
       use eos_source_list, only: table_sources, n_table_sources
-      use opal_eos, only: esac06
-      use opal_eos_tables, only: i_opal_gamma1, i_opal_gamma2_ratio, opal_tables, iv_opal06
       use physical_constants, only: gas_constant, ln10, &
            radiation_constant_over_3
       use eos_messages, only: eos_log, eos_report, eos_log_once, once_fermi_extrapolation, &
@@ -32,12 +30,12 @@ module blended_eos
            debye_huckel_composition_of, &
            inverse_a_hydrogen, inverse_a_helium, electrons_per_nucleon_metals, &
            ix_c, ix_h, ix_he, ix_na, ix_ne, ix_o, n_mix_species
-      use eos_configuration, only: eos_settings, opal_vintage_2006, saha_ramp_width
+      use eos_configuration, only: eos_settings, saha_ramp_width
       use math_lib
 
       implicit none
       private
-      public :: compute_blended_eos, blend_eos, gamma1_at_density
+      public :: compute_blended_eos
 
 
 contains
@@ -470,72 +468,5 @@ subroutine blend_saha_into(saha, ramp_weight, want_derivatives, r)
            f*(saha%adiabatic_gradient_dp - r%adiabatic_gradient_dp)
 end subroutine blend_saha_into
 
-!----------------------------------------------------------------------
-! gamma1_at_density (formerly eos_lib's gamma1_at_density)
-!----------------------------------------------------------------------
-! gamma1 and the adiabatic gradient at (T6, rho, P) and (X, Z): from
-! the OPAL 2006 table (esac06, with the radiation correction) when
-! the 2006 vintage is selected and the table covers the point, else from
-! blend_eos, with gamma1 built from chi_rho, chi_T and cv (Cox & Giuli
-! ch. 9). test_eos is its only caller (eos_lib does not export it).
-subroutine gamma1_at_density(hydrogen_fraction, metal_fraction, &
-     temperature_1e6k, density, pressure, gamma1, adiabatic_gradient, &
-     saha_iterations, ierr)
-
-      real(dp), intent(in) :: hydrogen_fraction, metal_fraction, &
-           temperature_1e6k, density, pressure
-      real(dp), intent(out) :: gamma1, adiabatic_gradient
-      integer, intent(inout) :: saha_iterations
-! ierr as for eos_get; an out-of-table esac06 lookup is not an error.
-      integer, intent(out) :: ierr
-! esac06's full evaluation (its nine variables) with the radiation
-! correction
-      integer, parameter :: opal06_variables = 9, with_radiation = 1
-
-      integer :: jerr
-      real(dp) :: log10_temperature, log10_pressure
-      type(eos_result) :: g
-      type(debye_huckel_composition) :: dh
-      real(dp) :: chi_rho, chi_t, specific_heat_cv
-      logical :: in_table
-
-      ierr = 0
-      jerr = 0
-      in_table = .false.
-
-      if (eos_settings%opal_vintage == opal_vintage_2006) then
-         call esac06(opal_tables(iv_opal06), hydrogen_fraction, temperature_1e6k, density, &
-              opal06_variables, with_radiation, jerr, in_table)
-         if (jerr /= 0) then
-            ierr = jerr
-            return
-         end if
-      end if
-      if (eos_settings%opal_vintage == opal_vintage_2006 .and. in_table) then
-         gamma1 = opal_tables(iv_opal06)%eos_output(i_opal_gamma1)
-         adiabatic_gradient = 1.0d0/opal_tables(iv_opal06)%eos_output(i_opal_gamma2_ratio)
-      else
-! (rho is the density guess; P and T are set from their logs)
-         g%density = density
-         g%log10_density = log10(density)
-         log10_temperature = log10(temperature_1e6k*1.0d6)
-         log10_pressure = log10(pressure)
-         if (eos_settings%use_debye_huckel_correction) &
-              dh = debye_huckel_composition_of(hydrogen_fraction, metal_fraction)
-         call blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
-              metal_fraction, dh, g, .false., .false., saha_iterations, jerr)
-         if (jerr /= 0) then
-            ierr = jerr
-            return
-         end if
-         chi_rho = 1.0d0/g%dlnrho_dlnp
-         chi_t = -chi_rho*g%dlnrho_dlnt
-         specific_heat_cv = g%specific_heat_cp - exp(ln10*(log10_pressure - &
-              g%log10_density - log10_temperature))*chi_t**2/chi_rho
-         gamma1 = chi_rho*g%specific_heat_cp/specific_heat_cv
-         adiabatic_gradient = g%adiabatic_gradient
-      end if
-
-end subroutine gamma1_at_density
 
 end module blended_eos

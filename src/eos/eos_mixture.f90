@@ -6,7 +6,8 @@
 ! envelope) and the 12 species' number fractions, read by the Saha and
 ! SCV paths of blend_eos and by compute_mean_weights.
 ! The star layer sets it through eos_set_mixture whenever it
-! recomputes the envelope composition. Also here:
+! recomputes the envelope composition (set_eos_mixture_state; eos_mix is
+! protected, so nothing else writes it). Also here:
 !     ion_mean_weight_excess  1/mu_ion of a mixture with other X and Z
 !     compute_mean_weights    1/mu_ion, 1/mu_e and the gas constant of
 !                             a zone
@@ -46,7 +47,7 @@ module eos_mixture
             real(dp) :: number_fractions(n_mix_species)
       end type eos_mixture_state
 
-      type(eos_mixture_state), public, save :: eos_mix
+      type(eos_mixture_state), public, protected, save :: eos_mix
 
 ! the atomic weights of the mixture's species, in the ix_* order (Na,
 ! Al, Mg, Fe, Si, C, H, O, N, Ar, Ne, He): those core's starting model
@@ -55,8 +56,8 @@ module eos_mixture
            26.99d0, 24.32d0, 55.86d0, 28.1d0, 12.015d0, 1.008d0, 16.0d0, &
            14.01d0, 39.96d0, 20.19d0, 4.004d0]
 
-      public :: ion_mean_weight_excess, compute_mean_weights, mean_weights_from_density, &
-           debye_huckel_composition_of
+      public :: set_eos_mixture_state, ion_mean_weight_excess, compute_mean_weights, &
+           mean_weights_from_density, debye_huckel_composition_of
 
 ! The composition terms' constants (EQSTAT's ATOMWT): 1/A of H, He and
 ! C [1/amu] (0.9921 ~ 1/1.008, 0.24975 = 1/4.004, 0.08322 ~ 1/12.015),
@@ -68,6 +69,19 @@ module eos_mixture
            electrons_per_nucleon_metals = 0.4995d0
 
 contains
+
+! set_eos_mixture_state: the envelope mixture eos_mix, which nothing else
+! writes (eos_lib's eos_set_mixture calls it)
+subroutine set_eos_mixture_state(envelope_hydrogen_fraction, envelope_metal_fraction, &
+     inverse_atomic_weight, number_fractions)
+      real(dp), intent(in) :: envelope_hydrogen_fraction, envelope_metal_fraction, &
+           inverse_atomic_weight
+      real(dp), intent(in) :: number_fractions(:)
+      eos_mix%envelope_hydrogen_fraction = envelope_hydrogen_fraction
+      eos_mix%envelope_metal_fraction = envelope_metal_fraction
+      eos_mix%inverse_atomic_weight = inverse_atomic_weight
+      eos_mix%number_fractions = number_fractions
+end subroutine set_eos_mixture_state
 
 ! ion_mean_weight_excess: the inverse ion mean molecular weight of a
 ! mixture with hydrogen fraction x and metal fraction z, as the envelope

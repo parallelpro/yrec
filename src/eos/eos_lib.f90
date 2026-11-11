@@ -29,7 +29,7 @@ module eos_lib
       use eos_source_list, only: table_sources, n_table_sources
       use scv_eos, only: build_scv_envelope_table
       use fermi_table_reader, only: read_fermi_table
-      use eos_mixture, only: eos_mix, debye_huckel_composition_of
+      use eos_mixture, only: set_eos_mixture_state, debye_huckel_composition_of
       use opal_eos_tables, only: n_opal_vintages
       use yale_eos_tables, only: debye_huckel_composition, fermi_log10t_min
       use eos_messages, only: eos_report, reset_eos_warnings, message_length, unwritten_line
@@ -172,10 +172,8 @@ subroutine eos_set_mixture(envelope_hydrogen_fraction, &
            envelope_metal_fraction, inverse_atomic_weight
       real(dp), intent(in) :: number_fractions(:)
 
-      eos_mix%envelope_hydrogen_fraction = envelope_hydrogen_fraction
-      eos_mix%envelope_metal_fraction = envelope_metal_fraction
-      eos_mix%inverse_atomic_weight = inverse_atomic_weight
-      eos_mix%number_fractions = number_fractions
+      call set_eos_mixture_state(envelope_hydrogen_fraction, envelope_metal_fraction, &
+           inverse_atomic_weight, number_fractions)
       if (eos_settings%use_scv_eos) call build_scv_envelope_table( &
            envelope_hydrogen_fraction, envelope_metal_fraction)
 end subroutine eos_set_mixture

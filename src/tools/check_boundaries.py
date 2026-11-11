@@ -212,6 +212,7 @@ STAR_BLIND_FILES = [
     "eos/eos_mixture.f90",
     "eos/eos_table_source.f90",
     "eos/eos_source_list.f90",
+    "eos/eos_test_entries.f90",
     "eos/yale/yale_eos.f90",
     "eos/scv/scv_eos.f90",
     "eos/opal/opal_eos.f90",
