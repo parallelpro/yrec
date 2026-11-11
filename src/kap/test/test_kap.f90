@@ -123,7 +123,7 @@ program test_kap
          logt = grid_logt(ipt)
          logd = grid_logd(ipt)
          fxion = 0.0d0
-         call kap_eval(logd, logt, x_frac, z_frac, o, ol, qod, qot, fxion, gerr)
+         call evaluate(logd, logt, x_frac, z_frac, gerr)
          if (gerr /= 0) stop 1
          write(*,'(a,i2,4(1pe24.15))') "kap ", ipt, o, ol, qod, qot
       end do
@@ -138,8 +138,7 @@ program test_kap
       logt = 3.5d0
       logd = -8.0d0
       fxion = 0.0d0
-      call kap_eval(logd, logt, x_frac, z_frac, o, ol, qod, qot, fxion, &
-           kap_ierr)
+      call evaluate(logd, logt, x_frac, z_frac, kap_ierr)
       write(*,'(a,i4)') "err out-of-table   ierr = ", kap_ierr
       settings = kap_settings
       settings%use_opal95_tables = .false.
@@ -147,8 +146,7 @@ program test_kap
       logt = 6.0d0
       logd = -3.0d0
       fxion = 0.0d0
-      call kap_eval(logd, logt, x_frac, z_frac, o, ol, qod, qot, fxion, &
-           kap_ierr)
+      call evaluate(logd, logt, x_frac, z_frac, kap_ierr)
       write(*,'(a,i4)') "err no-table-chosen ierr = ", kap_ierr
       settings%use_opal95_tables = .true.
       call set_kap_settings(settings)
@@ -295,11 +293,23 @@ contains
          double precision, intent(in) :: x, z, logt, logd
          integer :: ierr
          fxion = 0.0d0
-         call kap_eval(logd, logt, x, z, o, ol, qod, qot, fxion, ierr)
+         call evaluate(logd, logt, x, z, ierr)
          if (ierr /= 0) then
             write(*,'(a,3f8.4,a,i0)') "kap X Z logT", x, z, logt, " ierr ", ierr
          else
             write(*,'(a,3f9.5,4(1pe24.15))') "kap", x, z, logt, o, ol, qod, qot
          end if
       end subroutine evaluate_point
+! kap_get at one point, its results unpacked into o, ol, qod, qot
+      subroutine evaluate(logd, logt, x, z, ierr)
+         double precision, intent(in) :: logd, logt, x, z
+         integer, intent(out) :: ierr
+         double precision :: res(num_kap_results)
+         res = 0.0d0
+         call kap_get(logd, logt, x, z, res, fxion, ierr)
+         o = res(i_kap)
+         ol = res(i_log10_kap)
+         qod = res(i_dlnkap_dlnrho)
+         qot = res(i_dlnkap_dlnt)
+      end subroutine evaluate
 end program test_kap

@@ -343,7 +343,7 @@ module opacity_tables
               laol_extrapolation_tolerance = 0.0d0
       end type kap_settings_t
       type(kap_settings_t), public, protected :: kap_settings
-      public :: set_kap_settings
+      public :: install_kap_settings
 
 ! The tables kap_init reads, by path (blank: not given): the interior
 ! tables (OPAL 1995-format; OPAL 1992 and LAOL 1989, each with a second-Z
@@ -362,11 +362,12 @@ module opacity_tables
 
 contains
 
-! set_kap_settings: install the run's opacity settings.
-subroutine set_kap_settings(settings)
+! install_kap_settings: install the run's opacity settings (kap_lib's
+! set_kap_settings, which also chooses their families).
+subroutine install_kap_settings(settings)
       type(kap_settings_t), intent(in) :: settings
       kap_settings = settings
-end subroutine set_kap_settings
+end subroutine install_kap_settings
 
 
 ! stencil4_locate

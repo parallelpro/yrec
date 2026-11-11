@@ -447,7 +447,7 @@ io/yrec_output.o: history_output.mod math_lib.mod model_files.mod output_columns
 kap/alex06/alex06_opacity.o: kap_messages.mod math_lib.mod numerics_lib.mod opacity_source.mod opacity_table_files.mod opacity_tables.mod physical_constants.mod
 kap/alex94/alex94_opacity.o: kap_messages.mod math_lib.mod numerics_lib.mod opacity_source.mod opacity_table_files.mod opacity_tables.mod physical_constants.mod
 kap/conductive/conductive_opacity.o: kap_messages.mod math_lib.mod numerics_lib.mod opacity_source.mod opacity_table_files.mod opacity_tables.mod
-kap/kap_lib.o: alex06_opacity.mod alex94_opacity.mod conductive_opacity.mod kap_messages.mod kurucz_opacity.mod laol_opacity.mod math_lib.mod opacity_tables.mod opal92_opacity.mod opal95_opacity.mod
+kap/kap_lib.o: kap_messages.mod opacity_blending.mod opacity_families.mod opacity_source.mod opacity_tables.mod
 kap/kap_messages.o: run_messages.mod
 kap/kurucz90/kurucz_opacity.o: kap_messages.mod math_lib.mod numerics_lib.mod opacity_blending.mod opacity_source.mod opacity_table_files.mod opacity_tables.mod
 kap/laol89/laol_opacity.o: composition_layout.mod kap_messages.mod math_lib.mod numerics_lib.mod opacity_blending.mod opacity_source.mod opacity_table_files.mod opacity_tables.mod
