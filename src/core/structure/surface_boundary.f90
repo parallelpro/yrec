@@ -79,7 +79,8 @@ subroutine compute_surface_boundary(s, tri_teffl, tri_logl, envelope_coeffs, &
       use envelope_integration, only: atm_get, surface_log10_radius_cm, ambient_log10_teff
       use triangle_fit, only: start_triangle, reflect_until_inside, &
            fit_triangle_coefficients, max_reflections
-      use atm_lib, only: atm_allard_teff_max
+      use atm_lib, only: atm_leaves_table, atm_reenters_table, atm_note_choice_switch, &
+           atm_eddington_gray
       use star_info_lib, only: json
       use run_messages, only: run_log_unit, terminal_unit, solver_diagnostics
       use physical_constants
@@ -128,50 +129,27 @@ subroutine compute_surface_boundary(s, tri_teffl, tri_logl, envelope_coeffs, &
 contains
 
 ! ---------------------------------------------------------------
-! Fall back to the gray atmosphere (atm_choice 0) and start a new
-! triangle when log Teff reaches 3.95 with the Kurucz table (atm_choice
-! 3) or the Allard table's maximum (atm_choice 4) (MHP 9/01); switch
-! back to the initial choice once Teff is below again, with a new
-! triangle as well. (The switch back used to keep the triangle, whose
-! vertices held gray-atmosphere envelopes, until each was reflected.)
+! Fall back to the gray atmosphere and start a new triangle when Teff
+! leaves the table of the working choice (atm_leaves_table: log Teff 3.95
+! for the Kurucz table, the Allard tables' last log Teff; MHP 9/01);
+! switch back to the deck's choice once Teff is below again
+! (atm_reenters_table), with a new triangle as well. atm writes the
+! terminal's note of each switch. (The switch back used to keep the
+! triangle, whose vertices held gray-atmosphere envelopes, until each
+! was reflected.)
 subroutine switch_atmosphere_choice()
-      if (s%atm_choice_in_use.eq.3) then
-         if (log10_teff.ge.3.95d0) then
-            write(*,*)
-            write(*,5) log10_teff
- 5          format('LOG TEFF OF ',F7.3,' ABOVE 3.95 - SWITCH' &
-                   ,'TO GRAY ATMOSPHERE BOUNDARY CONDITION')
-            write(*,*)
-            s%atm_choice_in_use = 0
-            start_new_triangle = .true.
-         endif
-      endif
-      if (s%atm_choice_in_use.eq.4) then
-         if (log10_teff.ge.atm_allard_teff_max()) then
-            write(*,*)
-            write(*,7) log10_teff, atm_allard_teff_max()
- 7          format('LOG TEFF OF ',F7.3,' ABOVE Allard Table max ',F7.3 &
-                   ,'  - SWITCH TO GRAY ATMOSPHERE BOUNDARY CONDITION')
-            write(*,*)
-            s%atm_choice_in_use = 0
-            start_new_triangle = .true.
-         endif
-      endif
+      if (atm_leaves_table(s%atm_choice_in_use, log10_teff)) then
+         call atm_note_choice_switch(s%atm_choice_in_use, atm_eddington_gray, log10_teff)
+         s%atm_choice_in_use = atm_eddington_gray
+         start_new_triangle = .true.
+      end if
       if (on_gray_fallback(s)) then
-         if (s%physics%atm_choice.eq.3.and.log10_teff.lt.3.95d0) then
+         if (atm_reenters_table(s%physics%atm_choice, log10_teff)) then
             s%atm_choice_in_use = s%physics%atm_choice
             start_new_triangle = .true.
-            write(*,9) log10_teff
- 9          format('LOG TEFF OF ',F7.3,' BELOW 3.95 - SWITCH' &
-           ,' BACK TO KURUCZ ATMOSPHERE BOUNDARY CONDITION')
-         else if (s%physics%atm_choice.eq.4.and.log10_teff.lt.atm_allard_teff_max()) then
-            s%atm_choice_in_use = s%physics%atm_choice
-            start_new_triangle = .true.
-            write(*,11) log10_teff, atm_allard_teff_max()
- 11         format('LOG TEFF OF ',F7.3,' below Allard Table max ',F7.3 &
-           ,'  - SWITCH BACK TO ALLARD ATMOSPHERE BOUNDARY CONDITION')
-         endif
-      endif
+            call atm_note_choice_switch(atm_eddington_gray, s%physics%atm_choice, log10_teff)
+         end if
+      end if
 end subroutine switch_atmosphere_choice
 
 ! ---------------------------------------------------------------

@@ -1,305 +1,200 @@
 !----------------------------------------------------------------------
 ! kurucz_atmosphere
 !----------------------------------------------------------------------
-! The surface boundary condition from the Kurucz (1993) and the
-! Castelli & Kurucz (2003) tables of log P at (log Teff, log g):
-!     read_surface_pressure_table   read a table (at atm_init)
-!     interpolate_surface_pressure  log P at (log Teff, log g): cubic
-!                                   splines in log Teff and in log g
-!                                   (3-point or linear near the table's
-!                                   high-gravity edge)
-! The tables live in atm_tables (atm_table%kurucz_surface_p,
-! atm_table%castelli_surface_p).
+! The surface boundary condition from a surface-pressure table, Kurucz
+! (1993) or Castelli & Kurucz (2003): log P at T = Teff, at (log Teff,
+! log g).
+!     interpolate_surface_pressure  the lookup: the table in, log P and a
+!                                   status out (a star-blind kernel; it
+!                                   prints nothing)
+! kurucz_table_reader reads the tables, atm_lib keeps them and reports a
+! failed lookup (atm_messages).
 module kurucz_atmosphere
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use atm_tables, only: atm_table, atm_table_ng, atm_table_nt, &
-           surface_p_table
-      use run_messages, only: run_log_unit, terminal_unit
-      use numerics_lib, only: inter3, natural_spline, splint, numerics_status_text
+      use atm_tables, only: surface_pressure_table, surface_pressure_num_g
+      use numerics_lib, only: inter3, natural_spline, splint
       implicit none
       private
-      public :: read_surface_pressure_table, interpolate_surface_pressure
+      public :: interpolate_surface_pressure
+      public :: surface_pressure_outside
+
+! The ierr of a point the table cannot give (a spline's failure returns
+! its numerics_status instead).
+      integer, parameter :: surface_pressure_outside = 1
+
+! The tables' fixed lower edges, below which a point is refused (about
+! one row and one column below the first), and the log Teff above which
+! the tables hold only their top three log g columns (3-point Lagrange in
+! log g) or top two (linear).
+      real(dp), parameter :: table_log_teff_min = 3.5d0, table_log_g_min = -0.5d0
+      real(dp), parameter :: log_teff_three_columns = 4.5d0, log_teff_two_columns = 4.55d0
+
+! The table's last column, and the spline stencils' size.
+      integer, parameter :: ng = surface_pressure_num_g
+      integer, parameter :: num_nodes = 4
 
 contains
 
 !----------------------------------------------------------------------
-! interpolate_surface_pressure (formerly surface_p_interp)
+! interpolate_surface_pressure
 !----------------------------------------------------------------------
-! log P at (log Teff, log g) from a surface-pressure table: cubic
-! splines through 4 points in log Teff and in log g (3-point Lagrangian
-! or linear in log g near the table's high-gravity edge). The result,
-! with log T = log Teff, goes to atm_table%atm_log10_pressure and
-! atm_log10_temperature. A point more than one table step outside the
-! table returns ierr = 1.
-subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_flag, ierr)
-
-      integer :: jerr_gate
-
-      type(surface_p_table), intent(inout) :: tbl
+! log P at (log10_teff, log10_gravity): in each of the four log Teff rows
+! about the point, a natural cubic spline in log g through the row's
+! four valid columns about it (above log Teff 4.5, 3-point Lagrange or
+! linear in the top columns); then a natural cubic spline in log Teff
+! through the four rows' values. Outside the table, ierr =
+! surface_pressure_outside: below log Teff 3.5 or log g -0.5, more than
+! one table step above the last row or column, or a stencil that reaches
+! a row without the columns it needs (fewer than four valid ones, or not
+! the top ones above log Teff 4.5). A spline's failure returns its
+! status in ierr and spline_status. log10_pressure is set only on
+! success.
+pure subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, &
+     log10_pressure, ierr, spline_status)
+      type(surface_pressure_table), intent(in) :: tbl
       real(dp), intent(in) :: log10_teff, log10_gravity
-      logical, intent(in) :: print_flag
-! --- locals ---
-      real(dp) :: teff_nodes(4), gravity_nodes(4), &
-           pressure_at_nodes(4), unused_deriv(3), gravity_weights(3), &
-           gravity_nodes_3pt(3), pressure_table_vals(4), &
-           teff_spline_deriv(4), gravity_spline_deriv(4)
-      real(dp) :: fx, interpolated_value
-      integer :: row, row_base, node, k, kk, kkk
+      real(dp), intent(inout) :: log10_pressure
+      integer, intent(out) :: ierr, spline_status
 
-! Interpolates in temperature with a 4-point natural cubic spline
-! (natural_spline/splint), and in gravity the same way if 4 or more points are
-! available (3-point Lagrangian or linear at the table edge).  It will quit if the desired data point
-! has Teff or log G more than one table point from the data.
-!
-! Check to ensure that data is within table.
-      integer, intent(out) :: ierr
-
-! Lower table edge, and the log Teff rows above which only 3 or 2 log g
-! columns are tabulated (so 3-point Lagrangian or linear interpolation).
-      real(dp), parameter :: table_logteff_min = 3.5d0, table_logg_min = -0.5d0
-      real(dp), parameter :: logteff_three_point = 4.5d0, logteff_two_point = 4.55d0
+      real(dp) :: teff_nodes(num_nodes), pressure_at_nodes(num_nodes), &
+           teff_spline_deriv(num_nodes), interpolated_value
+      integer :: row, first_row, node
 
       ierr = 0
+      spline_status = 0
+      if (outside_table(tbl, log10_teff, log10_gravity)) then
+         ierr = surface_pressure_outside
+         return
+      end if
 
-      if (log10_teff < table_logteff_min .or. log10_gravity < table_logg_min) then
-         write(terminal_unit,911) log10_teff, log10_gravity
-         write(run_log_unit,911) log10_teff, log10_gravity
-  911    format(1X,'DESIRED ATMOSPHERE OUTSIDE TABLE RANGE'/ &
-              ' LOG TEFF',F10.6,' LOG G',F10.6/' RUN STOPPED')
-         ierr = 1
-         return
-      endif
-! Temperature interpolation factors.
-      do row = 1,tbl%num_teff
-         if (log10_teff <= tbl%teff(row)) exit
+! the four rows about log Teff
+      do row = 1, tbl%num_teff
+         if (log10_teff <= tbl%log_teff(row)) exit
       end do
-      if (row > tbl%num_teff) then
-      row = tbl%num_teff
-      end if
-      row_base = max(1,row-2)
-      row_base = min(tbl%num_teff-3,row_base)
-      do k = 1,4
-         teff_nodes(k) = tbl%teff(row_base+k-1)
+      if (row > tbl%num_teff) row = tbl%num_teff
+      first_row = max(1, row-2)
+      first_row = min(tbl%num_teff-3, first_row)
+      teff_nodes = tbl%log_teff(first_row:first_row+3)
+
+! log P at log g in each
+      do node = 1, num_nodes
+         call pressure_in_row(tbl, first_row+node-1, log10_gravity, &
+              pressure_at_nodes(node), ierr, spline_status)
+         if (ierr /= 0) return
       end do
-! Gravity interpolation factors.
-      do row = row_base,row_base+3
-         node = row-row_base+1
-! Check if 4 log values available - otherwise, use 3 point Lagrangian
-! or linear interpolation.
-         if (tbl%teff(row) > logteff_three_point) then
-            if (tbl%teff(row) > logteff_two_point) then
-! Linear interpolation
-               fx = (log10_gravity-tbl%logg(atm_table_ng-1))/ &
-                    (tbl%logg(atm_table_ng)-tbl%logg(atm_table_ng-1))
-               pressure_at_nodes(node) = &
-                    tbl%log10_pressure(row,atm_table_ng-1) + &
-                    fx*(tbl%log10_pressure(row,atm_table_ng) - &
-                    tbl%log10_pressure(row,atm_table_ng-1))
-            else
-! 3-point Lagrangian interpolation.
-               do k = 1,3
-                  gravity_nodes_3pt(k) = tbl%logg(atm_table_ng-3+k)
-               end do
-               call inter3(gravity_nodes_3pt, gravity_weights, &
-                    unused_deriv, log10_gravity)
-               pressure_at_nodes(node) = &
-                    tbl%log10_pressure(row,atm_table_ng-2)*gravity_weights(1) + &
-                    tbl%log10_pressure(row,atm_table_ng-1)*gravity_weights(2) + &
-                    tbl%log10_pressure(row,atm_table_ng)*gravity_weights(3)
-            endif
-            cycle
-         endif
-         if (log10_gravity >= tbl%logg(atm_table_ng-1)) then
-! Desired log G above second to top table log G - use top 4 log G values.
-            do kk = 1,4
-               gravity_nodes(kk) = tbl%logg(atm_table_ng-4+kk)
-               pressure_table_vals(kk) = &
-                    tbl%log10_pressure(row,atm_table_ng-4+kk)
-            end do
-            call natural_spline(gravity_nodes, pressure_table_vals, 4, gravity_spline_deriv)
-            call splint(gravity_nodes, pressure_table_vals, 4, &
-                 gravity_spline_deriv, log10_gravity, interpolated_value, jerr_gate)
-            ! 2026 numerics-gate opt-in: interpolation failure returns via
-            ! ierr (diagnostic printed at the gate) instead of stopping.
-            if (jerr_gate /= 0) then
-               write(run_log_unit,*) 'splint: '//numerics_status_text(jerr_gate)
-               ierr = jerr_gate
-               return
-            end if
-            pressure_at_nodes(node) = interpolated_value
-            cycle
-         endif
-! General case - find 4 nearest points in gravity that are in the table.
-! G Somers, I changed NG to IMINMAX in the next line. This prevents the
-! code from using -999 to interpolate in some instances.
-         do k = tbl%gmax_index(row)-3,tbl%gmin_index(row),-1
-            if (log10_gravity < tbl%logg(k+2) .and. &
-                 log10_gravity >= tbl%logg(k+1)) then
-               kk = max(tbl%gmin_index(row),k)
-               kk = min(atm_table_ng-3,kk)
-               do kkk = 1,4
-                  gravity_nodes(kkk) = tbl%logg(kk+kkk-1)
-                  pressure_table_vals(kkk) = &
-                       tbl%log10_pressure(row,kk+kkk-1)
-               end do
-               call natural_spline(gravity_nodes, pressure_table_vals, 4, gravity_spline_deriv)
-               call splint(gravity_nodes, pressure_table_vals, 4, &
-                    gravity_spline_deriv, log10_gravity, interpolated_value, jerr_gate)
-               if (jerr_gate /= 0) then
-                  write(run_log_unit,*) 'splint: '//numerics_status_text(jerr_gate)
-                  ierr = jerr_gate
-                  return
-               end if
-               pressure_at_nodes(node) = interpolated_value
-               exit
-            endif
-         end do
-         if (k < tbl%gmin_index(row)) then
-! Desired log G below 2nd table entry -use first 4 points.
-         do k = 1,4
-            gravity_nodes(k) = tbl%logg(k+tbl%gmin_index(row)-1)
-            pressure_table_vals(k) = &
-                 tbl%log10_pressure(row,k+tbl%gmin_index(row)-1)
-         end do
-         call natural_spline(gravity_nodes, pressure_table_vals, 4, gravity_spline_deriv)
-         call splint(gravity_nodes, pressure_table_vals, 4, &
-              gravity_spline_deriv, log10_gravity, interpolated_value, jerr_gate)
-         if (jerr_gate /= 0) then
-            write(run_log_unit,*) 'splint: '//numerics_status_text(jerr_gate)
-            ierr = jerr_gate
-            return
-         end if
-         pressure_at_nodes(node) = interpolated_value
-         end if
-      end do
-! Interpolate in temperature to find correct log P.
-      call natural_spline(teff_nodes, pressure_at_nodes, 4, teff_spline_deriv)
-      call splint(teff_nodes, pressure_at_nodes, 4, teff_spline_deriv, &
-           log10_teff, interpolated_value, jerr_gate)
-      if (jerr_gate /= 0) then
-         write(run_log_unit,*) 'splint: '//numerics_status_text(jerr_gate)
-         ierr = jerr_gate
+
+! then in log Teff
+      call natural_spline(teff_nodes, pressure_at_nodes, num_nodes, teff_spline_deriv)
+      call splint(teff_nodes, pressure_at_nodes, num_nodes, teff_spline_deriv, &
+           log10_teff, interpolated_value, spline_status)
+      if (spline_status /= 0) then
+         ierr = spline_status
          return
       end if
-      atm_table%atm_log10_pressure = interpolated_value
-      atm_table%atm_log10_temperature = log10_teff
-! Write out information to the model file.
-      if (print_flag) then
-        write(run_log_unit,70)
-70      format('********PRESSURE AT T=TEFF INTERPOLATED FROM TABULATED' &
-              ,  ' VALUES********')
-        write(run_log_unit,71) log10_teff, atm_table%atm_log10_pressure
-71      format(' ',20X,'LOG (Teff) =',F10.5,' LOG P =',F10.5)
-      endif
+      log10_pressure = interpolated_value
 end subroutine interpolate_surface_pressure
 
+! The point is outside what the table can give: below its fixed lower
+! edges, or more than one table step above its last row or column.
+pure logical function outside_table(tbl, log10_teff, log10_gravity)
+      type(surface_pressure_table), intent(in) :: tbl
+      real(dp), intent(in) :: log10_teff, log10_gravity
+      real(dp) :: log_teff_max, log_g_max
+      integer :: n
 
-!----------------------------------------------------------------------
-! read_surface_pressure_table
-!----------------------------------------------------------------------
-! Reads a surface-pressure table into tbl: the metal fraction of the
-! header (read past), num_teff log Teff rows (atm_table_nt for the
-! Kurucz table, atm_table_ntc for Castelli/Kurucz), the atm_table_ng
-! log g columns and log P; then finds each row's valid log g range
-! (G Somers 5/15: a row may end in -999 entries at high gravity).
-subroutine read_surface_pressure_table(table_path, tbl, num_teff, ierr)
-      character(len=*), intent(in) :: table_path
-      type(surface_p_table), intent(inout) :: tbl
-      integer, intent(in) :: num_teff
-      integer, intent(out) :: ierr
-      integer :: table_unit, teff_idx, logg_idx
-      logical :: found_valid_pressure
-      real(dp) :: kurucz_table_z
+      n = tbl%num_teff
+      log_teff_max = tbl%log_teff(n) + (tbl%log_teff(n) - tbl%log_teff(n-1))
+      log_g_max = tbl%log_g(ng) + (tbl%log_g(ng) - tbl%log_g(ng-1))
+      outside_table = log10_teff < table_log_teff_min .or. log10_gravity < table_log_g_min .or. &
+           log10_teff > log_teff_max .or. log10_gravity > log_g_max
+end function outside_table
 
-      ierr = 0
-      call allocate_surface_p(tbl, num_teff)
-! Open surface pressure table
-      open(newunit=table_unit, file=table_path, status='OLD', iostat=ierr)
-      if (ierr /= 0) then
-         write(*,*) 'atm_init: cannot open the atmosphere table ', trim(table_path)
-         ierr = 1
+! log P at log10_gravity in one row. Above log Teff 4.55, linear in the
+! top two columns; above 4.5, 3-point Lagrange in the top three; below,
+! a natural cubic spline through the row's four valid columns about the
+! point: its top four from the second-to-last valid column up, its first
+! four below its second valid column. A row without the columns its
+! branch needs refuses the point (the Castelli/Kurucz tables' last row
+! holds only the top column; an all -999 row has first_column = ng and
+! last_column = 0).
+pure subroutine pressure_in_row(tbl, row, log10_gravity, value, ierr, spline_status)
+      type(surface_pressure_table), intent(in) :: tbl
+      integer, intent(in) :: row
+      real(dp), intent(in) :: log10_gravity
+      real(dp), intent(out) :: value
+      integer, intent(inout) :: ierr, spline_status
+
+      real(dp) :: weights(3), unused_dweights(3), fraction
+      integer :: first_valid, last_valid, first, k
+
+      value = 0.0d0
+      first_valid = tbl%first_column(row)
+      last_valid = tbl%last_column(row)
+      if (tbl%log_teff(row) > log_teff_three_columns) then
+         if (tbl%log_teff(row) > log_teff_two_columns) then
+            if (first_valid > ng-1 .or. last_valid < ng) then
+               ierr = surface_pressure_outside
+               return
+            end if
+            fraction = (log10_gravity - tbl%log_g(ng-1))/(tbl%log_g(ng) - tbl%log_g(ng-1))
+            value = tbl%log10_pressure(row,ng-1) + &
+                 fraction*(tbl%log10_pressure(row,ng) - tbl%log10_pressure(row,ng-1))
+         else
+            if (first_valid > ng-2 .or. last_valid < ng) then
+               ierr = surface_pressure_outside
+               return
+            end if
+            call inter3(tbl%log_g(ng-2:ng), weights, unused_dweights, log10_gravity)
+            value = tbl%log10_pressure(row,ng-2)*weights(1) + &
+                 tbl%log10_pressure(row,ng-1)*weights(2) + &
+                 tbl%log10_pressure(row,ng)*weights(3)
+         end if
          return
       end if
-! GET ABUNDANCE:
-      read(table_unit,200) kurucz_table_z
-  200   format(1x,10x,1pe16.8,/)
-! Get values of log teff:
-      if (num_teff == atm_table_nt) then
-         read(table_unit,201) (tbl%teff(teff_idx),teff_idx=1,num_teff)
-      else
-         read(table_unit,206) (tbl%teff(teff_idx),teff_idx=1,num_teff)
+
+      if (last_valid - first_valid + 1 < num_nodes) then
+         ierr = surface_pressure_outside
+         return
       end if
-  201   format(1p4e16.8,13(/1p4e16.8),/1pe16.8,/)
-  206   format(1p4e16.8,18(/1p4e16.8),/)
-! Get values of log G:
-      read(table_unit,202) (tbl%logg(logg_idx),logg_idx=1,atm_table_ng)
-  202   format(1p4e16.8,/1p4e16.8,/1p3e16.8,/)
-! Get grid of log pressure values:
-      do teff_idx=1,num_teff
-        read(table_unit,203) (tbl%log10_pressure(teff_idx,logg_idx),logg_idx=1,atm_table_ng)
-  203     format(1p4e16.8,/1p4e16.8,/1p3e16.8)
-      end do
-      rewind table_unit
-      close(table_unit)
-!       G Somers 5/15; added a catch that allows the code to work
-!                      if the highest gravity P value for a specific
-!                      temperature is -999 (find_gravity_edges).
-      call find_gravity_edges(tbl)
-
-contains
-
-! allocate_surface_p: on first use give tbl num_teff rows x
-! atm_table_ng columns, zero-filled like the static arrays it
-! replaces (an all -999 row leaves gmax_index untouched, so it must
-! read 0 as before). Later calls (a re-read of the same table) reuse
-! the storage as the static arrays did.
-pure subroutine allocate_surface_p(tbl, num_teff)
-      type(surface_p_table), intent(inout) :: tbl
-      integer, intent(in) :: num_teff
-      if (allocated(tbl%teff)) return
-      allocate(tbl%teff(num_teff), tbl%logg(atm_table_ng), &
-           tbl%log10_pressure(num_teff,atm_table_ng), &
-           tbl%gmin_index(num_teff), tbl%gmax_index(num_teff))
-      tbl%teff = 0.0d0
-      tbl%logg = 0.0d0
-      tbl%log10_pressure = 0.0d0
-      tbl%gmin_index = 0
-      tbl%gmax_index = 0
-      tbl%num_teff = num_teff
-end subroutine allocate_surface_p
-
-! find_gravity_edges: G Somers 5/15; per log Teff row, the lowest and
-! highest log g columns with a valid (positive) tabulated pressure.
-! LCATCH (found_valid_pressure) is set to true once the first valid P
-! is read, and it can set the minimum P thereafter.
-subroutine find_gravity_edges(tbl)
-      type(surface_p_table), intent(inout) :: tbl
-         do teff_idx = 1,tbl%num_teff
-            found_valid_pressure = .false.
-            do logg_idx = atm_table_ng,1,-1
-               if(tbl%log10_pressure(teff_idx,logg_idx) <= 0.0d0)then
-!                 check if the first non-999 value has been reached.
-!                 if so, set IMIN.
-                  if(found_valid_pressure)then
-                     tbl%gmin_index(teff_idx) = logg_idx + 1
-                     exit
-                  endif
-               else
-!                 if we have reached a non-negative pressure value,
-!                 turn off the catch so IMIN can be set. also record
-!                 the highest gravity with a pressure for later int.
-                  if(.not.found_valid_pressure) tbl%gmax_index(teff_idx) = logg_idx
-                  found_valid_pressure = .true.
-               endif
-            end do
-            if (logg_idx < 1) tbl%gmin_index(teff_idx) = 1
-!           if all of the P values at a given T are -999, set IMIN
-!           to the number of gravity terms. in responce, the code
-!           should break when trying to find surface P.
-            if(.not.found_valid_pressure) tbl%gmin_index(teff_idx) = atm_table_ng
+      if (log10_gravity >= tbl%log_g(last_valid-1)) then
+         first = last_valid - 3
+      else
+! the interval [log_g(k+1), log_g(k+2)) that holds the point, and the
+! stencil k..k+3 about it; below the second valid column, the first four
+         first = first_valid
+         do k = last_valid-3, first_valid, -1
+            if (log10_gravity < tbl%log_g(k+2) .and. log10_gravity >= tbl%log_g(k+1)) then
+               first = k
+               exit
+            end if
          end do
-end subroutine find_gravity_edges
+      end if
+      call spline_in_log_g(tbl, row, first, log10_gravity, value, spline_status)
+      if (spline_status /= 0) ierr = spline_status
+end subroutine pressure_in_row
 
-end subroutine read_surface_pressure_table
+! The natural cubic spline through columns first..first+3 of a row, at
+! log10_gravity.
+pure subroutine spline_in_log_g(tbl, row, first, log10_gravity, value, spline_status)
+      type(surface_pressure_table), intent(in) :: tbl
+      integer, intent(in) :: row, first
+      real(dp), intent(in) :: log10_gravity
+      real(dp), intent(out) :: value
+      integer, intent(out) :: spline_status
+
+      real(dp) :: nodes(num_nodes), values(num_nodes), deriv(num_nodes)
+
+      nodes = tbl%log_g(first:first+3)
+      values = tbl%log10_pressure(row,first:first+3)
+      call natural_spline(nodes, values, num_nodes, deriv)
+      call splint(nodes, values, num_nodes, deriv, log10_gravity, value, spline_status)
+end subroutine spline_in_log_g
+
+!======================================================================
+! Sources: the F77's SURFP and KCSURFP (one routine since 2026). G.
+! Somers (5/15) bounded the gravity search by each row's valid columns,
+! so that rows ending in -999 entries are not interpolated through them.
+! The checks of the top columns, the upper range and the row's own top
+! four are docs/bug_sweep.md's M231, M232 and M234 (2026-11).
 
 end module kurucz_atmosphere
