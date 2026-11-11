@@ -4136,7 +4136,18 @@ and 5 and the low-mass Kurucz and Allard decks; eos test_eos's run log
 at every commit. Each matched the round-0 tree wherever no fix was
 meant to change it.
 
-Merged-tree verification: PENDING
+Merged-tree verification, at 2c9a6ec4 (all five merges). The commits after
+it change only the style table, two text references and docs.
+- Builds: yrec, the test programs, other_energy, libyrec and the library
+  link all build.
+- `make check` is OK.
+- `compare_decks --set all`: RESULT ALL IDENTICAL, with 35 pins OK.
+- CI's pytest list gives 92 passed and 1 skipped (HDF5) in both exact and
+  tolerant modes.
+- `mutate.py` catches every mutation: convection 43, element_diffusion 21,
+  kap 36, atm 38, eos 67, math 17 and numerics 71 (293 of 293).
+- The devel build gives 32 ok, 4 known skips and 0 failed.
+- `check_style.py --update` lowered 75 rows (790a56ed).
 
 #### Learned
 
