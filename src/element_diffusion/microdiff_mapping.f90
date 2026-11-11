@@ -7,11 +7,12 @@
 !       units; diffusion_grid) and the structure and the mass fractions
 !       on them (the microdiff_grid records);
 !   microdiff_etm  the species' changes on the centre grid back on the
-!       model's zones (change_zone), with Y from X + Y + Z + He3 = 1.
+!       model's zones (diffusion_grid's apply_grid_changes), with Y from
+!       X + Y + Z + He3 = 1.
 module microdiff_mapping
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use element_diffusion_configuration, only: diffusion_settings
-      use composition_layout, only: json, i_h1, i_he4, i_metals, i_he3, i_c12, i_o18
+      use composition_layout, only: json, i_h1, i_he4, i_metals
       use species_table, only: num_light_diffused
       implicit none
       private
@@ -28,11 +29,6 @@ module microdiff_mapping
               hydrogen(json), helium(json), metal(json), &
               light(num_light_diffused,json)
       end type microdiff_grid
-
-! the three layers of the model that microdiff_etm changes by different
-! rules: the convective core (and zone_begin), the region's interior,
-! the surface convection zone (and zone_end)
-      integer, parameter :: layer_core = 1, layer_interior = 2, layer_envelope = 3
 
 contains
 
@@ -93,16 +89,15 @@ end subroutine map_microdiff_to_equal_grid
 ! The changes of X (hydrogen_change), Z (metal_change, with
 ! use_diffusion_z) and the light elements (light_change, rows
 ! light_element_id, with diffuse_lithium) at the num_eq_points centres
-! eq_radius, applied to the model's zones (radius radius_bl): every zone
-! up to zone_begin takes the first centre's change, every zone from
-! zone_end on the last centre's, and the zones between take the change
-! interpolated at their radius (4-point Lagrange, diffusion_grid's
-! locate_stencil). change_zone applies a change.
+! eq_radius, applied to the model's zones (radius radius_bl) by
+! diffusion_grid's apply_grid_changes: the core's zones take the first
+! centre's change, the envelope's the last's, the zones between the
+! change at their radius; a two-point grid keeps the F77's guard
+! (docs/bug_sweep.md O21).
 subroutine microdiff_etm(eq_radius, hydrogen_change, metal_change, light_change, &
      zone_begin, zone_end, num_eq_points, composition, radius_bl, num_zones, &
      num_light, light_element_id)
-      use numerics_lib, only: interp, lagrange4
-      use diffusion_grid, only: locate_stencil
+      use diffusion_grid, only: apply_grid_changes
       real(dp), intent(in) :: eq_radius(:), hydrogen_change(:), metal_change(:)
       integer, intent(in) :: num_light
       real(dp), intent(in) :: light_change(:,:)
@@ -111,88 +106,12 @@ subroutine microdiff_etm(eq_radius, hydrogen_change, metal_change, light_change,
       real(dp), intent(in) :: radius_bl(:)
       integer, intent(in) :: num_zones
       integer, intent(in) :: light_element_id(:)
-      real(dp) :: weight(4), dx, dz, dlight(num_light)
-      integer :: i, k, k0, search_from
-      logical :: found
 
-      do i = 1, zone_begin
-         call change_zone(composition(:,i), hydrogen_change(1), metal_change(1), &
-              light_change(:,1), light_element_id, layer_core)
-      end do
-      search_from = 2
-      do i = zone_begin+1, zone_end-1
-! The four centres around the zone. A grid of three points takes the
-! stencil from point 1, the one it has; one of two points does not, and
-! reads outside the grid (docs/bug_sweep.md O21).
-         call locate_stencil(eq_radius, num_eq_points, radius_bl(i), search_from, &
-              num_eq_points, k0, found)
-         if (found .and. k0 == 0) k0 = 1
-         call interp(eq_radius(k0:k0+3), weight, x_eval=radius_bl(i))
-         dx = lagrange4(weight, hydrogen_change(k0:k0+3))
-         dz = 0.0d0
-         if (diffusion_settings%use_diffusion_z) dz = lagrange4(weight, metal_change(k0:k0+3))
-         do k = 1, num_light
-            dlight(k) = 0.0d0
-            if (diffusion_settings%diffuse_lithium) dlight(k) = lagrange4(weight, &
-                 light_change(k,k0:k0+3))
-         end do
-         call change_zone(composition(:,i), dx, dz, dlight, light_element_id, layer_interior)
-      end do
-      do i = zone_end, num_zones
-         call change_zone(composition(:,i), hydrogen_change(num_eq_points), &
-              metal_change(num_eq_points), light_change(:,num_eq_points), &
-              light_element_id, layer_envelope)
-      end do
+      call apply_grid_changes(eq_radius, num_eq_points, radius_bl, zone_begin, zone_end, &
+           num_zones, hydrogen_change, metal_change, light_change(1:num_light,:), &
+           light_element_id(1:num_light), diffusion_settings%use_diffusion_z, &
+           diffusion_settings%diffuse_lithium, .false., composition)
 end subroutine microdiff_etm
-
-! ---------------------------------------------------------------
-! One zone's mass fractions xa(species) after settling changes X by dx,
-! Z by dz (with use_diffusion_z) and the light elements (rows
-! light_element_id) by dlight (with diffuse_lithium), in the given layer.
-! Hydrogen rises and the metals sink, so the guards differ by layer (the
-! F77's):
-!   X  at least 0 in the core; elsewhere at most 1 - Z - He3 (the Z
-!      before its change);
-!   Z  at most 1 - X - He3 (the new X), but at least 0 in the envelope;
-!      the CNO tracers (i_c12..i_o18) scaled with it;
-!   Y  1 - X - Z - He3;
-!   the light elements at least 0 in the core, unguarded elsewhere.
-pure subroutine change_zone(xa, dx, dz, dlight, light_element_id, layer)
-      real(dp), intent(inout) :: xa(:)
-      real(dp), intent(in) :: dx, dz, dlight(:)
-      integer, intent(in) :: light_element_id(:), layer
-      real(dp) :: x_max, z_max, z_new, z_ratio
-      integer :: k, row
-
-      if (layer == layer_core) then
-         xa(i_h1) = max(xa(i_h1) + dx, 0.0d0)
-      else
-         x_max = 1.0d0 - xa(i_metals) - xa(i_he3)
-         xa(i_h1) = min(xa(i_h1) + dx, x_max)
-      end if
-      if (diffusion_settings%use_diffusion_z) then
-         if (layer == layer_envelope) then
-            z_new = max(xa(i_metals) + dz, 0.0d0)
-         else
-            z_max = 1.0d0 - xa(i_h1) - xa(i_he3)
-            z_new = min(xa(i_metals) + dz, z_max)
-         end if
-         z_ratio = z_new/xa(i_metals)
-         xa(i_metals) = z_new
-         xa(i_c12:i_o18) = z_ratio*xa(i_c12:i_o18)
-      end if
-      xa(i_he4) = 1.0d0 - xa(i_h1) - xa(i_metals) - xa(i_he3)
-      if (diffusion_settings%diffuse_lithium) then
-         do k = 1, size(light_element_id)
-            row = light_element_id(k)
-            if (layer == layer_core) then
-               xa(row) = max(xa(row) + dlight(k), 0.0d0)
-            else
-               xa(row) = xa(row) + dlight(k)
-            end if
-         end do
-      end if
-end subroutine change_zone
 
 end module microdiff_mapping
 

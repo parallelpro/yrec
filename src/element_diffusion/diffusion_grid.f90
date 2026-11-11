@@ -16,16 +16,23 @@
 !   centre 1, n  the model's values at zone_begin and zone_end;
 !   the others   4-point Lagrange (numerics_lib's interp and lagrange4)
 !                on the four zones around the point (locate_stencil).
-! locate_stencil also serves the maps back to the model (microdiff_etm,
-! equal_to_model), the equal grid then being the table.
+! apply_grid_changes maps the species' changes on the centres back to
+! the model's zones (both pipelines' map back), with locate_stencil on
+! the equal grid as the table, and change_zone applies a zone's change.
 module diffusion_grid
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use composition_layout, only: json
+      use composition_layout, only: json, i_h1, i_he4, i_metals, i_he3, i_c12, i_o18
       use numerics_lib, only: interp, lagrange4
       implicit none
       private
       public :: equal_grid_map, size_equal_grid, place_equal_grids, &
-           build_equal_grid_map, map_field, locate_stencil
+           build_equal_grid_map, map_field, locate_stencil, apply_grid_changes, &
+           change_zone
+
+! the three layers of the model whose zones change by different rules
+! (change_zone): the convective core (and zone_begin), the region's
+! interior, the surface convection zone (and zone_end)
+      integer, parameter :: layer_core = 1, layer_interior = 2, layer_envelope = 3
 
 ! Where each point of the two grids takes its values from: midpoint 1
 ! from zones first_mid_zone-1 and first_mid_zone with the fraction
@@ -201,5 +208,108 @@ pure subroutine locate_stencil(table, num_table, target, search_from, search_to,
       search_from = num_table
       found = .false.
 end subroutine locate_stencil
+
+! ---------------------------------------------------------------
+! The changes of X (hydrogen_change), Z (metal_change, with_metals) and
+! the light elements (light_change, rows light_rows, with_light) at the
+! num_points centres eq_radius, applied to the model's zones (radius):
+! every zone up to zone_begin takes the first centre's change, every
+! zone from zone_end on (to num_zones) the last centre's, and the zones
+! between the change interpolated at their radius (4-point Lagrange on
+! locate_stencil's points). A grid of fewer than four points has no
+! stencil of its own: with clamp_short_grid (the original routines) the
+! stencil starts at point 1; without it (microdiff, the F77's "JVS fix")
+! only a three-point grid's does, and a two-point grid's reads outside
+! the grid (docs/bug_sweep.md O21). change_zone applies each change.
+pure subroutine apply_grid_changes(eq_radius, num_points, radius, zone_begin, zone_end, &
+     num_zones, hydrogen_change, metal_change, light_change, light_rows, with_metals, &
+     with_light, clamp_short_grid, composition)
+      real(dp), intent(in) :: eq_radius(:), radius(:)
+      integer, intent(in) :: num_points, zone_begin, zone_end, num_zones
+      real(dp), intent(in) :: hydrogen_change(:), metal_change(:), light_change(:,:)
+      integer, intent(in) :: light_rows(:)
+      logical, intent(in) :: with_metals, with_light, clamp_short_grid
+      real(dp), intent(inout) :: composition(:,:)
+      real(dp) :: weight(4), dx, dz, dlight(size(light_rows))
+      integer :: i, k, k0, search_from
+      logical :: found
+
+      do i = 1, zone_begin
+         call change_zone(composition(:,i), hydrogen_change(1), metal_change(1), &
+              light_change(:,1), light_rows, with_metals, with_light, layer_core)
+      end do
+      search_from = 2
+      do i = zone_begin+1, zone_end-1
+         call locate_stencil(eq_radius, num_points, radius(i), search_from, num_points, &
+              k0, found)
+         if (found .and. clamp_short_grid .and. k0 < 1) k0 = 1
+         if (found .and. .not. clamp_short_grid .and. k0 == 0) k0 = 1
+         call interp(eq_radius(k0:k0+3), weight, x_eval=radius(i))
+         dx = lagrange4(weight, hydrogen_change(k0:k0+3))
+         dz = 0.0d0
+         if (with_metals) dz = lagrange4(weight, metal_change(k0:k0+3))
+         do k = 1, size(light_rows)
+            dlight(k) = 0.0d0
+            if (with_light) dlight(k) = lagrange4(weight, light_change(k,k0:k0+3))
+         end do
+         call change_zone(composition(:,i), dx, dz, dlight, light_rows, with_metals, &
+              with_light, layer_interior)
+      end do
+      do i = zone_end, num_zones
+         call change_zone(composition(:,i), hydrogen_change(num_points), &
+              metal_change(num_points), light_change(:,num_points), light_rows, &
+              with_metals, with_light, layer_envelope)
+      end do
+end subroutine apply_grid_changes
+
+! ---------------------------------------------------------------
+! One zone's mass fractions xa(species) after settling changes X by dx,
+! Z by dz (with_metals) and the light elements (rows light_rows) by
+! dlight (with_light), in the layer given (layer_core, layer_interior,
+! layer_envelope). Hydrogen rises and the metals sink, so the guards
+! differ by layer (the F77's):
+!   X  at least 0 in the core; elsewhere at most 1 - Z - He3 (the Z
+!      before its change);
+!   Z  at most 1 - X - He3 (the new X), but at least 0 in the envelope;
+!      the CNO tracers (i_c12..i_o18) scaled with it;
+!   Y  1 - X - Z - He3;
+!   the light elements at least 0 in the core, unguarded elsewhere.
+pure subroutine change_zone(xa, dx, dz, dlight, light_rows, with_metals, with_light, layer)
+      real(dp), intent(inout) :: xa(:)
+      real(dp), intent(in) :: dx, dz, dlight(:)
+      integer, intent(in) :: light_rows(:), layer
+      logical, intent(in) :: with_metals, with_light
+      real(dp) :: x_max, z_max, z_new, z_ratio
+      integer :: k, row
+
+      if (layer == layer_core) then
+         xa(i_h1) = max(xa(i_h1) + dx, 0.0d0)
+      else
+         x_max = 1.0d0 - xa(i_metals) - xa(i_he3)
+         xa(i_h1) = min(xa(i_h1) + dx, x_max)
+      end if
+      if (with_metals) then
+         if (layer == layer_envelope) then
+            z_new = max(xa(i_metals) + dz, 0.0d0)
+         else
+            z_max = 1.0d0 - xa(i_h1) - xa(i_he3)
+            z_new = min(xa(i_metals) + dz, z_max)
+         end if
+         z_ratio = z_new/xa(i_metals)
+         xa(i_metals) = z_new
+         xa(i_c12:i_o18) = z_ratio*xa(i_c12:i_o18)
+      end if
+      xa(i_he4) = 1.0d0 - xa(i_h1) - xa(i_metals) - xa(i_he3)
+      if (with_light) then
+         do k = 1, size(light_rows)
+            row = light_rows(k)
+            if (layer == layer_core) then
+               xa(row) = max(xa(row) + dlight(k), 0.0d0)
+            else
+               xa(row) = xa(row) + dlight(k)
+            end if
+         end do
+      end if
+end subroutine change_zone
 
 end module diffusion_grid

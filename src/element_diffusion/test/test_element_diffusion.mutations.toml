@@ -8,16 +8,16 @@ timeout = 120
 [[mutation]]
 id = 'pipeline-01'
 check = 'microdiff: X + Y + Z + He3 = 1 in every zone after a step'
-file = 'element_diffusion/microdiff_mapping.f90'
+file = 'element_diffusion/diffusion_grid.f90'
 old = 'xa(i_he4) = 1.0d0 - xa(i_h1) - xa(i_metals) - xa(i_he3)'
 new = 'xa(i_he4) = 1.0d0 - xa(i_h1) - xa(i_metals)'
 
 [[mutation]]
 id = 'pipeline-02'
 check = "microdiff: each species' mass conserved"
-file = 'element_diffusion/microdiff_mapping.f90'
-old = '''         call change_zone(composition(:,i), hydrogen_change(num_eq_points), &'''
-new = '''         call change_zone(composition(:,i), hydrogen_change(num_eq_points-1), &'''
+file = 'element_diffusion/diffusion_grid.f90'
+old = '''         call change_zone(composition(:,i), hydrogen_change(num_points), &'''
+new = '''         call change_zone(composition(:,i), hydrogen_change(num_points-1), &'''
 
 [[mutation]]
 id = 'pipeline-03'
@@ -43,7 +43,7 @@ new = 'alpha_scale = c4pi*sqrt(timestep)/grid_spacing'
 [[mutation]]
 id = 'pipeline-06'
 check = "microdiff: a convective core's zones change together"
-file = 'element_diffusion/microdiff_mapping.f90'
+file = 'element_diffusion/diffusion_grid.f90'
 old = '''      do i = 1, zone_begin
          call change_zone('''
 new = '''      do i = 2, zone_begin
