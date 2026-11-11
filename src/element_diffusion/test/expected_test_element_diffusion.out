@@ -557,3 +557,26 @@ ierr = 0
    13  0.0000000000000000E+000
    14  0.0000000000000000E+000
    15  0.0000000000000000E+000
+
+# checks
+microdiff: X + Y + Z + He3 = 1 in every zone after a step                  ok
+microdiff: each species' mass conserved (3e-4 of the mass moved)           ok
+microdiff: helium, the metals and Li6, Li7, Be9 sink; hydrogen rises       ok
+microdiff: a zero timestep changes nothing                                 ok
+microdiff: the change is linear in a small timestep                        ok
+microdiff: a convective core's zones change together                       ok
+find_settling_region: from a core's top to the envelope's base             ok
+find_settling_region: fully convective, X or Y below its floor: no region  ok
+plan_settling_substeps: tau = 4.348e21 yr q/T^1.5, linear in q, T^-1.5     ok
+plan_settling_substeps: the count is max(1, ceiling(dt/longest))           ok
+size_equal_grid: ceiling(span/narrowest zone) points, evenly spaced        ok
+map_field: exact on a linear field, every point                            ok
+map_field: exact on a cubic at the interior points (4-point Lagrange)      ok
+locate_stencil: two points each side, kept within the table                ok
+diffusion_scheme: both Lax-Wendroff steps and the implicit step conserve   ok
+compute_coulomb_logarithms: symmetric, and the H-H one from k, e (1e-4)    ok
+compute_coulomb_logarithms: weak coupling, ln L(H) - ln L(He) = 0.975 ln 4 ok
+compute_coulomb_logarithms: strong coupling, ln L(H)/ln L(He) = 4^1.2      ok
+thoul_diffusion: no current and no net mass flow                           ok
+thoul_diffusion: the coefficients scale as 1/ln Lambda                     ok
+thoul_diffusion: hydrogen rises, helium and iron sink                      ok

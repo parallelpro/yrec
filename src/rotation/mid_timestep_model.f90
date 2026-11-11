@@ -411,7 +411,8 @@ subroutine burn_and_settle(s, sub_physics, timestep, composition, shell_mass, lo
       use physical_constants
       use math_lib
       use burn_step, only: burn_network_region, burn_regions
-      use element_diffusion_lib, only: diffuse_elements
+      use element_diffusion_lib, only: diffuse_elements, settling_substep_plan, &
+           plan_settling_substeps
       use net_lib, only: num_rate_rows
       implicit none
       type(star_info), intent(inout) :: s
@@ -442,8 +443,8 @@ subroutine burn_and_settle(s, sub_physics, timestep, composition, shell_mass, lo
       integer, allocatable :: regions(:,:)
       integer :: zone_idx, region_idx, species_idx, outer_boundary_zone, num_settling_substeps, &
            substep_idx
-      double precision :: mass_fraction_above, settling_timescale, &
-           max_settling_dt, settling_dt
+      double precision :: settling_dt
+      type(settling_substep_plan) :: substeps
 
       integer, intent(out) :: ierr
 
@@ -519,34 +520,22 @@ subroutine settle_helium()
                  log_pressure(zone_idx)))
          end do
 ! The settling step is limited only when the outer boundary lies above
-! zone 1 (BC 6/92).
+! zone 1 (BC 6/92): sub-steps no longer than settling_timestep_fraction
+! (legacy DT_GS) of helium's settling timescale at the outer boundary
+! (element_diffusion's plan_settling_substeps, after Michaud et al.
+! 1984), as in the composition step.
          if (outer_boundary_zone.ge.2) then
-! The mass fraction above the outer boundary, f_m = (M - m_b)/M.
-            mass_fraction_above = (total_mass- &
-                 enclosed_mass(outer_boundary_zone))/total_mass
-! The settling timescale of helium at the outer boundary (Michaud et
-! al. 1984, ApJ 282, 206), in s:
-!   tau = 4.348e21 yr f_m/T_b^1.5.
-            settling_timescale = 4.348d21*seconds_per_year* &
-                 mass_fraction_above/ &
-                 exp(ln10*1.5d0*log_temperature(outer_boundary_zone))
-! Settling sub-steps no longer than settling_timestep_fraction (legacy
-! DT_GS) times tau, and one if timestep is shorter: the count is
-! max(1, ceiling(timestep/max_settling_dt)), as in the composition step.
-! (The original took mod(max_settling_dt, timestep), arguments reversed,
-! which added one sub-step at an exact multiple; docs/bug_sweep.md O16.)
+            substeps = plan_settling_substeps(timestep, &
+                 rotation_settings%settling_timestep_fraction, total_mass, &
+                 enclosed_mass(outer_boundary_zone), log_temperature(outer_boundary_zone))
             if (solver_diagnostics()) write(run_log_unit,*) 'JMAX=', &
                  outer_boundary_zone,' FM= ', &
-                 mass_fraction_above,' TSCALE=',settling_timescale
-            max_settling_dt = rotation_settings%settling_timestep_fraction*settling_timescale
-            num_settling_substeps = int(timestep/max_settling_dt)
-            if (mod(timestep,max_settling_dt).ne.0.0d0.or. &
-                 num_settling_substeps.eq.0) &
-                 num_settling_substeps=num_settling_substeps+1
+                 substeps%mass_fraction_above,' TSCALE=',substeps%timescale
             if (solver_diagnostics()) write(run_log_unit,*) &
-                 'DTMAX=',max_settling_dt,' DELTS=',timestep, &
-                 ' NSTEP=',num_settling_substeps
-            settling_dt = timestep/dfloat(num_settling_substeps)
+                 'DTMAX=',substeps%longest_substep,' DELTS=',timestep, &
+                 ' NSTEP=',substeps%num_substeps
+            num_settling_substeps = substeps%num_substeps
+            settling_dt = substeps%substep
          else
             num_settling_substeps=1
             settling_dt = timestep
@@ -571,7 +560,7 @@ subroutine settle_helium()
             call diffuse_elements(settling_dt,composition,dlnp_dr_settling, &
                  log_radius,log_density,enclosed_mass,log_temperature, &
                  sub_physics%gradT,am_transport_convective_flag,num_zones, &
-                 total_mass,s%settling_active, &
+                 total_mass, &
                  s%settling_suspended_reported, ierr)
             if (ierr /= 0) return
          end do

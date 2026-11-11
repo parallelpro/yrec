@@ -1,14 +1,47 @@
 !----------------------------------------------------------------------
 ! original_settling
 !----------------------------------------------------------------------
-! The original settling routines (use_new_diffusion_routines false):
-! gravitational_settling, and its setup of the diffusion coefficients.
+! The original settling routines (use_new_diffusion_routines false; no
+! shipped deck selects them): gravitational_settling settles hydrogen
+! and helium, and the metals (use_diffusion_z) as fully ionized iron,
+! over one step, in the formalism of Bahcall & Loeb (1990). Over the
+! settling region diffuse_elements found:
+!   1. gravitational_settling_setup: the timestep, d ln P/dr, the
+!      enclosed mass and the total mass in Bahcall & Loeb units, in
+!      place; at every zone the coefficients D1 and D2 of
+!      dX/dt = (1/(rho r^2)) d/dr [D1 + D2 dX/dr] and their derivatives
+!      in X (in Z for the metals): the older analytic ones, or Thoul et
+!      al.'s (1994) from Burgers' equations with coulomb_log_choice's
+!      logarithm, or their fit (use_thoul_fit);
+!   2. model_to_equal (settling_grid): the equal grids and the
+!      coefficients and abundances on them;
+!   3. the drift by the two Lax-Wendroff steps (diffusion_scheme), for X
+!      and for Z, the midpoints' D1 corrected by its derivative for the
+!      half step's change;
+!   4. iterate_hydrogen_diffusion: hydrogen's diffusion term, the implicit
+!      step iterated with D2 corrected by its derivative, until the
+!      largest change is below settling_tolerance (settling_num_iterations
+!      passes at most); the metals have no diffusion term here;
+!   5. equal_to_model (settling_grid): the changes back on the model, and
+!      the units back.
+! Four defects found in 2026 are recorded, not fixed, until the authors
+! decide to fix and test these routines or retire them
+! (docs/bug_sweep.md M243-M246: the Noerdlinger term's sign, ln Lambda
+! twice with choices 2 and 3, the iteration's midpoint change one slot
+! off, the convergence on the largest signed change), and M33 (the
+! metals' coefficients unset without use_thoul_diffusion).
 module original_settling
+      use, intrinsic :: iso_fortran_env, only: dp => real64
+      use composition_layout, only: json
       use element_diffusion_configuration, only: diffusion_settings
       use element_diffusion_scratch, only: diffusion_scratch
       use settling_grid, only: model_to_equal, equal_to_model
-      use diffusion_scheme, only: lax_wendroff_step1, lax_wendroff_step2, implicit_diffusion_coeffs
+      use diffusion_scheme, only: lax_wendroff_step1, lax_wendroff_step2, &
+           implicit_diffusion_coeffs
       use thoul_solver, only: thoul_diffusion
+      use coulomb_logarithm, only: compute_concentrations, compute_coulomb_logarithms
+      use element_diffusion_messages, only: note_solve_pass, report_unconverged, &
+           report_numerics_failure
       implicit none
       private
       public :: gravitational_settling
@@ -16,635 +49,348 @@ module original_settling
 contains
 
 ! ---------------------------------------------------------------
-! GRSETT SOLVES FOR THE GRAVITATIONAL SETTLING OF HELIUM USING THE
-! FORMULISM OF BAHCALL AND LOEB 1989.  METAL SETTLING (MHP 3/94) IS
-! CARRIED ALONGSIDE IN diff_scr%metal_abundance_change WHEN
-! diffusion_settings%use_diffusion_z IS SET.
-! GRSETT PERFORMS THE FOLLOWING SERIES OF OPERATIONS :
-! 1)  TRANSFORMS TO AN EQUALLY SPACED GRID IN RADIUS (AND MANIPULATES
-! THE MODEL VARIABLES INTO BAHCALL AND LOEB UNITS).
-!
-! THE DIFFUSION EQUATION HAS TWO TERMS : ONE THAT DEPENDS ON DLNP/DR*DX/DR
-! AND ONE THAT DEPENDS ON D^2X/DR^2. THE DIFFUSION COEFFICIENTS ARE
-! THEMSELVES FUNCTIONS OF BOTH THE THERMAL STRUCTURE AND X.
-! GRSETT SOLVES THIS DIFFUSION EQUATION IN TWO STEPS :
-! 2) THE FIRST TERM IS SOLVED EXPLICITLY USING THE TWO-STEP
-! LAX-WENDROFF SCHEME (NUMERICAL RECIPES, PRESS ET AL. 1986,
-! CAMBRIDGE UNIVERSITY PRESS,P.633)
-! 3) THE SECOND TERM IS SOLVED IMPLICITLY, USING THE MODIFIED RUN OF
-! ABUNDANCE FOUND IN STEP 2) AS THE 'INITIAL' RUN OF ABUNDANCE.
-! THE IMPLICIT SCHEME ITERATES ON THE DIFFUSION COEFFICIENTS UNTIL
-! THE SOLUTION CONVERGES TO WITHIN THE USER-SPECIFIED TOLERANCE
-! settling_tolerance.
-!
-! 4) GRSETT THEN UPDATES THE ABUNDANCE ARRAY AND EXITS.
-!
-! INPUT VARIABLES :
-!
-! timestep - TIMESTEP (SEC)
-! composition - RUN OF MASS FRACTIONS OF SPECIES. composition(1,..)=X,
-!               composition(2,...)=Y, composition(3,...)=Z
-! dlnp_dr - DLNP/DR
-! log_radius - LOG RADIUS (CM)
-! mass_grams - MASS (GM), UNLOGGED
-! log_temperature - LOG TEMPERATURE (K)
-! del_grad - DEL (=DLNT/DLNP) per zone (core passes star%gradT, burn_and_settle
-!     its mid-step gradient)
-! convective_flag - FLAG T/F FOR CONVECTION
-! num_zones - NUMBER OF MODEL POINTS
-!
-! OUTPUT VARIABLES :
-!
-! NEW RUN OF composition(1,...) AND composition(2,...).
-!
-! CONVERT MODEL QUANTITIES TO BAHCALL AND LOEB UNITS; LOCATE
-! BOUNDARIES OF CONVECTIVE CORE AND ENVELOPE IF APPLICABLE.
-! COMPUTE THE DIFFUSION COEFFICIENTS (diffusion_coeff1 AND
-! diffusion_coeff2) AND THEIR DERIVATIVES WITH RESPECT TO X
-! (diffusion_coeff1_dx AND diffusion_coeff2_dx).
-!
-subroutine gravitational_settling(diff_scr, &
-     timestep, composition, dlnp_dr, log_radius, log_density, &
-     mass_grams, log_temperature, del_grad, convective_flag, num_zones, total_mass, &
-     suspension_reported, ierr)
-
-      use composition_layout, only: json
-      use run_messages, only: run_log_unit, terminal_unit, solver_diagnostics
-      use physical_constants
-      use numerics_lib, only: solve_tridiagonal, numerics_status_text
-      implicit none
+! One step of timestep seconds over zone_begin..zone_end of a model of
+! num_zones zones: the mass fractions composition(species, zone) change
+! in place. The structure as diffuse_elements describes it; timestep,
+! dlnp_dr, enclosed_mass and total_mass are converted to Bahcall & Loeb
+! units and back in place. ierr: a numerics routine's status, after its
+! message.
+subroutine gravitational_settling(diff_scr, timestep, composition, dlnp_dr, log_radius, &
+     log_density, enclosed_mass, log_temperature, del_grad, num_zones, total_mass, &
+     zone_begin, zone_end, ierr)
       type(diffusion_scratch), intent(inout) :: diff_scr
-
-      double precision, intent(inout) :: timestep
-      double precision, intent(inout) :: composition(15,json)
-      double precision, intent(inout) :: dlnp_dr(json)
-      double precision, intent(in) :: log_radius(json), log_density(json), &
-           log_temperature(json), del_grad(json)
-      double precision, intent(inout) :: mass_grams(json)
-      logical, intent(in) :: convective_flag(json)
-      integer, intent(in) :: num_zones
-      double precision, intent(inout) :: total_mass
+      real(dp), intent(inout) :: timestep, total_mass
+      real(dp), intent(inout) :: composition(:,:), dlnp_dr(:), enclosed_mass(:)
+      real(dp), intent(in) :: log_radius(:), log_density(:), log_temperature(:), del_grad(:)
+      integer, intent(in) :: num_zones, zone_begin, zone_end
       integer, intent(out) :: ierr
-      ! the run log's latch: a suspension of settling is reported once
-      logical, intent(inout) :: suspension_reported
-! --- locals ---
-! Names below are chosen to match the dummy-argument names of the
-! callees (gravitational_settling_setup/model_to_equal/lax_wendroff_step1/
-! lax_wendroff_step2/implicit_diffusion_coeffs/solve_tridiagonal/
-! equal_to_model) at each corresponding call site.
-      double precision :: equal_mass(json), equal_radius(json), &
-           sub_diag(json), diag(json), super_diag(json), &
-           equal_hydrogen_fraction(json)
-      double precision :: radius_bl(json), temperature_bl(json)
-      double precision :: equal_mass_mid(json), hydrogen_x_prev_iter(json), &
-           hydrogen_x_orig(json), alpha(json), &
-           equal_hydrogen_fraction_mid(json)
-      double precision :: diffusion_coeff1(json), diffusion_coeff2(json), &
-           diffusion_coeff1_dx(json), diffusion_coeff2_dx(json)
-      double precision :: equal_diffusion_coeff1(json), &
-           equal_diffusion_coeff1_mid(json), hydrogen_x_prime(json), &
-           equal_diffusion_coeff2_mid(json), &
-           equal_diffusion_coeff1_dx_mid(json), &
-           equal_diffusion_coeff2_dx_mid(json)
-      double precision :: metal_x_orig(json)
-      integer :: zone_begin, zone_end
-      logical :: settling_skipped_flag
-      integer :: eq_idx
-      logical :: use_generic_diffusion_vectors
-      double precision :: grid_spacing
-      integer :: num_equal_points
-      double precision :: alpha_prefactor
-      integer :: iter_count
-      double precision :: max_delta_x
-      integer :: max_delta_x_zone
-      double precision :: delta_x_local
+! on the model's zones: the radius and the temperature in Bahcall & Loeb
+! units, hydrogen's D1 and D2 and their derivatives in X
+      real(dp) :: radius_bl(json), temperature_bl(json), coeff1(json), coeff2(json), &
+           coeff1_dx(json), coeff2_dx(json)
+! on the equal grids (_mid: at the midpoints): the centres' radius, the
+! enclosed mass, hydrogen's coefficients and derivatives, X (then its
+! change), and X and Z at the step's start
+      real(dp) :: eq_radius(json), eq_mass(json), eq_mass_mid(json), eq_coeff1(json), &
+           eq_coeff1_mid(json), eq_coeff2_mid(json), eq_coeff1_dx_mid(json), &
+           eq_coeff2_dx_mid(json), eq_hydrogen(json), eq_hydrogen_mid(json), &
+           hydrogen_start(json), metal_start(json)
+      real(dp) :: grid_spacing
+      integer :: n, i
 
       ierr = 0
-
-      call gravitational_settling_setup(diff_scr, &
-           timestep,dlnp_dr,log_radius,log_density,mass_grams, &
-           log_temperature,del_grad,convective_flag,num_zones,total_mass, &
-           diffusion_coeff1,diffusion_coeff2,composition,radius_bl, &
-           temperature_bl,zone_begin,zone_end,settling_skipped_flag, &
-           diffusion_coeff1_dx,diffusion_coeff2_dx, suspension_reported, ierr)
+      call gravitational_settling_setup(diff_scr, timestep, dlnp_dr, log_radius, &
+           log_density, enclosed_mass, log_temperature, del_grad, num_zones, total_mass, &
+           coeff1, coeff2, composition, radius_bl, temperature_bl, coeff1_dx, coeff2_dx, &
+           ierr)
       if (ierr /= 0) return
-!
-! SKIP SETTLING FOR FULLY CONVECTIVE (OR H/HE-EXHAUSTED) MODELS.
-      if(settling_skipped_flag) return
-!  TRANSFORM TO AN EQUALLY SPACED GRID IN RADIUS.
-!  NOTE : PREFIX E ALONE=VARIABLE AT EQUALLY SPACED GRID POINTS.
-!         PREFIX E + SUFFIX _H= VARIABLE AT MIDPOINT BETWEEN EQUALLY
-!         SPACED GRID POINTS.(BOTH ARE NEEDED FOR THE DIFFUSION TECHNIQUE).
-!
-      call model_to_equal(diff_scr, diffusion_coeff1,diffusion_coeff2,composition, &
-           radius_bl,mass_grams, &
-           zone_begin,zone_end,num_zones,diffusion_coeff1_dx, &
-           diffusion_coeff2_dx,grid_spacing, &
-           equal_diffusion_coeff1,equal_diffusion_coeff1_mid, &
-           equal_diffusion_coeff2_mid,equal_mass,equal_mass_mid, &
-           equal_diffusion_coeff1_dx_mid,equal_diffusion_coeff2_dx_mid, &
-           equal_radius,equal_hydrogen_fraction, &
-           equal_hydrogen_fraction_mid,num_equal_points)
-!
-! STORE ORIGINAL RUN OF HYDROGEN MASS FRACTION IN VECTOR hydrogen_x_orig.
-! THE CHANGE IN HYDROGEN (equal_hydrogen_fraction - hydrogen_x_orig) IS
-! INTERPOLATED BACK TO THE ORIGINAL GRID AT THE END OF THE ROUTINE; THE
-! CHANGE IN ABUNDANCE (RATHER THAN THE NEW RUN OF ABUNDANCE) IS USED TO
-! MINIMIZE ERRORS ARISING FROM THE INTERPOLATION.
-      do eq_idx = 1,num_equal_points
-         hydrogen_x_orig(eq_idx) = equal_hydrogen_fraction(eq_idx)
-      end do
-! MHP 3/94 METAL DIFFUSION
-      if(diffusion_settings%use_diffusion_z)then
-         do eq_idx = 1,num_equal_points
-            metal_x_orig(eq_idx) = diff_scr%metal_abundance_change(eq_idx)
-         end do
-      endif
-!  FIRST STEP OF TWO STEP LAX-WENDROFF METHOD.   COMPUTE NEW X'S AT ZONE
-!  MIDPOINTS USING THE LAX SCHEME :
-! X(N+1/2,J+1/2)=1/2(X(N,J+1/2)-1/2(DT/DR)(diffusion_coeff1(N,J+1)-diffusion_coeff1(N,J))
-! WHERE N IS THE TIME VARIABLE, J IS THE SPATIAL ONE, AND diffusion_coeff1
-! IS THE DIFFUSION COEFFICIENT.
-!
-! SOLVE FOR NEW ABUNDANCES AT THE ZONE MIDPOINTS USING THE ABOVE D.C.
-! WITH use_generic_diffusion_vectors = FALSE, SIGNIFYING THAT LAX_WENDROF
-! SHOULD DIFFUSE Z.
-!
-      use_generic_diffusion_vectors = .false.
-      call lax_wendroff_step1(diff_scr, timestep,equal_diffusion_coeff1,equal_mass, &
-           num_equal_points,total_mass,equal_hydrogen_fraction_mid, &
-           use_generic_diffusion_vectors)
-!
-! NOW COMPUTE NEW DIFFUSION COEFFICIENTS AT THE ZONE MIDPOINTS USING THE
-! PROVISIONAL SOLUTION FOR X AT THE ZONE MIDPOINTS.
-!
-! GET NEW DIFFUSION COEFFICIENTS.
-! ALSO DEFINE VECTOR hydrogen_x_prev_iter, WHICH IS THE HYDROGEN
-! ABUNDANCE AT THE END OF THE PREVIOUS ITERATION.
-!
-      do eq_idx=1,num_equal_points-1
-         equal_diffusion_coeff1_mid(eq_idx)=equal_diffusion_coeff1_mid(eq_idx)+ &
-              equal_hydrogen_fraction_mid(eq_idx)*equal_diffusion_coeff1_dx_mid(eq_idx)
-         hydrogen_x_prev_iter(eq_idx) = hydrogen_x_orig(eq_idx)
-      end do
-      hydrogen_x_prev_iter(num_equal_points) = hydrogen_x_orig(num_equal_points)
-! MHP 3/94 METAL DIFFUSION
-      if(diffusion_settings%use_diffusion_z)then
-         do eq_idx=1,num_equal_points-1
-            diff_scr%metal_diffusion_coeff1_mid(eq_idx)=diff_scr%metal_diffusion_coeff1_mid(eq_idx)+ &
-                 diff_scr%metal_abundance_change_mid(eq_idx)*diff_scr%eq_metal_diffusion_coeff1_mid(eq_idx)
-         end do
-      endif
-!
-! USING THE NEW COEFFICIENTS, SOLVE FOR THE NEW RUN OF HYDROGEN ABUNDANCES.
-! NOTE : THE SR ACTUALLY RETURNS THE *CHANGE* IN THE ABUNDANCE AS A FUNCTION
-! OF RADIUS, WHICH IS APPLIED TO THE ORIGINAL RUN OF X, RATHER THAN
-! COMPUTING A NEW RUN OF ABUNDANCE AND TRANSFORMING IT BACK.  THIS IS DONE
-! TO MINIMIZE ERRORS FROM THE INTERPOLATION.
-!
-      call lax_wendroff_step2(diff_scr, timestep,equal_diffusion_coeff1_mid,equal_mass_mid, &
-           equal_hydrogen_fraction,num_equal_points,total_mass, &
-           use_generic_diffusion_vectors)
-!
-!  NOW IMPLICITLY SOLVE FOR THE SECOND TERM (INVOLVING THE SECOND
-!  DERIVATIVE OF THE COMPOSITION GRADIENT).
-!  hydrogen_x_prime IS THE HYDROGEN ABUNDANCE ONE WOULD HAVE IN THE
-!  ABSENCE OF THE SECOND TERM IN THE DIFFUSION EQUATION.
-      do eq_idx = 1,num_equal_points
-         hydrogen_x_prime(eq_idx) = equal_hydrogen_fraction(eq_idx)
-      end do
-!  alpha IS THE NUMERICAL FACTOR IN FRONT OF THE DIFFUSION COEFFICIENTS.
-      alpha_prefactor = c4pi*timestep/grid_spacing
-      alpha(1) = alpha_prefactor/equal_mass_mid(1)
-      do eq_idx = 2,num_equal_points-1
-         alpha(eq_idx) = alpha_prefactor/(equal_mass_mid(eq_idx)-equal_mass_mid(eq_idx-1))
-      end do
-      alpha(num_equal_points) = alpha_prefactor/ &
-           (total_mass-equal_mass_mid(num_equal_points-1))
-!  START ITERATION LOOP FOR THE NEW RUN OF HYDROGEN.
-      do iter_count=1,diffusion_settings%settling_num_iterations
-!  FIND CHANGE IN X AT THE ZONE MIDPOINTS, GIVEN CHANGE IN X AT
-!  THE ZONE CENTERS.
-         do eq_idx = 2,num_equal_points
-            equal_hydrogen_fraction_mid(eq_idx) = 0.5d0*(equal_hydrogen_fraction(eq_idx)+ &
-                 equal_hydrogen_fraction(eq_idx-1)-hydrogen_x_prev_iter(eq_idx)- &
-                 hydrogen_x_prev_iter(eq_idx-1))
-         end do
-!  STORE CURRENT RUN OF HYDROGEN ABUNDANCES IN VECTOR hydrogen_x_prev_iter.
-!  THE ITERATION LOOP IS COMPLETED ONCE equal_hydrogen_fraction -
-!  hydrogen_x_prev_iter IS EVERYWHERE LESS THAN THE TOLERANCE
-!  settling_tolerance.
-         do eq_idx = 1,num_equal_points
-            hydrogen_x_prev_iter(eq_idx) = equal_hydrogen_fraction(eq_idx)
-         end do
-!  GET NEW DIFFUSION COEFFICIENTS, TAKING INTO ACCOUNT THE CHANGE IN X
-!  FROM THE PREVIOUS ITERATION.
-!
-         call implicit_diffusion_coeffs(alpha,equal_diffusion_coeff2_mid, &
-              equal_hydrogen_fraction_mid,equal_diffusion_coeff2_dx_mid, &
-              sub_diag,diag,super_diag,num_equal_points)
-!
-!  SOLVE THE TRIDIAGONAL MATRIX SYSTEM FOR THE NEW RUN OF X.
-!
-         call solve_tridiagonal(sub_diag,diag,super_diag,hydrogen_x_prime, &
-              num_equal_points,equal_hydrogen_fraction, ierr)
-         if (ierr /= 0) then
-            write(*,*) 'solve_tridiagonal: '//numerics_status_text(ierr)
-            return
-         end if
-!
-!  CHECK TO SEE IF THE CORRECTIONS TO THE HYDROGEN ABUNDANCE ARE SMALL
-!  ENOUGH TO EXIT.
-         max_delta_x = 0.0d0
-         max_delta_x_zone = 0
-         do eq_idx = 1,num_equal_points
-            delta_x_local = equal_hydrogen_fraction(eq_idx)-hydrogen_x_prev_iter(eq_idx)
-            if(delta_x_local.gt.max_delta_x)then
-               max_delta_x = delta_x_local
-               max_delta_x_zone = eq_idx
-            endif
-         end do
-! solver forensics
-         if (solver_diagnostics()) &
-              write(run_log_unit,90)iter_count,max_delta_x,max_delta_x_zone
- 90      format(1x,'ITERATION ',i3,' DXMAX ',1pe10.2,' IMAX ',i4)
-!  EXIT ITERATION LOOP IF SYSTEM HAS CONVERGED.
-         if(max_delta_x.lt.diffusion_settings%settling_tolerance)exit
-      end do
-      if (iter_count > diffusion_settings%settling_num_iterations) then
-      write(terminal_unit,110)diffusion_settings%settling_tolerance,diffusion_settings%settling_num_iterations,max_delta_x, &
-           max_delta_x_zone
-      write(run_log_unit,110)diffusion_settings%settling_tolerance,diffusion_settings%settling_num_iterations, &
-           max_delta_x,max_delta_x_zone
- 110  format(1x,'GRSETT FAILED TO CONVERGE TO WITHIN ',1pe9.3,' IN ',i3, &
-           'ITERATIONS'/1x,'LAST ITERATION CHANGE IN X ',1pe9.3, &
-           ' IN EQUALLY SPACED SHELL ',i5)
+      call model_to_equal(diff_scr, coeff1, coeff2, composition, radius_bl, enclosed_mass, &
+           zone_begin, zone_end, num_zones, coeff1_dx, coeff2_dx, grid_spacing, &
+           eq_coeff1, eq_coeff1_mid, eq_coeff2_mid, eq_mass, eq_mass_mid, &
+           eq_coeff1_dx_mid, eq_coeff2_dx_mid, eq_radius, eq_hydrogen, eq_hydrogen_mid, n)
+! The abundances at the step's start: the changes, not the new runs, go
+! back to the model.
+      hydrogen_start(1:n) = eq_hydrogen(1:n)
+      if (diffusion_settings%use_diffusion_z) metal_start(1:n) = diff_scr%eq_metal_fraction(1:n)
+! Lax-Wendroff step 1, X and Z: the half step's change at the midpoints,
+! and the midpoints' D1 corrected for it, D1 += (dD1/dX) dX.
+      call lax_wendroff_step1(timestep, eq_coeff1, eq_mass, n, total_mass, eq_hydrogen_mid)
+      if (diffusion_settings%use_diffusion_z) then
+         call lax_wendroff_step1(timestep, diff_scr%metal_coeff1, eq_mass, n, total_mass, &
+              diff_scr%eq_metal_fraction_mid)
       end if
-!  FIND RUN OF CHANGES IN X.
-      do eq_idx = 1,num_equal_points
-         equal_hydrogen_fraction(eq_idx) = equal_hydrogen_fraction(eq_idx)-hydrogen_x_orig(eq_idx)
+      do i = 1, n-1
+         eq_coeff1_mid(i) = eq_coeff1_mid(i) + eq_hydrogen_mid(i)*eq_coeff1_dx_mid(i)
       end do
-! MHP 3/94 ADDED METAL DIFFUSION
-      if(diffusion_settings%use_diffusion_z)then
-         do eq_idx = 1,num_equal_points
-            diff_scr%metal_abundance_change(eq_idx) = diff_scr%metal_abundance_change(eq_idx) - &
-                 metal_x_orig(eq_idx)
+      if (diffusion_settings%use_diffusion_z) then
+         do i = 1, n-1
+            diff_scr%metal_coeff1_mid(i) = diff_scr%metal_coeff1_mid(i) + &
+                 diff_scr%eq_metal_fraction_mid(i)*diff_scr%metal_coeff1_dz_mid(i)
          end do
-      endif
-! TRANSFORM BACK TO ORIGINAL MODEL GRID; UPDATE HELIUM ARRAY USING
-! X+Y+Z=1.  PRINT DIAGNOSTIC OUTPUT.
-
-      call equal_to_model(diff_scr, timestep,equal_radius,equal_hydrogen_fraction, &
-           zone_begin,zone_end,num_equal_points,composition,dlnp_dr, &
-           radius_bl,mass_grams,num_zones,total_mass)
-
-      return
+      end if
+! Lax-Wendroff step 2, X and Z.
+      call lax_wendroff_step2(timestep, eq_coeff1_mid, eq_mass_mid, eq_hydrogen, n, total_mass)
+      if (diffusion_settings%use_diffusion_z) then
+         call lax_wendroff_step2(timestep, diff_scr%metal_coeff1_mid, eq_mass_mid, &
+              diff_scr%eq_metal_fraction, n, total_mass)
+      end if
+! Hydrogen's diffusion term.
+      call iterate_hydrogen_diffusion(timestep, total_mass, grid_spacing, n, eq_mass_mid, &
+           eq_coeff2_mid, eq_coeff2_dx_mid, hydrogen_start, eq_hydrogen, eq_hydrogen_mid, ierr)
+      if (ierr /= 0) return
+! The changes, back on the model.
+      eq_hydrogen(1:n) = eq_hydrogen(1:n) - hydrogen_start(1:n)
+      if (diffusion_settings%use_diffusion_z) then
+         diff_scr%eq_metal_fraction(1:n) = diff_scr%eq_metal_fraction(1:n) - metal_start(1:n)
+      end if
+      call equal_to_model(diff_scr, timestep, eq_radius, eq_hydrogen, zone_begin, zone_end, &
+           n, composition, dlnp_dr, radius_bl, enclosed_mass, num_zones, total_mass)
 end subroutine gravitational_settling
 
 ! ---------------------------------------------------------------
-! Prepares a model for gravitational_settling's solve: locates the diffusion zone boundaries (excluding any
-! convective core/envelope and any hydrogen- or helium-exhausted
-! region), converts the model to Bahcall & Loeb (1990) natural units,
-! and computes the helium (and, if enabled, iron) settling diffusion
-! coefficients diffusion_coeff1/diffusion_coeff2 and their partial
-! derivatives with respect to X (diffusion_coeff1_dx/diffusion_
-! coeff2_dx) at every zone, using either the simple analytic fit
-! (LTHOUL false) or the full Thoul et al. (1994) coefficients (via
-! thoul_diffusion, LTHOUL true) with a choice of Coulomb-logarithm prescription
-! selected by coulomb_log_choice.
-subroutine gravitational_settling_setup(diff_scr, timestep_seconds, dlnp_dr, log_radius, &
-     log_density, mass_grams, log_temperature, del_grad, convective_flag, &
-     num_zones, total_mass, diffusion_coeff1, diffusion_coeff2, &
-     composition, radius_bl, temperature_bl, zone_begin, zone_end, &
-     settling_skipped_flag, diffusion_coeff1_dx, diffusion_coeff2_dx, &
-     suspension_reported, ierr)
+! Hydrogen's diffusion term over timestep on the n centres (cells as in
+! diffusion_scheme; alpha_i = 4 pi timestep/(grid_spacing dm_i)): the
+! implicit step, X - alpha [D (X_(i+1) - X_i) - ...] = X' (X' the
+! drift's result, eq_hydrogen on entry), passed after pass with each
+! midpoint's D2 (coeff2_mid) corrected by its derivative (coeff2_dx_mid)
+! times the change of X there since the step's start (hydrogen_start),
+! until the largest signed change of a pass is below settling_tolerance,
+! at most settling_num_iterations passes (each pass under solver
+! diagnostics, and a solve that misses the tolerance, reported).
+! (The midpoint change of pass k is stored one slot off from the
+! midpoint it belongs to, and the test takes the signed change:
+! docs/bug_sweep.md M245, M246.) mid_change: work space.
+subroutine iterate_hydrogen_diffusion(timestep, total_mass, grid_spacing, n, mass_mid, &
+     coeff2_mid, coeff2_dx_mid, hydrogen_start, eq_hydrogen, mid_change, ierr)
+      use physical_constants, only: c4pi
+      use numerics_lib, only: solve_tridiagonal
+      real(dp), intent(in) :: timestep, total_mass, grid_spacing
+      integer, intent(in) :: n
+      real(dp), intent(in) :: mass_mid(:), coeff2_dx_mid(:), hydrogen_start(:)
+      real(dp), intent(inout) :: coeff2_mid(:), eq_hydrogen(:), mid_change(:)
+      integer, intent(out) :: ierr
+! alpha_i, the diagonals, the drift's result (the right-hand side) and
+! the previous pass's X
+      real(dp) :: alpha(json), sub_diag(json), diag(json), super_diag(json), &
+           hydrogen_drift(json), hydrogen_prev(json)
+      real(dp) :: alpha_scale, change, dx
+      integer :: i, pass, change_shell
 
-      use composition_layout, only: json, i_h1, i_he4, i_metals, i_he3
+      ierr = 0
+      hydrogen_drift(1:n) = eq_hydrogen(1:n)
+      alpha_scale = c4pi*timestep/grid_spacing
+      alpha(1) = alpha_scale/mass_mid(1)
+      do i = 2, n-1
+         alpha(i) = alpha_scale/(mass_mid(i) - mass_mid(i-1))
+      end do
+      alpha(n) = alpha_scale/(total_mass - mass_mid(n-1))
+      hydrogen_prev(1:n) = hydrogen_start(1:n)
+      change = 0.0d0
+      change_shell = 0
+      do pass = 1, diffusion_settings%settling_num_iterations
+         do i = 2, n
+            mid_change(i) = 0.5d0*(eq_hydrogen(i) + eq_hydrogen(i-1) - hydrogen_prev(i) - &
+                 hydrogen_prev(i-1))
+         end do
+         hydrogen_prev(1:n) = eq_hydrogen(1:n)
+         call implicit_diffusion_coeffs(alpha, coeff2_mid, mid_change, coeff2_dx_mid, &
+              sub_diag, diag, super_diag, n)
+         call solve_tridiagonal(sub_diag, diag, super_diag, hydrogen_drift, n, eq_hydrogen, ierr)
+         if (ierr /= 0) then
+            call report_numerics_failure('solve_tridiagonal', ierr)
+            return
+         end if
+         change = 0.0d0
+         change_shell = 0
+         do i = 1, n
+            dx = eq_hydrogen(i) - hydrogen_prev(i)
+            if (dx > change) then
+               change = dx
+               change_shell = i
+            end if
+         end do
+         call note_solve_pass(pass, change, change_shell)
+         if (change < diffusion_settings%settling_tolerance) exit
+      end do
+      if (pass > diffusion_settings%settling_num_iterations) then
+         call report_unconverged('GRSETT', 'X', diffusion_settings%settling_tolerance, &
+              diffusion_settings%settling_num_iterations, change, change_shell)
+      end if
+end subroutine iterate_hydrogen_diffusion
+
+! ---------------------------------------------------------------
+! The setup of gravitational_settling: timestep_seconds, dlnp_dr,
+! enclosed_mass and total_mass converted to Bahcall & Loeb units in
+! place, radius_bl and temperature_bl the unlogged radius and
+! temperature in those units, and at every zone hydrogen's coefficients
+! (coeff1 = D1, coeff2 = D2) and their derivatives in X (coeff1_dx,
+! coeff2_dx), with the metals' in diff_scr (use_diffusion_z). With
+! f = fgry r^2 T^(5/2)/ln Lambda (fgrz for the metals), X, Z + He3 and
+! del = d ln T/d ln P:
+!   the older analytic coefficients (use_thoul_diffusion off; Bahcall &
+!   Loeb, BC 5/90),
+!     D1 = f d ln P/dr X (1 - X - Z - He3) [5/4 + 6 del (X + 0.32)/
+!          (5.4 + 6.3 X - 4.5 X^2)],
+!     D2 = f (X + 3)/(5 X^2 + 8 X + 3);
+!   Thoul et al.'s (use_thoul_diffusion on), from Burgers' equations
+!   (thoul_diffusion) or their fit in X (use_thoul_fit), D1 = c f
+!   d ln P/dr X (A_P + A_T del), D2 = c f A_H, c = constant_mixing_coeff,
+!   and for iron D1 = r c f d ln P/dr Z (A_P + A_T del) and
+!   D2 = c |f A_H|, r = constant_settling_reduction.
+! ln Lambda is coulomb_log_choice's (coulomb_log_of_choice); with choice 4
+! and Burgers' equations every pair has its own (coulomb_logarithm).
+! ierr: ludcmp's status, after its message.
+subroutine gravitational_settling_setup(diff_scr, timestep_seconds, dlnp_dr, log_radius, &
+     log_density, enclosed_mass, log_temperature, del_grad, num_zones, total_mass, &
+     coeff1, coeff2, composition, radius_bl, temperature_bl, coeff1_dx, coeff2_dx, ierr)
+      use composition_layout, only: i_h1, i_he4, i_metals, i_he3
       use species_table, only: thoul_h1, thoul_he4, thoul_fe, thoul_electron, &
            thoul_col_h, thoul_col_he, thoul_col_metal
-      use bahcall_loeb_units, only: set_bahcall_loeb_scales
-      use run_messages, only: run_log_unit, solver_diagnostics
-      use physical_constants
+      use bahcall_loeb_units, only: bl_radius_scale, bl_mass_scale, bl_temp_scale, &
+           bl_time_scale
+      use physical_constants, only: ln10
       use math_lib
-      implicit none
       type(diffusion_scratch), intent(inout) :: diff_scr
-
-      double precision, intent(inout) :: timestep_seconds
-      double precision, intent(inout) :: dlnp_dr(json)
-      double precision, intent(in) :: log_radius(json), log_density(json), &
-           log_temperature(json)
-! del_grad: DEL (=DLNT/DLNP) per zone, from the caller (was star%gradT)
-      double precision, intent(in) :: del_grad(json)
-      double precision, intent(inout) :: mass_grams(json)
-      logical, intent(in) :: convective_flag(json)
+      real(dp), intent(inout) :: timestep_seconds, total_mass
+      real(dp), intent(inout) :: dlnp_dr(:), enclosed_mass(:)
+      real(dp), intent(in) :: log_radius(:), log_density(:), log_temperature(:), del_grad(:)
       integer, intent(in) :: num_zones
-      double precision, intent(inout) :: total_mass
-      double precision, intent(out) :: diffusion_coeff1(json), &
-           diffusion_coeff2(json)
-      double precision, intent(in) :: composition(15,json)
-      double precision, intent(out) :: radius_bl(json), temperature_bl(json)
-      integer, intent(out) :: zone_begin, zone_end
-      logical, intent(out) :: settling_skipped_flag
+      real(dp), intent(out) :: coeff1(:), coeff2(:), coeff1_dx(:), coeff2_dx(:)
+      real(dp), intent(in) :: composition(:,:)
+      real(dp), intent(out) :: radius_bl(:), temperature_bl(:)
       integer, intent(out) :: ierr
-      ! the run log's latch: a suspension of settling is reported once
-      logical, intent(inout) :: suspension_reported
-      double precision, intent(out) :: diffusion_coeff1_dx(json), &
-           diffusion_coeff2_dx(json)
-! MHP 8/94 ADDED ATOMIC WEIGHTS AND CHARGES FOR H,HE,FE,ELECTRONS -
-! NEEDED FOR FULL THOUL COEFFICIENTS (VALUES FROM species_table)
-      double precision :: atomic_weight(4), atomic_charge(4), &
-           settling_ap(4), settling_at(4), settling_ac(4,4), &
-           coulomb_log(4,4), species_mass_fraction(4)
-!     additional variables to be declared for variable ln lambda
-!     intermediate variables:
-! mass_weighted_conc (originally AC): concentration-weighted atomic
-! weight sum used to get the electron density (coulomb_log_choice==4).
-      double precision :: charge_to_mass_sum, mass_weighted_conc, &
-           ion_number_density, mean_charge_sq, coulomb_xij, &
-           electron_number_density, interion_distance, debye_length, &
-           coulomb_lambda, concentration(4)
-      double precision :: ln_lambda
-      data atomic_weight/thoul_h1%weight,thoul_he4%weight,thoul_fe%weight, &
-           thoul_electron%weight/
-      data atomic_charge/thoul_h1%charge,thoul_he4%charge,thoul_fe%charge, &
-           thoul_electron%charge/
-      integer :: num_species
-      data num_species/4/
-! --- locals ---
-      integer :: zone_idx
-      double precision :: hydrogen_fraction, z_plus_he3_fraction, &
-           metal_fraction, hydrogen_fraction_sq, &
-           hydrogen_metal_product, thoul_denominator
-! helium_ah_coeff (also originally AC): empirical Thoul-fit helium-
-! settling amplitude coefficient feeding diffusion_coeff2.
-      double precision :: settling_prefactor, iron_settling_ah, helium_ah_coeff
-      double precision :: settling_coeff_p, settling_coeff_t, dap_dx, dat_dx, dac_dx
-      double precision :: rho_local, temp_local
-      integer :: species_a_idx, species_b_idx
+! the four Thoul columns: hydrogen, helium, iron, the electrons (MHP 8/94)
+      integer, parameter :: num_species = 4
+      real(dp), parameter :: atomic_weight(num_species) = [thoul_h1%weight, &
+           thoul_he4%weight, thoul_fe%weight, thoul_electron%weight]
+      real(dp), parameter :: atomic_charge(num_species) = [thoul_h1%charge, &
+           thoul_he4%charge, thoul_fe%charge, thoul_electron%charge]
+      real(dp) :: settling_ap(num_species), settling_at(num_species), &
+           settling_ac(num_species,num_species), coulomb_log(num_species,num_species), &
+           species_mass_fraction(num_species), concentration(num_species)
+      real(dp) :: ln_lambda, x, x_sq, z_plus_he3, metal_fraction, x_times_z, denominator, &
+           prefactor, coeff_p, coeff_t, helium_ah, iron_ah, dap_dx, dat_dx, dac_dx, &
+           rho_cgs, t_cgs
+      integer :: k
 
-!     OUTPUT VARIABLES :
-!
-!     radius_bl - VECTOR OF UNLOGGED RADII IN BAHCALL AND LOEB UNITS.
-!     temperature_bl - VECTOR OF UNLOGGED TEMPERATURES IN BAHCALL AND
-!          LOEB UNITS.
-!     zone_begin - FIRST ZONE FOR DIFFUSION PURPOSES (EITHER THE FIRST
-!          MODEL POINT OR THE OUTERMOST POINT OF A CENTRAL CONVECTION
-!          ZONE).
-!     zone_end - LAST ZONE FOR DIFFUSION PURPOSES (EITHER THE LAST
-!          MODEL POINT OR THE INNERMOST POINT OF A SURFACE CONVECTION
-!          ZONE).
-!     THE VECTORS dlnp_dr AND mass_grams, AND THE SCALARS
-!     timestep_seconds AND total_mass, ARE ALSO CONVERTED TO BAHCALL
-!     AND LOEB UNITS.
-!     CONSTANTS DEFINED :
-!     ln10 = CONVERSION FACTOR FROM LN TO LOG10
-!     settling_skipped_flag=T IF SETTLING IS SKIPPED THIS MODEL (FULLY
-!     CONVECTIVE, HYDROGEN-EXHAUSTED OR HELIUM-EXHAUSTED).
       ierr = 0
-      settling_skipped_flag=.false.
-!     CHECK FOR CONVECTIVE CORE.
-      if(convective_flag(1))then
-         do zone_idx=2,num_zones
-            if(.not.convective_flag(zone_idx))exit
-         end do
-         if (zone_idx > num_zones) then
-!        DIFFUSION NOT COMPUTED FOR FULLY CONVECTIVE MODELS.
-         settling_skipped_flag=.true.
-! print once per suspension; every model only under
-! report_solver_diagnostics
-         if (solver_diagnostics() .or. &
-              .not. suspension_reported) then
-            write(run_log_unit,15)
-   15       format(1x,' FULLY CONVECTIVE MODEL - NO SETTLING')
-            suspension_reported = .true.
-         end if
-         return
-         end if
-!        COMPUTE OVERSHOOT (TO BE ADDED).
-         zone_begin = zone_idx-1
-      else
-         zone_begin = 1
-      endif
-! MHP 6/90 CHECK FOR HYDROGEN-EXHAUSTED CORE.
-      do zone_idx = zone_begin,num_zones
-         if(composition(i_h1,zone_idx).gt.diffusion_settings%hydrogen_diffusion_floor)exit
+      do k = 1, num_zones
+         radius_bl(k) = exp(ln10*log_radius(k))*bl_radius_scale
+         temperature_bl(k) = exp(ln10*log_temperature(k))*bl_temp_scale
+         enclosed_mass(k) = enclosed_mass(k)*bl_mass_scale
+         dlnp_dr(k) = dlnp_dr(k)/bl_radius_scale
       end do
-      if (zone_idx > num_zones) then
-!     HYDROGEN-FREE MODEL - EXIT.
-! print once per suspension; every model only under
-! report_solver_diagnostics
-      if (solver_diagnostics() .or. &
-           .not. suspension_reported) then
-         write(run_log_unit,16)diffusion_settings%hydrogen_diffusion_floor
-   16    format(1x,'X BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
-         suspension_reported = .true.
-      end if
-      settling_skipped_flag = .true.
-      return
-      end if
-      zone_begin = zone_idx
-!     CHECK FOR CONVECTIVE ENVELOPE.
-      if(convective_flag(num_zones))then
-         do zone_idx=num_zones-1,2,-1
-            if(.not.convective_flag(zone_idx))exit
-         end do
-!        COMPUTE OVERSHOOT (TO BE ADDED).
-         zone_end = zone_idx+1
-      else
-         zone_end = num_zones
-      endif
-!     CHECK FOR HELIUM-EXHAUSTED SURFACE.
-!     OUTER POINT IS SET WHEREVER Y>YMIN.
-      do zone_idx=zone_end,1,-1
-         if(composition(i_he4,zone_idx).gt.diffusion_settings%helium_diffusion_min) exit
-      end do
-      if (zone_idx < 1) then
-!     HELIUM-EXHAUSTED MODEL - EXIT.
-! print once per suspension; every model only under
-! report_solver_diagnostics
-      if (solver_diagnostics() .or. &
-           .not. suspension_reported) then
-         write(run_log_unit,17)diffusion_settings%helium_diffusion_min
-   17    format(1x,'Y BELOW ',f9.6,' IN WHOLE MODEL-NO SETTLING')
-         suspension_reported = .true.
-      end if
-      settling_skipped_flag = .true.
-      return
-      end if
-      zone_end = zone_idx
-! all suspension checks passed: settling proceeds this model
-      if (suspension_reported) then
-         write(run_log_unit,916)
-  916    format(1x,' SETTLING RESUMED')
-         suspension_reported = .false.
-      end if
-!     SET THE star%bl_*_scale CONVERSION FACTORS.
-      call set_bahcall_loeb_scales(diff_scr)
-!     CONVERT LOG(RADIUS) AND LOG(TEMPERATURE) TO NATURAL UNITS.
-!     ALSO CONVERT NATURAL UNITS TO BAHCALL AND LOEB UNITS.
-      do zone_idx=1,num_zones
-         radius_bl(zone_idx)=exp(ln10*log_radius(zone_idx))*diff_scr%bl_radius_scale
-         temperature_bl(zone_idx)=exp(ln10*log_temperature(zone_idx))*diff_scr%bl_temp_scale
-         mass_grams(zone_idx)=mass_grams(zone_idx)*diff_scr%bl_mass_scale
-         dlnp_dr(zone_idx)=dlnp_dr(zone_idx)/diff_scr%bl_radius_scale
-      end do
-      timestep_seconds=timestep_seconds/diff_scr%bl_time_scale
-      total_mass=total_mass*diff_scr%bl_mass_scale
-!     SET UP DIFFUSION COEFFICIENTS.
-!     MODIFIED BY BC MAY/90 -- VALID FOR ALL X WITH VARIABLE LN LAMBDA
-!     GENERAL EQUATION IS
-!     DX/DT = (D/DR(D1)+D/DR(D2 DX/DR))/(RHO*R**2), WHERE
-!     D1 = R**2/LN LAMBDA  * X  * T**5/2 * (DLNP/DR) * (1-X) *
-!          [5/4 + DEL*6*(X-0.32)/(5.4+6.3X-4.5X**2)]
-!     D2 = R**2/LN LAMBDA * T**5/2 * (X+3)/(X+1)/(3+5X)
-      do zone_idx = 1,num_zones
-         hydrogen_fraction = composition(i_h1,zone_idx)
-! MHP 10/02 INITIALIZED X - WAS NOT DONE PRIOR TO USAGE IN SHELL 1
-         if(diffusion_settings%coulomb_log_choice.eq.2)then
-!           Noerdlinger's formula (1977 A&A 57,407) for LN LAMBDA:
-!           Ln Lambda = -19.7 - ln[4/(3*X + 1)]/2 - ln(rho)/2 + 1.5*ln(T)
-            ln_lambda=-1.97d1 - 0.5d0*log(1.0d0/(0.75d0*hydrogen_fraction+0.25d0)) &
-                      -0.5d0*log_density(zone_idx)*ln10 + 1.5d0*log_temperature(zone_idx)*ln10
-         else if(diffusion_settings%coulomb_log_choice.eq.3)then
-!           Loeb's formula (1989 Phys. Rev. D 39, 1009) for LN LAMBDA
-!           ln lambda = -19.105747 - ln(rho)/2 + 1.5*ln(T)
-            ln_lambda=-1.9105747d1-0.50d0*log_density(zone_idx)*ln10+1.5d0*log_temperature(zone_idx)*ln10
+      timestep_seconds = timestep_seconds/bl_time_scale
+      total_mass = total_mass*bl_mass_scale
+
+      do k = 1, num_zones
+         x = composition(i_h1,k)
+         ln_lambda = coulomb_log_of_choice(diffusion_settings%coulomb_log_choice, x, &
+              log_density(k), log_temperature(k))
+         prefactor = diffusion_settings%fgry*radius_bl(k)**2*pow(temperature_bl(k), 2.5d0)/ln_lambda
+         z_plus_he3 = composition(i_metals,k) + composition(i_he3,k)
+         metal_fraction = composition(i_metals,k)
+         x_sq = x*x
+         if (.not. diffusion_settings%use_thoul_diffusion) then
+! the older analytic coefficients
+            x_times_z = x*z_plus_he3
+            denominator = 5.4d0 + 6.3d0*x - 4.5d0*x_sq
+            coeff1(k) = prefactor*dlnp_dr(k)* &
+                 (x - x_sq - x_times_z)*(1.25d0 + &
+                 del_grad(k)*6.0d0*(x + 0.32d0)/denominator)
+            coeff2(k) = prefactor*(x + 3.0d0)/ &
+                 (5.0d0*x_sq + 8.0d0*x + 3.0d0)
+            coeff1_dx(k) = prefactor*dlnp_dr(k)* &
+                 ( (1.0d0 - 2.0d0*x - z_plus_he3)*(1.25d0 + &
+                 (6.0d0*del_grad(k)*(x + 0.32d0))/denominator) + &
+                 (x - x_sq - x_times_z)*6.0d0* &
+                 del_grad(k)*(3.384d0 + 2.88d0*x + 4.5d0*x_sq)/ &
+                 denominator**2 )
+            coeff2_dx(k) = -prefactor*(5.0d0*x_sq + &
+                 3.0d1*x + 2.1d1)/ &
+                 (5.0d0*x_sq + 8.0d0*x + 3.0d0)**2
          else
-            ln_lambda = 2.2d0
-         end if
-!
-         settling_prefactor=diffusion_settings%fgry*radius_bl(zone_idx)**2*pow(temperature_bl(zone_idx), 2.5d0)/ln_lambda
-         z_plus_he3_fraction = composition(i_metals,zone_idx) + composition(i_he3,zone_idx)
-         metal_fraction = composition(i_metals,zone_idx)
-         hydrogen_fraction_sq = hydrogen_fraction*hydrogen_fraction
-         if(.not.diffusion_settings%use_thoul_diffusion)then
-            hydrogen_metal_product = hydrogen_fraction*z_plus_he3_fraction
-            thoul_denominator=5.4d0+6.3d0*hydrogen_fraction-4.5d0*hydrogen_fraction_sq
-            diffusion_coeff1(zone_idx)=settling_prefactor*dlnp_dr(zone_idx)* &
-                 (hydrogen_fraction - hydrogen_fraction_sq - hydrogen_metal_product)*(1.25d0+ &
-                 del_grad(zone_idx)*6.0d0*(hydrogen_fraction+0.32d0)/thoul_denominator)
-            diffusion_coeff2(zone_idx)=settling_prefactor*(hydrogen_fraction+3.0d0)/ &
-                 (5.0d0*hydrogen_fraction_sq + 8.0d0*hydrogen_fraction + 3.0d0)
-            diffusion_coeff1_dx(zone_idx)=settling_prefactor*dlnp_dr(zone_idx)* &
-                 ( (1.0d0-2.0d0*hydrogen_fraction-z_plus_he3_fraction)*(1.25d0+ &
-                 (6.0d0*del_grad(zone_idx)*(hydrogen_fraction+0.32d0))/thoul_denominator)+ &
-                 (hydrogen_fraction-hydrogen_fraction_sq-hydrogen_metal_product)*6.0d0* &
-                 del_grad(zone_idx)*(3.384d0+2.88d0*hydrogen_fraction+4.5d0*hydrogen_fraction_sq)/ &
-                 thoul_denominator**2 )
-            diffusion_coeff2_dx(zone_idx)=-settling_prefactor*(5.0d0*hydrogen_fraction_sq + &
-                 3.0d1*hydrogen_fraction + 2.1d1)/ &
-                 (5.0d0*hydrogen_fraction_sq + 8.0d0*hydrogen_fraction + 3.0d0)**2
-         else
-            species_mass_fraction(thoul_col_h) = composition(i_h1,zone_idx)
-            species_mass_fraction(thoul_col_he) = composition(i_he4,zone_idx)
-            species_mass_fraction(thoul_col_metal) = composition(i_metals,zone_idx)
-            if(.not.diffusion_settings%use_thoul_fit)then
-               if(diffusion_settings%coulomb_log_choice.eq.4)then
-                  rho_local = exp(ln10*log_density(zone_idx))
-                  temp_local = exp(ln10*log_temperature(zone_idx))
-!                 calculate concentrations from mass fractions:
-                  charge_to_mass_sum=0.d0
-                  do species_a_idx=1,num_species-1
-                   charge_to_mass_sum=charge_to_mass_sum+atomic_charge(species_a_idx)* &
-                        species_mass_fraction(species_a_idx)/atomic_weight(species_a_idx)
-                  enddo
-                  do species_a_idx=1,num_species-1
-                     concentration(species_a_idx)=species_mass_fraction(species_a_idx)/ &
-                          (atomic_weight(species_a_idx)*charge_to_mass_sum)
-                  enddo
-                  concentration(num_species)=1.d0
-!                 calculate density of electrons (NE) from mass density (RHO):
-                  mass_weighted_conc=0.d0
-                  do species_a_idx=1,num_species
-                   mass_weighted_conc=mass_weighted_conc+atomic_weight(species_a_idx)*concentration(species_a_idx)
-                  enddo
-                  electron_number_density=rho_local/(m_proton_cgs*mass_weighted_conc)
-!                 calculate interionic distance (AO):
-                  ion_number_density=0.d0
-                  do species_a_idx=1,num_species-1
-                     ion_number_density=ion_number_density+concentration(species_a_idx)*electron_number_density
-                  enddo
-                  interion_distance=pow((0.23873d0/ion_number_density), cc13)
-!                 calculate Debye length (LAMBDAD):
-                  mean_charge_sq=0.d0
-                  do species_a_idx=1,num_species
-                   mean_charge_sq=mean_charge_sq+concentration(species_a_idx)*atomic_charge(species_a_idx)**2
-                  enddo
-                  debye_length=6.9010d0*sqrt(temp_local/(electron_number_density*mean_charge_sq))
-!                 calculate LAMBDA to use in Coulomb logarithm:
-                  coulomb_lambda=max(debye_length,interion_distance)
-!                 calculate Coulomb logarithms:
-                  do species_a_idx=1,num_species
-                   do species_b_idx=1,num_species
-                      coulomb_xij=2.3939d3*temp_local*coulomb_lambda/ &
-                           abs(atomic_charge(species_a_idx)*atomic_charge(species_b_idx))
-                      coulomb_log(species_a_idx,species_b_idx)=0.81245d0 &
-                             *log(1.d0+0.18769d0*pow(coulomb_xij, 1.2d0))
-                   enddo
-                  enddo
+! Thoul et al.'s coefficients: Burgers' equations, or their fit
+            species_mass_fraction(thoul_col_h) = composition(i_h1,k)
+            species_mass_fraction(thoul_col_he) = composition(i_he4,k)
+            species_mass_fraction(thoul_col_metal) = composition(i_metals,k)
+            if (.not. diffusion_settings%use_thoul_fit) then
+               if (diffusion_settings%coulomb_log_choice == 4) then
+                  rho_cgs = exp(ln10*log_density(k))
+                  t_cgs = exp(ln10*log_temperature(k))
+                  call compute_concentrations(atomic_weight, atomic_charge, &
+                       species_mass_fraction, concentration)
+                  call compute_coulomb_logarithms(atomic_weight, atomic_charge, &
+                       concentration, rho_cgs, t_cgs, coulomb_log)
                else
-                  do species_a_idx = 1,num_species
-                     do species_b_idx = 1,num_species
-                        coulomb_log(species_a_idx,species_b_idx) = ln_lambda
-                     end do
-                  end do
-               endif
-               call thoul_diffusion(num_species,atomic_weight,atomic_charge, &
-                    species_mass_fraction,coulomb_log,settling_ap,settling_at,settling_ac, &
-                    ierr)
-               if (ierr /= 0) return
-               settling_coeff_p = -settling_ap(thoul_col_h)
-               settling_coeff_t = -del_grad(zone_idx)*settling_at(thoul_col_h)
+                  coulomb_log = ln_lambda
+               end if
+               call thoul_diffusion(atomic_weight, atomic_charge, species_mass_fraction, &
+                    coulomb_log, settling_ap, settling_at, settling_ac, ierr)
+               if (ierr /= 0) then
+                  call report_numerics_failure('ludcmp', ierr)
+                  return
+               end if
+               coeff_p = -settling_ap(thoul_col_h)
+               coeff_t = -del_grad(k)*settling_at(thoul_col_h)
             else
-               settling_coeff_p = 1.58d0 - 2.42d0*hydrogen_fraction + 0.844d0*hydrogen_fraction_sq
-               settling_coeff_t = del_grad(zone_idx)*(1.90d0 - 2.69d0*hydrogen_fraction + 0.805d0*hydrogen_fraction_sq)
-            endif
-            helium_ah_coeff = 1.15d0 - 1.42d0*hydrogen_fraction + 0.647d0*hydrogen_fraction_sq
-            dap_dx = -2.42d0 + 1.688d0*hydrogen_fraction
-            dat_dx = del_grad(zone_idx)*(-2.69d0 + 1.61d0*hydrogen_fraction)
-            dac_dx = -1.42d0 + 1.294d0*hydrogen_fraction
-!CFD 10/09 Mimic Mixing to reduce settling.
-            diffusion_coeff1(zone_idx) = diffusion_settings%constant_mixing_coeff*settling_prefactor*dlnp_dr(zone_idx)* &
-                 hydrogen_fraction*(settling_coeff_p+settling_coeff_t)
-            diffusion_coeff2(zone_idx) = diffusion_settings%constant_mixing_coeff*settling_prefactor*helium_ah_coeff
-            diffusion_coeff1_dx(zone_idx) = settling_prefactor*dlnp_dr(zone_idx)* &
-                 (settling_coeff_p+settling_coeff_t+hydrogen_fraction*(dap_dx+dat_dx))
-            diffusion_coeff2_dx(zone_idx) = settling_prefactor*dac_dx
-         endif
-!        METAL DIFFUSION, USING THE THOUL ET AL. COEFFICIENTS FOR FULLY
-!        IONIZED IRON.
-         if(diffusion_settings%use_diffusion_z)then
-            settling_prefactor=diffusion_settings%fgrz*radius_bl(zone_idx)**2*pow(temperature_bl(zone_idx), 2.5d0)/ln_lambda
-            if(diffusion_settings%use_thoul_diffusion)then
-               if(diffusion_settings%use_thoul_fit)then
-                  settling_coeff_p = -0.157d0 -0.511d0*hydrogen_fraction + 0.389d0*hydrogen_fraction_sq
-                  settling_coeff_t = del_grad(zone_idx)*(-1.36d0 - 1.42d0*hydrogen_fraction + &
-                       0.549d0*hydrogen_fraction_sq)
+               coeff_p = 1.58d0 - 2.42d0*x + 0.844d0*x_sq
+               coeff_t = del_grad(k)*(1.90d0 - 2.69d0*x + 0.805d0*x_sq)
+            end if
+            helium_ah = 1.15d0 - 1.42d0*x + 0.647d0*x_sq
+            dap_dx = -2.42d0 + 1.688d0*x
+            dat_dx = del_grad(k)*(-2.69d0 + 1.61d0*x)
+            dac_dx = -1.42d0 + 1.294d0*x
+            coeff1(k) = diffusion_settings%constant_mixing_coeff*prefactor*dlnp_dr(k)* &
+                 x*(coeff_p + coeff_t)
+            coeff2(k) = diffusion_settings%constant_mixing_coeff*prefactor*helium_ah
+            coeff1_dx(k) = prefactor*dlnp_dr(k)* &
+                 (coeff_p + coeff_t + x*(dap_dx + dat_dx))
+            coeff2_dx(k) = prefactor*dac_dx
+         end if
+! The metals, as fully ionized iron (with Thoul et al.'s coefficients).
+         if (diffusion_settings%use_diffusion_z) then
+            prefactor = diffusion_settings%fgrz*radius_bl(k)**2*pow(temperature_bl(k), 2.5d0)/ln_lambda
+            if (diffusion_settings%use_thoul_diffusion) then
+               if (diffusion_settings%use_thoul_fit) then
+                  coeff_p = -0.157d0 - 0.511d0*x + 0.389d0*x_sq
+                  coeff_t = del_grad(k)*(-1.36d0 - 1.42d0*x + &
+                       0.549d0*x_sq)
                else
-                  settling_coeff_p = -settling_ap(thoul_col_metal)
-                  settling_coeff_t = -del_grad(zone_idx)*settling_at(thoul_col_metal)
-               endif
-               iron_settling_ah = -0.0375d0 -0.193d0*hydrogen_fraction + 0.107d0*hydrogen_fraction_sq
-!CFD 10/09 Mimic Mixing to reduce settling (constant_mixing_coeff)
-!         and add the uncertainties of differential mixing (constant_settling_reduction).
-               diff_scr%src_grid_metal_diffusion_coeff1(zone_idx) = diffusion_settings%constant_settling_reduction*diffusion_settings%constant_mixing_coeff* &
-                    settling_prefactor*dlnp_dr(zone_idx)*metal_fraction*(settling_coeff_p+settling_coeff_t)
-!              POSITIVE DIFFUSION COEFFICIENTS NEEDED!
-               diff_scr%src_grid_metal_diffusion_coeff2(zone_idx) = diffusion_settings%constant_mixing_coeff*abs(settling_prefactor*iron_settling_ah)
-               diff_scr%src_grid_metal_diffusion_coeff1_dz(zone_idx) = diffusion_settings%constant_mixing_coeff*settling_prefactor* &
-                    dlnp_dr(zone_idx)*(settling_coeff_p+settling_coeff_t)
-               diff_scr%src_grid_metal_diffusion_coeff2_dz(zone_idx) = 0.0d0
-            endif
-         endif
-!
-! If using Noerdlinger's formula for LN LAMBDA, have a new term
-! in D(D1)/DX
-         if(diffusion_settings%coulomb_log_choice.eq.2)  then
-           diffusion_coeff1_dx(zone_idx)=diffusion_coeff1_dx(zone_idx) + diffusion_coeff1(zone_idx)*1.5d0/ &
-           (ln_lambda*(3.0d0*hydrogen_fraction+1.0d0))
-       end if
+                  coeff_p = -settling_ap(thoul_col_metal)
+                  coeff_t = -del_grad(k)*settling_at(thoul_col_metal)
+               end if
+               iron_ah = -0.0375d0 - 0.193d0*x + 0.107d0*x_sq
+               diff_scr%zone_metal_coeff1(k) = diffusion_settings%constant_settling_reduction* &
+                    diffusion_settings%constant_mixing_coeff* &
+                    prefactor*dlnp_dr(k)*metal_fraction*(coeff_p + coeff_t)
+! (D2 must be positive)
+               diff_scr%zone_metal_coeff2(k) = diffusion_settings%constant_mixing_coeff* &
+                    abs(prefactor*iron_ah)
+               diff_scr%zone_metal_coeff1_dz(k) = diffusion_settings%constant_mixing_coeff* &
+                    prefactor*dlnp_dr(k)*(coeff_p + coeff_t)
+               diff_scr%zone_metal_coeff2_dz(k) = 0.0d0
+            end if
+         end if
+! Noerdlinger's logarithm depends on X: its term in dD1/dX (with the
+! wrong sign, docs/bug_sweep.md M243).
+         if (diffusion_settings%coulomb_log_choice == 2) then
+            coeff1_dx(k) = coeff1_dx(k) + coeff1(k)*1.5d0/ &
+                 (ln_lambda*(3.0d0*x + 1.0d0))
+         end if
       end do
-      return
 end subroutine gravitational_settling_setup
 
+! ---------------------------------------------------------------
+! ln Lambda of coulomb_log_choice at hydrogen fraction x, log10 density
+! and log10 temperature: 2 Noerdlinger's (1977, A&A 57, 407),
+! -19.7 - ln[4/(3X + 1)]/2 - ln(rho)/2 + 1.5 ln T; 3 Loeb's (1989, Phys.
+! Rev. D 39, 1009), -19.105747 - ln(rho)/2 + 1.5 ln T; otherwise 2.2.
+pure function coulomb_log_of_choice(choice, x, log_density, log_temperature) &
+     result(ln_lambda)
+      use physical_constants, only: ln10
+      use math_lib
+      integer, intent(in) :: choice
+      real(dp), intent(in) :: x, log_density, log_temperature
+      real(dp) :: ln_lambda
+
+      if (choice == 2) then
+         ln_lambda = -1.97d1 - 0.5d0*log(1.0d0/(0.75d0*x + 0.25d0)) &
+              - 0.5d0*log_density*ln10 + 1.5d0*log_temperature*ln10
+      else if (choice == 3) then
+         ln_lambda = -1.9105747d1 - 0.50d0*log_density*ln10 + 1.5d0*log_temperature*ln10
+      else
+         ln_lambda = 2.2d0
+      end if
+end function coulomb_log_of_choice
+
 end module original_settling
+
+! Sources
+! - grsett and setup_grsett: MHP (12/89, after Bahcall & Loeb 1990; 6/90
+!   the hydrogen-exhausted core; 3/94 the metals; 8/94 Thoul et al.'s
+!   coefficients; 10/02 X set before shell 1), BC (5/90, the analytic
+!   coefficients valid for all X with a variable ln Lambda), CFD (10/09,
+!   constant_mixing_coeff and constant_settling_reduction).
+! - Bahcall, J. N. & Loeb, A. 1990, ApJ 360, 267; Thoul, A. A., Bahcall,
+!   J. N. & Loeb, A. 1994, ApJ 421, 828.

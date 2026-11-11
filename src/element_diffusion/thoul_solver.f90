@@ -1,9 +1,29 @@
 !----------------------------------------------------------------------
 ! thoul_solver
 !----------------------------------------------------------------------
-! The Thoul, Bahcall & Loeb (1994) solution of the Burgers equations for
-! the diffusion coefficients.
+! The diffusion coefficients of a fully ionized plasma from Burgers'
+! equations, solved as Thoul, Bahcall & Loeb (1994, ApJ 421, 828) do (A.
+! A. Thoul's routine, Institute for Advanced Study). For M species (the
+! last the electrons), the 2M + 2 unknowns are the M diffusion
+! velocities w_s, the M heat fluxes, the electric field and the
+! gravitational force; the equations are the M momentum equations, the
+! M energy equations, current neutrality (sum_s Z_s c_s w_s = 0) and no
+! net mass flow (sum_s A_s c_s w_s = 0). Written as
+!     alpha_s d ln P + nu_s d ln T + sum_t gamma_st d ln C_t
+!         = sum_t delta_st w_t,
+! the system is inverted once (ludcmp) and solved for each right-hand
+! side (lubksb): alpha gives the coefficient A_P of each species'
+! velocity, nu gives A_T and gamma(:,t) gives A_C for the gradient of
+! species t (helium and the electrons excepted: their gradients follow
+! from the others'). The velocities are in units of p/K_0, so the
+! coefficients scale as 1/ln Lambda when every pair shares one Coulomb
+! logarithm.
+!
+! The notation is the paper's: c the concentrations, cc their sum, ac
+! sum_s A_s c_s (proportional to the density), xx, y, yy and k the
+! collision terms between pairs.
 module thoul_solver
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
       private
       public :: thoul_diffusion
@@ -11,318 +31,189 @@ module thoul_solver
 contains
 
 ! ---------------------------------------------------------------
-!*************************************************************
-! This routine was written by Anne A. Thoul, at the Institute
-! for Advanced Study, Princeton, NJ 08540.
-! See Thoul et al., Ap.J. 421, p. 828 (1994)
-! The subroutines LUBKSB and LUDCMP are from Numerical Recipes.
-!*************************************************************
-! This routine inverses the burgers equations.
-!
-! The system contains N equations with N unknowns.
-! The equations are: the M momentum equations,
-!                    the M energy equations,
-!                    two constraints: the current neutrality
-!                                     the zero fluid velocity.
-! The unknowns are: the M diffusion velocities,
-!                   the M heat fluxes,
-!                   the electric field E
-!                   the gravitational force g.
-!
-!**************************************************
-! The parameter num_species is the number of species considered.
-!
-! Fluid 1 is the hydrogen
-! Fluid 2 is the helium
-! Fluids 3 to num_species-1 are the heavy elements
-! Fluid num_species is the electrons
-!
-! The vectors atomic_weight,charge and mass_fraction contain the atomic
-! mass numbers, the charges (ionization), and the mass fractions, of
-! the elements.
-! NOTE: Since num_species is the electron fluid, its mass and charge
-!      must be
-!      atomic_weight(num_species)=m_e/m_u
-!      charge(num_species)=-1.
-!
-! The array coulomb_log contains the values of the Coulomb Logarithms.
-! The vector pressure_coeff, temp_coeff, and array conc_coeff contains
-! the results for the diffusion coefficients.
-!
-! Internal notation (c, cc, ac, xx, y, yy, k, alpha, nu, gamma, delta,
-! ga) is kept as in the original Thoul et al. (1994) Burgers-equation
-! formulation rather than renamed -- these are terse algebraic
-! quantities from the published derivation (concentrations, mass-
-! weighted sums, and the right/left-hand-side arrays of the linear
-! system solved below) and a confident, more descriptive rename is not
-! attempted here; see the inline comments below for their roles.
-subroutine thoul_diffusion(num_species, atomic_weight, charge, mass_fraction, &
-     coulomb_log, pressure_coeff, temp_coeff, conc_coeff, ierr)
-
-      use numerics_lib, only: lubksb, ludcmp, numerics_status_text
-      implicit none
-      integer, parameter :: mmax=20, nmax=42
-
-      integer, intent(in) :: num_species
-      double precision, intent(in) :: atomic_weight(num_species), &
-           charge(num_species)
-      double precision, intent(inout) :: mass_fraction(num_species)
-      double precision, intent(in) :: coulomb_log(num_species,num_species)
-      double precision, intent(out) :: pressure_coeff(num_species), &
-           temp_coeff(num_species)
-      double precision, intent(out) :: conc_coeff(num_species,num_species)
+! The coefficients pressure_coeff (A_P), temp_coeff (A_T) and
+! conc_coeff (A_C, conc_coeff(s,t) for species t's gradient) of the M =
+! size(atomic_weight) species: hydrogen first, helium second, the heavy
+! elements, and the electrons last (atomic weight m_e/m_u, charge -1),
+! from their atomic weights (amu), charges (e), mass fractions (the
+! electrons' is set here) and pairwise Coulomb logarithms. ierr: ludcmp's
+! status for a singular system (the caller reports it).
+pure subroutine thoul_diffusion(atomic_weight, charge, mass_fraction, coulomb_log, &
+     pressure_coeff, temp_coeff, conc_coeff, ierr)
+      use numerics_lib, only: lubksb, ludcmp
+! the most species, and unknowns, the arrays hold
+      integer, parameter :: mmax = 20, nmax = 42
+      real(dp), intent(in) :: atomic_weight(:), charge(:)
+      real(dp), intent(inout) :: mass_fraction(:)
+      real(dp), intent(in) :: coulomb_log(:,:)
+      real(dp), intent(out) :: pressure_coeff(:), temp_coeff(:), conc_coeff(:,:)
       integer, intent(out) :: ierr
-
       integer :: indx(nmax)
-      double precision :: c(mmax), xx(mmax,mmax), y(mmax,mmax), yy(mmax,mmax)
-      double precision :: k(mmax,mmax), nu(nmax)
-      double precision :: alpha(nmax), gamma(nmax,nmax), delta(nmax,nmax), &
-           ga(nmax)
-      double precision :: ko
-      integer :: i, j, l, n
-      double precision :: cc, ac, temp, d
-
-! The vectors c and the concentration gradients contain the
-! concentrations and the concentration gradients;
-! cc is the total concentration: cc=sum(c_s)
-! ac is proportional to the mass density: ac=sum(a_s c_s)
-! The arrays xx,y,yy and k are various parameters which appear in
-! Burgers equations.
-! The vectors and arrays alpha, nu, gamma, delta, and ga represent
-! the "right- and left-hand-sides" of Burgers equations, and later
-! the diffusion coefficients.
-
-
-! Initialize parameters:
+      real(dp) :: c(mmax), xx(mmax,mmax), y(mmax,mmax), yy(mmax,mmax), k(mmax,mmax)
+      real(dp) :: alpha(nmax), nu(nmax), gamma(nmax,nmax), delta(nmax,nmax), ga(nmax)
+      real(dp) :: ko, cc, ac, temp, d
+      integer :: num_species, i, j, l, n
 
       ierr = 0
-      ko=2
-      n=2*num_species+2
-      do i=1,num_species
-         c(i)=0.d0
-      enddo
-      cc=0.d0
-      ac=0.d0
+      num_species = size(atomic_weight)
+      ko = 2.0d0
+      n = 2*num_species + 2
+      c(1:num_species) = 0.0d0
+      cc = 0.0d0
+      ac = 0.0d0
 
-! Calculate concentrations from mass fractions:
+! The concentrations from the mass fractions, cc, ac, and the electrons'
+! mass fraction.
+      temp = 0.0d0
+      do i = 1, num_species-1
+         temp = temp + charge(i)*mass_fraction(i)/atomic_weight(i)
+      end do
+      do i = 1, num_species-1
+         c(i) = mass_fraction(i)/atomic_weight(i)/temp
+      end do
+      c(num_species) = 1.0d0
+      do i = 1, num_species
+         cc = cc + c(i)
+         ac = ac + atomic_weight(i)*c(i)
+      end do
+      mass_fraction(num_species) = atomic_weight(num_species)/ac
 
-      temp=0.d0
-      do i=1,num_species-1
-         temp=temp+charge(i)*mass_fraction(i)/atomic_weight(i)
-      enddo
-      do i=1,num_species-1
-         c(i)=mass_fraction(i)/atomic_weight(i)/temp
-      enddo
-      c(num_species)=1.d0
-
-! Calculate cc and ac:
-
-      do i=1,num_species
-         cc=cc+c(i)
-         ac=ac+atomic_weight(i)*c(i)
-      enddo
-
-! Calculate the mass fraction of electrons:
-
-      mass_fraction(num_species)=atomic_weight(num_species)/ac
-
-! Calculate the coefficients of the burgers equations
-      do i=1,num_species
-         do j=1,num_species
-            xx(i,j)=atomic_weight(j)/(atomic_weight(i)+atomic_weight(j))
-            y(i,j)=atomic_weight(i)/(atomic_weight(i)+atomic_weight(j))
-            yy(i,j)=3.0d0*y(i,j)+1.3d0*xx(i,j)*atomic_weight(j)/atomic_weight(i)
-            k(i,j)=1.d0*coulomb_log(i,j)* &
+! The collision terms of Burgers' equations.
+      do i = 1, num_species
+         do j = 1, num_species
+            xx(i,j) = atomic_weight(j)/(atomic_weight(i) + atomic_weight(j))
+            y(i,j) = atomic_weight(i)/(atomic_weight(i) + atomic_weight(j))
+            yy(i,j) = 3.0d0*y(i,j) + 1.3d0*xx(i,j)*atomic_weight(j)/atomic_weight(i)
+            k(i,j) = coulomb_log(i,j)* &
                  sqrt(atomic_weight(i)*atomic_weight(j)/ &
-                 (atomic_weight(i)+atomic_weight(j)))*c(i)*c(j)* &
+                 (atomic_weight(i) + atomic_weight(j)))*c(i)*c(j)* &
                  charge(i)**2*charge(j)**2
-         enddo
-      enddo
+         end do
+      end do
 
-! Write the burgers equations and the two constraints as
-! alpha_s dp + nu_s dT + sum_t(not 2 or M) gamma_st dC_t
-!                     = sum_t delta_st w_t
+! The right-hand sides: alpha_s, nu_s and gamma_st (no column for helium
+! or the electrons).
+      do i = 1, num_species
+         alpha(i) = c(i)/cc
+         nu(i) = 0.0d0
+         gamma(i,1:num_species) = 0.0d0
+         do j = 1, num_species
+            if (j /= 2 .and. j /= num_species) then
+               gamma(i,j) = -c(j)/cc + c(2)/cc*charge(j)*c(j)/charge(2)/c(2)
+               if (j == i) gamma(i,j) = gamma(i,j) + 1.0d0
+               if (i == 2) gamma(i,j) = gamma(i,j) - charge(j)*c(j)/charge(2)/c(2)
+               gamma(i,j) = gamma(i,j)*c(i)/cc
+            end if
+         end do
+         gamma(i,num_species+1:n) = 0.0d0
+      end do
+      do i = num_species+1, n-2
+         alpha(i) = 0.0d0
+         nu(i) = 2.5d0*c(i-num_species)/cc
+         gamma(i,1:n) = 0.0d0
+      end do
+      alpha(n-1) = 0.0d0
+      nu(n-1) = 0.0d0
+      gamma(n-1,1:n) = 0.0d0
+      alpha(n) = 0.0d0
+      nu(n) = 0.0d0
+      gamma(n,1:n) = 0.0d0
 
-      do i=1,num_species
-         alpha(i)=c(i)/cc
-         nu(i)=0.d0
-         do j=1,num_species
-            gamma(i,j)=0.d0
-         enddo
-         do j=1,num_species
-            if ((j.ne.2).and.(j.ne.num_species)) then
-               gamma(i,j)=-c(j)/cc+c(2)/cc*charge(j)*c(j)/charge(2)/c(2)
-               if (j.eq.i) then
-                  gamma(i,j)=gamma(i,j)+1.d0
-               endif
-               if (i.eq.2) then
-                  gamma(i,j)=gamma(i,j)-charge(j)*c(j)/charge(2)/c(2)
-               endif
-               gamma(i,j)=gamma(i,j)*c(i)/cc
-            endif
-         enddo
-
-         do j=num_species+1,n
-            gamma(i,j)=0.d0
-         enddo
-      enddo
-
-      do i=num_species+1,n-2
-         alpha(i)=0.d0
-         nu(i)=2.5d0*c(i-num_species)/cc
-         do j=1,n
-            gamma(i,j)=0.d0
-         enddo
-      enddo
-
-      alpha(n-1)=0.d0
-      nu(n-1)=0
-      do j=1,n
-         gamma(n-1,j)=0.d0
-      enddo
-
-      alpha(n)=0.d0
-      nu(n)=0
-      do j=1,n
-         gamma(n,j)=0.d0
-      enddo
-
-      do i=1,n
-         do j=1,n
-            delta(i,j)=0.d0
-         enddo
-      enddo
-
-      do i=1,num_species
-         do j=1,num_species
-            if (j.eq.i) then
-               do l=1,num_species
-                  if(l.ne.i) then
-                     delta(i,j)=delta(i,j)-k(i,l)
-                  endif
-               enddo
+! The left-hand side delta_st: the momentum equations' rows...
+      delta(1:n,1:n) = 0.0d0
+      do i = 1, num_species
+         do j = 1, num_species
+            if (j == i) then
+               do l = 1, num_species
+                  if (l /= i) delta(i,j) = delta(i,j) - k(i,l)
+               end do
             else
-               delta(i,j)=k(i,j)
-            endif
-         enddo
-
-         do j=num_species+1,n-2
-            if(j-num_species.eq.i) then
-               do l=1,num_species
-                  if (l.ne.i) then
-                     delta(i,j)=delta(i,j)+0.6d0*xx(i,l)*k(i,l)
-                  endif
-               enddo
+               delta(i,j) = k(i,j)
+            end if
+         end do
+         do j = num_species+1, n-2
+            if (j-num_species == i) then
+               do l = 1, num_species
+                  if (l /= i) delta(i,j) = delta(i,j) + 0.6d0*xx(i,l)*k(i,l)
+               end do
             else
-               delta(i,j)=-0.6d0*y(i,j-num_species)*k(i,j-num_species)
-            endif
-         enddo
-
-         delta(i,n-1)=c(i)*charge(i)
-
-         delta(i,n)=-c(i)*atomic_weight(i)
-      enddo
-
-      do i=num_species+1,n-2
-         do j=1,num_species
-            if (j.eq.i-num_species) then
-               do l=1,num_species
-                  if (l.ne.i-num_species) then
-                     delta(i,j)=delta(i,j)+1.5d0*xx(i-num_species,l)* &
-                          k(i-num_species,l)
-                  endif
-               enddo
+               delta(i,j) = -0.6d0*y(i,j-num_species)*k(i,j-num_species)
+            end if
+         end do
+         delta(i,n-1) = c(i)*charge(i)
+         delta(i,n) = -c(i)*atomic_weight(i)
+      end do
+! ... the energy equations' rows ...
+      do i = num_species+1, n-2
+         do j = 1, num_species
+            if (j == i-num_species) then
+               do l = 1, num_species
+                  if (l /= i-num_species) delta(i,j) = delta(i,j) + 1.5d0*xx(i-num_species,l)* &
+                       k(i-num_species,l)
+               end do
             else
-               delta(i,j)=-1.5d0*xx(i-num_species,j)*k(i-num_species,j)
-            endif
-         enddo
-
-         do j=num_species+1,n-2
-            if (j-num_species.eq.i-num_species) then
-               do l=1,num_species
-                  if (l.ne.i-num_species) then
-                     delta(i,j)=delta(i,j)-y(i-num_species,l)*k(i-num_species,l)* &
-                          (1.6d0*xx(i-num_species,l)+yy(i-num_species,l))
-                  endif
-               enddo
-               delta(i,j)=delta(i,j)-0.8d0*k(i-num_species,i-num_species)
+               delta(i,j) = -1.5d0*xx(i-num_species,j)*k(i-num_species,j)
+            end if
+         end do
+         do j = num_species+1, n-2
+            if (j-num_species == i-num_species) then
+               do l = 1, num_species
+                  if (l /= i-num_species) delta(i,j) = delta(i,j) - y(i-num_species,l)* &
+                       k(i-num_species,l)*(1.6d0*xx(i-num_species,l) + yy(i-num_species,l))
+               end do
+               delta(i,j) = delta(i,j) - 0.8d0*k(i-num_species,i-num_species)
             else
-               delta(i,j)=2.7d0*k(i-num_species,j-num_species)* &
+               delta(i,j) = 2.7d0*k(i-num_species,j-num_species)* &
                     xx(i-num_species,j-num_species)*y(i-num_species,j-num_species)
-            endif
-         enddo
+            end if
+         end do
+         delta(i,n-1) = 0.0d0
+         delta(i,n) = 0.0d0
+      end do
+! ... current neutrality and no net mass flow.
+      do j = 1, num_species
+         delta(n-1,j) = c(j)*charge(j)
+      end do
+      delta(n-1,num_species+1:n) = 0.0d0
+      do j = 1, num_species
+         delta(n,j) = c(j)*atomic_weight(j)
+      end do
+      delta(n,num_species+1:n) = 0.0d0
 
-         delta(i,n-1)=0.d0
+! The solve, for each right-hand side: alpha gives A_P, nu A_T, and
+! gamma(:,j) A_C for the gradient of species j. Rows 1..M are the
+! velocities, M+1..2M the heat fluxes, 2M+1 the electric field, 2M+2
+! the gravitational force.
+      call ludcmp(delta, n, nmax, indx, d, ierr)
+      if (ierr /= 0) return
+      call lubksb(delta, n, nmax, indx, alpha)
+      call lubksb(delta, n, nmax, indx, nu)
+      do j = 1, n
+         ga(1:n) = gamma(1:n,j)
+         call lubksb(delta, n, nmax, indx, ga)
+         gamma(1:n,j) = ga(1:n)
+      end do
 
-         delta(i,n)=0.d0
-      enddo
-
-      do j=1,num_species
-         delta(n-1,j)=c(j)*charge(j)
-      enddo
-      do j=num_species+1,n
-         delta(n-1,j)=0.d0
-      enddo
-
-      do j=1,num_species
-         delta(n,j)=c(j)*atomic_weight(j)
-      enddo
-      do j=num_species+1,n
-         delta(n,j)=0.d0
-      enddo
-
-! Inverse the system for each possible right-hand-side, i.e.,
-! if alpha is the r.h.s., we obtain the coefficient A_p
-! if nu    ---------------------------------------- A_T
-! if gamma(i,j) ----------------------------------- A_Cj
-!
-! If I=1, we obtain the hydrogen diffusion velocity
-! If I=2, ------------- helium   ------------------
-! If I=3,M-1, --------- heavy element -------------
-! If I=M, ------------- electrons -----------------
-! For I=M,2M, we get the heat fluxes
-! For I=N-1, we get the electric field
-! For I=N, we get the gravitational force g
-
-      call ludcmp(delta,n,nmax,indx,d,ierr)
-      if (ierr /= 0) then
-         write(*,*) 'ludcmp: '//numerics_status_text(ierr)
-         return
-      end if
-
-      call lubksb(delta,n,nmax,indx,alpha)
-      call lubksb(delta,n,nmax,indx,nu)
-      do j=1,n
-         do i=1,n
-            ga(i)=gamma(i,j)
-         enddo
-         call lubksb(delta,n,nmax,indx,ga)
-         do i=1,n
-            gamma(i,j)=ga(i)
-         enddo
-      enddo
-
-! The results for the coefficients must be multiplied by p/K_0:
-
-      do i=1,num_species
-         alpha(i)=alpha(i)*ko*ac*cc
-         nu(i)=nu(i)*ko*ac*cc
-         do j=1,num_species
-            gamma(i,j)=gamma(i,j)*ko*ac*cc
-         enddo
-      enddo
-
-      do i=1,num_species
-         pressure_coeff(i)=alpha(i)
-         temp_coeff(i)=nu(i)
-         do j=1,num_species
-            conc_coeff(i,j)=gamma(i,j)
-         enddo
-      enddo
-
-
-      return
-
+! The velocities in units of p/K_0.
+      do i = 1, num_species
+         alpha(i) = alpha(i)*ko*ac*cc
+         nu(i) = nu(i)*ko*ac*cc
+         do j = 1, num_species
+            gamma(i,j) = gamma(i,j)*ko*ac*cc
+         end do
+      end do
+      do i = 1, num_species
+         pressure_coeff(i) = alpha(i)
+         temp_coeff(i) = nu(i)
+         do j = 1, num_species
+            conc_coeff(i,j) = gamma(i,j)
+         end do
+      end do
 end subroutine thoul_diffusion
 
 end module thoul_solver
+
+! Sources
+! - Thoul, A. A., Bahcall, J. N. & Loeb, A. 1994, ApJ 421, 828: the
+!   routine is A. A. Thoul's; ludcmp and lubksb are Numerical Recipes'
+!   (numerics_lib).

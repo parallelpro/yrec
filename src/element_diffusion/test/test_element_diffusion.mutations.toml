@@ -1,0 +1,155 @@
+# Mutations of test_element_diffusion: each check must print FAIL under a
+# mutation of the code it covers (element_diffusion/README.md, section 4).
+# Run: python3 src/tools/mutate.py element_diffusion (after `make tests` in
+# src/; src/tools/mutate.py describes this format and the verdicts).
+program = "test_element_diffusion"
+timeout = 120
+
+[[mutation]]
+id = 'pipeline-01'
+check = 'microdiff: X + Y + Z + He3 = 1 in every zone after a step'
+file = 'element_diffusion/diffusion_grid.f90'
+old = 'xa(i_he4) = 1.0d0 - xa(i_h1) - xa(i_metals) - xa(i_he3)'
+new = 'xa(i_he4) = 1.0d0 - xa(i_h1) - xa(i_metals)'
+
+[[mutation]]
+id = 'pipeline-02'
+check = "microdiff: each species' mass conserved"
+file = 'element_diffusion/diffusion_grid.f90'
+old = '''         call change_zone(composition(:,i), hydrogen_change(num_points), &'''
+new = '''         call change_zone(composition(:,i), hydrogen_change(num_points-1), &'''
+
+[[mutation]]
+id = 'pipeline-03'
+check = 'microdiff: helium, the metals and Li6, Li7, Be9 sink; hydrogen rises'
+file = 'element_diffusion/microdiff_coefficients.f90'
+old = 'pressure_term(i) = -pressure_coeff(species_col)'
+new = 'pressure_term(i) = pressure_coeff(species_col)'
+
+[[mutation]]
+id = 'pipeline-04'
+check = 'microdiff: a zero timestep changes nothing'
+file = 'element_diffusion/diffusion_scheme.f90'
+old = 'diag(npt) = 1.0d0 + alpha(npt)*diffusion_coeff_mid(npt-1)'
+new = 'diag(npt) = 1.0d0 + diffusion_coeff_mid(npt-1)'
+
+[[mutation]]
+id = 'pipeline-05'
+check = 'microdiff: the change is linear in a small timestep'
+file = 'element_diffusion/microdiff_run.f90'
+old = 'alpha_scale = c4pi*timestep/grid_spacing'
+new = 'alpha_scale = c4pi*sqrt(timestep)/grid_spacing'
+
+[[mutation]]
+id = 'pipeline-06'
+check = "microdiff: a convective core's zones change together"
+file = 'element_diffusion/diffusion_grid.f90'
+old = '''      do i = 1, zone_begin
+         call change_zone('''
+new = '''      do i = 2, zone_begin
+         call change_zone('''
+
+[[mutation]]
+id = 'region-01'
+check = "find_settling_region: from a core's top to the envelope's base"
+file = 'element_diffusion/settling_region.f90'
+old = 'zone_begin = i-1'
+new = 'zone_begin = i'
+
+[[mutation]]
+id = 'region-02'
+check = 'find_settling_region: fully convective, X or Y below its floor: no region'
+file = 'element_diffusion/settling_region.f90'
+old = '''         region = region_no_helium'''
+new = '''         region = region_no_hydrogen'''
+
+[[mutation]]
+id = 'substeps-01'
+check = 'plan_settling_substeps: tau = 4.348e21 yr q/T^1.5'
+file = 'element_diffusion/settling_substeps.f90'
+old = 'exp(ln10*1.5d0*boundary_log_temperature)'
+new = 'exp(ln10*1.0d0*boundary_log_temperature)'
+
+[[mutation]]
+id = 'substeps-02'
+check = 'plan_settling_substeps: the count is max(1, ceiling(dt/longest))'
+file = 'element_diffusion/settling_substeps.f90'
+old = 'mod(timestep, plan%longest_substep)'
+new = 'mod(plan%longest_substep, timestep)'
+
+[[mutation]]
+id = 'grid-01'
+check = 'size_equal_grid: ceiling(span/narrowest zone) points, evenly spaced'
+file = 'element_diffusion/diffusion_grid.f90'
+old = 'if (mod(span, narrowest) /= 0.0d0) num_points = num_points + 1'
+new = 'if (.false.) num_points = num_points + 1'
+
+[[mutation]]
+id = 'grid-02'
+check = 'map_field: exact on a linear field, every point'
+file = 'element_diffusion/diffusion_grid.f90'
+old = '(mid_radius(1) - radius(iu-1))/(radius(iu) - radius(iu-1))'
+new = '(mid_radius(1) - radius(iu-1))/(radius(iu) - radius(iu-2))'
+
+[[mutation]]
+id = 'grid-03'
+check = 'map_field: exact on a cubic at the interior points'
+file = 'element_diffusion/diffusion_grid.f90'
+old = 'centre_value(i) = lagrange4(map%centre_weight(:,i), field(k0:k0+3))'
+new = 'centre_value(i) = lagrange4(map%mid_weight(:,i), field(k0:k0+3))'
+
+[[mutation]]
+id = 'grid-04'
+check = 'locate_stencil: two points each side, kept within the table'
+file = 'element_diffusion/diffusion_grid.f90'
+old = 'k0 = min(max(j-2, 1), num_table-3)'
+new = 'k0 = min(max(j-3, 1), num_table-3)'
+
+[[mutation]]
+id = 'scheme-01'
+check = 'diffusion_scheme: both Lax-Wendroff steps and the implicit step conserve'
+file = 'element_diffusion/diffusion_scheme.f90'
+old = 'delta_abundance = -dt_full*diffusion_coeff1_mid(num_eq_points-1)/zone_mass'
+new = 'delta_abundance = dt_full*diffusion_coeff1_mid(num_eq_points-1)/zone_mass'
+
+[[mutation]]
+id = 'coulomb-01'
+check = 'compute_coulomb_logarithms: symmetric, and the H-H one from k, e'
+file = 'element_diffusion/coulomb_logarithm.f90'
+old = 'debye_coefficient = 6.9010d0'
+new = 'debye_coefficient = 6.9910d0'
+
+[[mutation]]
+id = 'coulomb-02'
+check = 'compute_coulomb_logarithms: weak coupling'
+file = 'element_diffusion/coulomb_logarithm.f90'
+old = 'coulomb_fit_power = 1.2d0'
+new = 'coulomb_fit_power = 1.25d0'
+
+[[mutation]]
+id = 'coulomb-03'
+check = 'compute_coulomb_logarithms: strong coupling'
+file = 'element_diffusion/coulomb_logarithm.f90'
+old = 'screening_length/abs(atomic_charge(i)*atomic_charge(j))'
+new = 'screening_length/abs(atomic_charge(i)*atomic_charge(j)**2)'
+
+[[mutation]]
+id = 'thoul-01'
+check = 'thoul_diffusion: no current and no net mass flow'
+file = 'element_diffusion/thoul_solver.f90'
+old = 'delta(n,j) = c(j)*atomic_weight(j)'
+new = 'delta(n,j) = c(j)'
+
+[[mutation]]
+id = 'thoul-02'
+check = 'thoul_diffusion: the coefficients scale as 1/ln Lambda'
+file = 'element_diffusion/thoul_solver.f90'
+old = 'k(i,j) = coulomb_log(i,j)*'
+new = 'k(i,j) = sqrt(coulomb_log(i,j))*'
+
+[[mutation]]
+id = 'thoul-03'
+check = 'thoul_diffusion: hydrogen rises, helium and iron sink'
+file = 'element_diffusion/thoul_solver.f90'
+old = 'alpha(i) = c(i)/cc'
+new = 'alpha(i) = -c(i)/cc'

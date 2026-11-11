@@ -89,7 +89,8 @@ subroutine advance_composition(s, timestep, opts, core_cz_edge, &
       use burn_step, only: compute_burn_rates, burn_network, &
            burn_deuterium
       use convection_lib, only: find_convection_zones, extend_by_semiconvection
-      use element_diffusion_lib, only: diffuse_elements
+      use element_diffusion_lib, only: diffuse_elements, settling_substep_plan, &
+           plan_settling_substeps
       use math_lib
       implicit none
       type(star_info), intent(inout) :: s
@@ -256,9 +257,8 @@ end subroutine homogenize_mixed_regions
 ! physics%hydrogen_diffusion_floor.
 subroutine settle
       double precision :: total_mass_unlogged, dlnp_dr(json)
-      double precision :: mass_fraction_above, settling_timescale, &
-           max_settling_dt, settling_dt
-      integer :: k, search_idx, num_settling_steps, substep_idx
+      type(settling_substep_plan) :: substeps
+      integer :: k, search_idx, substep_idx
       if (s%xa(i_h1,1).lt.s%physics%hydrogen_diffusion_floor) then
          s%settling_active = .false.
          return
@@ -283,27 +283,15 @@ subroutine settle
 ! Y < helium_diffusion_min everywhere from the convection zone's base
 ! inward: nothing to settle.
       if (search_idx < (1)) return
-! The mass fraction q above the outer point, and the settling timescale
-! of helium there (Michaud et al. 1984, ApJ 282, 206), stored in s:
-!   t_settle = 4.348e21 yr q / T^1.5.
-! The sub-step count is max(1, ceiling(timestep/max_settling_dt)):
-! int(timestep/max_settling_dt), plus one when timestep is not an exact
-! multiple of max_settling_dt, and at least one. (The F77 mix.f took
-! mod(max_settling_dt, timestep), arguments reversed, which added one
-! sub-step at an exact multiple; docs/bug_sweep.md O16.)
-      mass_fraction_above = (total_mass_unlogged- &
-           s%m(search_idx))/total_mass_unlogged
-      settling_timescale = 4.348d21*seconds_per_year*mass_fraction_above/ &
-           exp(ln10*1.5d0*s%logT(search_idx))
-      max_settling_dt = s%physics%settling_timestep_fraction*settling_timescale
-      num_settling_steps = int(timestep/max_settling_dt)
-      if (mod(timestep,max_settling_dt).ne.0.0d0 .or. num_settling_steps.eq.0) &
-           num_settling_steps = num_settling_steps + 1
-      settling_dt = timestep/dfloat(num_settling_steps)
-      do substep_idx = 1, num_settling_steps
-         call diffuse_elements(settling_dt, s%xa, dlnp_dr, s%logR, &
+! The sub-steps: none longer than settling_timestep_fraction of helium's
+! settling timescale at the outer point (element_diffusion's
+! plan_settling_substeps, after Michaud et al. 1984).
+      substeps = plan_settling_substeps(timestep, s%physics%settling_timestep_fraction, &
+           total_mass_unlogged, s%m(search_idx), s%logT(search_idx))
+      do substep_idx = 1, substeps%num_substeps
+         call diffuse_elements(substeps%substep, s%xa, dlnp_dr, s%logR, &
               s%logRho, s%m, s%logT, s%gradT, deep_mix_flag, &
-              s%nz, total_mass_unlogged, s%settling_active, &
+              s%nz, total_mass_unlogged, &
               s%settling_suspended_reported, ierr)
          if (ierr /= 0) return
       end do
