@@ -2,7 +2,7 @@
 src/), run with YREC_INPUT pointing at the repository's input/ tables.
 
 The program calls eos without a star: the facade's three entries
-(eos_init, eos_get, eos_set_mixture), blended_eos's test-only
+(eos_init, eos_get, eos_set_mixture), eos_test_entries' test-only
 gamma1_at_density (gamma1 at a density, on its OPAL 2006 and Yale/SCV
 branches) and the OPAL interpolators' entry points, over a fixed grid
 and in every configuration a deck can choose, including branch

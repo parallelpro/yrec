@@ -78,8 +78,8 @@ _O4 = ("O4 (docs/bug_sweep.md): the starting model's stitched atmosphere reads "
        "env_log10_radius(0), core/diagnostics/stitched_model.f90:475, a bounds error")
 KNOWN_FAILURES = {
     "test_eos": "M92 (docs/bug_sweep.md): SCV's general path takes log10 of a zero mixing "
-                "entropy, eos/scv/scv_eos.f90:497-500, a divide-by-zero trap; behind it M94, "
-                "the OPAL 1995 coverage sums read temperature row 57 of 56 (opal95_eos.f90:488)",
+                "entropy before the envelope table is built, eos/scv/scv_eos.f90:551-554 "
+                "(compute_scv_eos), a divide-by-zero trap",
     "test_structure[tams]": _O4,
     "test_structure[yale]": _O4,
     "test_structure[extra]": _O4,
