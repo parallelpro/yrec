@@ -18,7 +18,9 @@ module yale_eos
       use eos_results, only: eos_result
       use yale_eos_tables, only: debye_huckel_coefficient, debye_huckel_nu, &
            debye_huckel_composition, n_debye_huckel_metals, yale, fermi_n_x, &
-           fermi_n_t, fermi_n_bins, fermi_bins_per_unit_x, fermi_log10t_origin, fermi_log10t_step, fermi_rows_per_dex, fermi_log10t_min, &
+           fermi_n_t, fermi_n_bins, fermi_bins_per_unit_x, fermi_log10t_origin, i_fd_log_pe, &
+           i_fd_log_ue, i_fd_log_dpe_dlnt, i_fd_dlnpe_dlnrho, i_fd_log_due_dlnt, &
+           fermi_log10t_step, fermi_rows_per_dex, fermi_log10t_min, &
            fermi_log10t_max
       use physical_constants, only: clni, cmkh, gas_constant, ln10
       use eos_messages, only: eos_log, eos_report, message_length, unwritten_line
@@ -56,6 +58,15 @@ module yale_eos
 ! magnitude, as on the DEC-20 the code was written for
       real(dp), parameter :: log10_smallest_product = -38.0d0
       real(dp), parameter :: saha_convergence_tol = 1.0D-09
+! The fully ionized density iteration (iterate_fully_ionized_density): it
+! converges when its step in log rho is below density_tolerance_dex, its
+! steps are capped at max_density_step_dex (a factor 10^4, LLP 1/31/07),
+! it fails after max_density_iterations, and the relative pressure error
+! its second-order term is computed from is floored at
+! smallest_pressure_error (its log is taken).
+      real(dp), parameter :: density_tolerance_dex = 1.0d-8, max_density_step_dex = 4.0d0, &
+           smallest_pressure_error = 1.0d-15
+      integer, parameter :: max_density_iterations = 20
 
 ! The Saha system of one compute_saha_eos call: its constants, the
 ! solution (E and the He fractions) and the reduced Newton matrix, which
@@ -772,7 +783,8 @@ end subroutine start_fully_ionized_solution
 !----------------------------------------------------------------------
 ! Newton iteration on log rho until the electron (Fermi table), ion and
 ! radiation pressures, plus the Debye-Hueckel term, add up to P; steps
-! are capped at 4 dex, and 20 steps without convergence is a failure
+! are capped at max_density_step_dex, and max_density_iterations steps
+! without convergence (to density_tolerance_dex) is a failure
 ! (converged false, its message in the run log). For details consult
 ! Prather's thesis. The electron pressure pe is tabulated against
 ! X = log rho - log mu_e - 1.5 log T (3-point Lagrange, unequal spacing)
@@ -837,11 +849,11 @@ subroutine iterate_fully_ionized_density(log10_temperature, log10_pressure, r, f
 !  Interpolation in Y is Newtonian(equal spacing in Y)
       do nn = 1,3
        id = f%id1 + nn - 1
-       f%df1(1,nn) = yale%fermi_table_data(1,id,f%jt2) - yale%fermi_table_data(1,id,f%jt1)
-       f%df2(1,nn) = yale%fermi_table_data(1,id,f%jt3)-yale%fermi_table_data(1,id,f%jt2)-f%df1(1,nn)
-       f%ff(1,nn) = yale%fermi_table_data(1,id,f%jt1) + f%ttud*f%df1(1,nn) + f%ttcu*f%df2(1,nn)
+       f%df1(i_fd_log_pe,nn) = yale%fermi_table_data(i_fd_log_pe,id,f%jt2) - yale%fermi_table_data(i_fd_log_pe,id,f%jt1)
+       f%df2(i_fd_log_pe,nn) = yale%fermi_table_data(i_fd_log_pe,id,f%jt3)-yale%fermi_table_data(i_fd_log_pe,id,f%jt2)-f%df1(i_fd_log_pe,nn)
+       f%ff(i_fd_log_pe,nn) = yale%fermi_table_data(i_fd_log_pe,id,f%jt1) + f%ttud*f%df1(i_fd_log_pe,nn) + f%ttcu*f%df2(i_fd_log_pe,nn)
       end do
-      dpel2 = 2.0d0*(f%ff(1,1)*cden1 + f%ff(1,2)*cden2 + f%ff(1,3)*cden3)
+      dpel2 = 2.0d0*(f%ff(i_fd_log_pe,1)*cden1 + f%ff(i_fd_log_pe,2)*cden2 + f%ff(i_fd_log_pe,3)*cden3)
       end if
       dx1 = xx - yale%fermi_table_x_grid(f%id1)
       dx2 = xx - yale%fermi_table_x_grid(f%id2)
@@ -868,8 +880,8 @@ subroutine iterate_fully_ionized_density(log10_temperature, log10_pressure, r, f
          end if
       end if
 !  Now find pe and its 1st and 2nd derivatives w.r.t. density
-      pel =  f%cl1*f%ff(1,1) +  f%cl2*f%ff(1,2) +  f%cl3*f%ff(1,3)
-      dpel1 = f%dcl1*f%ff(1,1) + f%dcl2*f%ff(1,2) + f%dcl3*f%ff(1,3)
+      pel =  f%cl1*f%ff(i_fd_log_pe,1) +  f%cl2*f%ff(i_fd_log_pe,2) +  f%cl3*f%ff(i_fd_log_pe,3)
+      dpel1 = f%dcl1*f%ff(i_fd_log_pe,1) + f%dcl2*f%ff(i_fd_log_pe,2) + f%dcl3*f%ff(i_fd_log_pe,3)
       f%dl8 = f%dml - f%emul8
       f%d8 = exp(ln10*f%dl8)
       f%pa = f%ramut*f%d8
@@ -895,20 +907,19 @@ subroutine iterate_fully_ionized_density(log10_temperature, log10_pressure, r, f
 ! Factor is the difference between the P predicted from the given rho
 ! and the true P; if too large increment rho and try again.
       factor=abs(pr8)
-      if(factor < 1d-15) factor = 1d-15
+      if(factor < smallest_pressure_error) factor = smallest_pressure_error
       pr8l=log10(factor)
       pr9l=log10(abs(pr9))
       factl=log10(0.5d0)+pr9l+2.d0*pr8l
       fact=exp(ln10*factl)
       fact=sign(fact,pr9)
       corr=-pr8-fact
-!  limit range of changes in density to a factor of 10**4   llp  1/31/07
-      if(corr > 4d0) corr =  4d0
-      if(corr < -4d0) corr = -4d0
-      if(abs(corr) >= 1.0d-08) then
+      if(corr > max_density_step_dex) corr = max_density_step_dex
+      if(corr < -max_density_step_dex) corr = -max_density_step_dex
+      if(abs(corr) >= density_tolerance_dex) then
        f%dml = f%dml + corr
        f%nden = f%nden + 1
-       if(f%nden <= 20) cycle density_iter
+       if(f%nden <= max_density_iterations) cycle density_iter
        eos_lines = unwritten_line
        write(eos_lines,40) log10_temperature,log10_pressure,ptl,f%dml,corr
        call eos_log(eos_lines)
@@ -931,7 +942,7 @@ subroutine interpolate_fermi_table(f)
       integer :: kk
       integer :: nn
 
-      do kk = 2,5
+      do kk = i_fd_log_ue, i_fd_log_due_dlnt
        do nn = 1,3
           id = f%id1 + nn - 1
           f%df1(kk,nn) = yale%fermi_table_data(kk,id,f%jt2) - yale%fermi_table_data(kk,id,f%jt1)
@@ -962,13 +973,13 @@ subroutine differentiate_pressure(f)
       real(dp) :: qqpedd
 
 ! Derivatives of P
-      peq = exp(ln10*f%ffe(3))
-      qped = f%ffe(4)
-      qqpedd =(f%dcl1*f%ff(4,1) + f%dcl2*f%ff(4,2) + f%dcl3*f%ff(4,3))*clni
-      pr1 = f%df1(3,1)+f%ttdcu*f%df2(3,1)
-      pr2 = f%df1(3,2)+f%ttdcu*f%df2(3,2)
-      pr3 = f%df1(3,3)+f%ttdcu*f%df2(3,3)
-      pr4 = f%dcl1*f%ff(3,1) + f%dcl2*f%ff(3,2) + f%dcl3*f%ff(3,3)
+      peq = exp(ln10*f%ffe(i_fd_log_dpe_dlnt))
+      qped = f%ffe(i_fd_dlnpe_dlnrho)
+      qqpedd =(f%dcl1*f%ff(i_fd_dlnpe_dlnrho,1) + f%dcl2*f%ff(i_fd_dlnpe_dlnrho,2) + f%dcl3*f%ff(i_fd_dlnpe_dlnrho,3))*clni
+      pr1 = f%df1(i_fd_log_dpe_dlnt,1)+f%ttdcu*f%df2(i_fd_log_dpe_dlnt,1)
+      pr2 = f%df1(i_fd_log_dpe_dlnt,2)+f%ttdcu*f%df2(i_fd_log_dpe_dlnt,2)
+      pr3 = f%df1(i_fd_log_dpe_dlnt,3)+f%ttdcu*f%df2(i_fd_log_dpe_dlnt,3)
+      pr4 = f%dcl1*f%ff(i_fd_log_dpe_dlnt,1) + f%dcl2*f%ff(i_fd_log_dpe_dlnt,2) + f%dcl3*f%ff(i_fd_log_dpe_dlnt,3)
       pr5 =   5.0d0*(f%cl1*pr1 + f%cl2*pr2 + f%cl3*pr3)
       qpeqd = peq*pr4
       qpeqt = peq*(pr5 - 1.50d0*pr4)
@@ -1049,12 +1060,12 @@ subroutine compute_internal_energy_and_cp(f, r)
       real(dp) :: ur
 
 ! Internal energy term(u) and its derivatives
-      ue  = exp(ln10*(f%ffe(2) + f%emul))
-      ueq = exp(ln10*(f%ffe(5) + f%emul))
-      pr1 = f%df1(5,1)+f%ttdcu*f%df2(5,1)
-      pr2 = f%df1(5,2)+f%ttdcu*f%df2(5,2)
-      pr3 = f%df1(5,3)+f%ttdcu*f%df2(5,3)
-      pr4 = f%dcl1*f%ff(5,1) + f%dcl2*f%ff(5,2) + f%dcl3*f%ff(5,3)
+      ue  = exp(ln10*(f%ffe(i_fd_log_ue) + f%emul))
+      ueq = exp(ln10*(f%ffe(i_fd_log_due_dlnt) + f%emul))
+      pr1 = f%df1(i_fd_log_due_dlnt,1)+f%ttdcu*f%df2(i_fd_log_due_dlnt,1)
+      pr2 = f%df1(i_fd_log_due_dlnt,2)+f%ttdcu*f%df2(i_fd_log_due_dlnt,2)
+      pr3 = f%df1(i_fd_log_due_dlnt,3)+f%ttdcu*f%df2(i_fd_log_due_dlnt,3)
+      pr4 = f%dcl1*f%ff(i_fd_log_due_dlnt,1) + f%dcl2*f%ff(i_fd_log_due_dlnt,2) + f%dcl3*f%ff(i_fd_log_due_dlnt,3)
       pr5 =   5.0d0*(f%cl1*pr1 + f%cl2*pr2 + f%cl3*pr3)
       queqt = ueq*(pr5 - 1.50d0*pr4)
       pd = r%pressure/r%density

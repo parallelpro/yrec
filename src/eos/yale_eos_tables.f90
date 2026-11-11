@@ -29,6 +29,12 @@ module yale_eos_tables
       integer, parameter, public :: fermi_n_x = 43, fermi_n_t = 20, fermi_n_quantities = 5, &
            fermi_n_cards = fermi_n_x*fermi_n_t, fermi_n_bins = 261
       real(dp), parameter, public :: fermi_bins_per_unit_x = 20.0d0
+! The five quantities of an entry, as compute_fully_ionized_eos uses them
+! (the energies per unit 1/mu_e, before log mu_e is added): log10 of the
+! electron pressure P_e and of the electron energy U_e, log10 of
+! dP_e/dln T and dln P_e/dln rho, and log10 of dU_e/dln T
+      integer, parameter, public :: i_fd_log_pe = 1, i_fd_log_ue = 2, i_fd_log_dpe_dlnt = 3, &
+           i_fd_dlnpe_dlnrho = 4, i_fd_log_due_dlnt = 5
 ! The table's rows in log T: row j (1 to fermi_n_t) is at
 ! fermi_log10t_origin + j fermi_log10t_step, fermi_rows_per_dex rows a
 ! dex; so its first row is fermi_log10t_min (log T 5.2) and its last

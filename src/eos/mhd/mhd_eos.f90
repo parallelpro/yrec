@@ -100,6 +100,9 @@ subroutine compute_mhd_eos(log10_temperature, log10_pressure, &
 
       integer, intent(out) :: ierr
 
+! how far R/mu from the table's P_gas may be from the mean weights' (a
+! table result inconsistent with its own P: a stale or empty row)
+      real(dp), parameter :: gas_constant_tolerance = 5.0d-7
 ! log10 e to the original's nine digits (clni is the exact 1/ln 10):
 ! turns the tables' d/dlog10 rho and d/dlog10 T of grad_ad into d/dln
       real(dp), parameter :: log10_e = 0.434294481d0
@@ -152,7 +155,7 @@ subroutine compute_mhd_eos(log10_temperature, log10_pressure, &
            metal_fraction, specific_gas_constant_check, &
            r%ion_mean_weight_inverse, r%electron_mean_weight_inverse, r%beta)
       if (abs((r%specific_gas_constant-specific_gas_constant_check)/ &
-           r%specific_gas_constant) > 5.0d-7) then
+           r%specific_gas_constant) > gas_constant_tolerance) then
          eos_lines = unwritten_line
          write(eos_lines(1),*) ' ERROR(MHD): IN MEAN WEIGHTS ... '
          write(eos_lines(2),*) r%specific_gas_constant, specific_gas_constant_check
@@ -227,6 +230,8 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
       integer, intent(out) :: ierr
       integer, parameter :: ivarx = mhd_ivarx
       integer, parameter :: ndimt = 8
+! how far the ZAMS tables' X may be from equidistant for the quadratic
+      real(dp), parameter :: x_spacing_tolerance = 1.0d-4
 
       real(dp) :: table_vars(ndimt,ivarx), table_hfrac(ndimt)
       logical :: in_range, use_centre_tables
@@ -277,7 +282,7 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
 !        Quadratic Newton (equidistant XC's)
          x_grid_origin = table_hfrac(1)
          x_grid_spacing  = table_hfrac(2) - table_hfrac(1)
-         if (abs(table_hfrac(3)-table_hfrac(2)-x_grid_spacing) > 1.d-4) then
+         if (abs(table_hfrac(3)-table_hfrac(2)-x_grid_spacing) > x_spacing_tolerance) then
             eos_lines = unwritten_line
             write(eos_lines(1),*) 'ERROR (MHD): NON-EQUIDISTANT ZAMS TABLES.'
             write(eos_lines(2),*) 'XC(1-3)= ',table_hfrac(1),table_hfrac(2),table_hfrac(3)
