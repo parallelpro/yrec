@@ -16,6 +16,7 @@ module alex06_opacity
            n_alex06_x, n_alex06_z, opacity_table, stencil4_locate
       use numerics_lib, only: interp, lagrange4
       use physical_constants, only: ln10
+      use kap_messages, only: kap_terminal, message_length, unwritten_line
       use math_lib
       implicit none
       private
@@ -57,6 +58,7 @@ subroutine read_alex06_tables(alex06_table_path, ierr)
 ! alex06_index_r defaults moved to opacity_tables.f90: DATA can no
 ! longer target them here now that they're use-associated.
       integer :: i, ii, j, jj, k, kk
+      character(len=message_length) :: lines(2)
 
       ierr = 0
       open(newunit=table_unit,file=alex06_table_path)
@@ -71,7 +73,9 @@ subroutine read_alex06_tables(alex06_table_path, ierr)
             read(table_unit,10) header_x, header_z
    10       format(30x,f9.6,7x,f9.6//)
             if (header_x /= opacity_table%alex06_grid_x(i) .or. header_z /= opacity_table%alex06_grid_z(ii)) then
-               write(*,15) opacity_table%alex06_grid_x(i), header_x, opacity_table%alex06_grid_z(ii), header_z
+               lines = unwritten_line
+               write(lines,15) opacity_table%alex06_grid_x(i), header_x, opacity_table%alex06_grid_z(ii), header_z
+               call kap_terminal(lines)
    15          format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
                     1x,'EXPECTED AND ACTUAL X,Z',4f7.2,' RUN STOPPED')
 !               STOP
@@ -80,7 +84,9 @@ subroutine read_alex06_tables(alex06_table_path, ierr)
    20       format(6x,19f7.3)
             do kk=1,16
                if (row_logr_check(kk) /= opacity_table%alex06_grid_logr(kk)) then
-                  write(*,25) kk, opacity_table%alex06_grid_logr(kk), row_logr_check(kk)
+                  lines = unwritten_line
+                  write(lines,25) kk, opacity_table%alex06_grid_logr(kk), row_logr_check(kk)
+                  call kap_terminal(lines)
    25             format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
                        1x,'EXPECTED AND ACTUAL R',i3,2f7.3,' RUN STOPPED')
                   ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
@@ -95,7 +101,9 @@ subroutine read_alex06_tables(alex06_table_path, ierr)
                read(table_unit,30) row_temp, (opacity_table%alex06_full_opacity(jj,j,k),k=1,n_alex06_d)
    30          format(f5.3,1x,19f7.3)
                if (row_temp /= opacity_table%alex06_grid_logt(j)) then
-                  write(*,35) j, opacity_table%alex06_grid_logt(j), row_temp
+                  lines = unwritten_line
+                  write(lines,35) j, opacity_table%alex06_grid_logt(j), row_temp
+                  call kap_terminal(lines)
    35             format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
                        1x,'EXPECTED AND ACTUAL T',i3,2f7.3,' RUN STOPPED')
                   ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
@@ -116,7 +124,9 @@ subroutine read_alex06_tables(alex06_table_path, ierr)
          read(table_unit,10) header_x, header_z
          if (header_x /= (1.0d0 - opacity_table%alex06_grid_z(ii)) .or. &
               header_z /= opacity_table%alex06_grid_z(ii)) then
-            write(*,15) 1.0d0 - opacity_table%alex06_grid_z(ii), header_x, opacity_table%alex06_grid_z(ii), header_z
+            lines = unwritten_line
+            write(lines,15) 1.0d0 - opacity_table%alex06_grid_z(ii), header_x, opacity_table%alex06_grid_z(ii), header_z
+            call kap_terminal(lines)
             ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
             ierr = 1
             return
@@ -124,7 +134,9 @@ subroutine read_alex06_tables(alex06_table_path, ierr)
          read(table_unit,20) (row_logr_check(k),k=1,n_alex06_d)
          do kk=1,16
             if (row_logr_check(kk) /= opacity_table%alex06_grid_logr(kk)) then
-               write(*,25) kk, opacity_table%alex06_grid_logr(kk), row_logr_check(kk)
+               lines = unwritten_line
+               write(lines,25) kk, opacity_table%alex06_grid_logr(kk), row_logr_check(kk)
+               call kap_terminal(lines)
                ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
                ierr = 1
                return
@@ -136,7 +148,9 @@ subroutine read_alex06_tables(alex06_table_path, ierr)
          do j = n_alex06_t,1,-1
             read(table_unit,30) row_temp, (opacity_table%alex06_full_opacity(jj,j,k),k=1,n_alex06_d)
             if (row_temp /= opacity_table%alex06_grid_logt(j)) then
-               write(*,35) j, opacity_table%alex06_grid_logt(j), row_temp
+               lines = unwritten_line
+               write(lines,35) j, opacity_table%alex06_grid_logt(j), row_temp
+               call kap_terminal(lines)
                ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
                ierr = 1
                return
@@ -169,13 +183,16 @@ subroutine build_alex06_composition_table(ierr)
       real(dp) :: opacity_by_x(4,n_alex06_t,n_alex06_d)
       real(dp) :: x_max, z_max, interp_target
       integer :: i, j, iz, k, kk, kk2, kk3, kk4
+      character(len=message_length) :: lines(1)
 
 !     Xe = desired X; ze = desired Z
       ierr = 0
       x_max = 1.0d0 - opacity_table%alex06_cached_z
 !     Check that the requested composition is inside table bounds
       if (opacity_table%alex06_cached_x < 0.0d0 .or. opacity_table%alex06_cached_x > x_max) then
-         write(*,5) opacity_table%alex06_cached_x, opacity_table%alex06_cached_z
+         lines = unwritten_line
+         write(lines,5) opacity_table%alex06_cached_x, opacity_table%alex06_cached_z
+         call kap_terminal(lines)
     5    format('ILLEGAL COMPOSITION (X,Z) = ',2f6.2,' IN ALEX06.RUN STOPPED')
 ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
          ierr = 1
@@ -184,7 +201,9 @@ subroutine build_alex06_composition_table(ierr)
 !     Permit extrapolation in Z by up to 1 table element
       z_max = opacity_table%alex06_grid_z(n_alex06_z)+(opacity_table%alex06_grid_z(n_alex06_z)-opacity_table%alex06_grid_z(n_alex06_z-1))
       if (opacity_table%alex06_cached_z < 0.0d0 .or. opacity_table%alex06_cached_z > z_max) then
-         write(*,5) opacity_table%alex06_cached_x, opacity_table%alex06_cached_z
+         lines = unwritten_line
+         write(lines,5) opacity_table%alex06_cached_x, opacity_table%alex06_cached_z
+         call kap_terminal(lines)
 ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
          ierr = 1
          return

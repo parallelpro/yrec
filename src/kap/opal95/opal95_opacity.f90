@@ -23,6 +23,7 @@ module opal95_opacity
            opal95_composition_tol, opal95_missing_opacity, &
            opal95_missing_test, stencil4_locate_opal95
       use numerics_lib, only: interp, lagrange4
+      use kap_messages, only: kap_log, kap_terminal, message_length, unwritten_line
       use math_lib
       implicit none
       private
@@ -39,7 +40,6 @@ contains
 ! build_opal95_fixed_z_table. Any premature end of file (fewer than n_opal95_tables
 ! tables, or a truncated table body) is reported and returns ierr = 1.
 subroutine read_opal95_tables(opal95_table_path, ierr)
-      use run_messages, only: run_log_unit
       integer, intent(out) :: ierr
 
 ! the table file's unit
@@ -55,6 +55,7 @@ subroutine read_opal95_tables(opal95_table_path, ierr)
       integer :: fmt_start, iz, ix, nn, n, i, j, nmax
       integer :: read_status
       real(dp) :: xx, zz, xxt, target_z
+      character(len=message_length) :: lines(1)
 
 !     Read in opacity tables, skipping header.  Hey, it works.
       ierr = 0
@@ -79,7 +80,9 @@ subroutine read_opal95_tables(opal95_table_path, ierr)
          xxt = 1.0d0 - opacity_table%opal95_grid_z(iz)
       endif
       if (opacity_table%opal95_grid_z(iz) /= zz .or. xxt /= xx) then
-       write(run_log_unit,*)' OPAL95: Z ERROR INCOMPATIBLE TABLE'
+       lines = unwritten_line
+       write(lines,*)' OPAL95: Z ERROR INCOMPATIBLE TABLE'
+       call kap_log(lines)
          ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
          ierr = 1
          return
@@ -88,14 +91,18 @@ subroutine read_opal95_tables(opal95_table_path, ierr)
 !     Read in header info: Grid in rho/T6**3
       read(table_unit,20,iostat=read_status) (opacity_table%opal95_grid_logr(i),i=1,n_opal95_d)
       if (read_status < 0) then
-         write(*,*) 'read_opal95_tables: OPAL95 opacity table file ended after ', nn-1, &
+         lines = unwritten_line
+         write(lines,*) 'read_opal95_tables: OPAL95 opacity table file ended after ', nn-1, &
               ' of ', n_opal95_tables, ' tables'
+         call kap_terminal(lines)
          close(table_unit)
          ierr = 1
          return
       end if
       if (read_status > 0) then
-         write(*,*) 'read_opal95_tables: malformed OPAL95 opacity table (header read failed)'
+         lines = unwritten_line
+         write(lines,*) 'read_opal95_tables: malformed OPAL95 opacity table (header read failed)'
+         call kap_terminal(lines)
          ierr = 1
          return
       end if
@@ -183,7 +190,9 @@ subroutine read_opal95_tables(opal95_table_path, ierr)
       call build_opal95_fixed_z_table(target_z, ierr)
       return
 !     Premature end of file inside a table body (end=9999 above).
- 9999 write(*,*) 'read_opal95_tables: OPAL95 opacity table file ended inside table ', nn
+ 9999 lines = unwritten_line
+      write(lines,*) 'read_opal95_tables: OPAL95 opacity table file ended inside table ', nn
+      call kap_terminal(lines)
       close(table_unit)
       ierr = 1
 end subroutine read_opal95_tables
@@ -204,6 +213,7 @@ subroutine build_opal95_fixed_z_table(metal_fraction, ierr)
       real(dp) :: table_z_nodes(4), z_weight(4), z_weight_hix(4)
       integer :: i, j, k, z_table_index, z_table_index2
       integer :: table1_index, table2_index, table3_index, table4_index
+      character(len=message_length) :: lines(2)
 
       ierr = 0
       opacity_table%opal95_fixed_z = metal_fraction
@@ -216,7 +226,9 @@ subroutine build_opal95_fixed_z_table(metal_fraction, ierr)
       end do
       if (i > (n_opal95_z-1)) then
 ! Desired Z > 0.1d0; stop
-      write(*,5)metal_fraction
+      lines = unwritten_line
+      write(lines,5)metal_fraction
+      call kap_terminal(lines)
     5 format(1x,'DESIRED Z',f10.6,'OUTSIDE OP95 TABLE RANGE'/ &
            ' RUN STOPPED')
       ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
@@ -414,6 +426,7 @@ subroutine compute_opal95_opacity(log10_density, log10_temperature, hydrogen_fra
       logical :: low_regime_flag, density_shifted
       integer :: x_table_index, density_base_index, temp_row_index
       real(dp) :: extrap_logr, z_at_table
+      character(len=message_length) :: lines(1)
 
 !     Ensure that we are within the OPAL 95 tables.
 !     Compute log R = rho/T6**3
@@ -422,8 +435,10 @@ subroutine compute_opal95_opacity(log10_density, log10_temperature, hydrogen_fra
 !     CHECK T
       if (log10_temperature < opacity_table%opal95_grid_logt(1) .or. &
            log10_temperature > opacity_table%opal95_grid_logt(n_opal95_t)) then
-         write(*,5) log10_temperature
+         lines = unwritten_line
+         write(lines,5) log10_temperature
     5    format(' LOG T OF',f11.6,'OUT OF OPAL 95 TABLE RANGE')
+         call kap_terminal(lines)
 ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the facade
 ! (kap_lib's kap_get) stops when its caller passes no ierr.
          ierr = 1

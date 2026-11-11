@@ -19,7 +19,7 @@ module laol_opacity
       use opacity_tables, only: kap_settings, laol_opacity_cap, &
            laol_table_set, n_laol_rho, n_laol_t, n_laol_x, opacity_table
       use numerics_lib, only: natural_spline, locate, splint, numerics_status_text
-      use run_messages, only: run_log_unit
+      use kap_messages, only: kap_log, message_length, unwritten_line
       use math_lib
       implicit none
       private
@@ -88,6 +88,7 @@ subroutine read_laol_table(path, tbl, work_array, ierr)
 !     Zlot/zhit and the Debye-Hueckel mixture are read-list targets
 !     that are never used afterwards.
       real(dp) :: zlot, zhit, debye_huckel_z(18)
+      character(len=message_length) :: lines(1)
 
       open(newunit=laol_unit,file=path, form='FORMATTED', &
            status='OLD')
@@ -95,11 +96,13 @@ subroutine read_laol_table(path, tbl, work_array, ierr)
       read(laol_unit,100) tbl%num_x,tbl%num_rho,tbl%num_t
   100 format(/,18x,i2,9x,i3,14x,i3)
       if (tbl%num_x > n_laol_x-1.or.tbl%num_rho > n_laol_rho.or.tbl%num_t > n_laol_t) then
+         lines = unwritten_line
          if (tbl%table_number == 2) then
-         write(run_log_unit,*)' SECOND OPACITY ARRAY TOO LARGE.'
+         write(lines,*)' SECOND OPACITY ARRAY TOO LARGE.'
          else
-         write(run_log_unit,*)' OPACITY ARRAY TOO LARGE.'
+         write(lines,*)' OPACITY ARRAY TOO LARGE.'
          end if
+         call kap_log(lines)
          ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
          ierr = 1
          return
@@ -251,6 +254,7 @@ subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_
            num_valid_x, x_loop_index, num_valid_t, t_range_lo, t_range_hi, &
            num_valid_rho, rho_loop_index, spline_index_lo, spline_index_hi
       real(dp) :: log10_opacity_value, slope
+      character(len=message_length) :: lines(1)
 
 !     1. Cubic spline interpolate in density
 !     2. Cubic spline interpolate in temperature
@@ -293,7 +297,9 @@ subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_
                   ! 2026 numerics-gate opt-in: interpolation failure returns via
                   ! ierr (diagnostic printed at the gate) instead of stopping.
                   if (jerr_gate /= 0) then
-                     write(run_log_unit,*) 'splint: '//numerics_status_text(jerr_gate)
+                     lines = unwritten_line
+                     write(lines,*) 'splint: '//numerics_status_text(jerr_gate)
+                     call kap_log(lines)
                      ierr = jerr_gate
                      return
                   end if
@@ -326,15 +332,17 @@ subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_
                   dlnkap_dlnrho_by_t(num_valid_t) = slope
                end if
             else
+               lines = unwritten_line
                if (tbl%table_number == 2) then
-               write(run_log_unit,220) log10_density, log10_temperature
+               write(lines,220) log10_density, log10_temperature
   220          format(' OUTSIDE OPACITY TABLE #2, IN DENSITY.  ', &
                     'LOG(RHO)=',1pe12.3, ' LOG(T)=', 1pe12.3)
                else
-               write(run_log_unit,120) log10_density, log10_temperature
+               write(lines,120) log10_density, log10_temperature
   120          format(' OUTSIDE OPACITY TABLE, IN DENSITY.  ', &
                     'LOG(RHO)=',1pe12.3, ' LOG(T)=', 1pe12.3)
                end if
+               call kap_log(lines)
 ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
                ierr = 1
                return
@@ -347,7 +355,9 @@ subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_
                  logt_d2opacity, log10_temperature, log10_opacity_value, &
                  jerr_gate, spline_index_lo, spline_index_hi)
             if (jerr_gate /= 0) then
-               write(run_log_unit,*) 'splint: '//numerics_status_text(jerr_gate)
+               lines = unwritten_line
+               write(lines,*) 'splint: '//numerics_status_text(jerr_gate)
+               call kap_log(lines)
                ierr = jerr_gate
                return
             end if
@@ -362,15 +372,17 @@ subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_
                  (logt_values(spline_index_hi)-logt_values(spline_index_lo))
             x_values(num_valid_x) = tbl%grid_x(x_loop_index)
          else
+            lines = unwritten_line
             if (tbl%table_number == 2) then
-            write(run_log_unit,221) log10_density, log10_temperature
+            write(lines,221) log10_density, log10_temperature
   221       format(' OUTSIDE OPACITY TABLE #2, IN TEMPERATURE.  ', &
                  'LOG(RHO)=',1pe12.3, ' LOG(T)=', 1pe12.3)
             else
-            write(run_log_unit,121) log10_density, log10_temperature
+            write(lines,121) log10_density, log10_temperature
   121       format(' OUTSIDE OPACITY TABLE, IN TEMPERATURE.  ', &
                  'LOG(RHO)=',1pe12.3, ' LOG(T)=', 1pe12.3)
             end if
+            call kap_log(lines)
 ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
             ierr = 1
             return
@@ -407,6 +419,7 @@ subroutine read_pure_z_table(pure_z_table_path, ierr)
 ! iopurez = 62)
       integer :: pure_z_unit
       real(dp) :: dummy(104)
+      character(len=message_length) :: lines(1)
 
       ierr = 0
       open(newunit=pure_z_unit, file=pure_z_table_path,form='FORMATTED', &
@@ -415,7 +428,9 @@ subroutine read_pure_z_table(pure_z_table_path, ierr)
       read(pure_z_unit,100) n,opacity_table%zlaol_num_rho,opacity_table%zlaol_num_t
   100 format(/,18x,i2,9x,i3,14x,i3)
       if (n /= 1.or.opacity_table%zlaol_num_rho > n_laol_rho.or.opacity_table%zlaol_num_t > n_laol_t) then
-         write(run_log_unit,*)' Z OPACITY INPUT ERROR.'
+         lines = unwritten_line
+         write(lines,*)' Z OPACITY INPUT ERROR.'
+         call kap_log(lines)
          ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
          ierr = 1
          return
@@ -512,6 +527,7 @@ subroutine compute_pure_z_opacity(log10_density, log10_temperature, opacity, &
            num_valid_t, num_valid_rho, rho_loop_index, spline_index_lo, &
            spline_index_hi
       real(dp) :: log10_opacity_value, slope
+      character(len=message_length) :: lines(1)
 
 !     1. Cubic spline interpolate in density
 !     2. Cubic spline interpolate in temperature
@@ -540,7 +556,9 @@ subroutine compute_pure_z_opacity(log10_density, log10_temperature, opacity, &
                ! 2026 numerics-gate opt-in: interpolation failure returns via
                ! ierr (diagnostic printed at the gate) instead of stopping.
                if (jerr_gate /= 0) then
-                  write(run_log_unit,*) 'splint: '//numerics_status_text(jerr_gate)
+                  lines = unwritten_line
+                  write(lines,*) 'splint: '//numerics_status_text(jerr_gate)
+                  call kap_log(lines)
                   ierr = jerr_gate
                   return
                end if
@@ -573,7 +591,9 @@ subroutine compute_pure_z_opacity(log10_density, log10_temperature, opacity, &
                dlnkap_dlnrho_by_t(num_valid_t) = slope
             end if
          else
-            write(run_log_unit,120) log10_density, log10_temperature
+            lines = unwritten_line
+            write(lines,120) log10_density, log10_temperature
+            call kap_log(lines)
   120       format(' OUTSIDE Z OPACITY TABLE, IN DENSITY.  ', &
                  'LOG(RHO)=',1pe12.3, ' LOG(T)=', 1pe12.3)
 ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
@@ -588,7 +608,9 @@ subroutine compute_pure_z_opacity(log10_density, log10_temperature, opacity, &
               logt_d2opacity, log10_temperature, log10_opacity_value, &
               jerr_gate, spline_index_lo, spline_index_hi)
          if (jerr_gate /= 0) then
-            write(run_log_unit,*) 'splint: '//numerics_status_text(jerr_gate)
+            lines = unwritten_line
+            write(lines,*) 'splint: '//numerics_status_text(jerr_gate)
+            call kap_log(lines)
             ierr = jerr_gate
             return
          end if
@@ -599,7 +621,9 @@ subroutine compute_pure_z_opacity(log10_density, log10_temperature, opacity, &
          dlnkap_dlnt = (logt_interp_opacity(spline_index_hi)-logt_interp_opacity(spline_index_lo))/ &
               (logt_values(spline_index_hi)-logt_values(spline_index_lo))
       else
-         write(run_log_unit,121) log10_density, log10_temperature
+         lines = unwritten_line
+         write(lines,121) log10_density, log10_temperature
+         call kap_log(lines)
   121    format(' OUTSIDE Z OPACITY TABLE, IN TEMPERATURE.  ', &
               'LOG(RHO)=',1pe12.3, ' LOG(T)=', 1pe12.3)
 ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).

@@ -17,7 +17,8 @@ module kurucz_opacity
            kurucz_max_num_temps, kurucz_table_set, opacity_table
       use numerics_lib, only: findex, natural_spline, splint, &
            compute_spline_coefficients, numerics_status_text
-      use run_messages, only: run_log_unit
+      use kap_messages, only: kap_log, kap_log_values, kap_terminal, message_length, &
+           unwritten_line
       use math_lib
       implicit none
       private
@@ -84,6 +85,7 @@ subroutine read_kurucz_table(path, tbl, ierr)
       type(kurucz_table_set), intent(inout) :: tbl
       integer, intent(inout) :: ierr   ! left at the caller's 0 on success
       integer :: unit
+      character(len=message_length) :: lines(1)
 
     1 format(2f5.2,5f7.3,3f9.5,f8.3)
 !     OPEN TABLE
@@ -102,8 +104,10 @@ subroutine read_kurucz_table(path, tbl, ierr)
       if (prev_grid_temp /= grid_temp) then
          num_read = num_read+1
          if (num_read > kurucz_max_num_temps) then
-            write(*,*) 'read_kurucz_tables: too many temperature rows in ', &
+            lines = unwritten_line
+            write(lines,*) 'read_kurucz_tables: too many temperature rows in ', &
                  trim(path)
+            call kap_terminal(lines)
             ierr = 1
             return
          end if
@@ -112,8 +116,10 @@ subroutine read_kurucz_table(path, tbl, ierr)
          density_index = 1
       endif
       if (num_read < 1) then
-         write(*,*) 'read_kurucz_tables: no header row read from ', &
+         lines = unwritten_line
+         write(lines,*) 'read_kurucz_tables: no header row read from ', &
               trim(path)
+         call kap_terminal(lines)
          ierr = 1
          return
       end if
@@ -127,7 +133,9 @@ subroutine read_kurucz_table(path, tbl, ierr)
       close(unit,err=99)
       return
    99 continue
-      write(*,*) 'read_kurucz_tables: error closing table file'
+      lines = unwritten_line
+      write(lines,*) 'read_kurucz_tables: error closing table file'
+      call kap_terminal(lines)
       ierr = 1
 end subroutine read_kurucz_table
 
@@ -158,6 +166,7 @@ subroutine build_kurucz_splines(tbl, ierr)
            row_second_derivs(kurucz_max_num_densities)
       integer :: it, jd, id, index2, j, i
       real(dp) :: chkd, chko
+      character(len=message_length) :: lines(1)
 
       ierr = 0
       do it = 1,tbl%num_temps
@@ -173,12 +182,16 @@ subroutine build_kurucz_splines(tbl, ierr)
          end do
          tbl%density_count(it) = jd
          if (tbl%density_start_index(it) /= 1) then
-            write(*,*) 'build_kurucz_splines: kurucz table density grid does not start at index 1'
+            lines = unwritten_line
+            write(lines,*) 'build_kurucz_splines: kurucz table density grid does not start at index 1'
+            call kap_terminal(lines)
             ierr = 1
             return
          end if
          if (tbl%density_count(it) < 25) then
-            write(*,*) 'build_kurucz_splines: kurucz table has fewer than 25 density points'
+            lines = unwritten_line
+            write(lines,*) 'build_kurucz_splines: kurucz table has fewer than 25 density points'
+            call kap_terminal(lines)
             ierr = 1
             return
          end if
@@ -249,6 +262,7 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
       real(dp) :: delta_logrho, c1, c2, c3, c4
       real(dp) :: log10_opacity_at_rho, dlnkap_dlnrho_at_rho
       real(dp) :: log10_opacity_interp
+      character(len=message_length) :: lines(1)
 
       call findex(tbl%grid_logt, tbl%num_temps, log10_temperature, &
            tbl%ix_t)
@@ -330,8 +344,8 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
             search_full_range = .false.
             cycle full_search
          endif
-         write(run_log_unit,*) 'ERROR KURUCZ OP: NO TABLE VALUE ', &
-              log10_density, log10_temperature
+         call kap_log_values([log10_density, log10_temperature], &
+              'ERROR KURUCZ OP: NO TABLE VALUE ')
 ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib's kap_get).
          ierr = 1
          return
@@ -351,7 +365,9 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
       ! 2026 numerics-gate opt-in: interpolation failure returns via
       ! ierr (diagnostic printed at the gate) instead of stopping.
       if (jerr_gate /= 0) then
-         write(run_log_unit,*) 'splint: '//numerics_status_text(jerr_gate)
+         lines = unwritten_line
+         write(lines,*) 'splint: '//numerics_status_text(jerr_gate)
+         call kap_log(lines)
          ierr = jerr_gate
          return
       end if
@@ -364,7 +380,9 @@ subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity
       call splint(temp_subset_logt, temp_subset_dlnkap_dlnrho, num_valid_temps, &
            temp_subset_second_derivs, log10_temperature, dlnkap_dlnrho, jerr_gate)
       if (jerr_gate /= 0) then
-         write(run_log_unit,*) 'splint: '//numerics_status_text(jerr_gate)
+         lines = unwritten_line
+         write(lines,*) 'splint: '//numerics_status_text(jerr_gate)
+         call kap_log(lines)
          ierr = jerr_gate
          return
       end if

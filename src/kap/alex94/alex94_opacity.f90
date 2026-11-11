@@ -16,7 +16,7 @@ module alex94_opacity
            opacity_table, stencil4_locate
       use numerics_lib, only: interp, lagrange4
       use physical_constants, only: ln10
-      use run_messages, only: run_log_unit
+      use kap_messages, only: kap_log, message_length, unwritten_line
       use math_lib
       implicit none
       private
@@ -61,6 +61,7 @@ subroutine read_alex94_tables(alex95_table_paths, ierr)
       integer :: table_index, i, ii, j, k, row_density_count
       real(dp) :: header_x, header_z, row_temp, row_logr0
       real(dp) :: target_z
+      character(len=message_length) :: lines(2)
 
       do table_index=1,n_alex94_x
 !        Open each of the tables at fixed X with a range of Z.
@@ -77,8 +78,10 @@ subroutine read_alex94_tables(alex95_table_paths, ierr)
    10       format(18x,f6.2,2x,f7.2)
             if (header_x /= opacity_table%alex94_grid_x(table_index) .or. &
                  header_z /= opacity_table%alex94_grid_z(i)) then
-               write(run_log_unit,20) header_x, opacity_table%alex94_grid_x(table_index), &
+               lines = unwritten_line
+               write(lines,20) header_x, opacity_table%alex94_grid_x(table_index), &
                     header_z, opacity_table%alex94_grid_z(i)
+               call kap_log(lines)
    20          format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
                     1x,'EXPECTED AND ACTUAL X,Z',4f7.2,' RUN STOPPED')
                ! 2026 (docs/ROADMAP.md stage 3): stop -> ierr (see kap_lib facades).
@@ -96,8 +99,10 @@ subroutine read_alex94_tables(alex95_table_paths, ierr)
    30          format(i2,i3,f6.3,f5.1,8f8.3/9f8.3)
                if (row_density_count /= n_alex94_d .or. row_temp /= opacity_table%alex94_grid_logt(j) &
                     .or. row_logr0 /= opacity_table%alex94_grid_logr(1)) then
-                  write(run_log_unit,40) row_density_count, row_temp, &
+                  lines = unwritten_line
+                  write(lines,40) row_density_count, row_temp, &
                        opacity_table%alex94_grid_logt(j), row_logr0, opacity_table%alex94_grid_logr(1)
+                  call kap_log(lines)
    40             format(1x,'ERROR IN ALEXANDER OPACITY TABLES:'/ &
                        1x,'EXPECTED AND ACTUAL T,RHO',i3,4f7.2, &
                        ' RUN STOPPED')

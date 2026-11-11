@@ -88,7 +88,7 @@ end subroutine kap_get
 subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
      metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, &
      ion_fraction, ierr)
-      use run_messages, only: run_log_unit
+      use kap_messages, only: kap_log_values
       real(dp), intent(in) :: log10_density, log10_temperature, &
            hydrogen_fraction, metal_fraction
       real(dp), intent(out) :: opacity, log10_opacity, &
@@ -188,9 +188,9 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
 !     temperatures
       if ((metal_fraction > 0.1d0) .and. (log10_temperature > 7.0d0)) then
          if (.not.kap_settings%use_pure_z_table) then
-            write(run_log_unit, *) ' ERROR: Z>0.10 T > 5 X 10^7 K', &
-                 ' NEED PURE Z TABLE TO CONTINUE. Z,LOG T=', &
-                 metal_fraction, log10_temperature
+            call kap_log_values([metal_fraction, log10_temperature], &
+                 ' ERROR: Z>0.10 T > 5 X 10^7 K' // &
+                 ' NEED PURE Z TABLE TO CONTINUE. Z,LOG T=')
             jerr = 1
             ierr = jerr
             return
@@ -246,10 +246,10 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
            .and. .not.kap_settings%use_opal95_tables)) then
 !        JCZ 211125 changed to 10^7 K in message to reflect above
 !        change in logic.
-         write(run_log_unit,*) ' Z>0.12 T < 10^7 K', &
-              ' OUTSIDE OPAL OPACITY TABLE RANGE OR Z', &
-              ' OUTSIDE SINGLE TABLE USED.Z,ZENV,LOG T=', &
-              metal_fraction, kap_envelope_metal_fraction, log10_temperature
+         call kap_log_values([metal_fraction, kap_envelope_metal_fraction, log10_temperature], &
+              ' Z>0.12 T < 10^7 K' // &
+              ' OUTSIDE OPAL OPACITY TABLE RANGE OR Z' // &
+              ' OUTSIDE SINGLE TABLE USED.Z,ZENV,LOG T=')
          jerr = 1
          ierr = jerr
          return
@@ -314,9 +314,8 @@ subroutine kap_eval(log10_density, log10_temperature, hydrogen_fraction, &
 !     mhp 7/12 insert final trap - no opacity computed
 !     should not be able to get here.
       else
-         write(run_log_unit,*) 'NO OPACITY TABLE CHOSEN', &
-              ' RUN STOPPED. X Z TL=', hydrogen_fraction, metal_fraction, &
-              log10_temperature
+         call kap_log_values([hydrogen_fraction, metal_fraction, log10_temperature], &
+              'NO OPACITY TABLE CHOSEN' // ' RUN STOPPED. X Z TL=')
          jerr = 1
          ierr = jerr
          return

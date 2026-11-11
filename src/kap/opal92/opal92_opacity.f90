@@ -17,7 +17,7 @@ module opal92_opacity
            opal92_table_set, opal92_x_match_tol
       use numerics_lib, only: findex, natural_spline, splint, &
            compute_spline_coefficients, numerics_status_text
-      use run_messages, only: run_log_unit
+      use kap_messages, only: kap_log, kap_terminal, message_length, unwritten_line
       use math_lib
       implicit none
       private
@@ -54,6 +54,7 @@ subroutine read_opal92_tables(opal92_table_path, opal92_table2_path, ierr)
       real(dp) :: local_grid_z(n_opal92_x)
       integer :: i, k, density_index, num_temps_read
       real(dp) :: grid_temp_k
+      character(len=message_length) :: lines(1)
 
 !     OPEN TABLE
       ierr = 0
@@ -106,7 +107,9 @@ subroutine read_opal92_table(unit, tbl, ierr)
       tbl%num_x=i-1
       return
    99 continue
-      write(*,*) 'read_opal92_tables: error closing table file'
+      lines = unwritten_line
+      write(lines,*) 'read_opal92_tables: error closing table file'
+      call kap_terminal(lines)
       ierr = 1
 end subroutine read_opal92_table
 
@@ -137,6 +140,7 @@ subroutine prepare_opal92_tables(ierr)
            row_opacity(n_opal92_d), row_second_derivs(n_opal92_d)
       integer :: ix, it, index1, jd, id, index2, j, i
       real(dp) :: chkd, chko
+      character(len=message_length) :: lines(1)
 
       ierr = 0
 
@@ -169,7 +173,9 @@ subroutine prep_table(tbl, ierr)
           if (jd <= 0) then
              tbl%density_start_index(index1) = id
              if (id /= 1) then
-                write(*,*) 'prepare_opal92_tables: opal92 table density grid does not start at index 1'
+                lines = unwritten_line
+                write(lines,*) 'prepare_opal92_tables: opal92 table density grid does not start at index 1'
+                call kap_terminal(lines)
                 ierr = 1
                 return
              end if
@@ -228,6 +234,7 @@ subroutine build_opal92_surface_table(hydrogen_fraction, ierr)
       real(dp) :: temp6, density_rhot3, opacity0, log10_opacity0, &
            dlnkap_dlnrho0, dlnkap_dlnt0, opacity1, log10_opacity1, &
            dlnkap_dlnrho1, dlnkap_dlnt1, x_fraction_within, log10_opacity_final
+      character(len=message_length) :: lines(1)
 
       ierr = 0
       call build_surface_table(opacity_table%opal92(1), kap_settings%opal_table_z1, ierr)
@@ -254,7 +261,9 @@ subroutine build_surface_table(tbl, table_z, ierr)
       if (x_index < 0) x_index=-x_index
       if (x_index >= 3) x_index=2
       if (x_index <= 0) then
-         write(*,*) 'build_opal92_surface_table: surface X outside table X grid'
+         lines = unwritten_line
+         write(lines,*) 'build_opal92_surface_table: surface X outside table X grid'
+         call kap_terminal(lines)
          ierr = 1
          return
       end if
@@ -266,7 +275,9 @@ subroutine build_surface_table(tbl, table_z, ierr)
          row_index=im2+(x_index-1)*tbl%num_temps
          density_start=tbl%density_start_index(row_index)
          if (density_start /= 1) then
-            write(*,*) 'build_opal92_surface_table: surface-table density grid does not start at index 1'
+            lines = unwritten_line
+            write(lines,*) 'build_opal92_surface_table: surface-table density grid does not start at index 1'
+            call kap_terminal(lines)
             ierr = 1
             return
          end if
@@ -335,6 +346,7 @@ subroutine compute_opal92_opacity(tbl, log10_density, log10_temperature, hydroge
       integer :: im1
       real(dp) :: o0, ol0, qod0, qot0, o1, ol1, qod1, qot1
       real(dp) :: qodi, qoti, grdnt
+      character(len=message_length) :: lines(1)
 
       ierr = 0
       single_x_table = .false.
@@ -363,7 +375,9 @@ subroutine compute_opal92_opacity(tbl, log10_density, log10_temperature, hydroge
       if (tbl%index_x <= 1.and.rhot3 > -1.0d0) tbl%index_x = 2
       if (tbl%index_x >= 3) tbl%index_x = 2
       if (tbl%index_x <= 0) then
-         write(*,*) 'compute_opal92_opacity: error in X grid'
+         lines = unwritten_line
+         write(lines,*) 'compute_opal92_opacity: error in X grid'
+         call kap_terminal(lines)
          ierr = 1
          return
       end if
@@ -371,7 +385,9 @@ subroutine compute_opal92_opacity(tbl, log10_density, log10_temperature, hydroge
       call findex(tbl%grid_logt, tbl%num_temps, t6, tbl%index_t)
       if (tbl%index_t < 0.and.tbl%grid_logt(tbl%num_temps) == t6) tbl%index_t = -tbl%index_t
       if (tbl%index_t < 0) then
-         write(*,*) 'compute_opal92_opacity: T out of table'
+         lines = unwritten_line
+         write(lines,*) 'compute_opal92_opacity: T out of table'
+         call kap_terminal(lines)
          ierr = 1
          return
       end if
@@ -433,6 +449,7 @@ subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_in
       integer :: mm1, index1, ndss, ndf, knot, index2
       real(dp) :: dx, c1, c2, c3, c4, ol0, qodi
       real(dp) :: ol00
+      character(len=message_length) :: lines(1)
 
       ierr = 0
 ! For six grid points of temperature
@@ -450,7 +467,9 @@ subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_in
          index1 = it + (mm1-1)*tbl%num_temps
          ndss = tbl%density_start_index(index1)
          if (ndss /= 1) then
-            write(*,*) 'interpolate_opal92_2d: CHECK NDSS'
+            lines = unwritten_line
+            write(lines,*) 'interpolate_opal92_2d: CHECK NDSS'
+            call kap_terminal(lines)
             ierr = 1
             return
          end if
@@ -500,7 +519,9 @@ subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_in
          aqod(jt) = qodi
       end do
       if (xt(1) > temperature.or.xt(jt) < temperature) then
-         write(*,*) 'interpolate_opal92_2d: extrapolation fails'
+         lines = unwritten_line
+         write(lines,*) 'interpolate_opal92_2d: extrapolation fails'
+         call kap_terminal(lines)
          ierr = 1
          return
       end if
@@ -509,7 +530,9 @@ subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_in
       call natural_spline(xt, yto, jt, second_derivs)
       call splint(xt, yto, jt, second_derivs, temperature, ol00, ierr, dy=dlnkap_dlnt)
       if (ierr /= 0) then
-         write(run_log_unit,*) 'splint: '//numerics_status_text(ierr)
+         lines = unwritten_line
+         write(lines,*) 'splint: '//numerics_status_text(ierr)
+         call kap_log(lines)
          return
       end if
       log10_opacity = ol00
@@ -519,7 +542,9 @@ subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_in
       call natural_spline(xt, aqod, jt, second_derivs)
       call splint(xt, aqod, jt, second_derivs, temperature, dlnkap_dlnrho, ierr)
       if (ierr /= 0) then
-         write(run_log_unit,*) 'splint: '//numerics_status_text(ierr)
+         lines = unwritten_line
+         write(lines,*) 'splint: '//numerics_status_text(ierr)
+         call kap_log(lines)
          return
       end if
 ! QODF = D LN(O)/D LN(D)

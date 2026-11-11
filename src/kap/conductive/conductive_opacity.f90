@@ -15,6 +15,8 @@ module conductive_opacity
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use math_lib
       use numerics_lib, only: hunt
+      use kap_messages, only: kap_terminal, kap_terminal_values, message_length, &
+           unwritten_line
       implicit none
       private
       public :: read_conductive_table, compute_conductive_opacity
@@ -47,10 +49,13 @@ subroutine read_conductive_table(path, ierr)
       integer, intent(out) :: ierr
       integer :: file_unit, z_index, t_index, r_index
       real(dp) :: z_grid_value
+      character(len=message_length) :: lines(1)
 
       open(newunit=file_unit, file=path, status='OLD', iostat=ierr)
       if (ierr /= 0) then
-         write(*,*) 'read_conductive_table: cannot open ', trim(path)
+         lines = unwritten_line
+         write(lines,*) 'read_conductive_table: cannot open ', trim(path)
+         call kap_terminal(lines)
          ierr = 1
          return
       end if
@@ -285,9 +290,12 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
       real(dp) :: ckt1, drkt1, dr2kt1
       real(dp) :: cktp, drktp, dr2ktp
       real(dp) :: dt2k, drtk, drt2k, xt
+      character(len=message_length) :: lines(1)
 
       if (cond_table%table_loaded_flag /= cond_table_loaded_marker) then
-         write(*,*) 'condopacp: the conductive-opacity table is not loaded (kap_init)'
+         lines = unwritten_line
+         write(lines,*) 'condopacp: the conductive-opacity table is not loaded (kap_init)'
+         call kap_terminal(lines)
          ierr = 1
          return
       end if
@@ -302,7 +310,9 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
       if (z_index == 0.or.z_index == cond_n_z) then
 ! 2026 audit (section 7): stop -> ierr (runtime table-range guard;
 ! see kap_lib's kap_get).
-         write(*,*) 'CONINTER: Z out of range'
+         lines = unwritten_line
+         write(lines,*) 'CONINTER: Z out of range'
+         call kap_terminal(lines)
          ierr = 1
          return
       end if
@@ -310,11 +320,15 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
 
 !      if (IT.eq.0.or.IT.eq.MAXT) stop 'CONINTER: T out of range'
       if (t_index == 0.or.t_index == cond_n_temp) then
-                  print*, cond_table%z_grid
-                  print*, cond_n_z, log10_temperature, z_index
+                  call kap_terminal_values(cond_table%z_grid)
+                  lines = unwritten_line
+                  write(lines,*) cond_n_z, log10_temperature, z_index
+                  call kap_terminal(lines)
 ! 2026 (docs/ROADMAP.md stage 3): stop 'CONINTER: T out of range'
 ! converted to ierr (see kap_lib's kap_get); message preserved.
-                  print*, 'CONINTER: T out of range'
+                  lines = unwritten_line
+                  write(lines,*) 'CONINTER: T out of range'
+                  call kap_terminal(lines)
                   ierr = 1
                   return
       endif
@@ -323,7 +337,9 @@ subroutine condopacp(ion_charge, log10_temperature, log10_density, &
       if (r_index == 0.or.r_index == cond_n_rho) then
 ! 2026 audit (section 7): stop -> ierr (runtime table-range guard;
 ! see kap_lib's kap_get).
-         write(*,*) 'CONINTER: rho out of range'
+         lines = unwritten_line
+         write(lines,*) 'CONINTER: rho out of range'
+         call kap_terminal(lines)
          ierr = 1
          return
       end if
@@ -447,12 +463,15 @@ subroutine cinterp3(grid_lo2,grid_lo1,grid_hi1,grid_hi2,grid_target, &
       integer, intent(out) :: ierr
 
       real(dp) :: x, h, hm, v01, hp, v11, c2, c3
+      character(len=message_length) :: lines(1)
 
       ierr = 0
       if (grid_index <= 0.or.grid_index >= grid_size) then
 ! 2026 audit (section 7): stop -> ierr (runtime table-range guard;
 ! see kap_lib's kap_get).
-         write(*,*) 'CINTERP: N0 out of range'
+         lines = unwritten_line
+         write(lines,*) 'CINTERP: N0 out of range'
+         call kap_terminal(lines)
          ierr = 1
          return
       end if
