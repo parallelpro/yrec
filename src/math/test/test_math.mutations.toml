@@ -1,0 +1,227 @@
+# Mutations of test_math: each check must print FAIL under a mutation of the
+# math_lib code it covers, built with the backend that code belongs to
+# (math/README.md). Run: python3 src/tools/mutate.py math (src/tools/mutate.py
+# describes this format and the verdicts).
+program = "test_math"
+timeout = 120
+
+[backends]
+intrinsic = "test_math"
+crmath = "test_math_crmath"   # needs the MESA SDK; skipped without it
+
+[[mutation]]
+id = 'crmath-01'
+backend = 'crmath'
+check = 'pow: integer exponents are repeated multiplication'
+file = 'math/math_lib.f90'
+old = '''
+            pow_x = pow_x*x
+         end do
+         if (iy < 0) pow_x = 1.0d0/pow_x
+      else if'''
+new = '''
+            pow_x = pow_x*x*(1.0d0+epsilon(1.0d0))
+         end do
+         if (iy < 0) pow_x = 1.0d0/pow_x
+      else if'''
+
+[[mutation]]
+id = 'crmath-02'
+backend = 'crmath'
+check = 'pow: integer exponents are repeated multiplication'
+file = 'math/math_lib.f90'
+old = '''
+      if (iy < 0) pow_x = 1.0d0/pow_x
+end function pow_i'''
+new = '''
+      if (iy < 0) pow_x = 1.0d0/(pow_x*(1.0d0+epsilon(1.0d0)))
+end function pow_i'''
+
+[[mutation]]
+id = 'crmath-03'
+backend = 'crmath'
+check = 'exp10: exact for 0 <= n <= 22'
+file = 'math/math_lib.f90'
+old = '''
+            exp10_x = exp10_x*10.0d0
+'''
+new = '''
+            exp10_x = exp10_x*10.0d0*(1.0d0+epsilon(1.0d0))
+'''
+
+[[mutation]]
+id = 'crmath-04'
+backend = 'crmath'
+check = 'pow, exp10: x**y and 10**x to a few ulp'
+file = 'math/math_lib.f90'
+old = '''
+      else
+         pow_x = exp(log(x)*y)
+      end if'''
+new = '''
+      else
+         pow_x = exp(log(x)*y*(1.0d0+1.0d-12))
+      end if'''
+
+[[mutation]]
+id = 'crmath-05'
+backend = 'crmath'
+check = 'pow: a single-precision exponent is its binary value'
+file = 'math/math_lib.f90'
+old = '      pow_x = pow_r(x, real(y, dp))'
+new = '      pow_x = pow_r(x, real(nint(y*1.0e7), dp)*1.0d-7)'
+
+[[mutation]]
+id = 'crmath-06'
+backend = 'crmath'
+check = 'pow: (-2)**101 and (-2)**100'
+file = 'math/math_lib.f90'
+old = '         if (mod(y, 2.0d0) /= 0.0d0) pow_x = -pow_x'
+new = '         if (.false.) pow_x = -pow_x'
+
+[[mutation]]
+id = 'crmath-07'
+backend = 'crmath'
+check = 'pow: 0**0 and 0**(-1) are 0 under crmath'
+file = 'math/math_lib.f90'
+old = '''
+      if (x == 0.0d0) then
+         pow_x = 0.0d0
+         return
+      end if
+! the test on |y|'''
+new = '! the test on |y|'
+
+[[mutation]]
+id = 'crmath-08'
+backend = 'crmath'
+check = 'pow: y = 3e9 takes the composition'
+file = 'math/math_lib.f90'
+old = '      if (abs(y) < 100.0d0 .and. y == aint(y)) then'
+new = '      if (abs(y) < 1.0d10 .and. y == aint(y)) then'
+
+[[mutation]]
+id = 'crmath-09'
+backend = 'crmath'
+check = 'pow: (-2)**3 = -8'
+file = 'math/math_lib.f90'
+old = '''
+         do i = 1, abs(iy)
+            pow_x = pow_x*x
+         end do
+         if (iy < 0) pow_x = 1.0d0/pow_x
+      else if'''
+new = '''
+         do i = 1, abs(iy)
+            pow_x = pow_x*abs(x)
+         end do
+         if (iy < 0) pow_x = 1.0d0/pow_x
+      else if'''
+
+[[mutation]]
+id = 'crmath-10'
+backend = 'crmath'
+check = 'pow: (-2)**0.5 is NaN'
+file = 'math/math_lib.f90'
+old = '''
+      else
+         pow_x = exp(log(x)*y)'''
+new = '''
+      else
+         pow_x = exp(log(abs(x))*y)'''
+
+[[mutation]]
+id = 'crmath-11'
+backend = 'crmath'
+check = 'pow: 0**y = 0 for y > 0'
+file = 'math/math_lib.f90'
+old = '''
+      if (x == 0.0d0) then
+         pow_x = 0.0d0
+         return
+      end if
+! the test on |y|'''
+new = '''
+      if (x == 0.0d0) then
+         pow_x = 1.0d-300
+         return
+      end if
+! the test on |y|'''
+
+[[mutation]]
+id = 'intrinsic-01'
+backend = 'intrinsic'
+check = 'pow: 0**y = 0 for y > 0'
+file = 'math/math_lib.f90'
+old = '''
+      pow_x = x**y
+end function pow_r
+'''
+new = '''
+      pow_x = merge(1.0d-300, x**y, x == 0.0d0)
+end function pow_r
+'''
+
+[[mutation]]
+id = 'intrinsic-02'
+backend = 'intrinsic'
+check = 'pow: 0**0 = 1 and 0**(-1) = +Inf under the intrinsic backend'
+file = 'math/math_lib.f90'
+old = '''
+      pow_x = x**y
+end function pow_r
+'''
+new = '''
+      pow_x = merge(0.0d0, x**y, x == 0.0d0)
+end function pow_r
+'''
+
+[[mutation]]
+id = 'intrinsic-03'
+backend = 'intrinsic'
+check = 'pow, exp10: the intrinsic backend is x**y, bit for bit'
+file = 'math/math_lib.f90'
+old = '''
+      pow_x = x**y
+end function pow_r
+'''
+new = '''
+      pow_x = x**y*(1.0d0+epsilon(1.0d0))
+end function pow_r
+'''
+
+[[mutation]]
+id = 'intrinsic-04'
+backend = 'intrinsic'
+check = 'pow, exp10: x**y and 10**x to a few ulp'
+file = 'math/math_lib.f90'
+old = '''
+      exp10_x = 10.0d0**x
+'''
+new = '''
+      exp10_x = 10.0d0**(x*(1.0d0+1.0d-12))
+'''
+
+[[mutation]]
+id = 'intrinsic-05'
+backend = 'intrinsic'
+check = 'pow, exp10: integer exponents are x**y, x**n, 10**x'
+file = 'math/math_lib.f90'
+old = '''
+      pow_x = x**iy
+'''
+new = '''
+      pow_x = x**iy*(1.0d0+epsilon(1.0d0))
+'''
+
+[[mutation]]
+id = 'intrinsic-06'
+backend = 'intrinsic'
+check = 'pow: a single-precision exponent is its binary value'
+file = 'math/math_lib.f90'
+old = '''
+      pow_x = x**y
+end function pow_r_sp'''
+new = '''
+      pow_x = x**(real(nint(y*1.0e7), dp)*1.0d-7)
+end function pow_r_sp'''

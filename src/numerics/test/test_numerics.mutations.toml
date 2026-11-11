@@ -1,0 +1,581 @@
+# Mutations of test_numerics: each check must print FAIL under a mutation of
+# the code it covers (numerics/README.md). Run: python3 src/tools/mutate.py
+# numerics (src/tools/mutate.py describes this format and the verdicts).
+program = "test_numerics"
+timeout = 120
+
+[[mutation]]
+id = 'cubic_spline-01'
+check = 'cspline/splint: clamped spline exact on a cubic'
+file = 'numerics/cubic_spline.f90'
+old = '*((y(2)-y(1))/(x(2)-x(1))-yp1)'
+new = '*((y(2)-y(1))/(x(2)-x(1))+yp1)'
+
+[[mutation]]
+id = 'cubic_spline-02'
+check = 'splint: its dy exact on the clamped cubic'
+file = 'numerics/cubic_spline.f90'
+old = '- ((3.0d0*a**2-1.0d0)*y2a(lo)'
+new = '- ((3.0d0*a**2-2.0d0)*y2a(lo)'
+
+[[mutation]]
+id = 'cubic_spline-03'
+check = "compute_spline_coefficients: the power form is splint's"
+file = 'numerics/cubic_spline.f90'
+old = 'c(4,i) = (y2(i+1) - y2(i))/(6.0d0*h)'
+new = 'c(4,i) = (y2(i+1) - y2(i))/(3.0d0*h)'
+
+[[mutation]]
+id = 'cubic_spline-04'
+check = 'natural_spline/splint: exact on a line'
+file = 'numerics/cubic_spline.f90'
+old = '''
+         y2(1) = 0.0d0
+         u(1) = 0.0d0'''
+new = '''
+         y2(1) = 0.0d0
+         u(1) = 1.0d0'''
+
+[[mutation]]
+id = 'cubic_spline-05'
+check = 'natural_spline: zero second derivatives at the ends'
+file = 'numerics/cubic_spline.f90'
+old = '      y2(n) = (un-qn*u(n-1))/(qn*y2(n-1)+1.0d0)'
+new = '      y2(n) = (un-qn*u(n-1))/(qn*y2(n-1)+1.0d0) + 1.0d-3'
+
+[[mutation]]
+id = 'cubic_spline-06'
+check = 'cspline: the error falls as h^4'
+file = 'numerics/cubic_spline.f90'
+old = '         u(i) = (6.0d0*((y(i+1)-y(i))'
+new = '         u(i) = (6.1d0*((y(i+1)-y(i))'
+
+[[mutation]]
+id = 'cubic_spline-07'
+check = "compute_spline_coefficients: the power form is splint's, column n too"
+file = 'numerics/cubic_spline.f90'
+old = '+ h*(y2(n-1) + 2.0d0*y2(n))/6.0d0'
+new = '+ h*(y2(n-1) + 2.0d0*y2(n))/5.0d0'
+
+[[mutation]]
+id = 'cubic_spline-08'
+check = 'natural_spline: slope 1/2 at the middle'
+file = 'numerics/cubic_spline.f90'
+old = '''
+         u(1) = 0.0d0
+      else'''
+new = '''
+         u(1) = 1.0d-3
+      else'''
+
+[[mutation]]
+id = 'cubic_spline-09'
+check = 'natural_spline: two points give their line'
+file = 'numerics/cubic_spline.f90'
+old = '''
+         qn = 0.0d0
+         un = 0.0d0'''
+new = '''
+         qn = 0.0d0
+         un = 1.0d-3'''
+
+[[mutation]]
+id = 'cubic_spline-10'
+check = 'cspline: n < 2, repeated and non-monotone'
+file = 'numerics/cubic_spline.f90'
+old = '         if (x(i+1) == x(i)) then'
+new = '         if (.false.) then'
+
+[[mutation]]
+id = 'cubic_spline-11'
+check = 'cspline: n < 2, repeated and non-monotone'
+file = 'numerics/cubic_spline.f90'
+old = '         if ((x(i+1) > x(i)) .neqv. (x(2) > x(1))) then'
+new = '         if (.false.) then'
+
+[[mutation]]
+id = 'cubic_spline-12'
+check = 'cspline: n < 2, repeated and non-monotone'
+file = 'numerics/cubic_spline.f90'
+old = '''
+      if (n < 2) then
+         if (present(ierr)) ierr = numerics_bad_input'''
+new = '''
+      if (n < 1) then
+         if (present(ierr)) ierr = numerics_bad_input'''
+
+[[mutation]]
+id = 'cubic_spline-13'
+check = 'natural_spline: a decreasing table'
+file = 'numerics/cubic_spline.f90'
+old = '         p = sig*y2(i-1)+2.0d0'
+new = '         p = sig*y2(i-1)+2.0d0+merge(1.0d-9, 0.0d0, x(2) < x(1))'
+
+[[mutation]]
+id = 'quadratic_spline-01'
+check = 'osplin: monotone data give a monotone spline'
+file = 'numerics/quadratic_spline.f90'
+old = '            first_derivs(idx) = y_diff1/(table_x(idx) - x_hat)'
+new = '            first_derivs(idx) = -y_diff1/(table_x(idx) - x_hat)'
+
+[[mutation]]
+id = 'quadratic_spline-02'
+check = 'osplin: convex data give a convex spline'
+file = 'numerics/quadratic_spline.f90'
+old = '            first_derivs(idx) = y_diff1/(table_x(idx) - x_hat)'
+new = '            first_derivs(idx) = 0.5d0*y_diff1/(table_x(idx) - x_hat)'
+
+[[mutation]]
+id = 'quadratic_spline-03'
+check = 'osplin: interpolates the nodes'
+file = 'numerics/quadratic_spline.f90'
+old = '''
+            eval_y(i) = table_y(j+1)
+'''
+new = '''
+            eval_y(i) = table_y(j+1) + 1.0d-12
+'''
+
+[[mutation]]
+id = 'quadratic_spline-04'
+check = 'osplin: exact on a line'
+file = 'numerics/quadratic_spline.f90'
+old = '            x_hat = (table_x(prev_idx) + x_bar)/2.d0'
+new = '            x_hat = (table_x(prev_idx) + x_bar)/2.2d0'
+
+[[mutation]]
+id = 'quadratic_spline-05'
+check = 'osplin: every sorted subset'
+file = 'numerics/quadratic_spline.f90'
+old = '''
+         call take_arcs(arcs, n - 1)
+'''
+new = '''
+         if (arcs%interval == 0) call take_arcs(arcs, n - 1)
+'''
+
+[[mutation]]
+id = 'quadratic_spline-06'
+check = 'osplin: every sorted subset'
+file = 'numerics/quadratic_spline.f90'
+old = '         if (arcs%interval /= j) &'
+new = '         if (arcs%interval == 0) &'
+
+[[mutation]]
+id = 'quadratic_spline-07'
+check = 'osplin: n < 3 is numerics_bad_input'
+file = 'numerics/quadratic_spline.f90'
+old = '      if (n < 3) then'
+new = '      if (n < 2) then'
+
+[[mutation]]
+id = 'quadratic_spline-08'
+check = 'osplin: decreasing points are numerics_unsorted_points'
+file = 'numerics/quadratic_spline.f90'
+old = '         if (xval(i+1) >= xval(i)) cycle'
+new = '         if (.true.) cycle'
+
+[[mutation]]
+id = 'quadratic_spline-09'
+check = 'osplin: no extrapolation from a zero-width end interval'
+file = 'numerics/quadratic_spline.f90'
+old = '          (xval(k) > xtab(n) .and. xtab(n) == xtab(n-1))) then'
+new = '          (xval(k) > xtab(n) .and. .false.)) then'
+
+[[mutation]]
+id = 'quadratic_spline-10'
+check = 'osplin: no extrapolation from a zero-width end interval'
+file = 'numerics/quadratic_spline.f90'
+old = '      if ((xval(1) < xtab(1) .and. xtab(2) == xtab(1)) .or. &'
+new = '      if ((xval(1) < xtab(1) .and. .false.) .or. &'
+
+[[mutation]]
+id = 'table_interpolation-01'
+check = 'inter3: exact on a quadratic'
+file = 'numerics/table_interpolation.f90'
+old = '''
+      denom2 = -diff21*diff32
+'''
+new = '''
+      denom2 = diff21*diff32
+'''
+
+[[mutation]]
+id = 'table_interpolation-02'
+check = 'inter3: its derivative weights exact'
+file = 'numerics/table_interpolation.f90'
+old = '      dweight(3) = (dx1 + dx2)/denom3'
+new = '      dweight(3) = (dx1 - dx2)/denom3'
+
+[[mutation]]
+id = 'table_interpolation-03'
+check = 'interp/lagrange4: exact on a cubic'
+file = 'numerics/table_interpolation.f90'
+old = '''
+      weight(4) = (dx1*dx2*dx3)/denom4
+      if (present(dweight))'''
+new = '''
+      weight(4) = (dx1*dx2*dx4)/denom4
+      if (present(dweight))'''
+
+[[mutation]]
+id = 'table_interpolation-04'
+check = 'interp: its derivative weights exact on a cubic'
+file = 'numerics/table_interpolation.f90'
+old = '      dweight(1) = (dx3*dx4 + dx2*dx4 + dx2*dx3)/denom1'
+new = '      dweight(1) = (dx3*dx4 + dx2*dx4 - dx2*dx3)/denom1'
+
+[[mutation]]
+id = 'table_interpolation-05'
+check = 'interp: the weights without dweight are those with it'
+file = 'numerics/table_interpolation.f90'
+old = '''
+      if (present(dweight)) then
+'''
+new = '''
+      if (present(dweight)) then
+         weight(1) = weight(1)*(1.0d0+epsilon(1.0d0))
+'''
+
+[[mutation]]
+id = 'table_interpolation-06'
+check = 'interp/lagrange4: exact on a cubic'
+file = 'numerics/table_interpolation.f90'
+old = '      s = w(1)*y(1)+w(2)*y(2)+w(3)*y(3)+w(4)*y(4)'
+new = '      s = w(1)*y(1)+w(2)*y(2)+w(3)*y(3)+w(3)*y(4)'
+
+[[mutation]]
+id = 'table_interpolation-07'
+check = 'quint: exact on a quadratic'
+file = 'numerics/table_interpolation.f90'
+old = '      y = y0 + t*d1 + 0.5d0*t*(t-1.d0)*d2'
+new = '      y = y0 + t*d1 + 0.5d0*t*(t+1.d0)*d2'
+
+[[mutation]]
+id = 'table_interpolation-08'
+check = 'polint: exact on a quartic'
+file = 'numerics/table_interpolation.f90'
+old = '          den = w/den'
+new = '          den = w/(2*den)'
+
+[[mutation]]
+id = 'table_interpolation-09'
+check = 'polint: scale-free'
+file = 'numerics/table_interpolation.f90'
+old = 'abs(den) <= coincidence_tolerance*max(abs(ho), abs(hp))'
+new = 'abs(den) < 1.0d-20'
+
+[[mutation]]
+id = 'table_interpolation-10'
+check = 'polint: coincident abscissae'
+file = 'numerics/table_interpolation.f90'
+old = '''
+               ierr = numerics_coincident_points
+               return'''
+new = '''
+               ierr = numerics_bad_input
+               return'''
+
+[[mutation]]
+id = 'table_interpolation-11'
+check = 'lir: exact on a cubic and a line'
+file = 'numerics/table_interpolation.f90'
+old = '         weight(corrected) = (1.d0 + weight(corrected)) - weight_sum'
+new = '         weight(corrected) = (1.d0 + weight(corrected)) - 0.999d0*weight_sum'
+
+[[mutation]]
+id = 'table_interpolation-12'
+check = 'lir: a decreasing table as the same table increasing'
+file = 'numerics/table_interpolation.f90'
+old = '            if (table_z(above) < target_z) exit'
+new = '            if (table_z(above) > target_z) exit'
+
+[[mutation]]
+id = 'table_interpolation-13'
+check = 'lir: linear below four points'
+file = 'numerics/table_interpolation.f90'
+old = '      frac_upper = 1.0d0 - frac_lower'
+new = '      frac_upper = 1.001d0 - frac_lower'
+
+[[mutation]]
+id = 'table_interpolation-14'
+check = 'lir: on a node, the tabulated values'
+file = 'numerics/table_interpolation.f90'
+old = '''
+               result_y(i) = table_y(i, above)
+'''
+new = '''
+               result_y(i) = table_y(i, above) + 1.0d-9
+'''
+
+[[mutation]]
+id = 'table_interpolation-15'
+check = 'lir: outside the table, flag 0'
+file = 'numerics/table_interpolation.f90'
+old = '''
+            interp_flag = 0
+            exit'''
+new = '''
+            interp_flag = 1
+            exit'''
+
+[[mutation]]
+id = 'table_interpolation-16'
+check = 'lir: one point is numerics_bad_input'
+file = 'numerics/table_interpolation.f90'
+old = '      if (num_points < 2 .or.'
+new = '      if (num_points < 1 .or.'
+
+[[mutation]]
+id = 'table_interpolation-17'
+check = 'lir: a flat table is numerics_coincident_points'
+file = 'numerics/table_interpolation.f90'
+old = '      if (span == 0.0d0) then'
+new = '      if (span == 1.0d300) then'
+
+[[mutation]]
+id = 'table_interpolation-18'
+check = 'locate: brackets x in increasing and decreasing tables'
+file = 'numerics/table_interpolation.f90'
+old = '         if ((xx(n) > xx(1)).eqv.(x > xx(jm))) then'
+new = '         if ((xx(n) > xx(1)).eqv.(x >= xx(jm))) then'
+
+[[mutation]]
+id = 'table_interpolation-19'
+check = 'locate: the end nodes give 1 and n-1'
+file = 'numerics/table_interpolation.f90'
+old = '''
+      if (j == 0 .and. abs(x - xx(1)) <= slack) then
+         j = 1'''
+new = '''
+      if (j == 0 .and. abs(x - xx(1)) <= slack) then
+         j = 0'''
+
+[[mutation]]
+id = 'table_interpolation-20'
+check = 'locate: within 1% of the span beyond an end'
+file = 'numerics/table_interpolation.f90'
+old = 'edge_slack = 0.01d0'
+new = 'edge_slack = 0.001d0'
+
+[[mutation]]
+id = 'table_interpolation-21'
+check = 'locate: beyond the slack, 0 and n'
+file = 'numerics/table_interpolation.f90'
+old = 'edge_slack = 0.01d0'
+new = 'edge_slack = 0.1d0'
+
+[[mutation]]
+id = 'table_interpolation-22'
+check = 'findex: brackets x from any guess'
+file = 'numerics/table_interpolation.f90'
+old = '      if (index == 0) index = -1'
+new = '      if (index == 0) index = 1'
+
+[[mutation]]
+id = 'table_interpolation-23'
+check = 'findex: brackets x from any guess'
+file = 'numerics/table_interpolation.f90'
+old = '      if (index == n_grid) index = -n_grid'
+new = '      if (index == n_grid) index = n_grid - 1'
+
+[[mutation]]
+id = 'table_interpolation-24'
+check = 'hunt: brackets x from any guess'
+file = 'numerics/table_interpolation.f90'
+old = '         if ((x >= table(index_mid)) .eqv. ascending) then'
+new = '         if ((x > table(index_mid)) .eqv. ascending) then'
+
+[[mutation]]
+id = 'table_interpolation-25'
+check = 'hunt: brackets x from any guess'
+file = 'numerics/table_interpolation.f90'
+old = '''
+         index = 0
+         index_hi = n + 1'''
+new = '''
+         index = 0
+         index_hi = n'''
+
+[[mutation]]
+id = 'linear_solvers-01'
+check = 'ludcmp/lubksb: the residual of a 6x6 solve'
+file = 'numerics/linear_solvers.f90'
+old = 'b(i) = sum/a(i,i)'
+new = 'b(i) = sum/(a(i,i)*(1.0d0+1.0d-12))'
+
+[[mutation]]
+id = 'linear_solvers-02'
+check = 'ludcmp: a round-off pivot'
+file = 'numerics/linear_solvers.f90'
+old = 'if (aamax <= singular_pivot_tolerance) ierr'
+new = 'if (aamax <= 0.0d0) ierr'
+
+[[mutation]]
+id = 'linear_solvers-03'
+check = 'ludcmp: a zero pivot'
+file = 'numerics/linear_solvers.f90'
+old = 'if (aamax <= singular_pivot_tolerance) ierr'
+new = 'if (aamax < 0.0d0) ierr'
+
+[[mutation]]
+id = 'linear_solvers-04'
+check = 'ludcmp: a zero row is numerics_singular, the matrix untouched'
+file = 'numerics/linear_solvers.f90'
+old = 'if (aamax == 0d0) then'
+new = 'if (aamax < 0d0) then'
+
+[[mutation]]
+id = 'linear_solvers-05'
+check = 'ludcmp: a NaN column is numerics_bad_input'
+file = 'numerics/linear_solvers.f90'
+old = 'if (ieee_is_nan(a(imax,j))) then'
+new = 'if (.false.) then'
+
+[[mutation]]
+id = 'linear_solvers-06'
+check = "simeqc: LU's solution for two right-hand sides"
+file = 'numerics/linear_solvers.f90'
+old = '            a(row,num_cols) = a(row,num_cols) - a(row,k)*a(k,num_cols)'
+new = '            a(row,num_cols) = a(row,num_cols) + a(row,k)*a(k,num_cols)'
+
+[[mutation]]
+id = 'linear_solvers-07'
+check = 'simeqc: a singular matrix is numerics_singular'
+file = 'numerics/linear_solvers.f90'
+old = '         if (largest_scaled <= singular_pivot_tolerance) then'
+new = '         if (largest_scaled < 0.0d0) then'
+
+[[mutation]]
+id = 'linear_solvers-08'
+check = 'simeqc: a round-off pivot'
+file = 'numerics/linear_solvers.f90'
+old = '         if (largest_scaled <= singular_pivot_tolerance) then'
+new = '         if (largest_scaled <= 0.0d0) then'
+
+[[mutation]]
+id = 'linear_solvers-09'
+check = 'simeqc: a row scaled by 1e-30'
+file = 'numerics/linear_solvers.f90'
+old = '                    largest_scaled = abs(a(i,j))/row_size(i)'
+new = '                    largest_scaled = abs(a(i,j))/maxval(row_size)'
+
+[[mutation]]
+id = 'linear_solvers-10'
+check = 'simeqc: a NaN column is numerics_bad_input'
+file = 'numerics/linear_solvers.f90'
+old = '         if (ieee_is_nan(pivot)) then'
+new = '         if (.false.) then'
+
+[[mutation]]
+id = 'linear_solvers-11'
+check = "solve_tridiagonal: a dense solve's solution"
+file = 'numerics/linear_solvers.f90'
+old = '         x(j) = x(j) - gama(j+1)*x(j+1)'
+new = '         x(j) = x(j) - gama(j+1)*x(j+1)*(1.0d0+1.0d-12)'
+
+[[mutation]]
+id = 'linear_solvers-12'
+check = 'tridiagonal sweep + back substitution'
+file = 'numerics/linear_solvers.f90'
+old = '         x(j) = (r(j) - a(j)*x(j-1))/bet'
+new = '         x(j) = (r(j) + a(j)*x(j-1))/bet'
+
+[[mutation]]
+id = 'linear_solvers-13'
+check = 'solve_tridiagonal: a zero first pivot'
+file = 'numerics/linear_solvers.f90'
+old = '''
+      bet = b(1)
+      if (bet == 0) then'''
+new = '''
+      bet = b(1)
+      if (.false.) then'''
+
+[[mutation]]
+id = 'linear_solvers-14'
+check = 'solve_tridiagonal: a zero later pivot'
+file = 'numerics/linear_solvers.f90'
+old = '''
+         bet = b(j) - a(j)*gama(j)
+         if (bet == 0) then'''
+new = '''
+         bet = b(j) - a(j)*gama(j)
+         if (.false.) then'''
+
+[[mutation]]
+id = 'bulirsch_stoer-01'
+check = 'bsstep: sin x, cos x and exp(-0.3x)'
+file = 'numerics/bulirsch_stoer.f90'
+old = '       y_out(i) = 0.5d0*(y_mid(i) + y_new(i) + h_sub*y_out(i))'
+new = '       y_out(i) = 0.5d0*(y_mid(i) + y_new(i) + 1.01d0*h_sub*y_out(i))'
+
+[[mutation]]
+id = 'bulirsch_stoer-02'
+check = 'bsstep: x advances by h_did'
+file = 'numerics/bulirsch_stoer.f90'
+old = '''
+          indep_var = indep_var + h
+'''
+new = '''
+          indep_var = indep_var + 0.5d0*h
+'''
+
+[[mutation]]
+id = 'bulirsch_stoer-03'
+check = 'bsstep: limits out of range'
+file = 'numerics/bulirsch_stoer.f90'
+old = '          max_stage_index < extrap_order .or. '
+new = ''
+
+[[mutation]]
+id = 'bulirsch_stoer-04'
+check = 'bsstep: failed derivatives'
+file = 'numerics/bulirsch_stoer.f90'
+old = 'if (present(derivatives_ierr)) derivatives_ierr = jerr_integrand'
+new = 'if (present(derivatives_ierr)) derivatives_ierr = 0'
+
+[[mutation]]
+id = 'bulirsch_stoer-05'
+check = 'bsstep: zero tolerance ends in numerics_step_underflow'
+file = 'numerics/bulirsch_stoer.f90'
+old = '       ierr = numerics_step_underflow'
+new = '       ierr = numerics_bad_input'
+
+[[mutation]]
+id = 'bulirsch_stoer-06'
+check = 'bsstep: on a failure y and x are as they came in'
+file = 'numerics/bulirsch_stoer.f90'
+old = '''
+ derivatives_ierr = jerr_integrand
+               y = y_sav
+'''
+new = '''
+ derivatives_ierr = jerr_integrand
+'''
+
+[[mutation]]
+id = 'bulirsch_stoer-07'
+check = 'bsstep: on a failure y and x are as they came in'
+file = 'numerics/bulirsch_stoer.f90'
+old = '''
+            ierr = numerics_step_underflow
+            y = y_sav
+'''
+new = '''
+            ierr = numerics_step_underflow
+'''
+
+[[mutation]]
+id = 'numerics_lib-01'
+check = 'aliases: each gives'
+file = 'numerics/numerics_lib.f90'
+old = 'interpolate_tabulated_functions => lir, bracket_index => findex'
+new = 'interpolate_tabulated_functions => lir, bracket_index => hunt'
+
+[[mutation]]
+id = 'numerics_status-01'
+check = 'numerics_status: distinct codes'
+file = 'numerics/numerics_status.f90'
+old = "         text = 'step underflow'"
+new = "         text = 'singular matrix'"
