@@ -12,8 +12,8 @@ module semiconvection
       use temperature_gradients, only: compute_temperature_gradients
       use eos_lib, only: eos_result, eos_get
       use kap_lib, only: kap_get, num_kap_results
-      use convection_messages, only: log_semiconvective_edge, log_zones_merged, &
-           merged_by_semiconvection
+      use convection_messages, only: log_semiconvective_edge, merged_by_semiconvection
+      use convection_zones, only: merge_overlapping_zones
       use physical_constants
       use math_lib
       implicit none
@@ -95,7 +95,6 @@ subroutine extend_by_semiconvection(timestep, composition, log_density, luminosi
       double precision :: radius_prev, radius_curr, radius_diff
       integer :: search_begin, search_end, search_step, search_zone_idx, &
            new_edge_idx
-      integer :: k_idx, pair_idx
 
       integer, intent(out) :: ierr
 
@@ -300,33 +299,9 @@ subroutine extend_by_semiconvection(timestep, composition, log_density, luminosi
                  reached_max_extent, perturbed_radiative_gradient, &
                  local_radiative_gradient)
          end do
-!  CHECK FOR MERGERS OF NEARBY CONVECTION ZONES CAUSED BY SEMI-CONVECTION.
-      if (num_zones_mixed.le.1) return
-      k_idx = 1
-      merge_scan: do
-!  CHECK IF 'TOP' OF ONE REGION IS ABOVE 'BOTTOM' OF THE NEXT ONE.
-      if (mixed_zone_bounds(k_idx,2).gt.mixed_zone_bounds(k_idx+1,1)) then
-!  IF THIS OCCURS, TWO CONVECTION ZONES HAVE MERGED.
-         call log_zones_merged(merged_by_semiconvection, mixed_zone_bounds(k_idx,:), &
-              mixed_zone_bounds(k_idx+1,:))
-         mixed_zone_bounds(k_idx+1,1) = mixed_zone_bounds(k_idx,1)
-         do zone_idx = k_idx, num_zones_mixed-1
-            do pair_idx = 1, 2
-               mixed_zone_bounds(zone_idx,pair_idx) = &
-                    mixed_zone_bounds(zone_idx+1,pair_idx)
-            end do
-         end do
-         num_zones_mixed = num_zones_mixed - 1
-         if (k_idx.le.num_zones_mixed-1) then
-            cycle merge_scan
-         else
-            return
-         end if
-      end if
-      k_idx = k_idx + 1
-      if (k_idx.gt.num_zones_mixed-1) exit merge_scan
-      end do merge_scan
-
+! Regions that semiconvection made overlap become one.
+      call merge_overlapping_zones(mixed_zone_bounds, num_zones_mixed, &
+           merge_shared_shell=.false., cause=merged_by_semiconvection)
       return
 end subroutine extend_by_semiconvection
 

@@ -30,7 +30,7 @@
 ! setting a radiative point there takes the adiabatic gradient. (Formerly
 ! zone_index, compared here with them; -1 for envelope and atmosphere points.)
 module temperature_gradients
-      use convection_configuration, only: convection_settings
+      use convection_configuration, only: convection_settings, convection_unstable_radicand
       implicit none
       private
       public :: compute_temperature_gradients
@@ -184,7 +184,7 @@ subroutine compute_temperature_gradients(log_temperature, log_pressure, &
           ! 2026 (docs/ROADMAP.md stage 3): stop converted to ierr; the driver-side
           ! call sites (core/main, core/crrect, core/starin, setup/hpoint)
           ! preserve the historical stop on a nonzero return.
-          ierr = 1
+          ierr = convection_unstable_radicand
           return
       endif
       v = 1.0d0/a1

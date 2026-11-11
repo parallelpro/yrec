@@ -13,6 +13,14 @@ module convection_configuration
       private
       public :: convection_settings_t, convection_settings
 
+! The codes convection's routines return in ierr, besides the EOS's and
+! the opacity's, which they pass up as they are: the mixing-length
+! square root of a negative number (compute_temperature_gradients), and
+! more convection zones than the caller's bounds array has rows
+! (find_convection_zones).
+      integer, parameter, public :: convection_unstable_radicand = 1, &
+           convection_too_many_zones = 2
+
       type :: convection_settings_t
 ! mixing-length theory
          real(dp) :: mixing_length_alpha = 0.0d0
