@@ -23,7 +23,8 @@ module blended_eos
       use opal_eos_tables, only: i_opal_gamma1, i_opal_gamma2_ratio, opal_tables, iv_opal06
       use physical_constants, only: gas_constant, ln10, &
            radiation_constant_over_3
-      use eos_messages, only: eos_log, eos_report, message_length, unwritten_line
+      use eos_messages, only: eos_log, eos_report, eos_log_once, once_fermi_extrapolation, &
+           message_length, unwritten_line
       use eos_mixture, only: eos_mix, ion_mean_weight_excess, mean_weights_from_density, &
            debye_huckel_composition_of, &
            inverse_a_hydrogen, inverse_a_helium, electrons_per_nucleon_metals, &
@@ -391,12 +392,16 @@ end subroutine zone_mixture
 ! A fully ionized gas: 1/mu_e = X/A_H + (1 - X)(Z/A of He and the
 ! metals, 1/2), R/mu, the ionization fractions (H+, He+, He++ = 1, 0, 1),
 ! then compute_fully_ionized_eos's density and derivatives (ierr = 1 when
-! its density iteration does not converge).
+! its density iteration does not converge). The first point of a run
+! where they extrapolate the Fermi-Dirac table gets a warning in the run
+! log (eos_log_once).
 subroutine fully_ionized_gas(log10_temperature, log10_pressure, hydrogen_fraction, dh, r, ierr)
       real(dp), intent(in) :: log10_temperature, log10_pressure, hydrogen_fraction
       type(debye_huckel_composition), intent(in) :: dh
       type(eos_result), intent(inout) :: r
       integer, intent(out) :: ierr
+      character(len=message_length) :: eos_lines(4)
+      logical :: extrapolated
       r%electron_mean_weight_inverse = hydrogen_fraction*inverse_a_hydrogen &
            + (1.0d0 - hydrogen_fraction)*electrons_per_nucleon_metals
       r%specific_gas_constant = gas_constant*(r%ion_mean_weight_inverse + &
@@ -404,7 +409,14 @@ subroutine fully_ionized_gas(log10_temperature, log10_pressure, hydrogen_fractio
       r%ion_fraction(1) = 1.0d0
       r%ion_fraction(2) = 0.0d0
       r%ion_fraction(3) = 1.0d0
-      call compute_fully_ionized_eos(log10_temperature, log10_pressure, dh, r, ierr)
+      call compute_fully_ionized_eos(log10_temperature, log10_pressure, dh, r, extrapolated, ierr)
+      if (ierr /= 0 .or. .not. extrapolated) return
+      eos_lines = unwritten_line
+      write(eos_lines,'(a/a,f0.4,a,f0.4,a)') 'eos: the fully ionized gas extrapolates the Fermi-Dirac ' // &
+           'table (log T 5.2 to 9, log rho - log mu_e - 1.5 log T from -16 to -3)', &
+           '     at log T ', log10_temperature, ', log P ', log10_pressure, &
+           '; the run''s later points outside it are not reported'
+      call eos_log_once(once_fermi_extrapolation, eos_lines)
 end subroutine fully_ionized_gas
 
 !----------------------------------------------------------------------

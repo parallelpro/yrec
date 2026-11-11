@@ -44,3 +44,25 @@ old = '''      if (.not. converged) then
 new = '''      if (.not. converged) then
          return
       end if'''
+
+[[mutation]]
+id = 'fermi_range-01'
+check = 'fully ionized gas: a point beyond the Fermi-Dirac table is reported, one inside it not'
+file = 'eos/yale/yale_eos.f90'
+old = '''      extrapolated = log10_temperature < fermi_log10t_min .or. log10_temperature > fermi_log10t_max &'''
+new = '''      extrapolated = log10_temperature < fermi_log10t_min .or. log10_temperature > 2*fermi_log10t_max &'''
+
+[[mutation]]
+id = 'fermi_range-02'
+check = 'fully ionized gas: a point beyond the Fermi-Dirac table is reported, one inside it not'
+file = 'eos/yale/yale_eos.f90'
+old = '''           .or. abscissa < yale%fermi_table_x_grid(1) .or. abscissa > yale%fermi_table_x_grid(fermi_n_x)'''
+new = '''           .or. abscissa < yale%fermi_table_x_grid(1)'''
+
+[[mutation]]
+id = 'fermi_range-03'
+check = 'fully ionized gas: a point beyond the Fermi-Dirac table is reported, one inside it not'
+file = 'eos/eos_messages.f90'
+old = '''      if (warned(id)) return
+      warned(id) = .true.'''
+new = '''      if (warned(id)) return'''

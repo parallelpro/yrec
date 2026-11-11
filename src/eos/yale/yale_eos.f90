@@ -19,7 +19,8 @@ module yale_eos
       use yale_eos_tables, only: debye_huckel_coefficient, debye_huckel_nu, &
            debye_huckel_composition, n_debye_huckel_metals, yale, fermi_n_x, &
            fermi_n_t, fermi_n_quantities, fermi_n_cards, fermi_n_bins, fermi_bins_per_unit_x, &
-           fermi_log10t_origin, fermi_log10t_step, fermi_rows_per_dex
+           fermi_log10t_origin, fermi_log10t_step, fermi_rows_per_dex, fermi_log10t_min, &
+           fermi_log10t_max
       use physical_constants, only: clni, cmkh, gas_constant, ln10
       use eos_messages, only: eos_log, eos_report, message_length, unwritten_line
       use eos_mixture, only: ix_h, ix_he, n_mix_species
@@ -675,32 +676,42 @@ end subroutine differentiate_saha_solution_twice
 ! second derivatives always: the caller keeps or discards them). The
 ! density iteration starts from r's density; when it does not converge
 ! (iterate_fully_ionized_density) r keeps its other fields and ierr is
-! 1. Called by blend_eos's gas_eos at and above the Saha cutoff, and
-! below it within the ramp, where the Saha (or SCV) result is blended
-! into it.
+! 1. extrapolated tells whether the converged point lies outside the
+! Fermi-Dirac table (log T from fermi_log10t_min to fermi_log10t_max, X
+! = log rho - log mu_e - 1.5 log T from its first abscissa to its last),
+! where its interpolation extrapolates. Called by blend_eos's gas_eos at
+! and above the Saha cutoff, and below it within the ramp, where the
+! Saha (or SCV) result is blended into it.
 ! DBG 7/92 modified to include Debye-Hueckel correction.
 !     Correction is applied to pressure and all thermodynamic variables.
 !     Treatment is also valid for electron degeneracy.  A ramp function
 !     between the nondegenerate and degernate electron gas cases of the
 !     D-H correction is used (this is not correct but, hopefully is
 !     close enough.)  The constant term is debye_huckel_coefficient.
-subroutine compute_fully_ionized_eos(log10_temperature, log10_pressure, dh, r, ierr)
+subroutine compute_fully_ionized_eos(log10_temperature, log10_pressure, dh, r, &
+     extrapolated, ierr)
       real(dp), intent(in) :: log10_temperature, log10_pressure
 ! the zone's composition for the Debye-Hueckel correction (read only
 ! with the correction on)
       type(debye_huckel_composition), intent(in) :: dh
       type(eos_result), intent(inout) :: r
+      logical, intent(out) :: extrapolated
       integer, intent(out) :: ierr
       type(fermi_solution) :: f
       logical :: converged
+      real(dp) :: abscissa
 
       ierr = 0
+      extrapolated = .false.
       call start_fully_ionized_solution(log10_temperature, log10_pressure, dh, r, f)
       call iterate_fully_ionized_density(log10_temperature, log10_pressure, r, f, converged)
       if (.not. converged) then
          ierr = 1
          return
       end if
+      abscissa = f%dml - 1.50d0*f%tl8
+      extrapolated = log10_temperature < fermi_log10t_min .or. log10_temperature > fermi_log10t_max &
+           .or. abscissa < yale%fermi_table_x_grid(1) .or. abscissa > yale%fermi_table_x_grid(fermi_n_x)
       r%log10_density = f%dl8
       r%density = f%d8
       call interpolate_fermi_table(f)

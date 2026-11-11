@@ -30,7 +30,7 @@ module eos_lib
       use eos_mixture, only: eos_mix, debye_huckel_composition_of
       use opal_eos_tables, only: open_opal_eos_table, n_opal_vintages
       use yale_eos_tables, only: debye_huckel_composition, fermi_log10t_min
-      use eos_messages, only: eos_report, message_length, unwritten_line
+      use eos_messages, only: eos_report, reset_eos_warnings, message_length, unwritten_line
       implicit none
       private
       public :: eos_init, eos_get, eos_result
@@ -130,6 +130,7 @@ subroutine eos_init(settings, paths, ierr)
          return
       end if
       call set_eos_settings(settings)
+      call reset_eos_warnings()
       if (settings%opal_vintage /= opal_vintage_none) then
          call open_opal_eos_table(settings%opal_vintage, trim(paths%opal), ierr)
          if (ierr /= 0) return

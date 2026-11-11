@@ -7,7 +7,10 @@
 !               Saha or density iteration that did not converge, an
 !               OPAL lookup outside its table): to the run log;
 !   eos_report  an error eos returns ierr for: to the terminal and to
-!               the run log.
+!               the run log;
+!   eos_log_once  a warning the run log gets once after each eos_init
+!               (reset_eos_warnings), by its id (once_*); eos_warned
+!               tells whether it has been written.
 ! The caller formats the message into an array of lines with an
 ! internal write (one record per element) after setting every element
 ! to unwritten_line; the lines the write did not reach are not printed,
@@ -18,9 +21,14 @@ module eos_messages
       use run_messages, only: run_log_unit
       implicit none
       private
-      public :: eos_log, eos_report
+      public :: eos_log, eos_report, eos_log_once, reset_eos_warnings, eos_warned
       integer, parameter, public :: message_length = 200
       character(len=*), parameter, public :: unwritten_line = achar(0)
+! the warnings written once per eos_init: the fully ionized gas
+! extrapolating the Fermi-Dirac table
+      integer, parameter, public :: once_fermi_extrapolation = 1
+      integer, parameter :: n_once = 1
+      logical :: warned(n_once) = .false.
 
 contains
 
@@ -34,6 +42,23 @@ subroutine eos_report(lines)
       call write_message_lines(output_unit, lines)
       call write_message_lines(run_log_unit, lines)
 end subroutine eos_report
+
+subroutine eos_log_once(id, lines)
+      integer, intent(in) :: id
+      character(len=*), intent(in) :: lines(:)
+      if (warned(id)) return
+      warned(id) = .true.
+      call eos_log(lines)
+end subroutine eos_log_once
+
+subroutine reset_eos_warnings()
+      warned = .false.
+end subroutine reset_eos_warnings
+
+logical function eos_warned(id)
+      integer, intent(in) :: id
+      eos_warned = warned(id)
+end function eos_warned
 
 subroutine write_message_lines(unit, lines)
       integer, intent(in) :: unit

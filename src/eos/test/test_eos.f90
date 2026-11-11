@@ -41,6 +41,7 @@ program test_eos
       use opal95_eos, only: esac
       use physical_constants, only: gas_constant
       use mhd_eos, only: interpolate_mhd_table
+      use eos_messages, only: eos_warned, once_fermi_extrapolation
       use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
       type(eos_settings_t) :: settings
@@ -1245,6 +1246,23 @@ subroutine ideal_gas_checks()
       call eos_get(7.0d0, 16.0d0, x, z, r, .true., .false., it, ierr=ierr)
       call check("fully ionized gas: a density iteration that does not converge returns ierr = 1", &
            ierr_far == 1 .and. ierr == 0)
+! the Fermi-Dirac table's range, log T 5.2-9 and log rho - log mu_e -
+! 1.5 log T from -16 to -3: a run's first point beyond it, in T (log T
+! 9.2, from a start near its density, log rho 5.59) or in degeneracy
+! (log T 7, log P 25.5), is reported once; points inside are not
+      call eos_init(eos_settings, table_paths, ierr)
+      call eos_at(7.0d0, 16.0d0, x, z, r, ierr)
+      ok = ierr == 0 .and. .not. eos_warned(once_fermi_extrapolation)
+      it = 0
+      r = eos_result()
+      r%log10_density = 5.5d0
+      r%density = 10.0d0**r%log10_density
+      call eos_get(9.2d0, 23.0d0, x, z, r, .true., .false., it, ierr=ierr)
+      ok = ok .and. ierr == 0 .and. eos_warned(once_fermi_extrapolation)
+      call eos_init(eos_settings, table_paths, ierr)
+      call eos_at(7.0d0, 25.5d0, x, z, r, ierr)
+      call check("fully ionized gas: a point beyond the Fermi-Dirac table is reported, one inside it not", &
+           ok .and. ierr == 0 .and. eos_warned(once_fermi_extrapolation))
 end subroutine ideal_gas_checks
 
 ! Every field a blend sets, on both sides of a boundary in log T (fixed
