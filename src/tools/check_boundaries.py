@@ -215,7 +215,6 @@ STAR_BLIND_FILES = [
     "eos/yale/yale_eos.f90",
     "eos/scv/scv_eos.f90",
     "eos/opal/opal_eos.f90",
-    "eos/opal/opal95_eos.f90",
     "eos/mhd/mhd_eos.f90",
 ]
 
@@ -1184,7 +1183,6 @@ NO_IO_ALLOWANCE = {
     "eos/yale/yale_eos.f90": "eos round (the Fermi-Dirac table read, with the source descriptor)",
     "eos/scv/scv_eos.f90": "eos round (the SCV table read, with the source descriptor)",
     "eos/opal/opal_eos.f90": "eos round (the OPAL table read, with the source descriptor)",
-    "eos/opal/opal95_eos.f90": "eos round (the OPAL 1995 table read, with the source descriptor)",
     "eos/mhd/mhd_eos.f90": "eos round (the MHD table read, with the source descriptor)",
     "rotation/seculr/instability_velocities.f90":
         "rotation follow-up, outside PLAN.md's rounds (rotation.md finding 6: the RAT print)",

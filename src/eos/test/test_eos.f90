@@ -35,10 +35,9 @@ program test_eos
       use eos_mixture, only: debye_huckel_composition_of
       use yale_eos_tables, only: debye_huckel_composition, idh_c, idh_n, idh_o, idh_ne, &
            idh_na, idh_mg, idh_al, idh_si, idh_ar, idh_fe
-      use opal_eos_tables, only: opal_tables, opal95, opal_shared, i_opal_cv, i_opal01_cv, &
+      use opal_eos_tables, only: opal_tables, opal_shared, i_opal_cv, i_opal01_cv, &
            i_opal_p, i_opal01_p
-      use opal_eos, only: esac06, esac01, compute_opal_eos, iv_opal01, iv_opal06
-      use opal95_eos, only: esac
+      use opal_eos, only: esac95, esac06, esac01, compute_opal_eos, iv_opal95, iv_opal01, iv_opal06
       use physical_constants, only: gas_constant
       use mhd_eos, only: interpolate_mhd_table
       use scv_eos_tables, only: scv_cell, last_scv_cell
@@ -1031,16 +1030,17 @@ subroutine opal_trial_call_checks()
       character(len=256) :: legacy
       legacy = trim(yrec_input)//"/eos/legacy/"
       call configure_eos("opal95", opal95=.true., scv=.true., file=trim(legacy)//"opal/OPALeos.0188")
-      call esac(opal95, x, t6, rho, 10, 1, ierr, covers)
+      call esac95(opal_tables(iv_opal95), x, t6, rho, 10, 1, ierr, covers)
       ok = ierr == 0 .and. covers
-      cv_full = opal95%eos_output(i_opal_cv)
-      p_full = opal95%eos_output(i_opal_p)
+      cv_full = opal_tables(iv_opal95)%eos_output(i_opal_cv)
+      p_full = opal_tables(iv_opal95)%eos_output(i_opal_p)
       do k = 1, 20
-         call esac(opal95, x, t6, rho, 1, 1, ierr, covers)
+         call esac95(opal_tables(iv_opal95), x, t6, rho, 1, 1, ierr, covers)
          ok = ok .and. ierr == 0
       end do
       call check("OPAL 1995: trial calls keep the other slots and give the full call's pressure", &
-           ok .and. opal95%eos_output(i_opal_cv) == cv_full .and. opal95%eos_output(i_opal_p) == p_full)
+           ok .and. opal_tables(iv_opal95)%eos_output(i_opal_cv) == cv_full .and. &
+           opal_tables(iv_opal95)%eos_output(i_opal_p) == p_full)
       call configure_eos("opal2001", opal2001=.true., scv=.true., file=trim(legacy)//"opal2001/O01EOS0188z")
       call esac01(opal_tables(iv_opal01), x, t6, rho, 9, 1, ierr, covers)
       ok = ierr == 0 .and. covers

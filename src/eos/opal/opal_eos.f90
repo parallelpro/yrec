@@ -1,37 +1,37 @@
 !----------------------------------------------------------------------
 ! opal_eos
 !----------------------------------------------------------------------
-! The OPAL equation of state: the entry points for all three vintages,
-! and the 2001 and 2006 tables, which share one state layout
-! (opal_eos_vintage, their instances opal_tables(iv_opal01:iv_opal06);
-! the 1995 tables, with their own layout, are in opal95_eos).
+! The OPAL equation of state of the three vintages, 1995, 2001 and 2006,
+! which share one state layout (opal_eos_vintage, their instances
+! opal_tables(iv_opal95:iv_opal06)).
 !     compute_opal_eos     density and the thermodynamic derivatives of
 !                          one vintage at (log T, log P, X, Z)
 !     find_opal_edge_ramp  whether the vintage's table holds the point,
 !                          and the OPAL weight near its edge
-! Under these, for 2001 and 2006: opal_density_search (OPAL's rhoofp01
-! and rhoofp06), interpolate_opal_eos (OPAL's esac01 and esac06, which
-! remain its entry points, public for blended_eos's gamma1_at_density and test_eos),
-! t6rinteos, add_radiation (the radiation correction), readcoeos (the
-! table reader, run once per vintage), and the edge ramps
-! find_table_edge_ramp (2001) and find_ragged_edge_ramp (2006). This
-! code is written once: what the vintages differ in (the table's size
-! and grids, the slots, the radiation constants, the reader's row
-! format, how the density search treats radiation, which edge the table
-! has) is their row of opal_layout (opal_eos_tables); compute_opal_eos
-! branches only between the 1995 code and the rest. The report_*
-! procedures keep each vintage's messages in its own words. The 2001
-! code follows Rogers & Nayfonov (2002); the 2006 tables are the 2005
-! update.
+! Under these: opal_density_search (OPAL's rhoofp, rhoofp01 and
+! rhoofp06), interpolate_opal_eos (OPAL's esac, esac01 and esac06, which
+! remain its entry points, public for blended_eos's gamma1_at_density
+! and test_eos), t6rinteos, the radiation corrections (add_radiation;
+! 1995: add_radiation_to_gammas), readcoeos (the table reader, run once
+! per vintage), and the edge ramps find_table_edge_ramp (1995, 2001) and
+! find_ragged_edge_ramp (2006). This code is written once: what the
+! vintages differ in (the table's size and grids, the slots, the
+! radiation constants and correction, the mass per particle, whether the
+! stencils are clamped, the reader's formats, how the density search
+! treats radiation, which edge the table has) is their row of
+! opal_layout (opal_eos_tables). The report_* procedures keep each
+! vintage's messages in its own words. The 1995 code follows Rogers,
+! Swenson & Iglesias (1996), the 2001 code Rogers & Nayfonov (2002); the
+! 2006 tables are the 2005 update.
 module opal_eos
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use eos_results, only: eos_result
-      use opal95_eos, only: esac, rhoofp, find_opal95_ramp
-      use opal_eos_tables, only: find_opal_ramp, gmass01, i_opal_p, open_opal_eos_table, &
+      use opal_eos_tables, only: find_opal_ramp, i_opal_p, open_opal_eos_table, &
            interpolate_opal_t6_rho, iv_opal95, iv_opal01, iv_opal06, &
-           n_eos_mv, n_eos_mx, opal95, opal_tables, opal_layout, opal_shared, &
+           n_eos_mv, n_eos_mx, opal_tables, opal_layout, opal_shared, &
            opal_eos_vintage, opal_flag_set, opal_rho_not_found, opal_vintage_layout, quad, &
-           opal_radiation_constant_over_3
+           opal_radiation_constant_over_3, opal_empty_entry, opal_empty_sum, &
+           opal_usable_corner_sum, opal_beyond_stencil, opal_x_interp_overflow, opal_range_overflow
       use physical_constants, only: gas_constant
       use eos_messages, only: eos_log, eos_report, message_length, unwritten_line
       use eos_mixture, only: compute_mean_weights
@@ -42,8 +42,8 @@ module opal_eos
       implicit none
       private
       public :: compute_opal_eos, find_opal_edge_ramp, esac06, opal_table_source
-! for test_eos: the 2001 interpolator's entry point
-      public :: esac01
+! for test_eos: the 1995 and 2001 interpolators' entry points
+      public :: esac95, esac01
       public :: iv_opal95, iv_opal01, iv_opal06, opal_layout
 
 contains
@@ -163,16 +163,11 @@ subroutine compute_opal_eos(vintage, log10_temperature, log10_pressure, &
       end if
       hydrogen_fraction_work = hydrogen_fraction
 
-! the density that gives P (the 1995 tables have their own state layout
-! and code; 2001 and 2006 one search, driven by the vintage's row)
-      if (vintage == iv_opal95) then
-         density_cgs = rhoofp(opal95, hydrogen_fraction_work, t_million_k, p_e12, rad_flag, ierr)
-      else
-         density_cgs = opal_density_search(opal_tables(vintage), vintage, hydrogen_fraction_work, &
-              t_million_k, p_e12, rad_flag, ierr)
-      end if
+! the density that gives P
+      density_cgs = opal_density_search(opal_tables(vintage), vintage, hydrogen_fraction_work, &
+           t_million_k, p_e12, rad_flag, ierr)
       if (ierr /= 0) return
-      if (density_cgs <= -998.0d0) then
+      if (density_cgs == opal_rho_not_found) then
          in_table = .false.
          return
       end if
@@ -180,13 +175,8 @@ subroutine compute_opal_eos(vintage, log10_temperature, log10_pressure, &
       r%log10_density = log10(r%density)
 
 ! the thermodynamic quantities there, into the vintage's eos_output
-      if (vintage == iv_opal95) then
-         call esac(opal95, hydrogen_fraction_work, t_million_k, density_cgs, &
-              deriv_order, rad_flag, ierr, in_table)
-      else
-         call interpolate_opal_eos(opal_tables(vintage), vintage, hydrogen_fraction_work, &
-              t_million_k, density_cgs, deriv_order, rad_flag, ierr, in_table)
-      end if
+      call interpolate_opal_eos(opal_tables(vintage), vintage, hydrogen_fraction_work, &
+           t_million_k, density_cgs, deriv_order, rad_flag, ierr, in_table)
       if (.not. in_table) then
          eos_lines = unwritten_line
          write(eos_lines,*) 'WARNNING... OPAL TBL FAIL'
@@ -197,11 +187,7 @@ subroutine compute_opal_eos(vintage, log10_temperature, log10_pressure, &
 
 ! dln P/dln rho, dln P/dln T6, cv, gamma1 and gamma2/(gamma2-1) from the
 ! vintage's results, in its slots
-      if (vintage == iv_opal95) then
-         output = opal95%eos_output
-      else
-         output = opal_tables(vintage)%eos_output
-      end if
+      output = opal_tables(vintage)%eos_output
       if (opal_layout(vintage)%checks_pressure .and. &
            abs((p_e12-output(opal_layout(vintage)%i_p))/p_e12) > pressure_check_tolerance) then
          eos_lines = unwritten_line
@@ -244,9 +230,9 @@ end subroutine compute_opal_eos
 ! find_opal_edge_ramp
 !----------------------------------------------------------------------
 ! Whether the vintage's table holds (T, log rho), and the weight of the
-! OPAL result near the table's edge: the 1995 table (find_opal95_ramp),
-! the 2006 table's ragged edge (find_ragged_edge_ramp), or the 2001
-! table's one edge per T6 row (find_table_edge_ramp).
+! OPAL result near the table's edge: the 2006 table's ragged edge
+! (find_ragged_edge_ramp), or the 1995 and 2001 tables' one edge per T6
+! row (find_table_edge_ramp).
 subroutine find_opal_edge_ramp(vintage, temperature, log10_density, ramp_factor, &
      in_opal_table, needs_ramp, ierr)
       integer, intent(in) :: vintage
@@ -256,10 +242,7 @@ subroutine find_opal_edge_ramp(vintage, temperature, log10_density, ramp_factor,
       integer, intent(out) :: ierr
 
       ierr = 0
-      if (vintage == iv_opal95) then
-         call find_opal95_ramp(temperature, log10_density, ramp_factor, &
-              in_opal_table, needs_ramp, ierr)
-      else if (opal_layout(vintage)%ragged_edge) then
+      if (opal_layout(vintage)%ragged_edge) then
          call find_ragged_edge_ramp(opal_tables(vintage), opal_layout(vintage), temperature, &
               log10_density, ramp_factor, in_opal_table, needs_ramp)
       else
@@ -271,8 +254,9 @@ end subroutine find_opal_edge_ramp
 !----------------------------------------------------------------------
 ! find_table_edge_ramp (formerly eqbound01)
 !----------------------------------------------------------------------
-! MHP 7/2003: whether a (T, log10 rho) point falls within the OPAL 2001
-! EOS table, and near its edge the ramp factor that blends the OPAL
+! MHP 8/98 and 7/2003: whether a (T, log10 rho) point falls within the
+! OPAL 1995 or 2001 EOS table, and near its edge the ramp factor that
+! blends the OPAL
 ! result with the Yale/SCV one (blend_eos's opal_step calls it, through
 ! find_opal_edge_ramp, right after compute_opal_eos): the vintage's
 ! density range (log10 rho from ramp_log10_rho_min to the window's
@@ -302,9 +286,9 @@ subroutine find_table_edge_ramp(v, lay, temperature, log10_density, ramp_factor,
 end subroutine find_table_edge_ramp
 
 !----------------------------------------------------------------------
-! opal_density_search (formerly rhoofp01 and rhoofp06)
+! opal_density_search (formerly rhoofp, rhoofp01 and rhoofp06)
 !----------------------------------------------------------------------
-! The density at which the 2001 or 2006 table gives the pressure P (in
+! The density at which the vintage's table gives the pressure P (in
 ! Mb) at (X, T6), by regula falsi through the interpolator's pressure
 ! alone (trial calls, deriv_order = 1), from a bracket: a first density
 ! from the table's highest one scaled by P over the pressure there, then
@@ -312,8 +296,8 @@ end subroutine find_table_edge_ramp
 ! (at most 20 times, down to the table's 1e-14), or the upper one grown
 ! by 5 (to the table's edge); at most 30 steps to |dP/P| < 0.5e-7. The
 ! vintage's row of opal_layout says how radiation enters (2006 subtracts
-! its pressure from the target and asks for the gas alone; 2001 adds it
-! to the table's bounds and asks for gas plus radiation), the highest
+! its pressure from the target and asks for the gas alone; 1995 and 2001
+! add it to the table's bounds and ask for gas plus radiation), the highest
 ! density at each T6 row, a/c, and the name in messages. Returns
 ! opal_rho_not_found (-999) when the point is not in the table, and,
 ! with a run-log message, when the search does not converge.
@@ -475,27 +459,32 @@ end function trial_pressure
 end function opal_density_search
 
 !----------------------------------------------------------------------
-! interpolate_opal_eos (formerly esac01 and esac06)
+! interpolate_opal_eos (formerly esac, esac01 and esac06)
 !----------------------------------------------------------------------
-! The OPAL 2001 and 2006 interpolation (OPAL's esac01 and esac06, which
-! are its entry points): the EOS variables at (X, T6, rho) by quadratic
-! interpolation in rho at fixed T6, then in T6 (t6rinteos), blended
-! across overlapping quadratics, then in X; see esac in opal95_eos for
-! the scheme. Both tables carry 9 variables. Unlike the 1995 code, every
-! stencil is clamped to the table. What the vintages differ in (the
-! table's size, the slots, the radiation constants) is their row of
-! opal_layout, and their messages are written by the report_*
-! procedures below.
+! The OPAL interpolation (OPAL's esac, esac01 and esac06, which are its
+! entry points): the EOS variables at (X, T6, rho) by quadratic
+! interpolation in X at each node of a 3 x 3 (or 4 x 4) stencil in T6 and
+! rho, blending the two quadratics that overlap where X lies inside the
+! grid, then in T6 and rho (t6rinteos), blending the overlapping
+! quadratics of a 4 x 4 stencil. Where the stencil would take an empty
+! entry (the reader's fill, opal_empty_entry) its coverage sums say so,
+! and it shrinks or shifts; a region with no usable stencil is outside
+! the table. What the vintages differ in (the table's size, the slots,
+! the radiation correction and constants, whether the stencil is
+! clamped to the table: not in 1995, M94, stencil_entry) is their row
+! of opal_layout, and their messages are written by the report_*
+! procedures below. The 1995 table carries 10 variables, the others 9.
 !
 ! With the radiation correction (rad_flag = 1) a full call (deriv_order
 ! = the table's n_vars) makes every slot that of gas plus radiation
-! (add_radiation); a density search's trial call (deriv_order = 1) only
-! adds the radiation pressure to its pressure slot, since its other
-! slots are an earlier call's. Without it (rad_flag = 0, the 2006
-! density search's trial calls) the slots are the gas's, the cv slot in
-! the table's units.
+! (add_radiation, 1995: add_radiation_to_gammas); a density search's
+! trial call (deriv_order = 1) only adds the radiation pressure to its
+! pressure slot, since its other slots are an earlier call's. Without it
+! (rad_flag = 0, the 2006 density search's trial calls) the slots are the
+! gas's, the cv slot in the table's units.
 !
-! The 2006 slots (the 2001 table lacks slot 4):
+! The slots (the 2001 table lacks slot 4, so its later ones are one
+! lower; only 1995's has slot 10):
 !   v%eos_output(1) pressure, in megabars (1e12 dyne/cm**2)
 !   v%eos_output(2) energy, in 1e12 erg/gm (zero at T6=0)
 !   v%eos_output(3) entropy, in units of energy/T6
@@ -505,27 +494,23 @@ end function opal_density_search
 !   v%eos_output(7) dlogP/dlogT6 at constant Rho (Cox & Guili eq 9.81)
 !   v%eos_output(8) gamma1 (Cox & Guili eq 9.88)
 !   v%eos_output(9) gamma2/(gamma2-1) (Cox & Guili eq 9.88)
+!   v%eos_output(10) gamma3-1 (Cox & Guili eq 9.88)
 subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
      density, deriv_order, rad_flag, ierr, in_table)
       integer, intent(in) :: vintage
-
-
       type(opal_eos_vintage), intent(inout) :: v
-
       real(dp), intent(in) :: hydrogen_fraction, t6_temperature, &
            density
       integer, intent(in) :: deriv_order, rad_flag
-
       integer, intent(out) :: ierr
 ! in_table is false when (T6, rho) is outside the table or in an
 ! empty region of it
       logical, intent(out) :: in_table
 
       integer, parameter :: mx = n_eos_mx
-! the vintage's table: its size, its X grid and its name in messages
+! the vintage's table: its size and its X grid
       integer :: nr, nt
       real(dp) :: x_grid(n_eos_mx)
-      character(len=15) :: routine_id
 
       real(dp) :: species_number_fraction(7)
 
@@ -546,24 +531,17 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
       real(dp) :: total_moles, ground_state_energy, &
            metal_mole_fraction, mean_molecular_weight
       type(opal_vintage_layout) :: lay
-      character(len=message_length) :: eos_lines(4)
 
-      nr = opal_layout(vintage)%nr
-      nt = opal_layout(vintage)%nt
-      x_grid = opal_layout(vintage)%x_grid
-      routine_id = opal_layout(vintage)%routine_id
+      lay = opal_layout(vintage)
+      nr = lay%nr
+      nt = lay%nt
+      x_grid = lay%x_grid
       ierr = 0
       in_table = .true.
 
-      if (deriv_order > 9) then
-         eos_lines = unwritten_line
-         write(eos_lines,'(A, " iorder cannot exceed 9")') routine_id
-         call eos_log(eos_lines)
-      end if
+      if (deriv_order > lay%n_vars) call report_order_too_high(vintage)
       if ((rad_flag /= 0) .and. (rad_flag /= 1)) then
-         eos_lines = unwritten_line
-         write(eos_lines,'(A, " Irad must be 0 or 1")') routine_id
-         call eos_report(eos_lines)
+         call report_bad_rad_flag(vintage)
          ierr = 1
          return
       end if
@@ -582,14 +560,8 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
          opal_shared%table_metal_fraction(vintage) = v%z_table(1)
 
          if (opal_shared%table_metal_fraction(vintage)+hydrogen_fraction-1.0d-6 > 1) then
-            eos_lines = unwritten_line
-            write(eos_lines,*) routine_id, "Mass fractions exceed unity (61)"
-            call eos_report(eos_lines)
-            eos_lines = unwritten_line
-            write(eos_lines,*) 'Z, XH', opal_shared%table_metal_fraction(vintage), hydrogen_fraction
-            call eos_report(eos_lines)
-            
-            
+            call report_mass_fractions(vintage, opal_shared%table_metal_fraction(vintage), &
+                 hydrogen_fraction)
             ierr = 1
             return
          end if
@@ -681,48 +653,17 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
 
 !     check to determine if interpolation indices fall within
 !     table boundaries.  choose largest allowed size.
-      table_sum_2x2 = 0.0d0
-      table_sum_3x3 = 0.0d0
-      table_sum_3x4 = 0.0d0
-      table_sum_4x4 = 0.0d0
-      do x_loop_index = v%x_index_lo, x_index_hi
-         do density_scan_idx = v%density_index_1, v%density_index_1+1
-            do t6_scan_idx = v%t6_index_1, v%t6_index_1+1
-               table_sum_2x2 = table_sum_2x2 + &
-                    v%eos_table(x_loop_index,1,t6_scan_idx,density_scan_idx)
-            end do
-         end do
-         do density_scan_idx = v%density_index_1, v%density_index_1+2
-            do t6_scan_idx = v%t6_index_1, v%t6_index_1+2
-               table_sum_3x3 = table_sum_3x3 + &
-                    v%eos_table(x_loop_index,1,t6_scan_idx,density_scan_idx)
-            end do
-         end do
-         if (t6_order_hi == 3) then
-            do density_scan_idx = v%density_index_1, v%density_index_1+2
-               do t6_scan_idx = v%t6_index_1, v%t6_index_1+t6_order_hi
-                  table_sum_3x4 = table_sum_3x4 + &
-                       v%eos_table(x_loop_index,1,t6_scan_idx,density_scan_idx)
-               end do
-            end do
-         else
-            table_sum_3x4 = 2.0d+30
-         end if
-         if (density_order_hi == 3) then
-            do density_scan_idx = v%density_index_1, v%density_index_1+3
-               do t6_scan_idx = v%t6_index_1, v%t6_index_1+t6_order_hi
-                  table_sum_4x4 = table_sum_4x4 + &
-                       v%eos_table(x_loop_index,1,t6_scan_idx,density_scan_idx)
-               end do
-            end do
-         else
-            table_sum_4x4 = 2.0d+30
-         end if
-      end do
+      if (lay%clamps_stencil) then
+         call clamped_coverage(v, x_index_hi, t6_order_hi, density_order_hi, table_sum_2x2, &
+              table_sum_3x3, table_sum_3x4, table_sum_4x4)
+      else
+         call unclamped_coverage(v, lay, table_sum_2x2, table_sum_3x3, table_sum_3x4, &
+              table_sum_4x4)
+      end if
       v%density_interp_order = 2
       v%t6_interp_order = 2
-      if (table_sum_3x3 > 1.0d+30) then
-         if (table_sum_2x2 < 1.0d+25) then
+      if (table_sum_3x3 > opal_empty_sum) then
+         if (table_sum_2x2 < opal_usable_corner_sum) then
             v%t6_index_1 = v%t6_index_3 - 3
             v%t6_index_2 = v%t6_index_1 + 1
             v%t6_index_3 = v%t6_index_2 + 1
@@ -735,15 +676,19 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
             return
          end if
       else
-      if (table_sum_3x4 < 1.0d+30) v%t6_interp_order = 3
-      if (table_sum_4x4 < 1.0d+30) v%density_interp_order = 3
+      if (table_sum_3x4 < opal_empty_sum) v%t6_interp_order = 3
+      if (table_sum_4x4 < opal_empty_sum) v%density_interp_order = 3
 
       if (t6_temperature >= v%t6_list(1,2)+1.0d-7) v%t6_interp_order = 2
       if (density_value <= v%density_grid(2)+1.0d-15) v%density_interp_order = 2
 
-      if ((v%density_index_3 == nr) .or. (v%t6_index_3 == nt)) then
+      if (lay%clamps_stencil) then
+         if ((v%density_index_3 == nr) .or. (v%t6_index_3 == nt)) then
+            v%density_interp_order = 2
+            v%t6_interp_order = 2
+         end if
+      else if (v%density_index_3 == nr) then
          v%density_interp_order = 2
-         v%t6_interp_order = 2
       end if
 
       end if
@@ -753,7 +698,7 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
       do density_scan_idx = v%density_index_1, v%density_index_1+v%density_interp_order
          do t6_scan_idx = v%t6_index_1, v%t6_index_1+v%t6_interp_order
             v%x_interp_workspace(x_loop_index,t6_scan_idx,density_scan_idx) = &
-                 v%eos_table(x_loop_index,eos_var_idx,t6_scan_idx,density_scan_idx)
+                 stencil_entry(v, lay, x_loop_index, eos_var_idx, t6_scan_idx, density_scan_idx)
          end do
       end do
       end do
@@ -780,7 +725,7 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
                  v%x_interp_workspace(x_index_3,t6_scan_idx,density_scan_idx), &
                  v%x_grid_copy(v%x_index_lo), v%x_grid_copy(x_index_2), &
                  v%x_grid_copy(x_index_3))
-            if (v%x_interp_result(t6_scan_idx,density_scan_idx) > 1.0d+20) &
+            if (v%x_interp_result(t6_scan_idx,density_scan_idx) > opal_x_interp_overflow) &
                  call report_x_interpolation(vintage, v, t6_scan_idx, density_scan_idx, &
                  v%x_index_lo)
             recompute_flag = 1
@@ -801,7 +746,7 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
                  v%x_interp_workspace(x_index_4,t6_scan_idx,density_scan_idx), &
                  v%x_grid_copy(x_index_2), v%x_grid_copy(x_index_3), &
                  v%x_grid_copy(x_index_4))
-            if (v%x_interp_result_alt(t6_scan_idx,density_scan_idx) > 1.0d+20) &
+            if (v%x_interp_result_alt(t6_scan_idx,density_scan_idx) > opal_x_interp_overflow) &
                  call report_x_interpolation(vintage, v, t6_scan_idx, density_scan_idx, &
                  x_index_2)
             v%x_interp_result(t6_scan_idx,density_scan_idx) = &
@@ -820,15 +765,16 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
 ! ..... completed X interpolation. Now interpolate T6 and rho on a
 !       4x4 grid. (t6a(i),i=i1,i1+3),rho(j),j=j1,j1+3)).Procedure
 !       mixes overlapping quadratics to obtain smoothed derivatives.
-!
-!
+! A 1995 stencil in the table's lowest T6 interval also takes the T6
+! node of row nt + 1, which the 1995 code read from its storage after
+! t6_grid, x_interp_result(1, 1) (M94; stencil_entry says more).
+      if (.not. lay%clamps_stencil) v%t6_grid(nt + 1) = v%x_interp_result(1, 1)
       call t6rinteos(v, vintage, density_value, t6_value, ierr)
       if (ierr /= 0) return
       v%eos_output(eos_var_idx) = v%esact
       end do
       if (eos_var_idx > deriv_order) then
       pressure_scale = t6_temperature*density
-      lay = opal_layout(vintage)
       v%eos_output(lay%i_p) = v%eos_output(lay%i_p)*pressure_scale ! interpolated in p/po
 ! Only slots that this call actually re-interpolated (index <= deriv_order)
 ! are rescaled; the original scaled E and cv unconditionally, so the
@@ -837,17 +783,27 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
       if (lay%i_e <= deriv_order) &
            v%eos_output(lay%i_e) = v%eos_output(lay%i_e)*t6_temperature ! interpolated in E/T6
       if (rad_flag == 1 .and. deriv_order >= lay%n_vars) then
-         mean_molecular_weight = gmass01(hydrogen_fraction, opal_shared%table_metal_fraction(vintage), &
-              total_moles, ground_state_energy, metal_mole_fraction, &
-              species_number_fraction)
-         call add_radiation(v, lay, t6_temperature, density, total_moles, &
-              mean_molecular_weight)
+         mean_molecular_weight = opal_mass_per_mole(lay, hydrogen_fraction, &
+              opal_shared%table_metal_fraction(vintage), total_moles, ground_state_energy, &
+              metal_mole_fraction, species_number_fraction)
+         if (lay%radiation_gammas_direct) then
+            call add_radiation_to_gammas(v, lay, t6_temperature, density, total_moles, &
+                 mean_molecular_weight)
+         else
+            call add_radiation(v, lay, t6_temperature, density, total_moles, &
+                 mean_molecular_weight)
+         end if
       else if (rad_flag == 1) then
 ! a density search's trial call (only the pressure slot is fresh, the
 ! others hold an earlier call's values): the radiation pressure is added
-! to the pressure alone, as add_radiation would
-         v%eos_output(lay%i_p) = v%eos_output(lay%i_p) + &
-              opal_radiation_pressure(lay, t6_temperature)
+! to the pressure alone, as the full correction would
+         if (lay%radiation_gammas_direct) then
+            v%eos_output(lay%i_p) = (v%eos_output(lay%i_p) + &
+                 opal_radiation_pressure(lay, t6_temperature))*lay%energy_unit_ratio
+         else
+            v%eos_output(lay%i_p) = v%eos_output(lay%i_p) + &
+                 opal_radiation_pressure(lay, t6_temperature)
+         end if
       end if
       return
       end if
@@ -856,10 +812,145 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
 
 end subroutine interpolate_opal_eos
 
+! The coverage sums of a 2001 or 2006 stencil, which stay inside the
+! table: the pressure entries of the X tables x_index_lo..x_index_hi over
+! the 2 x 2 and 3 x 3 cells from the stencil's corner, the 3 x 4 (T6 by
+! density) one where the stencil has a fourth T6 row (else 2e30, past
+! the empty-entry threshold) and the 4 x 4 one where it has a fourth
+! density column (else 2e30).
+pure subroutine clamped_coverage(v, x_index_hi, t6_order_hi, density_order_hi, sum_2x2, &
+     sum_3x3, sum_3x4, sum_4x4)
+      type(opal_eos_vintage), intent(in) :: v
+      integer, intent(in) :: x_index_hi, t6_order_hi, density_order_hi
+      real(dp), intent(out) :: sum_2x2, sum_3x3, sum_3x4, sum_4x4
+      integer :: x_loop_index, density_scan_idx, t6_scan_idx
+      sum_2x2 = 0.0d0
+      sum_3x3 = 0.0d0
+      sum_3x4 = 0.0d0
+      sum_4x4 = 0.0d0
+      do x_loop_index = v%x_index_lo, x_index_hi
+         do density_scan_idx = v%density_index_1, v%density_index_1+1
+            do t6_scan_idx = v%t6_index_1, v%t6_index_1+1
+               sum_2x2 = sum_2x2 + v%eos_table(x_loop_index,1,t6_scan_idx,density_scan_idx)
+            end do
+         end do
+         do density_scan_idx = v%density_index_1, v%density_index_1+2
+            do t6_scan_idx = v%t6_index_1, v%t6_index_1+2
+               sum_3x3 = sum_3x3 + v%eos_table(x_loop_index,1,t6_scan_idx,density_scan_idx)
+            end do
+         end do
+         if (t6_order_hi == 3) then
+            do density_scan_idx = v%density_index_1, v%density_index_1+2
+               do t6_scan_idx = v%t6_index_1, v%t6_index_1+t6_order_hi
+                  sum_3x4 = sum_3x4 + v%eos_table(x_loop_index,1,t6_scan_idx,density_scan_idx)
+               end do
+            end do
+         else
+            sum_3x4 = opal_beyond_stencil
+         end if
+         if (density_order_hi == 3) then
+            do density_scan_idx = v%density_index_1, v%density_index_1+3
+               do t6_scan_idx = v%t6_index_1, v%t6_index_1+t6_order_hi
+                  sum_4x4 = sum_4x4 + v%eos_table(x_loop_index,1,t6_scan_idx,density_scan_idx)
+               end do
+            end do
+         else
+            sum_4x4 = opal_beyond_stencil
+         end if
+      end do
+end subroutine clamped_coverage
+
+! The coverage sums of a 1995 stencil, which is not clamped to the table
+! (M94): the pressure entries of four X tables from x_index_lo, over the
+! 2 x 2, 3 x 3, 3 x 4 and 4 x 4 cells from the stencil's corner, whatever
+! the table's extent (stencil_entry gives the entries past it).
+pure subroutine unclamped_coverage(v, lay, sum_2x2, sum_3x3, sum_3x4, sum_4x4)
+      type(opal_eos_vintage), intent(in) :: v
+      type(opal_vintage_layout), intent(in) :: lay
+      real(dp), intent(out) :: sum_2x2, sum_3x3, sum_3x4, sum_4x4
+      integer :: x_loop_index, density_scan_idx, t6_scan_idx
+      sum_2x2 = 0.0d0
+      sum_3x3 = 0.0d0
+      sum_3x4 = 0.0d0
+      sum_4x4 = 0.0d0
+      do x_loop_index = v%x_index_lo, v%x_index_lo+3
+         do density_scan_idx = v%density_index_1, v%density_index_1+1
+            do t6_scan_idx = v%t6_index_1, v%t6_index_1+1
+               sum_2x2 = sum_2x2 + stencil_entry(v, lay, x_loop_index, 1, t6_scan_idx, density_scan_idx)
+            end do
+         end do
+         do density_scan_idx = v%density_index_1, v%density_index_1+2
+            do t6_scan_idx = v%t6_index_1, v%t6_index_1+2
+               sum_3x3 = sum_3x3 + stencil_entry(v, lay, x_loop_index, 1, t6_scan_idx, density_scan_idx)
+            end do
+         end do
+         do density_scan_idx = v%density_index_1, v%density_index_1+2
+            do t6_scan_idx = v%t6_index_1, v%t6_index_1+3
+               sum_3x4 = sum_3x4 + stencil_entry(v, lay, x_loop_index, 1, t6_scan_idx, density_scan_idx)
+            end do
+         end do
+         do density_scan_idx = v%density_index_1, v%density_index_1+3
+            do t6_scan_idx = v%t6_index_1, v%t6_index_1+3
+               sum_4x4 = sum_4x4 + stencil_entry(v, lay, x_loop_index, 1, t6_scan_idx, density_scan_idx)
+            end do
+         end do
+      end do
+end subroutine unclamped_coverage
+
+! The table's entry (X table, variable, T6 row, density column) that a
+! stencil reads. A 2001 or 2006 stencil stays inside the table
+! (lay%clamps_stencil). A 1995 stencil does not (M94, whose measured fix
+! will clamp it as the others are): in the table's lowest T6 interval it
+! runs to T6 row nt + 1, and its coverage sums to X table x_index_lo + 3,
+! which is 6 for X above 0.6. Until that fix the 1995 numbers stay those
+! of its own code, so an entry past the table is what the 1995 storage
+! (5 x 10 x 56 x 77, the X table varying fastest) held at that place: X
+! table 6 is the next variable's X table 1, and T6 row nt + 1 the next
+! density column's first (hottest) row. Past the last density column,
+! which only the 4 x 4 coverage sum at the top column reaches (the top
+! column forces that order to 2 whatever the sum), it is zero.
+pure real(dp) function stencil_entry(v, lay, x_table, variable, t6_row, density_column)
+      type(opal_eos_vintage), intent(in) :: v
+      type(opal_vintage_layout), intent(in) :: lay
+      integer, intent(in) :: x_table, variable, t6_row, density_column
+      integer :: ix, iv, it, ir
+      ix = x_table
+      iv = variable
+      it = t6_row
+      ir = density_column
+      if (.not. lay%clamps_stencil) then
+         if (ix > n_eos_mx) then
+            ix = ix - n_eos_mx
+            iv = iv + 1
+         end if
+         if (it > lay%nt) then
+            it = it - lay%nt
+            ir = ir + 1
+         end if
+         if (ir > lay%nr) then
+            stencil_entry = 0.0d0
+            return
+         end if
+      end if
+      stencil_entry = v%eos_table(ix,iv,it,ir)
+end function stencil_entry
+
 !----------------------------------------------------------------------
-! esac01, esac06
+! esac95, esac01, esac06
 !----------------------------------------------------------------------
-! OPAL's entry points for the 2001 and 2006 tables (interpolate_opal_eos).
+! OPAL's entry points for the 1995, 2001 and 2006 tables
+! (interpolate_opal_eos).
+subroutine esac95(v, hydrogen_fraction, t6_temperature, density, &
+     deriv_order, rad_flag, ierr, in_table)
+      type(opal_eos_vintage), intent(inout) :: v
+      real(dp), intent(in) :: hydrogen_fraction, t6_temperature, density
+      integer, intent(in) :: deriv_order, rad_flag
+      integer, intent(out) :: ierr
+      logical, intent(out) :: in_table
+      call interpolate_opal_eos(v, iv_opal95, hydrogen_fraction, t6_temperature, &
+           density, deriv_order, rad_flag, ierr, in_table)
+end subroutine esac95
+
 subroutine esac01(v, hydrogen_fraction, t6_temperature, density, &
      deriv_order, rad_flag, ierr, in_table)
       type(opal_eos_vintage), intent(inout) :: v
@@ -883,16 +974,18 @@ subroutine esac06(v, hydrogen_fraction, t6_temperature, density, &
 end subroutine esac06
 
 !----------------------------------------------------------------------
-! readcoeos (formerly readcoeos01 and readcoeos06)
+! readcoeos (formerly readco, readcoeos01 and readcoeos06)
 !----------------------------------------------------------------------
-! Reads a 2001 or 2006 OPAL EOS table (one block per tabulated X) into
-! v, then derives the grid spacings interpolate_opal_eos uses and the
-! table's edge in density at each T6 row (find_opal_ramp, 2001). Called
+! Reads an OPAL EOS table (one block per tabulated X) into v, then
+! derives the grid spacings interpolate_opal_eos uses and the table's
+! edge in density at each T6 row (find_opal_ramp, 1995 and 2001). Called
 ! once per vintage from interpolate_opal_eos, on the unit eos_init's
 ! open_opal_eos_table opened. The vintage's row of opal_layout gives the
-! table's size and its row format; the header's moles per gram, mean
-! molecular weight and species fractions, and each row's log10 R (2001)
-! or amu and log10 n_e (2006), are read and not kept.
+! table's size, its variable count and its formats; the header's moles
+! per gram, mean molecular weight and species fractions, and each row's
+! log10 R (1995, 2001) or amu and log10 n_e (2006), are read and not
+! kept. A read that fails, a block out of its layout and a zero T6 are
+! ierr = 1, with a message, the unit closed.
 subroutine readcoeos(v, vintage, ierr)
       integer, intent(in) :: vintage
 
@@ -930,7 +1023,7 @@ subroutine readcoeos(v, vintage, ierr)
             do var_idx = 1, mv
                do t6_idx = 1, nt
                   do r_idx = 1, nr
-                     v%eos_table(x_idx, var_idx, t6_idx, r_idx) = 1.0d+35
+                     v%eos_table(x_idx, var_idx, t6_idx, r_idx) = opal_empty_entry
                   end do
                end do
             end do
@@ -998,7 +1091,7 @@ subroutine read_table_blocks(ios, layout_error)
       layout_error = .false.
       density_row = 0
       do x_loop_index = 1, mx
-         read (u,'(3X,F6.4,3X,F12.9,11X,F10.7,17X,F10.7)',iostat=ios) &
+         read (u,opal_layout(vintage)%header_format,iostat=ios) &
               v%hydrogen_fraction_header(x_loop_index), &
               v%z_table(x_loop_index), unused_header(1), unused_header(2)
          if (ios /= 0) return
@@ -1038,7 +1131,7 @@ subroutine read_table_blocks(ios, layout_error)
                     v%t6_list(density_row,t6_row), &
                     (unused_columns(column_idx), column_idx=1,opal_layout(vintage)%n_skipped_columns), &
                     (v%eos_table(x_loop_index,table_var_idx,t6_row,density_row), &
-                    table_var_idx=1,9)
+                    table_var_idx=1,opal_layout(vintage)%n_vars)
                if (ios /= 0) return
             end do
             read(u,'(A)',iostat=ios) blank_line
@@ -1065,7 +1158,7 @@ subroutine t6rinteos(v, vintage, slr, slt, ierr)
 
       ierr = 0
       call interpolate_opal_t6_rho(v, slr, slt)
-      if (v%esact > 1.0d+15) then
+      if (v%esact > opal_range_overflow) then
          call report_interpolation_indices(vintage)
          ierr = 1
          return
@@ -1288,9 +1381,191 @@ pure real(dp) function opal_radiation_pressure(lay, t6_temperature)
 end function opal_radiation_pressure
 
 !----------------------------------------------------------------------
-! The 2001 and 2006 interpolators' messages, each vintage's in its
-! original words (run log).
+! add_radiation_to_gammas (formerly radsub)
 !----------------------------------------------------------------------
+! The radiation correction of the 1995 table (lay%radiation_gammas_direct),
+! on the values already in v%eos_output: P_rad = (4/3)(a/c) T6^4, E_rad =
+! 3 P_rad/rho and S_rad = (4/3) E_rad/T6 are added to P, E and S, and
+! -E_rad/rho to dE/dRho; chi_rho, chi_T and cv become those of gas plus
+! radiation, and the three gammas are computed from them (not corrected
+! by a difference, as add_radiation's are). P and S are then rescaled by
+! lay%energy_unit_ratio, the ratio of the latest N_A k in erg/eV
+! (0.9648575e12: 6.0221367e23 x 1.380658e-16 erg/K x 11604.5 K/eV) to the
+! one the 1995 tables were computed with (0.9652e12); E and dE/dRho are
+! not (as in OPAL's code).
+pure subroutine add_radiation_to_gammas(v, lay, t6_temperature, density, total_moles, &
+     mean_molecular_weight)
+      type(opal_eos_vintage), intent(inout) :: v
+      type(opal_vintage_layout), intent(in) :: lay
+      real(dp), intent(in) :: t6_temperature, density
+      real(dp), intent(in) :: total_moles
+      real(dp), intent(in) :: mean_molecular_weight
+      real(dp) :: moles_per_ev, radiation_pressure, &
+           radiation_energy, radiation_entropy
+      real(dp) :: total_pressure, total_energy, total_entropy
+      real(dp) :: chi_rho, chi_t6
+      real(dp) :: molar_specific_heat, gamma3_minus1, gamma1, &
+           gamma2_over_gamma2_minus1
+      real(dp) :: de_drho_at_t
+
+      moles_per_ev = total_moles*lay%molar_gas_constant_mbcc  ! Mb-cc/unit T6
+      radiation_pressure = opal_radiation_pressure(lay, t6_temperature)   ! Mb
+      radiation_energy = 3.0d0*radiation_pressure/density   ! Mb-cc/gm
+      radiation_entropy = 4.0d0/3.0d0*radiation_energy/t6_temperature   ! Mb-cc/(gm-unit T6)
+      total_pressure = v%eos_output(lay%i_p) + radiation_pressure
+      total_energy = v%eos_output(lay%i_e) + radiation_energy
+      total_entropy = v%eos_output(lay%i_s) + radiation_entropy
+      chi_rho = v%eos_output(lay%i_chi_rho)*v%eos_output(lay%i_p)/ &
+           total_pressure
+      chi_t6 = (v%eos_output(lay%i_p)*v%eos_output(lay%i_chi_t) &
+           + 4.0d0*radiation_pressure)/total_pressure
+      molar_specific_heat = (v%eos_output(lay%i_cv)*moles_per_ev/ &
+           mean_molecular_weight + 4.0d0*radiation_energy/t6_temperature)
+      gamma3_minus1 = total_pressure*chi_t6/(molar_specific_heat*density* &
+           t6_temperature)
+      gamma1 = chi_rho + chi_t6*gamma3_minus1
+      gamma2_over_gamma2_minus1 = gamma1/gamma3_minus1
+      de_drho_at_t = v%eos_output(lay%i_dedrho) - radiation_energy/density
+      total_pressure = total_pressure*lay%energy_unit_ratio
+      total_entropy = total_entropy*lay%energy_unit_ratio
+      v%eos_output(lay%i_p) = total_pressure
+      v%eos_output(lay%i_e) = total_energy
+      v%eos_output(lay%i_s) = total_entropy
+      v%eos_output(lay%i_dedrho) = de_drho_at_t
+      v%eos_output(lay%i_cv) = molar_specific_heat
+      v%eos_output(lay%i_chi_rho) = chi_rho
+      v%eos_output(lay%i_chi_t) = chi_t6
+      v%eos_output(lay%i_gamma1) = gamma1
+      v%eos_output(lay%i_gamma2_ratio) = gamma2_over_gamma2_minus1
+      v%eos_output(lay%i_gamma3m1) = gamma3_minus1
+end subroutine add_radiation_to_gammas
+
+!----------------------------------------------------------------------
+! opal_mass_per_mole (formerly gmass and gmass01)
+!----------------------------------------------------------------------
+! The mean mass per particle (amu) of fully ionized H, He, C, N, O and Ne
+! at (X, Z), the metals in a fixed solar-relative C:N:O:Ne mix, for the
+! radiation correction's specific heat; also the number (mole) fractions
+! of the species (Ne, O, N, C, He, H), their total number with their
+! electrons (total_moles), the ground-state ionization energy and the
+! metals' moles per unit mass. The vintage's row gives the ionization
+! energies, and whether the electrons' mass counts (1995: the sum then
+! starts from (total_moles - 1) m_e, the electrons per ion; 2001 and
+! 2006 start from 0).
+real(dp) function opal_mass_per_mole(lay, hydrogen_fraction, metal_fraction, &
+     total_moles, ground_state_energy, metal_mole_fraction, species_number_fraction)
+      type(opal_vintage_layout), intent(in) :: lay
+      real(dp), intent(in) :: hydrogen_fraction, metal_fraction
+      real(dp), intent(out) :: total_moles, ground_state_energy, &
+           metal_mole_fraction
+! species_number_fraction(1:6): number (mole) fractions of Ne, O, N, C,
+! He, H (same order as atomic_number); slot 7 is never assigned.
+      real(dp), intent(out) :: species_number_fraction(:)
+! atomic_number(i): atomic number (= electrons per fully-ionized atom)
+! of species i, for i=1,6 = Ne, O, N, C, He, H.
+      real(dp), parameter :: atomic_number(6) = [10.0d0, 8.0d0, &
+           7.0d0, 6.0d0, 2.0d0, 1.0d0]
+! atomic_weight(i): atomic weight (amu), i=1 electron, 2 Ne, 3 O, 4 N,
+! 5 C, 6 He, 7 H.
+      real(dp), parameter :: atomic_weight(7) = [0.00054858d0, 20.179d0, 15.9994d0, &
+           14.0067d0, 12.011d0, 4.0026d0, 1.0079d0]
+! solar-relative mole-fraction-per-unit-Z of C, N, O, Ne in the metal
+! mix (fixed composition assumed for all Z).
+      real(dp), parameter :: carbon_mix_fraction = 0.247137766d0, &
+           nitrogen_mix_fraction = 0.0620782d0, &
+           oxygen_mix_fraction = 0.52837118d0, &
+           neon_mix_fraction = 0.1624188d0
+      real(dp) :: carbon_moles, nitrogen_moles, oxygen_moles, &
+           neon_moles
+      real(dp) :: hydrogen_moles, helium_moles, total_moles_raw
+      integer :: species_idx
+
+      metal_mole_fraction = metal_fraction/(carbon_mix_fraction* &
+           atomic_weight(5) + nitrogen_mix_fraction*atomic_weight(4) + &
+           oxygen_mix_fraction*atomic_weight(3) + neon_mix_fraction* &
+           atomic_weight(2))
+      carbon_moles = metal_mole_fraction*carbon_mix_fraction
+      nitrogen_moles = metal_mole_fraction*nitrogen_mix_fraction
+      oxygen_moles = metal_mole_fraction*oxygen_mix_fraction
+      neon_moles = metal_mole_fraction*neon_mix_fraction
+      hydrogen_moles = hydrogen_fraction/atomic_weight(7)
+      helium_moles = (1.0d0 - hydrogen_fraction - metal_fraction)/ &
+           atomic_weight(6)
+      total_moles_raw = hydrogen_moles + helium_moles + carbon_moles + &
+           nitrogen_moles + oxygen_moles + neon_moles
+      species_number_fraction(6) = hydrogen_moles/total_moles_raw
+      species_number_fraction(5) = helium_moles/total_moles_raw
+      species_number_fraction(4) = carbon_moles/total_moles_raw
+      species_number_fraction(3) = nitrogen_moles/total_moles_raw
+      species_number_fraction(2) = oxygen_moles/total_moles_raw
+      species_number_fraction(1) = neon_moles/total_moles_raw
+      ground_state_energy = 0.0d0
+      total_moles = 0.0d0
+      do species_idx = 1, 6
+         ground_state_energy = ground_state_energy + &
+              lay%ionization_energy(species_idx)*species_number_fraction(species_idx)
+         total_moles = total_moles + (1.0d0 + atomic_number(species_idx))* &
+              species_number_fraction(species_idx)
+      end do
+      opal_mass_per_mole = 0.0d0
+      if (lay%counts_electron_mass) opal_mass_per_mole = (total_moles - 1.0d0)*atomic_weight(1)
+      do species_idx = 2, 7
+         opal_mass_per_mole = opal_mass_per_mole + atomic_weight(species_idx)* &
+              species_number_fraction(species_idx - 1)
+      end do
+end function opal_mass_per_mole
+
+!----------------------------------------------------------------------
+! The interpolators' and the reader's messages, each vintage's in its
+! original words (the 1995 ones in capitals, as its code wrote them;
+! their rewording is for a re-pin commit), to the run log (eos_log) or,
+! for an error, to the terminal and the run log (eos_report).
+!----------------------------------------------------------------------
+! deriv_order above the table's variable count (the call goes on)
+subroutine report_order_too_high(vintage)
+      integer, intent(in) :: vintage
+      character(len=message_length) :: eos_lines(4)
+      eos_lines = unwritten_line
+      if (vintage == iv_opal95) then
+         write(eos_lines,'(" IORDER CANNOT EXCEED 10")')
+      else
+         write(eos_lines,'(A, " iorder cannot exceed 9")') opal_layout(vintage)%routine_id
+      end if
+      call eos_log(eos_lines)
+end subroutine report_order_too_high
+
+! rad_flag neither 0 nor 1
+subroutine report_bad_rad_flag(vintage)
+      integer, intent(in) :: vintage
+      character(len=message_length) :: eos_lines(4)
+      eos_lines = unwritten_line
+      if (vintage == iv_opal95) then
+         write(eos_lines,'(" IRAD MUST BE 0 OR 1")')
+      else
+         write(eos_lines,'(A, " Irad must be 0 or 1")') opal_layout(vintage)%routine_id
+      end if
+      call eos_report(eos_lines)
+end subroutine report_bad_rad_flag
+
+! the table's Z and the first call's X add up to more than 1
+subroutine report_mass_fractions(vintage, table_z, hydrogen_fraction)
+      integer, intent(in) :: vintage
+      real(dp), intent(in) :: table_z, hydrogen_fraction
+      character(len=message_length) :: eos_lines(4)
+      eos_lines = unwritten_line
+      if (vintage == iv_opal95) then
+         write(eos_lines,'(" MASS FRACTIONS EXCEED UNITY (61)")')
+         call eos_report(eos_lines)
+         eos_lines = unwritten_line
+         write(eos_lines,*) table_z, hydrogen_fraction
+      else
+         write(eos_lines,*) opal_layout(vintage)%routine_id, "Mass fractions exceed unity (61)"
+         call eos_report(eos_lines)
+         eos_lines = unwritten_line
+         write(eos_lines,*) 'Z, XH', table_z, hydrogen_fraction
+      end if
+      call eos_report(eos_lines)
+end subroutine report_mass_fractions
 ! (T6, rho) outside the table
 subroutine report_outside_table(vintage, t6, density, t6_first, t6_last, &
      density_first, density_last)
@@ -1299,7 +1574,17 @@ subroutine report_outside_table(vintage, t6, density, t6_first, t6_last, &
       character(len=message_length) :: eos_lines(4)
       character(len=15) :: id
       id = opal_layout(vintage)%routine_id
-      if (vintage == iv_opal01) then
+      if (vintage == iv_opal95) then
+         eos_lines = unwritten_line
+         write(eos_lines,'(" T6/LOGR OUTSIDE OF TABLE RANGE (62)")')
+         call eos_log(eos_lines)
+         eos_lines = unwritten_line
+         write(eos_lines,*) t6_first, t6, t6_last
+         call eos_log(eos_lines)
+         eos_lines = unwritten_line
+         write(eos_lines,*) density_first, density, density_last
+         call eos_log(eos_lines)
+      else if (vintage == iv_opal01) then
          eos_lines = unwritten_line
          write(eos_lines,*) id, " T6 or rho outside of table range (62)"
          call eos_log(eos_lines)
@@ -1326,7 +1611,11 @@ end subroutine report_outside_table
 subroutine report_t6_search(vintage, hi_idx, lo_idx, mid_idx)
       integer, intent(in) :: vintage, hi_idx, lo_idx, mid_idx
       character(len=message_length) :: eos_lines(4)
-      if (vintage == iv_opal01) then
+      if (vintage == iv_opal95) then
+         eos_lines = unwritten_line
+         write(eos_lines,'(" IHI,ILO,IMD",3I5)')
+         call eos_log(eos_lines)
+      else if (vintage == iv_opal01) then
          eos_lines = unwritten_line
          write(eos_lines,'(A, " ihi,ilo,imd",3I5)') opal_layout(vintage)%routine_id
          call eos_log(eos_lines)
@@ -1342,7 +1631,15 @@ subroutine report_empty_region(vintage, hydrogen_fraction, t6, density)
       integer, intent(in) :: vintage
       real(dp), intent(in) :: hydrogen_fraction, t6, density
       character(len=message_length) :: eos_lines(4)
-      if (vintage == iv_opal01) then
+      if (vintage == iv_opal95) then
+         eos_lines = unwritten_line
+         write(eos_lines,'("T6/LOG RHO IN EMPTY REGION OF TABLE (65)")')
+         call eos_log(eos_lines)
+         eos_lines = unwritten_line
+         write(eos_lines,'("XH,T6,R=", 3E12.4)') hydrogen_fraction, t6, density
+         call eos_log(eos_lines)
+         return
+      else if (vintage == iv_opal01) then
          eos_lines = unwritten_line
          write(eos_lines,*) opal_layout(vintage)%routine_id, "T6/rho in empty region of OPAL 2001 EOS", &
               " table (65)"
@@ -1361,7 +1658,11 @@ end subroutine report_empty_region
 subroutine report_tables_z(vintage)
       integer, intent(in) :: vintage
       character(len=message_length) :: eos_lines(4)
-      if (vintage == iv_opal01) then
+      if (vintage == iv_opal95) then
+         eos_lines = unwritten_line
+         write(eos_lines,'("Z DOES NOT MATCH Z IN EOSDATA FILES YOU ARE" ," USING")')
+         call eos_report(eos_lines)
+      else if (vintage == iv_opal01) then
          eos_lines = unwritten_line
          write(eos_lines,'(A,"Z does not match Z in OEOS01 files you are" ," using")') opal_layout(vintage)%routine_id
          call eos_report(eos_lines)
@@ -1379,7 +1680,12 @@ subroutine report_x_interpolation(vintage, v, t6_idx, density_idx, x_first)
       type(opal_eos_vintage), intent(in) :: v
       character(len=message_length) :: eos_lines(4)
       integer :: k
-      if (vintage == iv_opal01) then
+      if (vintage == iv_opal95) then
+         eos_lines = unwritten_line
+         write(eos_lines,'(" PROBLEM IT IR,L3,K3,IQ,IP=", 6I5)') t6_idx, density_idx, &
+              v%density_index_3, v%t6_index_3, v%density_interp_order, v%t6_interp_order
+         call eos_log(eos_lines)
+      else if (vintage == iv_opal01) then
          eos_lines = unwritten_line
          write(eos_lines,'(A," problem it ir,l3,k3,iq,ip=", 6I5)') opal_layout(vintage)%routine_id, &
               t6_idx, density_idx, v%density_index_3, v%t6_index_3, v%density_interp_order, &
@@ -1403,7 +1709,20 @@ subroutine report_run_z(vintage, v, hydrogen_fraction, t6, density)
       type(opal_eos_vintage), intent(in) :: v
       real(dp), intent(in) :: hydrogen_fraction, t6, density
       character(len=message_length) :: eos_lines(4)
-      if (vintage == iv_opal01) then
+      if (vintage == iv_opal95) then
+         eos_lines = unwritten_line
+         write(eos_lines,'(" Z DOES NOT MATCH Z IN EOSDATA* FILES YOU ARE", " USING (66)")')
+         call eos_report(eos_lines)
+         eos_lines = unwritten_line
+         write(eos_lines,'("MF,ZZ(MF)=",I5,E12.4)') v%x_index_lo, v%z_table(v%x_index_lo)
+         call eos_report(eos_lines)
+         eos_lines = unwritten_line
+         write(eos_lines,'("  IQ,IP,K3,L3,XH,T6,R,Z= ",4I5,4E12.4)') v%t6_interp_order, &
+              v%density_interp_order, v%t6_index_3, v%density_index_3, hydrogen_fraction, &
+              t6, density, opal_shared%table_metal_fraction(vintage)
+         call eos_report(eos_lines)
+         return
+      else if (vintage == iv_opal01) then
          eos_lines = unwritten_line
          write(eos_lines,*) opal_layout(vintage)%routine_id, " Z does not match Z in OPAL 2001 EOS files", &
               " you are using (66)"
@@ -1428,7 +1747,11 @@ end subroutine report_run_z
 subroutine report_record_number(vintage, record_number, density_row)
       integer, intent(in) :: vintage, record_number, density_row
       character(len=message_length) :: eos_lines(4)
-      if (vintage == iv_opal01) then
+      if (vintage == iv_opal95) then
+         eos_lines = unwritten_line
+         write(eos_lines,'(" DATA FILE INCORRECT: NUMTOT,JCS= ",2I5)') record_number, density_row
+         call eos_report(eos_lines)
+      else if (vintage == iv_opal01) then
          eos_lines = unwritten_line
          write(eos_lines,'(" Data file incorrect: numtot,jcs= ",2I5)') record_number, density_row
          call eos_report(eos_lines)
@@ -1444,7 +1767,12 @@ subroutine report_short_column(vintage, hydrogen_fraction, density)
       integer, intent(in) :: vintage
       real(dp), intent(in) :: hydrogen_fraction, density
       character(len=message_length) :: eos_lines(4)
-      if (vintage == iv_opal01) then
+      if (vintage == iv_opal95) then
+         eos_lines = unwritten_line
+         write(eos_lines,'("PROBLEM WITH DATA FILES: X=",F6.4," DENSITY=", E14.4)') hydrogen_fraction, &
+              density
+         call eos_report(eos_lines)
+      else if (vintage == iv_opal01) then
          eos_lines = unwritten_line
          write(eos_lines,'("problem with data files: X=",F6.4, " density=",E14.4)') hydrogen_fraction, density
          call eos_report(eos_lines)
@@ -1462,8 +1790,12 @@ subroutine report_no_table(vintage)
       integer, intent(in) :: vintage
       character(len=message_length) :: eos_lines(4)
       eos_lines = unwritten_line
-      write(eos_lines,'(a,a)') trim(opal_layout(vintage)%routine_id), &
-           ' no OPAL EOS table is open to read (eos_init opens it)'
+      if (vintage == iv_opal95) then
+         write(eos_lines,'(a)') ' OPAL 1995 EOS: no table is open to read (eos_init opens it)'
+      else
+         write(eos_lines,'(a,a)') trim(opal_layout(vintage)%routine_id), &
+              ' no OPAL EOS table is open to read (eos_init opens it)'
+      end if
       call eos_report(eos_lines)
 end subroutine report_no_table
 
@@ -1472,9 +1804,14 @@ subroutine report_bad_table(vintage, x_block, density_row)
       integer, intent(in) :: vintage, x_block, density_row
       character(len=message_length) :: eos_lines(4)
       eos_lines = unwritten_line
-      write(eos_lines,'(a,a,i0,a,i0)') trim(opal_layout(vintage)%routine_id), &
-           ' the OPAL EOS table ends early or is corrupt: X block ', x_block, ', density column ', &
-           density_row
+      if (vintage == iv_opal95) then
+         write(eos_lines,'(a,i0,a,i0)') ' OPAL 1995 EOS: the table ends early or is corrupt: X block ', &
+              x_block, ', density column ', density_row
+      else
+         write(eos_lines,'(a,a,i0,a,i0)') trim(opal_layout(vintage)%routine_id), &
+              ' the OPAL EOS table ends early or is corrupt: X block ', x_block, ', density column ', &
+              density_row
+      end if
       call eos_report(eos_lines)
 end subroutine report_bad_table
 
@@ -1482,7 +1819,11 @@ end subroutine report_bad_table
 subroutine report_zero_t6(vintage, t6_idx)
       integer, intent(in) :: vintage, t6_idx
       character(len=message_length) :: eos_lines(4)
-      if (vintage == iv_opal01) then
+      if (vintage == iv_opal95) then
+         eos_lines = unwritten_line
+         write(eos_lines,'("READCO: Error:",I4, "-th T6 value is zero")') t6_idx
+         call eos_report(eos_lines)
+      else if (vintage == iv_opal01) then
          eos_lines = unwritten_line
          write(eos_lines,'("READCOEOS01: Error:",I4, "-th T6 value is zero")') t6_idx
          call eos_report(eos_lines)
@@ -1497,7 +1838,11 @@ end subroutine report_zero_t6
 subroutine report_interpolation_indices(vintage)
       integer, intent(in) :: vintage
       character(len=message_length) :: eos_lines(4)
-      if (vintage == iv_opal01) then
+      if (vintage == iv_opal95) then
+         eos_lines = unwritten_line
+         write(eos_lines,'("INTERPOLATION INDICES OUT OF RANGE", ";PLEASE REPORT CONDITIONS.")')
+         call eos_report(eos_lines)
+      else if (vintage == iv_opal01) then
          eos_lines = unwritten_line
          write(eos_lines,'("Interpolation indices out of range", ";please report conditions.")')
          call eos_report(eos_lines)

@@ -2,7 +2,7 @@
 ! opal_eos_tables
 !----------------------------------------------------------------------
 ! The OPAL EOS tables and interpolation state, one instance per
-! vintage (opal95, opal_tables(iv_opal01), opal_tables(iv_opal06)), plus
+! vintage (opal_tables(iv_opal95), (iv_opal01), (iv_opal06)), plus
 ! opal_shared for what the vintages
 ! share: the table unit, the loaded flags and each table's Z. The
 ! interpolation routines take the instance as their first argument,
@@ -16,16 +16,13 @@
 !                              2006 tables
 !     find_opal_ramp           table coverage and edge-blend weight for
 !                              the 1995 and 2001 tables
-!     quad, gmass01            OPAL's quadratic interpolation and mass
-!                              per particle
+!     quad                     OPAL's quadratic interpolation
 !
-! Two state types: the 2001 and 2006 interpolators clamp every stencil
-! to the table, so they share opal_eos_vintage, dimensioned by the
-! larger 2006 table. The 1995 interpolator (esac) does not: when T6 is
-! in the lowest table interval (5000 K <= T < 5500 K) its stencils run
-! to t6_index_1+3 = nt+1 and x_index_lo+3 = 6 > n_eos_mx, and it reads
-! t6_grid(nt+1), the member after t6_grid. opal_eos_vintage95 keeps the
-! 1995 dimensions and member order, so those reads stay as they are.
+! The three vintages share one state type, opal_eos_vintage, dimensioned
+! by the largest (2006) table; each addresses its first nt rows and nr
+! columns. The 2001 and 2006 interpolation clamps every stencil to the
+! table; the 1995 one does not (M94), and reads past its table what the
+! 1995 code's own storage held there (opal_eos's stencil_entry).
 !
 ! The 2001 and 2006 x_grid constants are written without the d0 suffix
 ! (0.0, 0.2, ...), as in OPAL's DATA statements: single-precision
@@ -38,7 +35,7 @@ module opal_eos_tables
       use math_lib
       implicit none
       private
-      public :: n_eos_nr_max, n_opal_vintages, open_opal_eos_table, find_opal_ramp, gmass01, i_opal01_chi_rho, i_opal01_chi_t, &
+      public :: n_eos_nr_max, n_opal_vintages, open_opal_eos_table, find_opal_ramp, i_opal01_chi_rho, i_opal01_chi_t, &
            i_opal01_cv, i_opal01_e, i_opal01_gamma1, i_opal01_gamma2_ratio, &
            i_opal01_gamma3m1, i_opal01_p, i_opal01_s, i_opal_chi_rho, &
            i_opal_chi_t, i_opal_cv, i_opal_dedrho, i_opal_e, i_opal_gamma1, &
@@ -48,10 +45,11 @@ module opal_eos_tables
            n_eos95_nt, n_eos_mv, n_eos_mx, opal_tables, opal01_density_index_edge, &
            opal01_t6_index_lo, opal01_x_grid, &
            opal06_density_index_edge, opal06_t6_index_lo, opal06_x_grid, &
-           opal95, opal95_density_index_edge, opal95_t6_index_lo, &
+           opal95_density_index_edge, opal95_t6_index_lo, &
            opal95_x_grid, opal_shared, opal_eos_vintage, &
-           opal_eos_vintage95, opal_flag_set, opal_rho_not_found, quad, &
-           n_eos_nt_max
+           opal_flag_set, opal_rho_not_found, quad, &
+           n_eos_nt_max, opal_empty_entry, opal_empty_sum, opal_usable_corner_sum, &
+           opal_beyond_stencil, opal_x_interp_overflow, opal_range_overflow
       integer, parameter :: n_eos_mx = 5, n_eos_mv = 10
       integer, parameter :: n_eos95_nr = 77, n_eos95_nt = 56
       integer, parameter :: n_eos01_nr = 169, n_eos01_nt = 191
@@ -90,9 +88,20 @@ module opal_eos_tables
       integer, parameter :: i_opal01_gamma1 = 7
       integer, parameter :: i_opal01_gamma2_ratio = 8
       integer, parameter :: i_opal01_gamma3m1 = 9
-! Density returned by rhoofp and opal_density_search when the (P,T6) point
-! is not in the table (compute_opal_eos tests for .le. -998).
+! The density opal_density_search returns when the (P, T6) point is not
+! in the table, or its search does not converge.
       real(dp), parameter :: opal_rho_not_found = -999.0d0
+! The readers fill a table entry the file does not give with
+! opal_empty_entry, and the interpolation tells such entries by sums and
+! values far above any real one: a coverage sum above opal_empty_sum
+! holds one, a 2 x 2 corner sum below opal_usable_corner_sum holds none
+! (the stencil can then shift onto it), opal_beyond_stencil stands for
+! the sum of a cell the stencil lacks (above opal_empty_sum, so that it
+! is not used), and an X-interpolated value above opal_x_interp_overflow,
+! or a T6-rho interpolated one above opal_range_overflow, came from one.
+      real(dp), parameter :: opal_empty_entry = 1.0d+35, opal_empty_sum = 1.0d+30, &
+           opal_usable_corner_sum = 1.0d+25, opal_beyond_stencil = 2.0d+30, &
+           opal_x_interp_overflow = 1.0d+20, opal_range_overflow = 1.0d+15
 ! a/3 in OPAL's units, Mb per T6^4 (radiation_constant_over_3 times
 ! 1e24/1e12), to the ten digits compute_opal_eos has always written:
 ! the radiation pressure's share of P is this T6^4/P12
@@ -159,11 +168,15 @@ module opal_eos_tables
             (102,i=1,16),(100,i=1,21),(99,i=1,9),(98,i=1,6),(97,i=1,4), &
             95,94,(87,i=1,6)]
 
+! the ground-state ionization energies [eV] of Ne, O, N, C, He and H in
+! the 2001 and 2006 codes' mass per particle (gmass01)
+      real(dp), parameter :: gmass01_ionization_energy(6) = [-3394.873554d0, -1974.86545d0, &
+           -1433.92718d0, -993.326315d0, -76.1959403d0, -15.29409d0]
+
 ! ==================== what tells the vintages apart ====================
 ! One row per vintage (opal_layout(iv_opal95), (iv_opal01),
 ! (iv_opal06)); the code reads its vintage's row instead of branching
-! on the vintage. The 1995 interpolator, with its own state layout, is
-! in opal95_eos and reads only the compute_opal_eos and window fields.
+! on the vintage (only the messages keep each vintage's own words).
       type, public :: opal_vintage_layout
 ! the table's density columns and T6 rows, and its hydrogen-fraction grid
          integer :: nr, nt
@@ -180,11 +193,27 @@ module opal_eos_tables
               i_gamma2_ratio, i_gamma3m1
 ! the radiation correction's a/c [Mb/T6^4] and molar gas constant
 ! [Mb cm^3/(mol T6)], as each vintage's code writes them (the 2001
-! code's are single-precision literals, widened)
+! code's are single-precision literals, widened); whether it computes
+! the gammas from gas plus radiation directly and rescales P and S by
+! energy_unit_ratio, the ratio of N_A k in erg/eV (0.9648575e12) to the
+! older value the table was computed with (1995), or adds to the table's
+! gammas the difference that radiation makes to the same formulas
+! (2001, 2006: add_radiation)
          real(dp) :: rad_const_over_c, molar_gas_constant_mbcc
-! the reader's format for a T6 row, and the columns it skips before the
-! nine variables (2001: log10 R; 2006: amu and log10 n_e)
-         character(len=48) :: row_format
+         logical :: radiation_gammas_direct
+         real(dp) :: energy_unit_ratio
+! the mean mass per particle of the radiation correction (opal_eos's
+! opal_mass_per_mole): the ground-state ionization energies [eV] of Ne,
+! O, N, C, He and H, and whether the electrons' mass counts (1995)
+         real(dp) :: ionization_energy(6)
+         logical :: counts_electron_mass
+! whether the interpolation clamps its stencils to the table (2001,
+! 2006; not 1995, M94)
+         logical :: clamps_stencil
+! the reader's formats for an X block's header and for a T6 row, and the
+! columns it skips before the variables (1995 and 2001: log10 R; 2006:
+! amu and log10 n_e)
+         character(len=48) :: header_format, row_format
          integer :: n_skipped_columns
 ! the prefix of the interpolator's messages
          character(len=15) :: routine_id
@@ -220,7 +249,11 @@ module opal_eos_tables
                 n_vars=10, i_p=1, i_e=2, i_s=3, i_dedrho=4, i_cv=5, i_chi_rho=6, i_chi_t=7, &
                 i_gamma1=8, i_gamma2_ratio=9, i_gamma3m1=10, &
                 rad_const_over_c=1.8914785d-3, molar_gas_constant_mbcc=83.1446304d0, &
-                row_format="", n_skipped_columns=0, routine_id="", &
+                radiation_gammas_direct=.true., energy_unit_ratio=0.9648575d0/0.9652d0, &
+                ionization_energy=[-3388.637d0, -1970.918d0, -1431.717d0, -993.2303d0, &
+                -76.2315d0, -15.29409d0], counts_electron_mass=.true., clamps_stencil=.false., &
+                header_format="(3X,F6.4,3X,F6.4,11X,F10.7,17X,F10.7)", &
+                row_format="(F8.4,1X,F6.2,3E13.5,E11.3,6F8.4)", n_skipped_columns=1, routine_id="", &
                 t6_min=0.0050d0, t6_max=100.0d0, checks_pressure=.true., &
                 search_density_index_edge=[opal95_density_index_edge, (0, i=n_eos95_nt+1, n_eos_nt_max)], &
                 search_rad_const_over_c=1.8914785d-3, search_subtracts_radiation=.false., &
@@ -233,6 +266,9 @@ module opal_eos_tables
                 n_vars=9, i_p=1, i_e=2, i_s=3, i_dedrho=0, i_cv=4, i_chi_rho=5, i_chi_t=6, &
                 i_gamma1=7, i_gamma2_ratio=8, i_gamma3m1=9, &
                 rad_const_over_c=real(1.8914785e-3, dp), molar_gas_constant_mbcc=real(83.14510, dp), &
+                radiation_gammas_direct=.false., energy_unit_ratio=1.0d0, &
+                ionization_energy=gmass01_ionization_energy, counts_electron_mass=.false., &
+                clamps_stencil=.true., header_format="(3X,F6.4,3X,F12.9,11X,F10.7,17X,F10.7)", &
                 row_format="(F9.5,1X,F6.2,3E13.5,6F8.4)", n_skipped_columns=1, &
                 routine_id="OPALEOS/ESAC01:", &
                 t6_min=0.0020d0, t6_max=100.0d0, checks_pressure=.false., &
@@ -247,6 +283,9 @@ module opal_eos_tables
                 n_vars=9, i_p=1, i_e=2, i_s=3, i_dedrho=4, i_cv=5, i_chi_rho=6, i_chi_t=7, &
                 i_gamma1=8, i_gamma2_ratio=9, i_gamma3m1=0, &
                 rad_const_over_c=1.8914785d-3, molar_gas_constant_mbcc=83.14510d0, &
+                radiation_gammas_direct=.false., energy_unit_ratio=1.0d0, &
+                ionization_energy=gmass01_ionization_energy, counts_electron_mass=.false., &
+                clamps_stencil=.true., header_format="(3X,F6.4,3X,F12.9,11X,F10.7,17X,F10.7)", &
                 row_format="(F11.6,1X,F6.4,E11.4,2E13.6,2E11.3,5F10.6)", n_skipped_columns=2, &
                 routine_id="OPALEOS/ESAC06:", &
                 t6_min=0.001870d0, t6_max=200.0d0, checks_pressure=.false., &
@@ -264,8 +303,9 @@ module opal_eos_tables
                  x1_squared(30), x1_plus_x2(30)
       end type opal_quad_cache
 
-! State of one OPAL 2001 or 2006 table set (see the header note on why
-! 1995 has its own type). Table arrays are dimensioned by the 2006
+! State of one OPAL table set. Table arrays are dimensioned by the 2006
+! table; the 1995 and 2001 code address only their first nr/nt
+! columns/rows. Table arrays are dimensioned by the 2006
 ! table; the 2001 code addresses only its first n_eos01_nr/n_eos01_nt
 ! rows/columns.
       type :: opal_eos_vintage
@@ -302,47 +342,9 @@ module opal_eos_tables
            integer :: t_row_index
       end type opal_eos_vintage
 
-! State of the OPAL 1995 table set: the members of opal_eos_vintage at
-! the 1995 dimensions, with the 1995 table headers, in the member order
-! the 1995 stencil overruns rely on (header note).
-      type :: opal_eos_vintage95
-            type(opal_quad_cache) :: quad
-! the tables, their grids and inverse spacings, the X-interpolated slices
-           real(dp) :: eos_table(n_eos_mx,n_eos_mv,n_eos95_nt,n_eos95_nr), &
-                t6_list(n_eos95_nr,n_eos95_nt), density_grid(n_eos95_nr), &
-                t6_grid(n_eos95_nt), x_interp_result(n_eos95_nt,n_eos95_nr), &
-                x_interp_result_alt(n_eos95_nt,n_eos95_nr), &
-                x_grid_spacing_inv(n_eos_mx), t6_grid_spacing_inv(n_eos95_nt), &
-                density_grid_spacing_inv(n_eos95_nr)
-           integer :: x_index_lo
-! density-interpolation weights (xxh is unused)
-           real(dp) :: rho_interp_hi(4), rho_interp_lo(4), xxh
-! each table's Z
-           real(dp) :: z_table(n_eos_mx)
-! the interpolation stencil and orders
-           integer :: density_index_1, density_index_2, density_index_3, &
-                density_index_4, t6_index_1, t6_index_2, t6_index_3, &
-                t6_index_4, t6_interp_order, density_interp_order
-! the last interpolated value (esact) and the results (eos_output)
-           real(dp) :: esact, eos_output(n_eos_mv)
-! the X-interpolation workspace
-           real(dp) :: x_interp_workspace(n_eos_mx,n_eos95_nt,n_eos95_nr), &
-                x_grid_copy(n_eos_mx)
-! the table headers
-           real(dp) :: moles_per_gram_table(n_eos_mx), &
-                hydrogen_fraction_header(n_eos_mx), &
-                mean_molecular_weight_header(n_eos_mx), &
-                density_grid_table(n_eos_mx,n_eos95_nr), &
-                species_fraction_header(n_eos_mx,6), &
-                log10_r_value(n_eos95_nr,n_eos95_nt)
-           integer :: temperature_count_used(n_eos_mx,n_eos95_nr)
-! the table edge at each T6 row and the cached row (find_opal_ramp)
-           real(dp) :: density_edge_at_t(n_eos95_nt)
-           integer :: t_row_index
-      end type opal_eos_vintage95
 
 ! Flags shared by, or indexed by, vintage. Kept apart from the vintage
-! instances so that those (48 MB apiece) stay initializer-free and
+! instances (15.5 MB apiece) so that those stay initializer-free and
 ! zero-filled at load rather than becoming initialized data.
       type :: opal_eos_state
 ! whether each vintage's table is loaded, indexed by iv_opal95/01/06
@@ -356,9 +358,8 @@ module opal_eos_tables
       end type opal_eos_state
 
       type(opal_eos_state) :: opal_shared
-      type(opal_eos_vintage95) :: opal95
-! the 2001 and 2006 tables' instances, indexed by vintage
-      type(opal_eos_vintage) :: opal_tables(iv_opal01:iv_opal06)
+! the tables' instances, indexed by vintage
+      type(opal_eos_vintage) :: opal_tables(iv_opal95:iv_opal06)
 
 
 contains
@@ -366,10 +367,11 @@ contains
 !----------------------------------------------------------------------
 ! interpolate_opal_t6_rho (formerly t6rint_core)
 !----------------------------------------------------------------------
-! The T6/density interpolation of the OPAL 2001 and 2006 EOS (their
-! wrappers t6rinteos01 and t6rinteos06 add each vintage's out-of-range
-! message). The 1995 EOS has its own, t6rinterp, which orders its
-! esactq2 block differently.
+! The T6/density interpolation of the OPAL EOS (opal_eos's t6rinteos
+! adds each vintage's out-of-range message). (The 1995 code computed the
+! upper-right quadratic esactq2 also where the T6 order is 2, with its
+! weight dix unset; esactq is used only where that order is 3, so the
+! one code gives its results.)
 !
 ! Interpolates the already X-interpolated table slice
 ! (v%x_interp_result) in density (slr) and T6 (slt) with the stencil
@@ -612,83 +614,6 @@ real(dp) function quad(cache, recompute_flag, cache_slot, eval_point, &
       quad = coef0 + eval_point*(coef1 + eval_point*coef2)
 end function quad
 
-!----------------------------------------------------------------------
-! gmass01
-!----------------------------------------------------------------------
-! OPAL 2001 EOS analogue of gmass (see there for the general
-! description), called from esac01 and esac06. Unlike gmass, the sum
-! starts at 0, so the electron-mass term
-! (electron_mole_excess*atomic_weight(1) in gmass) is not included, as
-! in OPAL's 2001 code.
-real(dp) function gmass01(hydrogen_fraction, metal_fraction, &
-     total_moles, ground_state_energy, metal_mole_fraction, &
-     species_number_fraction)
-
-
-      real(dp), intent(in) :: hydrogen_fraction, metal_fraction
-      real(dp), intent(out) :: total_moles, ground_state_energy, &
-           metal_mole_fraction
-! species_number_fraction(1:6): number (mole) fractions of Ne, O, N, C,
-! He, H (same order as atomic_number); slot 7 is never assigned.
-      real(dp), intent(out) :: species_number_fraction(:)
-
-! atomic_number(i): atomic number (= electrons per fully-ionized atom)
-! of species i, for i=1,6 = Ne, O, N, C, He, H.
-      real(dp), parameter :: atomic_number(6) = [10.0d0, 8.0d0, &
-           7.0d0, 6.0d0, 2.0d0, 1.0d0]
-! ionization_energy(i): total ground-state ionization energy (eV) of
-! species i, same ordering as atomic_number.
-      real(dp), parameter :: ionization_energy(6) = [-3394.873554d0, -1974.86545d0, -1433.92718d0, -993.326315d0, &
-           -76.1959403d0, -15.29409d0]
-! atomic_weight(i): atomic weight (amu), i=1 electron, 2 Ne, 3 O, 4 N,
-! 5 C, 6 He, 7 H.
-      real(dp), parameter :: atomic_weight(7) = [0.00054858d0, 20.179d0, 15.9994d0, &
-           14.0067d0, 12.011d0, 4.0026d0, 1.0079d0]
-! solar-relative mole-fraction-per-unit-Z of C, N, O, Ne in the metal
-! mix (fixed composition assumed for all Z).
-      real(dp), parameter :: carbon_mix_fraction = 0.247137766d0, &
-           nitrogen_mix_fraction = 0.0620782d0, &
-           oxygen_mix_fraction = 0.52837118d0, &
-           neon_mix_fraction = 0.1624188d0
-      real(dp) :: carbon_moles, nitrogen_moles, oxygen_moles, &
-           neon_moles
-      real(dp) :: hydrogen_moles, helium_moles, total_moles_raw
-      integer :: species_idx
-
-      metal_mole_fraction = metal_fraction/(carbon_mix_fraction* &
-           atomic_weight(5) + nitrogen_mix_fraction*atomic_weight(4) + &
-           oxygen_mix_fraction*atomic_weight(3) + neon_mix_fraction* &
-           atomic_weight(2))
-      carbon_moles = metal_mole_fraction*carbon_mix_fraction
-      nitrogen_moles = metal_mole_fraction*nitrogen_mix_fraction
-      oxygen_moles = metal_mole_fraction*oxygen_mix_fraction
-      neon_moles = metal_mole_fraction*neon_mix_fraction
-      hydrogen_moles = hydrogen_fraction/atomic_weight(7)
-      helium_moles = (1.0d0 - hydrogen_fraction - metal_fraction)/ &
-           atomic_weight(6)
-      total_moles_raw = hydrogen_moles + helium_moles + carbon_moles + &
-           nitrogen_moles + oxygen_moles + neon_moles
-      species_number_fraction(6) = hydrogen_moles/total_moles_raw
-      species_number_fraction(5) = helium_moles/total_moles_raw
-      species_number_fraction(4) = carbon_moles/total_moles_raw
-      species_number_fraction(3) = nitrogen_moles/total_moles_raw
-      species_number_fraction(2) = oxygen_moles/total_moles_raw
-      species_number_fraction(1) = neon_moles/total_moles_raw
-      ground_state_energy = 0.0d0
-      total_moles = 0.0d0
-      do species_idx = 1, 6
-         ground_state_energy = ground_state_energy + &
-              ionization_energy(species_idx)*species_number_fraction(species_idx)
-         total_moles = total_moles + (1.0d0 + atomic_number(species_idx))* &
-              species_number_fraction(species_idx)
-      end do
-      gmass01 = 0.0d0
-      do species_idx = 2, 7
-         gmass01 = gmass01 + atomic_weight(species_idx)* &
-              species_number_fraction(species_idx - 1)
-      end do
-
-end function gmass01
 
 !----------------------------------------------------------------------
 ! open_opal_eos_table
