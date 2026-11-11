@@ -478,7 +478,7 @@ kap/opal92/opal92_opacity.o: kap_messages.mod math_lib.mod numerics_lib.mod opac
 kap/opal92/opal92_reader.o: kap_messages.mod math_lib.mod opacity_table_files.mod opacity_tables.mod
 kap/opal95/opal95_opacity.o: kap_messages.mod math_lib.mod numerics_lib.mod opacity_source.mod opacity_tables.mod opal95_reader.mod
 kap/opal95/opal95_reader.o: kap_messages.mod opacity_table_files.mod opacity_tables.mod
-kap/test/test_kap.o: kap_lib.mod opacity_tables.mod run_messages.mod run_setup.mod star_info_lib.mod
+kap/test/test_kap.o: conductive_opacity.mod conductive_reader.mod kap_lib.mod opacity_blending.mod opacity_source.mod opacity_tables.mod run_messages.mod run_setup.mod star_info_lib.mod
 math/test/test_math.o: math_lib.mod
 net/light_elements.o: composition_layout.mod math_lib.mod net_configuration.mod physical_constants.mod reaction_rates.mod
 net/net_configuration.o: net_messages.mod reaction_layout.mod

@@ -1,9 +1,15 @@
-"""Standalone kap-domain regression test (phase three, docs/ROADMAP.md stage 2).
+"""kap's test program: pins and ok/FAIL checks.
 
 Runs src/test_kap (built by `make tests` in src/) against the
-repository's OPAL95/GS98.OP17 opacity table and byte-compares its
-stdout with the pinned src/kap/test/expected_test_kap.out. See
-test_eos.py for the conventions.
+repository's opacity tables and byte-compares its stdout with the pinned
+src/kap/test/expected_test_kap.out: the opacity on a grid of points for
+every family, two error paths, and the ok/FAIL checks (exactness at the
+table nodes, derivatives against differences, continuity at the ramp's
+ends and the tables' edges, the blends' and the conductive mixture's
+formulas, the error contracts), each confirmed to fail under a mutation
+in src/kap/test/test_kap.mutations.toml (python3 src/tools/mutate.py
+kap). The binary exits nonzero when a check fails. See test_eos.py for
+the conventions.
 """
 import os
 import pathlib

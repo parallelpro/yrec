@@ -49,7 +49,8 @@ module opal95_opacity
       integer, parameter :: low_corner_t_row = 5
 
 ! A lookup's stencil (compute_opal95_opacity's local): the Lagrange
-! weights in Z, in X for each Z row, in T (with the T derivative's) and
+! weights in Z, in X for each Z row (weight_x(:,k) for row k), in T (with
+! the T derivative's) and
 ! in log R for each T row (with the log R derivative's); log R; and where
 ! log R is extrapolated from: below the table (extrap_lo, from its first
 ! column, logr_lo_edge) or, on the T rows of extrap_hi_row, past the
@@ -477,7 +478,7 @@ contains
 ! locate_opal95_x_stencil
 ! For Z row k of the stencil (Z value z_here), pick the four X tables
 ! tbl%index_x(k,1:4) bracketing hydrogen_fraction and
-! store their weights in st%weight_x(k,1:4). The
+! store their weights in st%weight_x(1:4,k). The
 ! warm-start search moves tbl%index_x(k,1) from its previous value;
 ! at Z >= 0.04 and X >= 0.8 the missing high-X tables (no X=0.95 for
 ! Z >= 0.04, no X=1-Z for Z >= 0.1) force the stencil to the top
@@ -545,7 +546,7 @@ subroutine locate_opal95_x_stencil(k, z_here, hydrogen_fraction)
 !     Get interpolation factors in X
       call interp(interp_nodes, weight, x_eval=hydrogen_fraction)
       do j = 1,4
-         st%weight_x(k,j) = weight(j)
+         st%weight_x(j,k) = weight(j)
       end do
 end subroutine locate_opal95_x_stencil
 
@@ -595,9 +596,9 @@ pure subroutine interpolate_opal95_3d(tbl, st, opacity, log10_opacity, dlnkap_dl
          dlogcappa_dlogt_at_x(j) = lagrange4(st%dweight_t, logcappa_at_t)
          dlogcappa_dlogr_at_x(j) = lagrange4(st%weight_t, dlogcappa_dlogr_at_t)
       end do
-      log10_opacity = lagrange4(st%weight_x(1,:), logcappa_at_x)
-      dlnkap_dlnt = lagrange4(st%weight_x(1,:), dlogcappa_dlogt_at_x)
-      dlnkap_dlnrho = lagrange4(st%weight_x(1,:), dlogcappa_dlogr_at_x)
+      log10_opacity = lagrange4(st%weight_x(:,1), logcappa_at_x)
+      dlnkap_dlnt = lagrange4(st%weight_x(:,1), dlogcappa_dlogt_at_x)
+      dlnkap_dlnrho = lagrange4(st%weight_x(:,1), dlogcappa_dlogr_at_x)
       dlnkap_dlnt = dlnkap_dlnt - 3.0d0*dlnkap_dlnrho
       opacity = pow(1.0d1, log10_opacity)
 end subroutine interpolate_opal95_3d
@@ -623,9 +624,9 @@ pure subroutine interpolate_opal95_4d(tbl, st, opacity, log10_opacity, dlnkap_dl
             dlogcappa_dlogt_at_x(j) = lagrange4(st%dweight_t, logcappa_at_t)
             dlogcappa_dlogr_at_x(j) = lagrange4(st%weight_t, dlogcappa_dlogr_at_t)
          end do
-         logcappa_at_z(k) = lagrange4(st%weight_x(k,:), logcappa_at_x)
-         dlogcappa_dlogt_at_z(k) = lagrange4(st%weight_x(k,:), dlogcappa_dlogt_at_x)
-         dlogcappa_dlogr_at_z(k) = lagrange4(st%weight_x(k,:), dlogcappa_dlogr_at_x)
+         logcappa_at_z(k) = lagrange4(st%weight_x(:,k), logcappa_at_x)
+         dlogcappa_dlogt_at_z(k) = lagrange4(st%weight_x(:,k), dlogcappa_dlogt_at_x)
+         dlogcappa_dlogr_at_z(k) = lagrange4(st%weight_x(:,k), dlogcappa_dlogr_at_x)
       end do
       log10_opacity = lagrange4(st%weight_z, logcappa_at_z)
       dlnkap_dlnt = lagrange4(st%weight_z, dlogcappa_dlogt_at_z)
