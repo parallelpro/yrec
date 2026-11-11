@@ -1067,6 +1067,7 @@ end subroutine set_metal_free_envelope
 subroutine settings_checks()
       type(eos_settings_t) :: s, before
       integer :: ierr
+      logical :: ok_low
       before = eos_settings
       s = eos_settings
       s%opal_vintage = opal_vintage_conflict
@@ -1080,6 +1081,17 @@ subroutine settings_checks()
       call eos_init(s, table_paths, ierr)
       call check("settings: a Debye-Hueckel range with eta_max <= eta_min, eos_init returns ierr = 1", &
            ierr == 1 .and. (eos_settings%use_debye_huckel_correction .eqv. before%use_debye_huckel_correction))
+! the Saha cutoff: its ramp, 0.5 dex below it, must stay on the
+! Fermi-Dirac table (log T 5.2 up): 5.69 is refused, 5.7 installed
+      s = before
+      s%saha_log10t_cutoff = 5.69d0
+      call eos_init(s, table_paths, ierr)
+      ok_low = ierr == 1 .and. eos_settings%saha_log10t_cutoff == before%saha_log10t_cutoff
+      s%saha_log10t_cutoff = 5.7d0
+      call eos_init(s, table_paths, ierr)
+      call check("settings: a Saha cutoff below log T 5.7 returns ierr = 1, and 5.7 is installed", &
+           ok_low .and. ierr == 0 .and. eos_settings%saha_log10t_cutoff == 5.7d0)
+      call eos_init(before, table_paths, ierr)
 ! the defaults are the controls' (defaults/controls_registry.tsv)
       s = eos_settings_t()
       call check("settings: the record's defaults are the controls' (cutoff 6, eta -1 to 1)", &

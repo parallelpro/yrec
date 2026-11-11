@@ -29,6 +29,12 @@ module yale_eos_tables
       integer, parameter, public :: fermi_n_x = 43, fermi_n_t = 20, fermi_n_quantities = 5, &
            fermi_n_cards = fermi_n_x*fermi_n_t, fermi_n_bins = 261
       real(dp), parameter, public :: fermi_bins_per_unit_x = 20.0d0
+! The table's rows in log T: row j (1 to fermi_n_t) is at
+! fermi_log10t_origin + j fermi_log10t_step, fermi_rows_per_dex rows a
+! dex; so its first row is fermi_log10t_min (log T 5.2) and its last
+! fermi_log10t_max (9.0). The file holds no T: this formula defines it.
+      real(dp), parameter, public :: fermi_log10t_origin = 5.0d0, fermi_log10t_step = 0.20d0, &
+           fermi_rows_per_dex = 5.0d0, fermi_log10t_min = 5.2d0, fermi_log10t_max = 9.0d0
       type :: yale_eos_state
            real(dp) :: fermi_table_x_grid(fermi_n_x), fermi_table_eta(fermi_n_x), &
                 fermi_table_data(fermi_n_quantities,fermi_n_x,fermi_n_t)

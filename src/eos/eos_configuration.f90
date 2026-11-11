@@ -34,10 +34,13 @@ module eos_configuration
          logical :: use_debye_huckel_correction = .false.
          real(dp) :: debye_huckel_eta_min = -1.0d0, debye_huckel_eta_max = 1.0d0
 ! log10 T (K) at and above which the gas is fully ionized; the Saha
-! solution below it, blended into the fully ionized one over the 0.5 dex
-! under it
+! solution below it, blended into the fully ionized one over the
+! saha_ramp_width under it (eos_init refuses a cutoff whose ramp would
+! reach below the Fermi-Dirac table's first row)
          real(dp) :: saha_log10t_cutoff = 6.0d0
       end type eos_settings_t
+! the width of the Saha ramp below saha_log10t_cutoff [dex]
+      real(dp), parameter, public :: saha_ramp_width = 0.500d0
       type(eos_settings_t), public, protected :: eos_settings
 
 ! The tables eos_init reads, by path: the Fermi-Dirac table (always), the

@@ -28,7 +28,8 @@ module blended_eos
            debye_huckel_composition_of, &
            inverse_a_hydrogen, inverse_a_helium, electrons_per_nucleon_metals, &
            ix_c, ix_h, ix_he, ix_na, ix_ne, ix_o, n_mix_species
-      use eos_configuration, only: eos_settings, opal_vintage_none, opal_vintage_2006
+      use eos_configuration, only: eos_settings, opal_vintage_none, opal_vintage_2006, &
+           saha_ramp_width
       use math_lib
 
       implicit none
@@ -230,9 +231,9 @@ subroutine gas_eos(log10_temperature, log10_pressure, hydrogen_fraction, metal_f
       logical, intent(in) :: want_derivatives, in_atmosphere
       integer, intent(inout) :: saha_iterations
       integer, intent(out) :: ierr
-! the Saha ramp: its width below the cutoff in log T [dex], and the scale
-! that maps it onto a weight from 1 (its foot) to 0 (the cutoff)
-      real(dp), parameter :: saha_ramp_width = 0.500d0, saha_ramp_scale = 1.0d0/saha_ramp_width
+! the scale that maps the Saha ramp (saha_ramp_width below the cutoff)
+! onto a weight from 1 (its foot) to 0 (the cutoff)
+      real(dp), parameter :: saha_ramp_scale = 1.0d0/saha_ramp_width
 ! the Saha (or SCV) result, blended into the fully ionized one; SCV's
       type(eos_result) :: saha, scv
       logical :: scv_covers

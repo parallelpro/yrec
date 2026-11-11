@@ -25,3 +25,10 @@ check = 'Fermi table: a card out of its place, or abscissae wider than the looku
 file = 'eos/yale/yale_eos.f90'
 old = '''            if (bin_end > fermi_n_bins) then'''
 new = '''            if (bin_end > 2*fermi_n_bins) then'''
+
+[[mutation]]
+id = 'cutoff_range-01'
+check = 'settings: a Saha cutoff below log T 5.7 returns ierr = 1, and 5.7 is installed'
+file = 'eos/eos_lib.f90'
+old = '''      if (.not. settings%saha_log10t_cutoff - saha_ramp_width >= fermi_log10t_min) then'''
+new = '''      if (.not. settings%saha_log10t_cutoff >= fermi_log10t_min) then'''

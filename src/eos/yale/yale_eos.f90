@@ -18,7 +18,8 @@ module yale_eos
       use eos_results, only: eos_result
       use yale_eos_tables, only: debye_huckel_coefficient, debye_huckel_nu, &
            debye_huckel_composition, n_debye_huckel_metals, yale, fermi_n_x, &
-           fermi_n_t, fermi_n_quantities, fermi_n_cards, fermi_n_bins, fermi_bins_per_unit_x
+           fermi_n_t, fermi_n_quantities, fermi_n_cards, fermi_n_bins, fermi_bins_per_unit_x, &
+           fermi_log10t_origin, fermi_log10t_step, fermi_rows_per_dex
       use physical_constants, only: clni, cmkh, gas_constant, ln10
       use eos_messages, only: eos_log, eos_report, message_length, unwritten_line
       use eos_mixture, only: ix_h, ix_he, n_mix_species
@@ -731,11 +732,11 @@ subroutine start_fully_ionized_solution(log10_temperature, log10_pressure, dh, r
 !  Pe is tabulated as a function of X(=log d - log mue - 3/2log T) and
 !  Y(= log T). Find index(JT1,JT2,JT3) for 3 pt interpolation in Y.
 ! MHP 10/02 corrected mixed type
-      f%jt1 = int(5.0d0*(log10_temperature - 5.0d0))
-      f%jt1 = max0(1,min0(f%jt1,18))  ! Force jt1 to be in the table
+      f%jt1 = int(fermi_rows_per_dex*(log10_temperature - fermi_log10t_origin))
+      f%jt1 = max(1, min(f%jt1, fermi_n_t - 2))  ! the 3-row stencil inside the table
       f%jt2 = f%jt1 + 1
       f%jt3 = f%jt1 + 2
-      f%ttud = 5.0d0*(f%tl8 - (5.0d0 + 0.20d0*real(f%jt1, dp)))
+      f%ttud = fermi_rows_per_dex*(f%tl8 - (fermi_log10t_origin + fermi_log10t_step*real(f%jt1, dp)))
       f%ttcu = 0.50d0*f%ttud*(f%ttud - 1.0d0)
       f%ttdcu = f%ttud - 0.50d0
       f%dml = r%log10_density + f%emul

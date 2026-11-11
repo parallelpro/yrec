@@ -22,14 +22,14 @@ module eos_lib
       use eos_results, only: eos_result
       use eos_configuration, only: eos_settings, eos_settings_t, &
            set_eos_settings, eos_table_paths_t, opal_vintage_none, opal_vintage_1995, &
-           opal_vintage_2001, opal_vintage_2006, opal_vintage_conflict
+           opal_vintage_2001, opal_vintage_2006, opal_vintage_conflict, saha_ramp_width
       use blended_eos, only: compute_blended_eos
       use mhd_eos, only: compute_mhd_eos, read_mhd_tables
       use scv_eos, only: build_scv_envelope_table, read_scv_tables
       use yale_eos, only: read_fermi_table
       use eos_mixture, only: eos_mix, debye_huckel_composition_of
       use opal_eos_tables, only: open_opal_eos_table, n_opal_vintages
-      use yale_eos_tables, only: debye_huckel_composition
+      use yale_eos_tables, only: debye_huckel_composition, fermi_log10t_min
       use eos_messages, only: eos_report, message_length, unwritten_line
       implicit none
       private
@@ -90,8 +90,11 @@ end subroutine eos_get
 ! reads the MHD tables, the Fermi-Dirac table (always) and the SCV
 ! tables. Each file is opened on a new unit; a missing or corrupt one
 ! returns ierr = 1, and so do settings that select more than one OPAL
-! vintage or a Debye-Hueckel degeneracy range with eta_max <= eta_min
-! (nothing is installed then).
+! vintage, a Debye-Hueckel degeneracy range with eta_max <= eta_min, or
+! a Saha cutoff whose ramp would reach below the Fermi-Dirac table's
+! first row (log T 5.2: the cutoff must be at least 5.7), so that the
+! fully ionized gas never extrapolates the table below it (nothing is
+! installed then).
 subroutine eos_init(settings, paths, ierr)
       type(eos_settings_t), intent(in) :: settings
       type(eos_table_paths_t), intent(in) :: paths
@@ -112,6 +115,16 @@ subroutine eos_init(settings, paths, ierr)
          eos_lines = unwritten_line
          write(eos_lines,*) 'eos_init: the Debye-Hueckel degeneracy range needs eta_max > eta_min:', &
               settings%debye_huckel_eta_min, settings%debye_huckel_eta_max
+         call eos_report(eos_lines)
+         ierr = 1
+         return
+      end if
+      if (.not. settings%saha_log10t_cutoff - saha_ramp_width >= fermi_log10t_min) then
+         eos_lines = unwritten_line
+         write(eos_lines,'(a,f4.2,a,f4.2,a,f4.2,a,f0.3)') 'eos_init: saha_log10t_cutoff must be at least ', &
+              fermi_log10t_min + saha_ramp_width, ' (the Fermi-Dirac table''s first row, log T ', &
+              fermi_log10t_min, ', plus the Saha ramp''s ', saha_ramp_width, ' dex): ', &
+              settings%saha_log10t_cutoff
          call eos_report(eos_lines)
          ierr = 1
          return

@@ -657,6 +657,8 @@ ok   diffusion of Z: an envelope without metals takes the default mixture
 ok   settings: two OPAL vintages selected, eos_init returns ierr = 1
  eos_init: the Debye-Hueckel degeneracy range needs eta_max > eta_min:   1.0000000000000000        1.0000000000000000
 ok   settings: a Debye-Hueckel range with eta_max <= eta_min, eos_init returns ierr = 1
+eos_init: saha_log10t_cutoff must be at least 5.70 (the Fermi-Dirac table's first row, log T 5.20, plus the Saha ramp's 0.50 dex): 5.690
+ok   settings: a Saha cutoff below log T 5.7 returns ierr = 1, and 5.7 is installed
 ok   settings: the record's defaults are the controls' (cutoff 6, eta -1 to 1)
 # test_eos: configuration opal95
 ok   OPAL 1995: trial calls keep the other slots and give the full call's pressure
