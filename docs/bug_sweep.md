@@ -2,7 +2,7 @@
 
 ## 1. About this report
 
-This report lists every defect found on the `yrec-next` branch after it diverged from `main` at [0ff84d7e](https://github.com/parallelpro/yrec/commit/0ff84d7e) (2026-09-03), up to [609c66c3](https://github.com/parallelpro/yrec/commit/609c66c3) (2026-11-03, the sixth-evaluation pass's last fix). There are 264 items: 184 fixed and 80 open. Bugs fixed before the divergence (bug-sweep batches 1-3, such as the CF88 deuterium rate) are in `docs/MODERNIZATION_CHANGES.md` and are not repeated here.
+This report lists every defect found on the `yrec-next` branch after it diverged from `main` at [0ff84d7e](https://github.com/parallelpro/yrec/commit/0ff84d7e) (2026-09-03), up to [bfb50705](https://github.com/parallelpro/yrec/commit/bfb50705) (2026-11-10, where the seventh evaluation's findings were registered). There are 343 items: 184 fixed and 159 open. Bugs fixed before the divergence (bug-sweep batches 1-3, such as the CF88 deuterium rate) are in `docs/MODERNIZATION_CHANGES.md` and are not repeated here.
 
 Each item answers the same questions:
 
@@ -26,6 +26,7 @@ Each item answers the same questions:
 - Section 11's items were found in round 3, M174 at its merge; three were fixed in it and M174 after the merge (its remaining window in the sixth-evaluation pass), the rest are open.
 - Section 12's items were found in the cleanup round (2026-11-01) and verified as section 11's: M175 and M178-M180 were fixed in it, M177 after its merge, and M176 is open.
 - Section 13's items were found in the sixth evaluation (2026-11-02) and verified as section 12's, against a snapshot of 0ef46d4e: M182-M189 and M192-M195 were fixed in the sixth-evaluation pass with no output change, and M181, M190 and M191 are open, the authors' decisions.
+- Section 14's items, from the seventh evaluation (2026-11-10), were recorded without a run, as sections 9 and 10's: each was checked in the code at bfb50705 and against the F77 before its entry was written; its introduction says how. All are open.
 - Several fixes are protected by unit tests that fail if the fix is reverted: `test_structure` (every Henyey partial against finite differences), `test_mass_change`, `test_net`, `test_eos`, `test_triangle_fit` and `test_braking`.
 
 **Conventions.**
@@ -39,9 +40,9 @@ Each item answers the same questions:
 | | In the F77 code | 2025-26 YREC-team commits | 2026 modernization | Total |
 |---|---|---|---|---|
 | Fixed | 99 | 4 (S5, L9, M21, M24) | 81 (N4, S13, L1, L4, L6, L7, L17, M7, M17, M18, M19, M22, M25, M26, M27, M35, M44, M45, M46, M47, M49-M53, M56, M57, M61, M62, M69, M70, M72, M78, M80, M82, M83, M98, M109, M110, M111, M116, M117, M119, M120, M125, M130, M138, M140, M143, M149-M155, M161, M163-M168, M172-M174, M177, M179, M180, M182-M189, M192-M195) | 184 |
-| Open | 48 | 2 (O4, with a 2026 part; M84) | 30 (O5, O22, M33, M87, M92, M99, M100, M103-M105, M112, M114, M122-M124, M132, M134, M139, M141, M142, M144, M145, M147, M148, M156-M160, M162) | 80 |
+| Open | 91 | 4 (O4, with a 2026 part; M84; M241, M250) | 64 (O5, O22, M33, M87, M92, M99, M100, M103-M105, M112, M114, M122-M124, M132, M134, M139, M141, M142, M144, M145, M147, M148, M156-M160, M162, M197-M201, M203-M205, M207, M210-M219, M238, M240, M252, M255-M259, M265-M267, M269, M271, M272, M274) | 159 |
 
-In addition, half of O10 (an overshoot gate) is a 2026 translation slip. M10's unguarded divisions are the F77's, and its guard on the last interval alone a 2025 YREC-team commit; M33's branch is the F77's, and its stale values the port's. Of section 8's items, M66, M73, M75 and M77 are counted with the F77 although each has a 2026 part (M66's form is M37's fix; M73's silent SCV spline and M75's read of unit 0 are 2026; M77's GYRE writer is 2026, its pairing the F77 pulse file's), and M57, M69 and M70 with the modernization although each has an F77 part (M57's underflow test, M69's reads without IOSTAT, M70's split between the envelope composition and the SCV table). Of section 9's, M102, M107 and M118 are counted with the F77 although each has a 2026 part (the network's message for `simeqc`'s bad input; every run's first SCV lookup since d8a034d8; net_configuration's comment), and M92, M100, M103-M105 and M110-M112 with the modernization although each has an F77 part (the mixing-entropy formula; the searches' asymmetry; hunt's behaviour; the saved guesses; the read-once guards; MODEL2's writes without IOSTAT; the isochrone record's I5; the F77's writes to the run log before its open). Of section 10's, M127, M131, M133, M135 and M146 are counted with the F77 although each has a 2026 part (net/README's "one edit" claim; the build-dependent `max` of the burn's convergence test; bsstep's success status; the README's claim that the preconditions are checked; the chain recipe that misses the limiter), and M134, M138-M140, M151, M156, M157 and M159 with the modernization although each has an F77 part (SPLINT's increasing-only bisection; the F77's writes without IOSTAT; ENGEB's LSNU gate on the fluxes; KTTAU0 beside KTTAU; the name FHE; the behaviour the statements describe; the MHD header; HUNT's out-of-range convention). M95, fixed in round 3, and M113, fixed in the cleanup round, are counted with the F77. Of section 11's, M169 and M171 are counted with the F77 although M169 was not run there (MAIN's one PARMIN call and the COMMON state it carries make it likely) and M171's field is the 2026 run plan's (PARMIN's I5 overflowed sooner), and M173 with the modernization although the F77's writes had no IOSTAT either. Of section 12's, M175 and M178 are counted with the F77 although each has a 2026 part (M175's Monte Carlo case, which came with M95's re-arm of the run copy alone; M178's NUL bytes as the declared default, where the F77's DESCRIP was undefined, zero bytes in practice), and M112, fixed in io and given its initializer in the cleanup round, stays open for the direct writes outside io. Of section 13's, M182 is counted with the modernization although the F77 had a part (PARMIN cut FSHORT, the run log's name, at its first `short` to name the acoustic-depth file; the run log's own cut came with [2b067d75](https://github.com/parallelpro/yrec/commit/2b067d75)).
+In addition, half of O10 (an overshoot gate) is a 2026 translation slip. M10's unguarded divisions are the F77's, and its guard on the last interval alone a 2025 YREC-team commit; M33's branch is the F77's, and its stale values the port's. Of section 8's items, M66, M73, M75 and M77 are counted with the F77 although each has a 2026 part (M66's form is M37's fix; M73's silent SCV spline and M75's read of unit 0 are 2026; M77's GYRE writer is 2026, its pairing the F77 pulse file's), and M57, M69 and M70 with the modernization although each has an F77 part (M57's underflow test, M69's reads without IOSTAT, M70's split between the envelope composition and the SCV table). Of section 9's, M102, M107 and M118 are counted with the F77 although each has a 2026 part (the network's message for `simeqc`'s bad input; every run's first SCV lookup since d8a034d8; net_configuration's comment), and M92, M100, M103-M105 and M110-M112 with the modernization although each has an F77 part (the mixing-entropy formula; the searches' asymmetry; hunt's behaviour; the saved guesses; the read-once guards; MODEL2's writes without IOSTAT; the isochrone record's I5; the F77's writes to the run log before its open). Of section 10's, M127, M131, M133, M135 and M146 are counted with the F77 although each has a 2026 part (net/README's "one edit" claim; the build-dependent `max` of the burn's convergence test; bsstep's success status; the README's claim that the preconditions are checked; the chain recipe that misses the limiter), and M134, M138-M140, M151, M156, M157 and M159 with the modernization although each has an F77 part (SPLINT's increasing-only bisection; the F77's writes without IOSTAT; ENGEB's LSNU gate on the fluxes; KTTAU0 beside KTTAU; the name FHE; the behaviour the statements describe; the MHD header; HUNT's out-of-range convention). M95, fixed in round 3, and M113, fixed in the cleanup round, are counted with the F77. Of section 11's, M169 and M171 are counted with the F77 although M169 was not run there (MAIN's one PARMIN call and the COMMON state it carries make it likely) and M171's field is the 2026 run plan's (PARMIN's I5 overflowed sooner), and M173 with the modernization although the F77's writes had no IOSTAT either. Of section 12's, M175 and M178 are counted with the F77 although each has a 2026 part (M175's Monte Carlo case, which came with M95's re-arm of the run copy alone; M178's NUL bytes as the declared default, where the F77's DESCRIP was undefined, zero bytes in practice), and M112, fixed in io and given its initializer in the cleanup round, stays open for the direct writes outside io. Of section 13's, M182 is counted with the modernization although the F77 had a part (PARMIN cut FSHORT, the run log's name, at its first `short` to name the acoustic-depth file; the run log's own cut came with [2b067d75](https://github.com/parallelpro/yrec/commit/2b067d75)). Of section 14's, M241 and M250 are the YREC team's ([a8e60674](https://github.com/parallelpro/yrec/commit/a8e60674), 2025-12-17, and [224c9f0d](https://github.com/parallelpro/yrec/commit/224c9f0d), 2026-01-26); M223, M227, M236, M237, M251, M253, M264 and M273 are counted with the F77 although each has a 2026 part (M223's unset local, [5cadb1e7](https://github.com/parallelpro/yrec/commit/5cadb1e7); M227's and M237's descriptions; M236's silent HSRA, [1ccc13d1](https://github.com/parallelpro/yrec/commit/1ccc13d1); M251's statements and M253's descriptions; M264's routine names, renamed since; M273's loop ends, which [a648258c](https://github.com/parallelpro/yrec/commit/a648258c) left at their literals), and M214, M240 and M257 with the modernization although each has an F77 part (TCUT documented in the code only; the Allard comments' F77 names, and the YREC team's message of [5b1a5ed6](https://github.com/parallelpro/yrec/commit/5b1a5ed6); two F77 comments).
 
 ### Decisions needed from the authors
 
@@ -142,7 +143,7 @@ Decided by default in the cleanup round (2026-11-01), revisable: M111 and M171 (
 | O16 | Settling rewrites m in place; reversed `MOD` | Yes | Fixed |
 | O17 | Magnetic braking: 1/G, wind switch, τ_cz | Yes | Fixed |
 | O18 | `beta14`, opacity ramp derivatives, OPAL 2001 edge, MHD test | Yes | Open (`beta14` fixed, [e87752bc](https://github.com/parallelpro/yrec/commit/e87752bc); MHD tested on synthetic tables) |
-| O19 | Allard reader's misspelled flag; failed lookup used | Yes | Open |
+| O19 | Allard reader's misspelled flag; failed lookup used (always, unless atm_choice is 4) | Yes | Open |
 | O20 | Calibration dL/dα 0.0139 against the recorded 0.139 | Yes | Open |
 | O21 | Settling stencil out of bounds for a 2-point grid | Yes | Open |
 | O22 | Profile N² column disagrees with the pulse files | No (2026) | Open |
@@ -355,6 +356,86 @@ Decided by default in the cleanup round (2026-11-01), revisable: M111 and M171 (
 | M193 | check_settings_fields counted an array field as set when any one slot was | No (2026) | Fixed, [79c54d0b](https://github.com/parallelpro/yrec/commit/79c54d0b) |
 | M194 | state/README called a star contract a promise of everything the procedure may change | No (2026) | Fixed, [b621c57e](https://github.com/parallelpro/yrec/commit/b621c57e) |
 | M195 | Four stale statements in state/'s texts and model_rescaling's header | No (2026) | Fixed, [dfdff68a](https://github.com/parallelpro/yrec/commit/dfdff68a), [6c8f57b2](https://github.com/parallelpro/yrec/commit/6c8f57b2) |
+| **M** | **Found in the seventh evaluation (§14)** | | |
+| M196 | The run plan's targets line labels rescale_params by position; a fifth row stops the echo | Yes | Open |
+| M197 | An inlist with the old group names is refused without an ERROR head, outside run_messages | No (2026) | Open |
+| M198 | legacy_controls' Sources note: 23 of the frozen groups' names are not the F77's | No (2026) | Open (doc) |
+| M199 | src/defaults/ holds two undocumented rename maps of a tree that is gone | No (2026) | Open (doc) |
+| M200 | Stale io tool and test texts: gen_inlist's refusals, test_io's modes, "MESA mode", coverage | No (2026) | Open (doc) |
+| M201 | The star tools count an internal write into a member as a read | No (2026) | Open (tool) |
+| M202 | omega_substep, the solid-body first guess, outlives a model read and a Monte Carlo run | Yes | Open |
+| M203 | check_settings_lifetimes takes a class for a frequency; latches change within a card | No (2026) | Open (tool) |
+| M204 | The bookkeeping class is called mostly run copies; 7 of 31 are | No (2026) | Open (doc) |
+| M205 | Stale state/ texts: a Sources home, two callers, two unit names, the per-run recipe | No (2026) | Open (doc) |
+| M206 | SCV's downward T smoothing reads columns the lower row was never built to | Yes | Open |
+| M207 | OPAL 1995's pressure check stops the run with two bare numbers | No (2026) | Open |
+| M208 | The Fermi-Dirac table is extrapolated silently above log T 9 and past X = −3 | Yes | Open |
+| M209 | OPAL's second X quadratic tests the first quadratic's value | Yes | Open |
+| M210 | "Add an OPAL vintage" step 5 sends buffer controls through the source recipe | No (2026) | Open (doc) |
+| M211 | test_eos.py's docstring names eos_get_gamma1, gone since round 2 | No (2026) | Open (doc) |
+| M212 | net's documents still put the rate scales on the star, written by controls_reader | No (2026) | Open (doc) |
+| M213 | "Add a light element" names 2 of the dozen files deuterium touches | No (2026) | Open (doc) |
+| M214 | nuclear_logT_cutoffs' description names no element; "below" against "at or below" | Partly (the description: 2026) | Open (doc) |
+| M215 | Two of test_numerics' 64 checks have no mutation | No (2026) | Open (test) |
+| M216 | No crmath check covers pow's and exp10's bound between 23 and 99 | No (2026) | Open (test) |
+| M217 | Two lir checks assert an intent(out) result unchanged after a failure | No (2026) | Open (test) |
+| M218 | The spline's end column, the zero-width interval comment, two recipes' missing files | No (2026) | Open (doc) |
+| M219 | A failed Alexander 2006 build leaves the cache claiming the composition; a second kap_init too | No (2026) | Open |
+| M220 | Seven more kap table opens and most reads have no status; a missing OPAL92 path is read as success | Yes | Open |
+| M221 | An Allard [Fe/H] or [α/Fe] the file lacks reads indices 0 and −1; its diagnostic is a format error | Yes | Open |
+| M222 | The conductive opacity's low-density branch flips the mixture's sign and extrapolates backwards | Yes | Open |
+| M223 | OPAL95's low-X, low-T shortcut reads an unset local and stale extrapolation flags | Partly (the unset local: 2026) | Open |
+| M224 | OPAL95's fixed-Z table refuses 0.08 < Z ≤ 0.10 | Yes | Open |
+| M225 | Alexander 2006's fourth X node is 1 − Z for every Z > 0.06 | Yes | Open |
+| M226 | A helium core with no interior table gets an undefined opacity, ierr 0 | Yes | Open |
+| M227 | The LAOL89 extrapolation tolerance is ln, its description log10 | Partly (the description: 2026) | Open |
+| M228 | The second LAOL89 table's T grid is converted over the first table's row count | Yes | Open |
+| M229 | The Kurucz 1990 opacity reader does not bound a row's densities; bad records skipped silently | Yes | Open |
+| M230 | Alexander 2006's first header check prints "RUN STOPPED" and carries on; log R checks 16 of 19 | Yes | Open |
+| M231 | The Castelli/Kurucz lookup interpolates over the last row's −999 sentinels above about 48 kK | Yes | Open |
+| M232 | The Kurucz atmosphere lookups have no upper range check, though the header promises one | Yes | Open |
+| M233 | The Allard low-gravity extension is four column widths; both headers say one | Yes | Open |
+| M234 | The Kurucz gravity search misses the top valid interval; an all −999 row reads past the table | Yes | Open |
+| M235 | Every Allard lookup writes two lines to the run log (26% of the Allard pin) | Yes | Open |
+| M236 | kap_init and atm_init check nothing: equal Z tables give NaN, an unknown atm_choice runs HSRA | Partly (the silent HSRA: 2026) | Open |
+| M237 | The banner and description call the pure-Z table "pure C and N"; it is C and O | Yes (the description: 2026) | Open |
+| M238 | kap's and atm's "add a table" recipes name about half the files needed | No (2026) | Open (doc) |
+| M239 | An Allard deck must name a Kurucz atmosphere table nothing reads | Yes | Open |
+| M240 | Stale or inexact statements in kap and atm | Partly (the F77 names; a 2025 message) | Open (doc) |
+| M241 | Semiconvection evaluates zone 1 whatever it is: below the envelope, or at stale bounds | No (2025, YREC team) | Open |
+| M242 | Starspots: the gradient's T and P derivatives use the unspotted ∇_rad | Yes | Open |
+| M243 | Original settling: the Noerdlinger term of dD1/dX has the wrong sign; dD2/dX lacks it | Yes | Open |
+| M244 | Original settling: a variable lnΛ with the full Thoul solution divides twice (2.2/lnΛ) | Yes | Open |
+| M245 | Original settling: each midpoint's abundance change is stored one slot off | Yes | Open |
+| M246 | Both settling solvers test convergence on the largest signed change | Yes | Open |
+| M247 | The settling grids' first midpoint is searched over num_eq_points zones, not the region's | Yes | Open |
+| M248 | find_convection_zones uses 11 of 12 slots and drops later zones without an error | Yes | Open |
+| M249 | The adiabatic overshoot region outlives a model without zones; may be an intermediate zone's | Yes | Open |
+| M250 | microdiff scales Li and Be settling by the metals' settling_z_factor | No (2026, YREC team) | Open |
+| M251 | diffuse_helium is always true; metals settling without helium never happens | Partly (the statements: 2026) | Open |
+| M252 | microdiff_grid's light array has a literal 3 rows | No (2026) | Open |
+| M253 | microdiff's iteration repeats one identical solve; its controls do nothing more | Yes | Open |
+| M254 | Convection's run-log formats cannot hold their values (******, i3, a stray `[`) | Yes | Open |
+| M255 | No test or pinned deck reaches semiconvection, though README says cm_semiconvection pins it | No (2026) | Open (test, doc) |
+| M256 | convection's and element_diffusion's recipes name too few files | No (2026) | Open (doc) |
+| M257 | Stale text: in-place units, single-precision literals, D1's formula, 1989, file names | Partly (two comments: F77) | Open (doc) |
+| M258 | element_diffusion's README and two descriptions mis-state which settings act where | No (2026) | Open (doc) |
+| M259 | A widened transport region copies the end zone's X into the convection zone beyond it | No (2026, O13's fix) | Open |
+| M260 | The sub-step controls are unchecked: a non-positive one hangs the step or drops the ω limit | Yes | Open |
+| M261 | A redone rotation sub-step burns deuterium from the failed attempt's end rate | Yes | Open |
+| M262 | The equipotential's θ gravity drops the quadrupole term's r and reverses its sign | Yes | Open |
+| M263 | The viscosity's Coulomb logarithm takes n_e = Z̄ρ/m_u, 1.26× the ionized value | Yes | Open |
+| M264 | Rotation's stop and cut messages: attempts never made, a cut called an error, gone routines | Yes (the texts; the names stale since 2026) | Open |
+| M265 | rotation/README's STAR_BLIND_FILES rule is not the list's; five star-free files unguarded | No (2026) | Open |
+| M266 | The transport-mechanism recipe omits the controls' declarations and the finishing steps | No (2026) | Open (doc) |
+| M267 | Stale rotation comments and docs (history check, flag setter, coverage date, τ_cz, ...) | No (2026) | Open (doc) |
+| M268 | The star calibration writes cards 51 and 52 when it reaches R* on card 50 | Yes | Open |
+| M269 | henyey_iterate leaves its intent(out) divergence flag undefined on its commonest return | No (2026) | Open |
+| M270 | The starting model's mismatch warning prints an unset flag and calls itself an error | Yes | Open |
+| M271 | The C entry cuts a long path silently; the entry and the prologue close the host's units | No (2026) | Open |
+| M272 | evolve_step's header claims cross-step state and an evolve_state that do not exist | No (2026) | Open |
+| M273 | The inverse year off by 1e-5, ln 10 as 2.3026, the solar calibration's literal loop ends | Yes (the loops' mismatch: 2026) | Open |
+| M274 | Stale core text: the negative step, the triangle test, prepare_run, level 4, seven comments | No (2026) | Open (doc) |
 
 
 ## 2. Nuclear network and burning (fixed; results change)
@@ -1404,7 +1485,7 @@ These are found, recorded and left as they are, because each fix changes results
 
 ### O19. The Allard reader tests a misspelled flag, and the accretion surface uses a possibly failed Allard lookup (ALFILEIN, MASSLOSS)
 
-- **Status:** open.
+- **Status:** open. Its second half reaches further than first recorded (the seventh evaluation's atm finding 7, 2026-11-10): unless the deck's `atm_choice` is 4, the accretion surface's lookup always fails. No shipped deck accretes.
 - **In the original F77?** Yes. ALFILEIN tests `LATMTPTau100`, which is never set; the real flag is `LALTPTau100`. MASSLOSS reads `AT` and `AP` after ALSURFP without testing `LAlFail` ([alfilein.f:102-112](https://github.com/parallelpro/yrec/blob/6cd56739/src/alfilein.f#L102-L112), [massloss.f:133-140](https://github.com/parallelpro/yrec/blob/6cd56739/src/massloss.f#L133-L140)):
   ```fortran
   C Ensure that we are not requesting PL,TL at Tau-100. These are not
@@ -1414,9 +1495,10 @@ These are found, recorded and left as they are, because each fix changes results
            CALL ALSURFP(TEFFL,GL,LPRT,LAlFail)
            T = 10.0D0**AT
   ```
-- **Now:** [allard_atmosphere.f90:353-357](https://github.com/parallelpro/yrec/blob/e8549036/src/atm/tables/allard_atmosphere.f90#L353-L357) and [mass_change.f90:247-258](https://github.com/parallelpro/yrec/blob/e8549036/src/core/step/mass_change.f90#L247-L258).
-- **What is wrong:** with τ = 100 requested and an old NextGen 1 file, the reader carries on with the τ = 100 tables still holding the −999 "invalid" marker, instead of stopping as its comment says. After a failed Allard lookup, the accretion surface state uses the previous atmosphere point.
-- **Proposed fix:** test the real flag and return an error; check the failure flag and keep the lookup in locals. Neither changes a pinned deck.
+  SETUPS reads the Allard files for KTTAU = 4 only ([setups.f:248-251](https://github.com/parallelpro/yrec/blob/6cd56739/src/setups.f#L248-L251)), and MASSLOSS calls ALSURFP whatever KTTAU is.
+- **Now:** [allard_atmosphere.f90:353-357](https://github.com/parallelpro/yrec/blob/e8549036/src/atm/tables/allard_atmosphere.f90#L353-L357) and [mass_change.f90:247-258](https://github.com/parallelpro/yrec/blob/e8549036/src/core/step/mass_change.f90#L247-L258); at bfb50705, the lookup in `find_accreted_surface_state`, [mass_change.f90:258-260](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/step/mass_change.f90#L258-L260), and `atm_init`'s Allard load, [atm_lib.f90:57-60](https://github.com/parallelpro/yrec/blob/bfb50705/src/atm/atm_lib.f90#L57-L60).
+- **What is wrong:** with τ = 100 requested and an old NextGen 1 file, the reader carries on with the τ = 100 tables still holding the −999 "invalid" marker, instead of stopping as its comment says. After a failed Allard lookup, the accretion surface state uses the previous atmosphere point. And the lookup fails on every accretion step unless the deck's `atm_choice` is 4: `find_accreted_surface_state` asks for choice 4 whatever the deck's, and `atm_init` reads the Allard tables only for 4, so the unread tables' zero limits make every accretion step write the ALSURFP range lines ("TEFFL greater than TeffLmax", "GL out of max range") to the terminal and the run log and take the previous point; `atm_get_surface_pt` cannot tell a table not loaded from a point outside it.
+- **Proposed fix:** test the real flag and return an error; check the failure flag and keep the lookup in locals; `atm_init` records which tables it read, `atm_get_surface_pt` returns a named error for a choice whose tables are not loaded, and accretion either requires `atm_choice` = 4 or takes the envelope integration's photosphere. None changes a pinned deck.
 
 ### O20. The calibration's dL/dα is 0.0139, while its own comment records the fit as +0.139 (CHKCAL)
 
@@ -3927,10 +4009,10 @@ Round 3 took io and state (with setup) toward 9/10 after the fourth evaluation, 
   ```fortran
         OPEN(UNIT=IALEX06,FILE=FALEX06)
   ```
-  L5's fix ([a9de5f99](https://github.com/parallelpro/yrec/commit/a9de5f99)) gave the other table readers `check_io` and missed this open.
+  L5's fix ([a9de5f99](https://github.com/parallelpro/yrec/commit/a9de5f99)) gave the I/O code's opens `check_io`; kap's table readers kept the F77's opens (M220).
 - **Now:** [alex06_opacity.f90:62](https://github.com/parallelpro/yrec/blob/b475f0b6/src/kap/alex06/alex06_opacity.f90#L62).
-- **What is wrong:** a missing `alex06_table_path` ends the run in "Fortran runtime error: Cannot open file .../alexmol06gs98.tab" with exit 2, where every other table reader reports and exits 1 (L5's rule). Without `status='old'`, gfortran opens the path read-write, creating it where the directory allows.
-- **Expected behaviour, and why:** a missing table is reported with its path and stops the run with exit 1, as for every other table.
+- **What is wrong:** a missing `alex06_table_path` ends the run in "Fortran runtime error: Cannot open file .../alexmol06gs98.tab" with exit 2, where a reader that follows L5's rule reports and exits 1 (eos's, atm's and kap's conductive table; kap's other readers do not, M220). Without `status='old'`, gfortran opens the path read-write, creating it where the directory allows.
+- **Expected behaviour, and why:** a missing table is reported with its path and stops the run with exit 1, as L5's rule has it.
 - **What we did:** recorded, not fixed. Proposed fix: `status='old', action='read'`, `iostat`/`iomsg` through kap's messages, and `ierr` up through `kap_init`. Byte-identical.
 
 ### M171. The run plan prints "evolve up to****** models" for a card of a million models or more
@@ -4234,3 +4316,1020 @@ The io package's entries, M181-M189, link the current code at [99d3908d](https:/
   - `rescale_model`'s header said a Z target is applied "also when zero" ([9337e932](https://github.com/parallelpro/yrec/commit/9337e932), 2026-10-12), which the 2026-10 fix of `rescale_interior_z` reversed: a target is applied only when positive.
 - **Expected behaviour, and why:** comments describe the code as it is now (`docs/GUIDELINES.md`, Code style rule 5).
 - **What we did:** each statement now says what the code does; the last with the rescale targets' named slots.
+
+## 14. Found in the seventh evaluation (2026-11-10)
+
+The seventh evaluation (`audit/module-evaluation-7-2026-11-10/`) reviewed every package of src/ at [823326a7](https://github.com/parallelpro/yrec/commit/823326a7) and scored each (`SUMMARY.md`); its plan (`PLAN.md`) takes eos, kap, atm, convection, element_diffusion and core past 8 in rounds whose items cite these numbers. Besides its style and structure points, each report listed the new defects it found. These items are those defects, registered in the plan's round 0 (2026-11-10), in the reports' order: io (M196-M200), state/setup (M201-M205), eos (M206-M211), net (M212-M214), numerics/math (M215-M218), kap and atm (M219-M240), convection and element_diffusion (M241-M258), rotation (M259-M267) and core (M268-M274). All are open. Each entry records what is wrong, the proposed fix and its kind, as the plan uses the word: A, byte-identical on every deck and pin; B, a change of results or of pinned text, which the plan makes a measured commit of its own.
+
+- Three of the findings are older defects that were never entered here, one entry each: the kap and atm report's finding 4, nine kap defects found by the 2026-08-31 and 2026-09-01 sweeps (`audit/bugsweep-2026-08-31/`, `audit/bugsweep-2026-09-01-pass2/`) and carried in `docs/ROADMAP.md` or `docs/MODERNIZATION_CHANGES.md` (M222-M230); its finding 5, five atm defects of the same sweeps (M231-M235); and the element_diffusion finding 3, four defects of the original settling routines listed unverified in ROADMAP (M243-M246).
+- **How they were checked.** Every item was read again in the code at bfb50705 and against the F77 import before its entry was written. Between the reports' 823326a7 and bfb50705 only eos's and rotation's tests and READMEs changed in src/; one cited statement was fixed there (M267 says which). Some numbers were recomputed: the SCV table's row lengths (M206), the legacy groups' names against PARMIN's (M198), the rename maps' paths (M199), the bookkeeping class's run copies (M204), the mutation labels against the checks (M215), the Castelli/Kurucz tables' sentinels (M231) and the Allard notes in the pinned log (M235), the spot Jacobian's factor (M242), the Coulomb factors (M244, M263) and the inverse year (M273); the formats of M254 were written on a scratch build. No deck was run, so the drifts the B fixes would cause are not measured. Where the check corrected a review (a line, a number, a claim, its reach, its kind), the entry gives the corrected account and says so.
+- **Left out.** By section 10's rule, the reports' style and structure points are not entered: code-style residue, declarations, unnamed values and formulas written twice, commented-out code, drivers that take the star, the messages layer, and coverage of untested kernels. The plan carries them. A finding that mixes the two is entered for its defect only, and its entry says which part. The atm report's finding 7 is not a new item: it widens O19, whose entry now says how far. The rotation report's finding 7 (`burn_and_settle`'s comment that settling converts the mass in place) holds while the original settling routines exist, which still do; it waits on their fix-or-retire decision (M243).
+- Current-code links point at [bfb50705](https://github.com/parallelpro/yrec/tree/bfb50705/src).
+
+### M196. The run plan's targets line labels rescale_params by position, and a fifth target row would stop the run at the echo
+
+- **Status:** open. The io evaluation's finding 1, confirmed in the code. Latent: `n_rescale_targets` is 4 and the rows are in the format's order. Kind A: byte-identical (the text is unchanged).
+- **In the original F77?** Yes, the same positional echo ([parmin.f:1346-1350](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L1346-L1350)); the F77 had no named rows to reorder:
+  ```fortran
+  	    WRITE(IOWR,452) NMODLS(NKIND),(RESCAL(I,NKIND),I = 1,4)
+  ```
+- **Now:** `targets_format`, [run_cards.f90:44-45](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/run_cards.f90#L44-L45), and its write, [:135-136](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/run_cards.f90#L135-L136); the rows, [control_slots.f90:77-82](https://github.com/parallelpro/yrec/blob/bfb50705/src/state/control_slots.f90#L77-L82).
+- **What is wrong:** the format labels its four values `M =`, `X =`, `Z =`, `core mass =` by position, and the write passes `(rescale_params(i,n), i = 1, n_rescale_targets)` by row number. The labels hold only while `i_target_mass` .. `i_target_core_mass` are 1 to 4 in that order: reordered rows print mislabelled targets. With a fifth row, the write has more items than the format's four `f` edits, the format reverts to a new record, and the internal write into the scalar `line` is a runtime error ("End of record") on the first rescaling card. `check_named_rows` accepts the loop.
+- **Expected behaviour, and why:** the rows are named so that their order does not matter (`state/control_slots.f90`); the echo should not depend on it either.
+- **What we did:** recorded, not fixed. Proposed fix: write the four targets by name (`rescale_params(i_target_mass,n)`, ...), as the store above it does. Byte-identical.
+
+### M197. An inlist with the old group names is refused without an ERROR head, outside run_messages
+
+- **Status:** open. The io evaluation's finding 2, confirmed in the code. Error path: a deck from before 2026-10-13. Kind A: no pinned file or test assertion moves.
+- **In the original F77?** No: the refusal came with [01931c03](https://github.com/parallelpro/yrec/commit/01931c03) (2026-10-13), which renamed the inlist groups.
+- **Now:** `read_namelist_files`, [controls_reader.f90:127-133](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/controls_reader.f90#L127-L133); io/README's conventions, [README.md:95](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/README.md#L95) and [:106](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/README.md#L106); the test, [test_error_exit.py:172](https://github.com/parallelpro/yrec/blob/bfb50705/test_error_exit.py#L172).
+- **What is wrong:** a deck with `&star_job`/`&controls` groups is refused by three `write(*,'(a)')` lines and `ierr = 1`. Every other read error goes through `run_messages` as `ERROR: <text>`, as README:95 says of every error; this one has no `ERROR:` head (it comes before the deck is read, so it has no run log to reach, but a host that redirects `terminal_unit` does not get it either). The reader's banner and its "inlist :" / "CONTROL namelist :" lines also write to `*` rather than `terminal_unit` ([:100](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/controls_reader.f90#L100), [:147](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/controls_reader.f90#L147), [:150-151](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/controls_reader.f90#L150-L151)), so a host that redirects the terminal unit does not get them.
+- **Expected behaviour, and why:** one form for every read error, as the README states.
+- **What we did:** recorded, not fixed. Proposed fix: one `report_error` naming the file and the command (`... python3 src/tools/upgrade_inlist.py <deck>`; test_error_exit.py:172 asserts only `upgrade_inlist.py deck.inlist`, which the line keeps), and the banner and file lines through `terminal_unit`. Byte-identical for every deck that reads.
+
+### M198. legacy_controls' Sources note says the frozen groups are PARMIN's namelists and two additions; 23 of their names are not in the F77
+
+- **Status:** open. The io evaluation's finding 5, recounted (below). Documentation only. Kind A.
+- **In the original F77?** No: the note came with [5c9d9dc5](https://github.com/parallelpro/yrec/commit/5c9d9dc5) (2026-11-03).
+- **Now:** the note, [legacy_controls.f90:155-169](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/legacy_controls.f90#L155-L169); the header's freeze, [:8-10](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/legacy_controls.f90#L8-L10); io/README, [:138](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/README.md#L138).
+- **What is wrong:** the note says the two groups are "the F77 PARMIN's CONTROL and PHYSICS namelists (6cd56739, src/parmin.f) ... and two later additions", `pulse_gyre_interval` and `impjmod`. Against 6cd56739's parmin.f (its namelists parsed, continuation lines joined), the groups hold 23 names it lacks: in /control/ `fstch` (in a later F77 PARMIN, the parent of [df0eb85d](https://github.com/parallelpro/yrec/commit/df0eb85d)) and 17 2025-26 additions (`set_initial_model_number`, `terminal_interval`, `report_solver_diagnostics`, the eight structure-limit stops `log_L_upper_limit` .. `nu_max_lower_limit`, `nu_max_sun`, `delta_nu_sun`, `Teff_sun`, `inlist_used_file`, `profile_data_prefix`, `pulse_gyre_interval`); in /physics/ `solar_mass_cgs`, `G_cgs`, the Solberg-Hoiland pair and `impjmod`. The header's "the Solberg-Hoiland pair ... is the one exception" to the 2026-10-11 freeze is right; the note, read alone, tells a reader that a legacy deck's names are the F77's.
+- **Expected behaviour, and why:** a Sources note says where each name came from; a reader decides from it whether an old deck can set a name.
+- **What we did:** recorded, not fixed. Proposed fix: the note names the 2026 additions made before the freeze as a group, and the Solberg-Hoiland pair, beside the dated F77 additions.
+
+### M199. src/defaults/ holds two rename maps of a tree that is gone, undocumented, one of them read by nothing
+
+- **Status:** open. The io evaluation's finding 6, recounted (below). Documentation and repository content only. Kind A.
+- **In the original F77?** No: both maps are of 2026-08-24 ([bc14e35d](https://github.com/parallelpro/yrec/commit/bc14e35d), [6288d7e0](https://github.com/parallelpro/yrec/commit/6288d7e0)).
+- **Now:** [flatten_rename_map.tsv](https://github.com/parallelpro/yrec/blob/bfb50705/src/defaults/flatten_rename_map.tsv) (385 lines); [file_rename_map.tsv](https://github.com/parallelpro/yrec/blob/bfb50705/src/defaults/file_rename_map.tsv), whose first line says "EXECUTED 2026-08-24", read only for its third column by `description_problems` ([controls_registry.py:345-349](https://github.com/parallelpro/yrec/blob/bfb50705/src/tools/controls_registry.py#L345-L349), [:400-404](https://github.com/parallelpro/yrec/blob/bfb50705/src/tools/controls_registry.py#L400-L404)).
+- **What is wrong:** defaults/ has no README, and io/README's tables describe only its registry, `.defaults` and `.list` files. `flatten_rename_map.tsv`, the 2026-08 flattening review map, is read by nothing in the tree (a grep of src/, docs/ and the root test files), and about 100 of the 158 `star%` homes it gives name no member of `state/star_info_lib.f90` (the review counts 99). `file_rename_map.tsv` is read for the F77 routine names in its third column (a description must write one as "legacy X"); of its 117 target paths one exists (`rotation/seculr/secular_transport.f90`; the review counted 112 missing, a recount gives 116). A newcomer who opens defaults/ for the controls finds two maps that look like inputs and describe a tree that is gone.
+- **Expected behaviour, and why:** every file in a directory a newcomer is sent to says what it is, who writes it and who reads it.
+- **What we did:** recorded, not fixed. Proposed fix: a defaults/README.md (or a paragraph in io/README §1) naming each file, its generator and its readers; `flatten_rename_map.tsv` moved out of src/ (its commits keep it); `file_rename_map.tsv`'s header saying its role, the list of F77 routine names.
+
+### M200. Stale or incomplete text in io's tools and tests: gen_inlist's refusals, test_io's modes and mutation dates, "MESA mode", the coverage figure
+
+- **Status:** open. The io evaluation's finding 7, confirmed in the files. Documentation only. Kind A.
+- **In the original F77?** No: the tools, the tests and the README are 2026's.
+- **What is wrong:**
+  - `gen_inlist.py`'s docstring lists what it refuses but not M188's rule that a description names a control by its inlist name, which README.md:200 and `description_problems`' docstring give; its line 52 is 137 characters, the insertion not rewrapped ([gen_inlist.py:50-60](https://github.com/parallelpro/yrec/blob/bfb50705/src/tools/gen_inlist.py#L50-L60)).
+  - `test_io.f90`'s header documents the `copy` mode ([:125-129](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/test/test_io.f90#L125-L129)) but not the `history` mode that test_io.py:104-126 runs ([:243](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/test/test_io.f90#L243)), and its mutation dates end at 2026-11-01 ([:115-119](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/test/test_io.f90#L115-L119)): the run-log path, profile pulsation-name and M174-window checks of 2026-11-02 are missing, though README §4 says each check was confirmed.
+  - `test_mesa_baselines.py`'s docstring ([:3-13](https://github.com/parallelpro/yrec/blob/bfb50705/test_mesa_baselines.py#L3-L13)) runs the solar cases "in MESA mode" (there are no modes since `use_legacy_output` was retired), and calls itself "the MESA-format counterpart of the legacy .short pin" of "the retire-legacy campaign"; the pinned run logs are `.log`. `test_mesa_output.py:100` still says "the legacy run log".
+  - io/README's coverage figure, "93.4% of 2357 lines (2026-11-01 ...)", and output_files' "94% (65 of 69 lines ...)" ([README.md:204-208](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/README.md#L204-L208)) predate the sixth pass, which added `remove_file`, `finish_replacement_file`, `run_log_path`, `profile_pulse_path` and the GSM rename.
+- **Expected behaviour, and why:** comments and docstrings describe the code as it is now (`docs/GUIDELINES.md`, Code style rule 5); a coverage figure names the code it measured.
+- **What we did:** recorded, not fixed. Proposed fix: the text corrected, and one coverage run (`tools/coverage.py` as README §4 gives it).
+
+### M201. The star tools count an internal write into a star member as a read, so check_stop_conditions' contract says it writes nothing
+
+- **Status:** open. The state/setup evaluation's finding 1, confirmed in the code. One site in the tree; tools and generated docs only. Kind A.
+- **In the original F77?** No: the scans came with [f5a88324](https://github.com/parallelpro/yrec/commit/f5a88324) and [8ddbf6db](https://github.com/parallelpro/yrec/commit/8ddbf6db) (2026-10-29, round 2), the internal write with [802b3cdb](https://github.com/parallelpro/yrec/commit/802b3cdb) (2026-10-13).
+- **Now:** `scan`, [check_star_contracts.py:305-334](https://github.com/parallelpro/yrec/blob/bfb50705/src/tools/check_star_contracts.py#L305-L334) (its `READ_STMT_RE`, [:79](https://github.com/parallelpro/yrec/blob/bfb50705/src/tools/check_star_contracts.py#L79)), and the statement analysis of [gen_star_docs.py:336-353](https://github.com/parallelpro/yrec/blob/bfb50705/src/tools/gen_star_docs.py#L336-L353); `check_stop_conditions`' contract, [stop_conditions.f90:132-136](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/run/stop_conditions.f90#L132-L136), and its write, [:145](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/run/stop_conditions.f90#L145); the member's row, [state/README.md:187](https://github.com/parallelpro/yrec/blob/bfb50705/src/state/README.md#L187).
+- **What is wrong:** both scans treat a `read(` statement's items as written and have no case for `write(`, so `write(s%termination_reason,'(a,es10.3,a)') ...`, the end-age stop's message, falls through to "every `s%` here is a read". `check_stop_conditions` declares `termination_reason` under `star reads:` with `star writes: none`, and `check_star_contracts` passes it (`--fix` keeps it); gen_star_docs' row leaves `check_stop_conditions` out of the writers and lists `stop_conditions` among the readers. `check_control_homes` and `check_controls_writer` use the same `scan` ([check_boundaries.py:608](https://github.com/parallelpro/yrec/blob/bfb50705/src/tools/check_boundaries.py#L608), [:702](https://github.com/parallelpro/yrec/blob/bfb50705/src/tools/check_boundaries.py#L702)), so an internal write into a character control (`write(s%control%x, ...)`) would pass the rule that only the read writes the records.
+- **Expected behaviour, and why:** a contract lists what the body writes; an internal file is written.
+- **What we did:** recorded, not fixed. Proposed fix: in both scans, the first item of a `write(` control list, when it is `s%<member>`, is written; a self-test case (`write(s%msg,'(a)') 'x'`); then `check_star_contracts.py --fix` and `gen_star_docs.py` (the contract gains `star writes: termination_reason`, the row its writer). Byte-identical.
+
+### M202. omega_substep, the solid-body iteration's first guess, is not reset at a model read or a new Monte Carlo run
+
+- **Status:** open. The state/setup evaluation's finding 2, confirmed in the code (not run). Latent: no shipped deck makes two Monte Carlo runs, and `test_monte_carlo`'s deck does not rotate. Kind B: the two starts converge to within the iteration's tolerance, so a fix moves solid-body rotating runs at round-off (not measured).
+- **In the original F77?** Yes. GETW keeps OMEGAM in a SAVEd local array, MIDMOD passes it to SOLID in the solid-body branch, and SOLID makes "A FIRST GUESS AT OMEGA BY AVERAGING THE PREVIOUS VALUES" ([getw.f:27](https://github.com/parallelpro/yrec/blob/6cd56739/src/getw.f#L27), [:83](https://github.com/parallelpro/yrec/blob/6cd56739/src/getw.f#L83), [midmod.f:457-458](https://github.com/parallelpro/yrec/blob/6cd56739/src/midmod.f#L457-L458), [solid.f:24-36](https://github.com/parallelpro/yrec/blob/6cd56739/src/solid.f#L24-L36)):
+  ```fortran
+  C  ALSO MAKE A FIRST GUESS AT OMEGA BY AVERAGING THE PREVIOUS VALUES.
+           WSUM = WSUM + OMEGA(J)
+           WGUESS = WSUM/DFLOAT(JEND - JSTART + 1)
+  ```
+- **Now:** the member, [star_info_lib.f90:902-907](https://github.com/parallelpro/yrec/blob/bfb50705/src/state/star_info_lib.f90#L902-L907) ("it outlives the step"); the solid-body branch, [mid_timestep_model.f90:366-375](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/mid_timestep_model.f90#L366-L375); the guess, [omega_profile.f90:175-190](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/omega_profile.f90#L175-L190); `clear_previous_run_state`, [monte_carlo.f90:146-150](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/run/monte_carlo.f90#L146-L150); state/README §7's list, [:573-575](https://github.com/parallelpro/yrec/blob/bfb50705/src/state/README.md#L573-L575).
+- **What is wrong:** with solid-body rotation everywhere (`force_solid_body_rotation`, or `solid_body_mode_flag = 1`), `solid_body_omega` starts its Newton iteration from the mean of `s%omega_substep`, the previous step's last sub-step ω. Nothing writes the member at a model read, at a card start or in `clear_previous_run_state` (its only writers are rotation's), so the first step of a run starts from the template's 0, and the first step of Monte Carlo run 2 or later, or of a card with `card_from_starting_model` after an evolved card, from the previous run's or card's last ω. The iteration stops within `default_inertia_tolerance` (1e-14) of J and sets j from the final ω ([omega_profile.f90:229-232](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/omega_profile.f90#L229-L232)), so the two starts give j_rot that differ at about that level, and two identical Monte Carlo runs need not be bit-identical (M169's test). README §7 lists the known members of this kind (M169's, M190's) and not this one. The same holds, on the terminal only, for the solar calibration's printed "Old BL/Old RL" (`log_l_lsun_prev_check`, `log_r_rsun_prev_check`, [calibration.f90:132-135](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/run/calibration.f90#L132-L135)) at a later run's first check.
+- **Expected behaviour, and why:** each Monte Carlo run is the deck's run again (M95, M169), and a run starts from its starting model, not from what an earlier run left.
+- **What we did:** recorded, not fixed. Proposed fix: set `omega_substep = omega` at every model read (with M190's first option, at the same place), or zero it in `clear_previous_run_state`; add it to README §7's list; or M190's snapshot, which ends the hand list for runs. A rotating, solid-body two-run variant of `test_monte_carlo` would cover it. A measured commit.
+
+### M203. check_settings_lifetimes takes a member's class as how often it changes, but the bookkeeping class holds latches the run switches within a card
+
+- **Status:** open. The state/setup evaluation's finding 3, confirmed in the code. Latent: no builder copies a latch today. Tools and docs. Kind A.
+- **In the original F77?** No: the check came with [79c54d0b](https://github.com/parallelpro/yrec/commit/79c54d0b) (2026-11-02, M193's commit).
+- **Now:** `INSTALL_LIFETIMES` and `check_settings_lifetimes`, [check_boundaries.py:484-528](https://github.com/parallelpro/yrec/blob/bfb50705/src/tools/check_boundaries.py#L484-L528); the rule, [setup/README.md:77-83](https://github.com/parallelpro/yrec/blob/bfb50705/src/setup/README.md#L77-L83); `install_run_settings`' direct arguments, [settings_install.f90:72-73](https://github.com/parallelpro/yrec/blob/bfb50705/src/setup/settings_install.f90#L72-L73).
+- **What is wrong:** `install_card_settings` may copy any member of "Run plan" or "Run and card bookkeeping", and setup/README:79 states the rule as "per card". But the bookkeeping class holds latches the run switches within a card: `atm_choice_in_use` ([surface_boundary.f90:145-168](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/structure/surface_boundary.f90#L145-L168), [envelope_integration.f90:205](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/envelope/envelope_integration.f90#L205)), `structure_dt_limits_active` ([step_driver.f90:230](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/step/step_driver.f90#L230)) and `mass_change_active` ([mass_change.f90:130](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/step/mass_change.f90#L130)); and the surface mixture the model read writes after the per-card install, which is why `install_surface_mixture_settings` passes `envelope_metals_no_cno` by hand. The run plan's stops are disarmed by `init_stop_conditions` after the install. So a builder installed per card that copies one of these (as "Add a value the run changes", step 4, could lead one to) passes the check and holds a stale value for the rest of the card. The check also reads only the `*_from_star` bodies: `install_run_settings` passes `s%envelope_hydrogen_fraction` and `s%envelope_metal_fraction`, bookkeeping members, straight to `kap_init` once per run, which the rule would refuse (documented at the member, seen by no check).
+- **Expected behaviour, and why:** the check holds the rule it states: a record never holds a value older than what it copies.
+- **What we did:** recorded, not fixed. Proposed fix: member-level frequencies in the check (the latches, the stops, `termination_reason` and the calibration loops' state as "changes within a card", which no install may copy; the `envelope_*` surface mixture as "per surface mixture"), or a split of the bookkeeping class into card-start values and run latches (with M204); the install procedures' own `s%` actual arguments scanned too; setup/README's per-card bullet restated. Byte-identical.
+
+### M204. star_info_lib calls most of the run and card bookkeeping run copies; 7 of its 31 members are
+
+- **Status:** open. The state/setup evaluation's finding 6, confirmed against the registry's `run_copy` column. Documentation only (the comment and the generated README row). Kind A.
+- **In the original F77?** No: the sentence came with [a43d1efa](https://github.com/parallelpro/yrec/commit/a43d1efa) (2026-11-01).
+- **Now:** [star_info_lib.f90:349-351](https://github.com/parallelpro/yrec/blob/bfb50705/src/state/star_info_lib.f90#L349-L351); the generated class table, [state/README.md:78](https://github.com/parallelpro/yrec/blob/bfb50705/src/state/README.md#L78).
+- **What is wrong:** the class comment says "Most are the run's working copies of controls it changes (run copies)". Of its 31 members, 7 are run copies (`atm_choice_in_use`, `structure_dt_limits_active`, `mass_change_active`, `core_mass_reduction`, `num_core_points_added`, `calibration_target_teff`, `calibration_target_radius_rsun`); the rest are card-start values, the first card's surface mixture and the calibration loops' state. A newcomer adding a member reads the class as the run copies' home.
+- **Expected behaviour, and why:** the class comment says what its members are; the lifetime rules (M203) are read from it.
+- **What we did:** recorded, not fixed. Proposed fix: "Seven are run copies of controls (...); the rest are set at a card start, by the first card's model read, or by the calibrations", or the class split M203 proposes; then `gen_star_docs.py`.
+
+### M205. Stale statements in state/ and monte_carlo: a Sources home, two callers, two unit names, the per-run recipe's steps
+
+- **Status:** open. The state/setup evaluation's finding 7, confirmed in the files. Comments and docs only. Kind A. (Its rotation_configuration bullet is in M267; its two long README table cells are a style point, left to the plan.)
+- **In the original F77?** No: each text is 2026's.
+- **What is wrong:**
+  - star_info_lib's Sources section lists `/varfc/ zahn_coupling (VFC)` among the members' F77 homes ([star_info_lib.f90:1285](https://github.com/parallelpro/yrec/blob/bfb50705/src/state/star_info_lib.f90#L1285)); it is no longer a member but a field of rotation's `circulation_velocity_state`.
+  - state/README §6 gives `log10_newton_g`'s caller as "(`run_setup`, every run)" and `log10_radius_from_l_teff`'s as "(`observables`, every model)" ([README.md:507](https://github.com/parallelpro/yrec/blob/bfb50705/src/state/README.md#L507)); convection's and rotation's settings builders also call the first, every card, and `run_driver`, `mass_change` and rotation's `magnetic_braking` the second.
+  - `write_monte_carlo_model`'s comments name `monte_carlo_unit1` and `monte_carlo_unit2` ([monte_carlo.f90:265-267](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/run/monte_carlo.f90#L265-L267), [:297](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/run/monte_carlo.f90#L297), [:301](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/run/monte_carlo.f90#L301)); the units are `mc_summary_unit` and `mc_model_unit`.
+  - The per-Monte-Carlo-run recipe sends a run copy to "steps 1-3" of the run-copy recipe ([README.md:583](https://github.com/parallelpro/yrec/blob/bfb50705/src/state/README.md#L583)), and its step 5 ([:588](https://github.com/parallelpro/yrec/blob/bfb50705/src/state/README.md#L588)) leaves out `YREC_REGEN_CONTROLS=1 python3 -m pytest -q test_controls.py`, which the new run copy's dump line needs (the run-copy recipe's step 6): a newcomer who follows it finds `test_controls` failing.
+- **Expected behaviour, and why:** comments describe the code as it is now (`docs/GUIDELINES.md`, Code style rule 5); a recipe followed to the letter passes the tests.
+- **What we did:** recorded, not fixed. Proposed fix: the statements corrected; the recipe's step 1 sends a run copy to "steps 1-3 and 6", or step 5 runs `test_controls`.
+
+### M206. SCV's downward temperature smoothing interpolates columns the lower row was never built to
+
+- **Status:** open. The eos evaluation's finding 1, confirmed in the code and recounted on the shipped table (below). Latent: cool, dense points outside OPAL 2006; no shipped deck's star is known to reach them (not measured). Kind B where reached.
+- **In the original F77?** Yes. EQSCVE smooths downward under `IF(IDT.GT.1)` and reads the shifted row's columns unchecked against NPTSX, and SETSCV builds each row only to its own NPTSX ([eqscve.f:69-71](https://github.com/parallelpro/yrec/blob/6cd56739/src/eqscve.f#L69-L71), [:176-182](https://github.com/parallelpro/yrec/blob/6cd56739/src/eqscve.f#L176-L182), [setscv.f:101](https://github.com/parallelpro/yrec/blob/6cd56739/src/setscv.f#L101)):
+  ```fortran
+              IF(IDT.GT.1)THEN
+                 ISMT = -1
+           II = IDT+I-1+ISMT
+                 YTAB(K) = TABLENV(II,IDP+K-1,J+1)
+  ```
+- **Now:** the smoothing decision, [scv_eos.f90:111-122](https://github.com/parallelpro/yrec/blob/bfb50705/src/eos/scv/scv_eos.f90#L111-L122); the shifted cells, [:159-163](https://github.com/parallelpro/yrec/blob/bfb50705/src/eos/scv/scv_eos.f90#L159-L163) and [:197-200](https://github.com/parallelpro/yrec/blob/bfb50705/src/eos/scv/scv_eos.f90#L197-L200), through `spline_cell`, [:297-310](https://github.com/parallelpro/yrec/blob/bfb50705/src/eos/scv/scv_eos.f90#L297-L310); the column bound by the cell's first row, [`find_scv_cell`, :583-603](https://github.com/parallelpro/yrec/blob/bfb50705/src/eos/scv/scv_eos.f90#L583-L603); the build to each row's own count, [:784](https://github.com/parallelpro/yrec/blob/bfb50705/src/eos/scv/scv_eos.f90#L784), and the read, [:915](https://github.com/parallelpro/yrec/blob/bfb50705/src/eos/scv/scv_eos.f90#L915).
+- **What is wrong:** near a cell's lower node (`temp_smooth_direction = -1`, within 0.032 in log T, guarded only by `idtt > 1`) the result is blended with the cell shifted one row down, rows idtt−1 .. idtt+2, at columns idp .. idp+3 (to idp+4 with the pressure shift). `find_scv_cell` bounds idp by the cell's own first row (idp ≤ nptsx(idtt) − 3), but the rows' point counts grow with T, and the build fills row t only to nptsx(t). In 24 of the 62 row pairs of the shipped `h_tab_i.dat` the lower row is shorter (recounted), so columns past nptsx(idtt−1) are never-built entries of `tablenv` (zero in practice, as static storage; undefined by the standard): a row of log ρ = 0 and zero derivatives enters the shifted cell's temperature spline. It takes a point in log T [tlogx(idtt+1), tlogx(idtt+1) + 0.032) above the lower row's highest columns: for example log T 3.70-3.732 with log P_gas ≥ 11.2 (row 3.54 has 38 points to log P 11.4, row 3.62 49 to 13.6), and log T 4.18-4.212 with log P_gas ≥ 13.8 (row 4.10: 53 points to 14.4). The review bounds the error by about 0.005 of each quantity (log ρ in dex), a bump that vanishes at both ends of the band (the spline's weight of the first node, 0 to 0.026, times the shift's weight 0.5(1 − d/tol)).
+- **Expected behaviour, and why:** an interpolation reads only built entries; a cell that cannot be shifted keeps its own result, as at the table's first row.
+- **What we did:** recorded, not fixed. Proposed fix: smooth downward only when the lower row holds the columns (`idp + 3 + max(press_smooth_direction, 0) <= nptsx(idtt-1)`, decided after the pressure smoothing), else keep the cell's result; a `test_eos` check in the band (log T 3.71, log P_gas 12). A measured commit where a deck reaches it.
+
+### M207. OPAL 1995's pressure check stops the run with two bare numbers as its only message
+
+- **Status:** open. The eos evaluation's finding 2, confirmed in the code. Latent: no shipped deck uses OPAL 1995. Kind A.
+- **In the original F77?** No. OEQOS wrote the same two numbers to the run log, then stopped with a text that named the check ([oeqos.f:68-71](https://github.com/parallelpro/yrec/blob/6cd56739/src/oeqos.f#L68-L71)):
+  ```fortran
+        IF(ABS((P12-EOS(1))/P12).GT.0.5D-6)THEN
+           WRITE(ISHORT,*)P12,EOS(1)
+           STOP ' ERROR IN OEQOS PTOT'
+  ```
+  [89b648ce](https://github.com/parallelpro/yrec/commit/89b648ce) (2026-08-21, "eos domain converted to the ierr-not-stop discipline") dropped the text with the stop.
+- **Now:** `compute_opal_eos`, [opal_eos.f90:132-139](https://github.com/parallelpro/yrec/blob/bfb50705/src/eos/opal/opal_eos.f90#L132-L139) (only the 1995 row has `checks_pressure`, [opal_eos_tables.f90:224](https://github.com/parallelpro/yrec/blob/bfb50705/src/eos/opal_eos_tables.f90#L224)); `eos_get`'s header, [eos_lib.f90:58-59](https://github.com/parallelpro/yrec/blob/bfb50705/src/eos/eos_lib.f90#L58-L59).
+- **What is wrong:** when the table's pressure at the density found differs from P by more than 5e-7, the error reaches the terminal and the run log as `write(eos_lines,*) p_e12, output(i_p)`, two numbers, and `ierr = 1` stops the run. Nothing says what failed or where; `eos_get`'s header promises that "the message is already out".
+- **Expected behaviour, and why:** an error says what failed (`docs/GUIDELINES.md`, Code style rule 7).
+- **What we did:** recorded, not fixed. Proposed fix: one line naming the check, e.g. "OPAL 1995 EOS: the table's pressure at the density found differs from P by more than 5e-7 (P12, table):". Byte-identical on the shipped decks.
+
+### M208. The Fermi-Dirac table is extrapolated without a word above log T 9 and past its degeneracy edge
+
+- **Status:** open. The eos evaluation's finding 3, confirmed in the code. Latent: log T 9 is carbon ignition, and the shipped decks stop at the TAHB; the X edge (log ρ ≳ 8 at log T 7) is not known to be reached. Kind A (a message and documentation); B if made an error.
+- **In the original F77?** Yes: EQRELV clamps both indices ([eqrelv.f:56-57](https://github.com/parallelpro/yrec/blob/6cd56739/src/eqrelv.f#L56-L57), [:79-83](https://github.com/parallelpro/yrec/blob/6cd56739/src/eqrelv.f#L79-L83)):
+  ```fortran
+        JT1 = MAX0(1,MIN0(JT1,18))  ! Force jt1 to be in the table
+        KK = MIN0(261,MAX0(1,KK))
+  ```
+- **Now:** `start_fully_ionized_solution`'s T row, [yale_eos.f90:733-734](https://github.com/parallelpro/yrec/blob/bfb50705/src/eos/yale/yale_eos.f90#L733-L734); `iterate_fully_ionized_density`'s X bin, [:805-808](https://github.com/parallelpro/yrec/blob/bfb50705/src/eos/yale/yale_eos.f90#L805-L808); eos/README §2.1, [:45](https://github.com/parallelpro/yrec/blob/bfb50705/src/eos/README.md#L45).
+- **What is wrong:** the table spans log T 5.2-9.0 (rows 5 + 0.2j, j = 1 to 20) and X = log ρ − log μ_e − 1.5 log T from −16 to −3 (43 abscissae, binned in 261 steps of 0.05). Both indices are clamped (`jt1` to 1..18, `kk` to 1..261), so a point beyond either edge is extrapolated quadratically, without a message or status: above log T 9.0 in T, past X = −3 in degeneracy. M137 covers only the low-T side, through the cutoff. README §2.1 gives "the fully ionized gas at high density (log rho > 7) and in the stellar centre above the OPAL table" and no range.
+- **Expected behaviour, and why:** a table's range is stated, and leaving it is at least reported (M137's reasoning for the low side).
+- **What we did:** recorded, not fixed. Proposed fix: name the table's range (with M137's first-row parameter); an `eos_log` warning the first time a run leaves it, or `ierr` (Kind B); README §2.1 and §3 state the range.
+
+### M209. OPAL's second X quadratic tests the first quadratic's value for an empty table entry
+
+- **Status:** open. The eos evaluation's finding 4, confirmed in the code. Diagnostic only: the bad value is still caught later, by `t6rinteos`' 1e15 test (an `ierr` with "Interpolation indices out of range"). Kind A.
+- **In the original F77?** Yes: ESAC06 tests `esk` after computing `esk2` ([esac06.f:445-447](https://github.com/parallelpro/yrec/blob/6cd56739/src/esac06.f#L445-L447)):
+  ```fortran
+            esk2(it,ir)=quadeos06(is,iw,xh,epl(mg,it,ir),epl(mh,it,ir)
+       x    ,epl(mi,it,ir),xx(mg),xx(mh),xx(mi))
+            if(esk(it,ir) .gt. 1.D+20) then
+  ```
+- **Now:** [opal_eos.f90:729-731](https://github.com/parallelpro/yrec/blob/bfb50705/src/eos/opal/opal_eos.f90#L729-L731) and [opal95_eos.f90:592-601](https://github.com/parallelpro/yrec/blob/bfb50705/src/eos/opal/opal95_eos.f90#L592-L601); the later catch, `t6rinteos`, [opal_eos.f90:993-997](https://github.com/parallelpro/yrec/blob/bfb50705/src/eos/opal/opal_eos.f90#L993-L997).
+- **What is wrong:** when X lies between x(2) and x(3) the interpolation blends two quadratics. The second one's check `if (v%x_interp_result(...) > 1.0d+20)` reads the first quadratic's value, already checked at opal_eos.f90:708 (opal95_eos.f90:563), not `x_interp_result_alt`. An empty entry (the 1e35 fill) in the fourth X table is never named by this diagnostic, and the message prints the second stencil's three table values for a check made on the first.
+- **Expected behaviour, and why:** a check tests the value it reports.
+- **What we did:** recorded, not fixed. Proposed fix: test `x_interp_result_alt`, in one place once the two copies are one (M94). Byte-identical.
+
+### M210. eos/README's "Add an OPAL vintage" sends the vintage's switch and path through the source recipe's steps, which do not fit them
+
+- **Status:** open. The eos evaluation's finding 5, confirmed against the registry and the builder. Documentation only. Kind A.
+- **In the original F77?** No: the recipe came with [9ce8e797](https://github.com/parallelpro/yrec/commit/9ce8e797) (2026-10-29).
+- **Now:** step 5, [eos/README.md:139](https://github.com/parallelpro/yrec/blob/bfb50705/src/eos/README.md#L139), and the source recipe's steps 5-6, [:127-128](https://github.com/parallelpro/yrec/blob/bfb50705/src/eos/README.md#L127-L128); io/README's rows, [:257](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/README.md#L257) and [:274](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/README.md#L274); the existing vintage's rows, `use_opal2006_eos` and `opal2006_eos_table_path` ([controls_registry.tsv:264](https://github.com/parallelpro/yrec/blob/bfb50705/src/defaults/controls_registry.tsv#L264), [:90](https://github.com/parallelpro/yrec/blob/bfb50705/src/defaults/controls_registry.tsv#L90)); the derived controls, [derived_controls.f90:119-157](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/derived_controls.f90#L119-L157); the builder, [eos_settings_builder.f90:33](https://github.com/parallelpro/yrec/blob/bfb50705/src/setup/eos_settings_builder.f90#L33), [:67](https://github.com/parallelpro/yrec/blob/bfb50705/src/setup/eos_settings_builder.f90#L67).
+- **What is wrong:** step 5 reads "The control and the path, as for a source (steps 5 and 6 above)". The source recipe's step 5 copies the control in `eos_settings_from_star`, and its step 6 hands over to io/README's "Add a control" and "Add a table path", whose path row is home `control`, used `run`, `settings` the paths record's field. A vintage's switch and path are buffer controls that only `select_eos_and_opacity_tables` reads (home `buffer`, used `read`, `settings` blank, as the 2006 rows are), and the builder already copies the derived `opal_eos_vintage` and `opal_eos_table_path`. Followed literally, `s%physics%use_opal20xx_eos` does not compile (a buffer control is in neither record), and a row made to the table-path recipe fails `check_boundaries`' `home`/`used` checks.
+- **Expected behaviour, and why:** a recipe followed to the letter builds and passes the checks.
+- **What we did:** recorded, not fixed. Proposed fix: step 5 says the switch and the path are buffer controls (io/README §5 step 2's "`buffer` if only the read uses it", `used` `read`, `settings` blank) and that the builder needs no edit; the recipe re-traced.
+
+### M211. test_eos.py's docstring names eos_get_gamma1, gone since round 2
+
+- **Status:** open. The eos evaluation's finding 6, corrected (below). Documentation only. Kind A.
+- **In the original F77?** No: the docstring came with [2796b4ec](https://github.com/parallelpro/yrec/commit/2796b4ec) (2026-08-21); [64500ba9](https://github.com/parallelpro/yrec/commit/64500ba9) (2026-10-29) made `eos_get_gamma1` blended_eos's test-only `gamma1_at_density`.
+- **Now:** [test_eos.py:7-11](https://github.com/parallelpro/yrec/blob/bfb50705/test_eos.py#L7-L11); the facade's entries, [eos_lib.f90:36-37](https://github.com/parallelpro/yrec/blob/bfb50705/src/eos/eos_lib.f90#L36-L37); `gamma1_at_density`'s banner, [blended_eos.f90:506](https://github.com/parallelpro/yrec/blob/bfb50705/src/eos/blended_eos.f90#L506).
+- **What is wrong:** the docstring says the test "exercises the eos facade entries (eos_get, eos_get_gamma1)" and names "eos_get_gamma1's Yale/SCV branch"; the facade's entries are `eos_init`, `eos_get` and `eos_set_mixture`, and `eos_get_gamma1` no longer exists. "Stage-0" and "phase three, ... stage 2" are old jargon. `gamma1_at_density`'s banner says "(formerly eos_lib's gamma1_at_density)", for `eos_get_gamma1`. Correction to the review: since [94e65af5](https://github.com/parallelpro/yrec/commit/94e65af5) the docstring does say that the program exits nonzero when a check fails; it still describes only the derivative checks, not the other ok/FAIL checks (52 in README §4).
+- **Expected behaviour, and why:** a test's docstring names the code it tests and what makes it fail.
+- **What we did:** recorded, not fixed. Proposed fix: the facade's three entries and `gamma1_at_density` by name, one sentence on the ok/FAIL checks, and the banner's former name corrected.
+
+### M212. net's documents still put the rate scales on the star, written by controls_reader
+
+- **Status:** open. The net evaluation's finding 1, confirmed in the code. Documentation only. Kind A.
+- **In the original F77?** No: these are 2026 documents, true until [3a44ae33](https://github.com/parallelpro/yrec/commit/3a44ae33) (2026-10-31, round 3); state/README was updated with [a43d1efa](https://github.com/parallelpro/yrec/commit/a43d1efa), net/README was not.
+- **Now:** [net/README.md:41](https://github.com/parallelpro/yrec/blob/bfb50705/src/net/README.md#L41), [:43-44](https://github.com/parallelpro/yrec/blob/bfb50705/src/net/README.md#L43-L44), [:173](https://github.com/parallelpro/yrec/blob/bfb50705/src/net/README.md#L173), [:178](https://github.com/parallelpro/yrec/blob/bfb50705/src/net/README.md#L178); [GLOSSARY.md:255](https://github.com/parallelpro/yrec/blob/bfb50705/docs/GLOSSARY.md#L255); [HOW_YREC_WORKS.md:445](https://github.com/parallelpro/yrec/blob/bfb50705/docs/HOW_YREC_WORKS.md#L445).
+- **What is wrong:**
+  - README:41 lists "the star's scale arrays" `cross_section_scale`, `s_prime_scale`, ... `n15_pa_scale` in `star_info_lib`. The star holds only the two run copies, `cross_section_scale_in_use` and `extra_cross_section_scale_in_use` ([star_info_lib.f90:228](https://github.com/parallelpro/yrec/blob/bfb50705/src/state/star_info_lib.f90#L228), [:233](https://github.com/parallelpro/yrec/blob/bfb50705/src/state/star_info_lib.f90#L233)); the others are derived `physics` controls, which the builder reads as `s%physics%...` ([net_settings_builder.f90:41-48](https://github.com/parallelpro/yrec/blob/bfb50705/src/setup/net_settings_builder.f90#L41-L48)).
+  - README:43 says `map_user_inputs` maps the S0 inputs "into the star's scale arrays"; it takes no star and writes the buffer's derived controls ([user_inputs.f90:107-121](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/user_inputs.f90#L107-L121)), which the read stores on `star%physics`.
+  - README:44 says `controls_reader` calls `cross_section_scales_from_sstandard`; `map_user_inputs` does ([user_inputs.f90:114](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/user_inputs.f90#L114)), on `cross_section_ratios`.
+  - The file table has no row for `io/controls_buffer.f90`, where every net control is declared with its default and description (the scales, the Li/Be references of M127, `nuclear_logT_cutoffs`, the burn's tolerances).
+  - "Add a reaction", step 4 (README:173), says "every dump gains the star's `cross_section_scale(<slot>)`": the dump writes `physics%cross_section_scale` and the other per-slot controls and `star%cross_section_scale_in_use` ([controls_dump.inc:259](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/test/controls_dump.inc#L259), [:609](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/test/controls_dump.inc#L609)), with M180's per-deck difference hashes only `pristine.txt` moves, and make regenerates `controls_dump.inc` (its loops are `num_reactions` written out), which must be committed or `test_generated_files.py` fails.
+  - The S-factor recipe's step 2 (README:178) has the newcomer run the three generators by hand; make has run them since [9906f760](https://github.com/parallelpro/yrec/commit/9906f760) (2026-11-01).
+  - GLOSSARY:255 and HOW_YREC_WORKS:445 still name `star%cross_section_scale` and its siblings as star members.
+- **Expected behaviour, and why:** a newcomer who asks where a rate scale lives, and what a new reaction moves, is sent to the right files.
+- **What we did:** recorded, not fixed. Proposed fix: rows 41, 43 and 44 rewritten from state/README, which has it right; a `controls_buffer.f90` row; step 4 naming the dump's lines, `pristine.txt` alone and the regenerated `controls_dump.inc`; GLOSSARY and HOW_YREC_WORKS corrected; the S-factor recipe re-traced through make.
+
+### M213. net/README's "Add a light element" names 2 of the dozen files deuterium touches
+
+- **Status:** open. The net evaluation's finding 2, confirmed by tracing deuterium through the code. Documentation only. Kind A.
+- **In the original F77?** No: the recipe came with net's README ([9cb4d570](https://github.com/parallelpro/yrec/commit/9cb4d570), 2026-10-10).
+- **Now:** [net/README.md:194](https://github.com/parallelpro/yrec/blob/bfb50705/src/net/README.md#L194); the traced recipes, [:167](https://github.com/parallelpro/yrec/blob/bfb50705/src/net/README.md#L167).
+- **What is wrong:** the recipe reads "Follow deuterium: a rate function and a region integrator in `light_elements.f90` ..., driven per region from `core/step/burn_step.f90`". Following deuterium also takes its d(p,γ) fit and cap in `reaction_rates.f90`, its energy in `nuclear_energy.f90`, net_lib's exports, the slot in `composition_layout`, the rates `deuterium_burning_rate` and `_start` on the star, the composition step's call, the rezone's regrid of the start-of-step rates, `clear_previous_run_state` (M169), the rotation sub-step's rates and burn (`mid_timestep_model`, `rotation_scratch_lib`), `test_net`, and Phase 5's 15-slot declarations. A newcomer who follows it leaves the new element unburned in the rotation sub-steps, unregridded at a rezone and stale across Monte Carlo runs, M169's bug again. It is not among the four recipes README:167 says were traced.
+- **Expected behaviour, and why:** a recipe names every file a change touches, or says that it is untraced (the README standard).
+- **What we did:** recorded, not fixed. Proposed fix: trace it on a throwaway branch, as the isotope recipe was, and list the files in order, stopping at Phase 5 where the trace must; or say that it is untraced and give deuterium's call graph.
+
+### M214. nuclear_logT_cutoffs' description names no element, and net's texts disagree on "below" and "at or below"
+
+- **Status:** open. The net evaluation's finding 5, confirmed in the code. User-facing description and comments. Kind A.
+- **In the original F77?** Partly: the F77's TCUT was documented only in the code ([rates.f:307-308](https://github.com/parallelpro/yrec/blob/6cd56739/src/rates.f#L307-L308), [:574](https://github.com/parallelpro/yrec/blob/6cd56739/src/rates.f#L574), [engeb.f:1141](https://github.com/parallelpro/yrec/blob/6cd56739/src/engeb.f#L1141)); the description and the differing comments are 2026's.
+  ```fortran
+        IF(TL.LE.TCUT(1)) THEN                                 ! rates.f
+        IF(TL.LT.TCUT(4)) GO TO 100
+        IF(TL.LE.TCUT(5)) RETURN                               ! engeb.f
+  ```
+- **Now:** the description, [controls_buffer.f90:607-608](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/controls_buffer.f90#L607-L608) (shown to users in `defaults/physics.defaults`); `net_settings_t`'s comment, [net_configuration.f90:36-39](https://github.com/parallelpro/yrec/blob/bfb50705/src/net/net_configuration.f90#L36-L39); the gates, [network.f90:292](https://github.com/parallelpro/yrec/blob/bfb50705/src/net/network.f90#L292), [:296-297](https://github.com/parallelpro/yrec/blob/bfb50705/src/net/network.f90#L296-L297), [nuclear_energy.f90:122](https://github.com/parallelpro/yrec/blob/bfb50705/src/net/nuclear_energy.f90#L122), [:141](https://github.com/parallelpro/yrec/blob/bfb50705/src/net/nuclear_energy.f90#L141).
+- **What is wrong:** the control's description, the one users read, is "log T cutoffs (5) below which burning groups are switched off". It names no element; it does not say that (2) and (3) do nothing (a deck that sets them gets no warning); element (5) gates the thermal neutrino losses, not a burning group; element (1) gates at or below. net's own texts disagree: README:76, :87, network.f90:282 and reaction_rates.f90:143-144 say "below", README:142, net_configuration.f90:36 and nuclear_energy.f90:43 "at or below". M118 covers burn_step's own `<` and net_configuration's helium comment, not these.
+- **Expected behaviour, and why:** a control's description says what each element does.
+- **What we did:** recorded, not fixed. Proposed fix: a description per element: (1) nothing burns at or below; (2), (3) unused; (4) helium burning off below; (5) thermal neutrino losses off at or below; "at or below" in the four comments; optionally a `warn_inconsistent_controls` warning for (2) or (3) set off their defaults. `physics.defaults` and `controls_registry.md` are regenerated; no run output moves.
+
+### M215. Two of test_numerics' 64 checks have no mutation, though the README and the test say every check was confirmed by one
+
+- **Status:** open. The numerics/math evaluation's finding 1, confirmed by matching the check labels to the mutation labels. Test only. Kind A.
+- **In the original F77?** No: the checks and the script came with [54bf5e79](https://github.com/parallelpro/yrec/commit/54bf5e79) (2026-10-29).
+- **Now:** the two checks, [test_numerics.f90:624](https://github.com/parallelpro/yrec/blob/bfb50705/src/numerics/test/test_numerics.f90#L624) and [:819](https://github.com/parallelpro/yrec/blob/bfb50705/src/numerics/test/test_numerics.f90#L819); `MUTATIONS`, [mutate_numerics.py:32-104](https://github.com/parallelpro/yrec/blob/bfb50705/src/numerics/test/mutate_numerics.py#L32-L104); the claims, [numerics/README.md:90](https://github.com/parallelpro/yrec/blob/bfb50705/src/numerics/README.md#L90) and [test_numerics.f90:25-27](https://github.com/parallelpro/yrec/blob/bfb50705/src/numerics/test/test_numerics.f90#L25-L27); the docstring, [mutate_numerics.py:9-10](https://github.com/parallelpro/yrec/blob/bfb50705/src/numerics/test/mutate_numerics.py#L9-L10), against [:149-151](https://github.com/parallelpro/yrec/blob/bfb50705/src/numerics/test/mutate_numerics.py#L149-L151).
+- **What is wrong:** "splint: the slope's error falls as h^3 (order to 0.3)" and "interp: weights sum to 1, derivatives to 0" have no mutation: no label of the 71 is a prefix of either, and the script matches by `startswith`. The README's "Each check was confirmed to fail under a mutation ... (71 mutations, all caught)" and the test header claim every check; for these two, nothing the script runs backs it, so a rewrite of interp's derivative weights or of splint's `dy` that kept the sums or the order wrong would not be reported. The docstring also says "a nonzero exit ... counts as caught", while the code counts one only when the check's line is missing (mutate_math.py's docstring says it correctly).
+- **Expected behaviour, and why:** a claim that every check was confirmed by a mutation is backed by the script that re-runs them (the plan's mutation manifests rest on it).
+- **What we did:** recorded, not fixed. Proposed fix: a mutation for each (for the sums, interp's `dweight(4)` plus 1e-9; for the order, a change to splint's `dy` term that the run shows fails it), confirmed with `--only`; the docstring corrected.
+
+### M216. Under crmath no check covers the repeated-multiplication bound of pow and exp10 between 23 and 99
+
+- **Status:** open. The numerics/math evaluation's finding 2, confirmed by tracing each check (not run). Test only. Kind A.
+- **In the original F77?** No: math_lib, its checks and their mutations are 2026's ([c2638e4b](https://github.com/parallelpro/yrec/commit/c2638e4b), 2026-10-29).
+- **Now:** the bounds, [math_lib.f90:72](https://github.com/parallelpro/yrec/blob/bfb50705/src/math/math_lib.f90#L72) and [:127](https://github.com/parallelpro/yrec/blob/bfb50705/src/math/math_lib.f90#L127); the checks, [test_math.f90:47-68](https://github.com/parallelpro/yrec/blob/bfb50705/src/math/test/test_math.f90#L47-L68) and [:108-111](https://github.com/parallelpro/yrec/blob/bfb50705/src/math/test/test_math.f90#L108-L111); the table and its claim, [math/README.md:18](https://github.com/parallelpro/yrec/blob/bfb50705/src/math/README.md#L18), [:25](https://github.com/parallelpro/yrec/blob/bfb50705/src/math/README.md#L25), [:28](https://github.com/parallelpro/yrec/blob/bfb50705/src/math/README.md#L28); the bound's one mutation, [mutate_math.py:55-57](https://github.com/parallelpro/yrec/blob/bfb50705/src/math/test/mutate_math.py#L55-L57).
+- **What is wrong:** under crmath the README's table says pow(x, n) takes repeated multiplication for an integer-valued |n| < 100, and exp10(n) up to |n| < 100, "each is checked by `test_math`". The checks reach |n| ≤ 12 for pow, |n| ≤ 22 for exp10, and n = 100 and 101, beyond the bound; nothing sees n in 13-99 (pow) or 23-99 (exp10). Lowering pow's bound to 13, or exp10's to 23, would leave all ten crmath checks ok (the review traced each; the negative-base checks at 100 and 101 hold within their tolerance either way). The one mutation of the bound moves it up, to 1e10, and is caught only by the 3e9 check; exp10's bound has none. The bound is MESA's definition, and the two paths differ in the last bits, so the bit-for-bit reproducibility the backend exists for depends on it. Also: four of the ten intrinsic-backend checks have no intrinsic mutation (they test libm through the passthrough, which another check pins), so README §5's "each check" holds per label only under crmath.
+- **Expected behaviour, and why:** a documented edge is checked on both sides, and a mutation that moves it down fails.
+- **What we did:** recorded, not fixed. Proposed fix: under crmath, pow(x, ±99.0d0) against the 99-fold product (and its reciprocal) and exp10(±99.0d0) against 99 multiplications by 10; mutations lowering each bound to 23; optionally the bound named (`repeated_multiplication_limit = 100`).
+
+### M217. Two lir checks and two pins assert that an intent(out) result is unchanged after a failure
+
+- **Status:** open. The numerics/math evaluation's finding 3, confirmed in the code. Test only: the checks pass because gfortran leaves the array alone today. Kind A (the test output changes only if the pins are dropped).
+- **In the original F77?** No: lir's `ierr` and these checks are 2026's ([54bf5e79](https://github.com/parallelpro/yrec/commit/54bf5e79), 2026-10-29).
+- **Now:** lir's header and dummy, [table_interpolation.f90:206-208](https://github.com/parallelpro/yrec/blob/bfb50705/src/numerics/table_interpolation.f90#L206-L208), [:216](https://github.com/parallelpro/yrec/blob/bfb50705/src/numerics/table_interpolation.f90#L216); the checks, [test_numerics.f90:936-941](https://github.com/parallelpro/yrec/blob/bfb50705/src/numerics/test/test_numerics.f90#L936-L941); the pins, [expected_test_numerics.out:142-143](https://github.com/parallelpro/yrec/blob/bfb50705/src/numerics/test/expected_test_numerics.out#L142-L143); osplin's `intent(inout)`, [quadratic_spline.f90:66](https://github.com/parallelpro/yrec/blob/bfb50705/src/numerics/quadratic_spline.f90#L66).
+- **What is wrong:** lir's header says a failure "leaves result_y unset", and `result_y` is `intent(out)`, undefined on entry. "lir: one point is numerics_bad_input, result untouched" and "lir: a flat table ..." nonetheless assert `all(res == -1.0d0)`, and two pins print it ("lir one point (no change)", "lir flat table (no change)"). M135 records gfortran 15 at -O3 treating polint's `intent(out)` `dy` as clobbered, and test_numerics is built at -O3, so the checks pin a compiler's behaviour, not lir's contract. osplin, which promises "untouched", declares its result `intent(inout)`.
+- **Expected behaviour, and why:** a check tests the routine's contract, which holds on any conforming compiler.
+- **What we did:** recorded, not fixed. Proposed fix: make `result_y` `intent(inout)` and say "untouched" in the header (all three MHD calls pass a defined array), or drop the `all(res == -1.0d0)` conditions and the two "(no change)" pins. Byte-identical.
+
+### M218. Three inexact numerics texts: the spline's end column, test_numerics' zero-width interval, and two recipes' missing files
+
+- **Status:** open. The numerics/math evaluation's finding 5a, 5b and 5d, confirmed in the files (5c is M215's docstring; 5e, style, is left to the plan). Documentation only. Kind A.
+- **In the original F77?** No: each text is 2026's ([4eaaaece](https://github.com/parallelpro/yrec/commit/4eaaaece), [94536a04](https://github.com/parallelpro/yrec/commit/94536a04), the README's recipes).
+- **What is wrong:**
+  - `compute_spline_coefficients`' header says column n holds "the value, slope and half the second derivative at the last point (c(4,n) = 0), for a linear extrapolation beyond it" ([cubic_spline.f90:164-166](https://github.com/parallelpro/yrec/blob/bfb50705/src/numerics/cubic_spline.f90#L164-L166)). That is linear only when y2(n) = 0, the natural end both callers use; after cspline with a clamped end c(3,n) ≠ 0 and the column is a quadratic, as test_numerics.f90:590-593 checks.
+  - test_numerics' comment "bisection gives a zero-width interval only between equal last points" ([test_numerics.f90:116](https://github.com/parallelpro/yrec/blob/bfb50705/src/numerics/test/test_numerics.f90#L116)): equal first points do too for x below the table (xa = (1, 1, 2, 3) at x = 0.5 bisects to klo 1, khi 2, coincident points; [cubic_spline.f90:133-146](https://github.com/parallelpro/yrec/blob/bfb50705/src/numerics/cubic_spline.f90#L133-L146)).
+  - "Add an interpolation scheme" ([numerics/README.md:94-99](https://github.com/parallelpro/yrec/blob/bfb50705/src/numerics/README.md#L94-L99)) names README §1 and §2 but not §6, which lists every check, nor the routine lists in numerics_lib.f90's header (:7-16) and in the module's own header (for example table_interpolation.f90:6-14); "Add a solver" gives a new status code its text, export and `codes` entry, but not test_numerics' `use numerics_lib, only:` list, README §3's list of codes or HOW_YREC_WORKS' (:554-555).
+- **Expected behaviour, and why:** comments describe the code as it is now; a recipe names every list a change must join.
+- **What we did:** recorded, not fixed. Proposed fix: "the end tangent for a natural end"; the comment names both ends; the two recipes list the files.
+
+### M219. A failed Alexander 2006 composition build leaves the cache claiming it, so a retry at the same composition succeeds with the previous composition's opacity
+
+- **Status:** open. The kap evaluation's finding 1, confirmed in the code. Latent: the first path needs a composition outside the tables (X < 0, X > 1 − Z, Z < 0 or Z > 0.12) and a caller that retries after the error; the second needs a second `kap_init` in one process (pyyrec, `test_reentry`) and a first lookup at the previous run's last surface (X, Z). Kind A: byte-identical for every single-run deck.
+- **In the original F77?** No. GETALEX06 also set the cached `XE`, `ZE` before ALEX06TAB, but ALEX06TAB stopped on a bad composition, so no lookup followed ([getalex06.f:18-21](https://github.com/parallelpro/yrec/blob/6cd56739/src/getalex06.f#L18-L21), [alex06tab.f:19-27](https://github.com/parallelpro/yrec/blob/6cd56739/src/alex06tab.f#L19-L27)):
+  ```fortran
+        IF(DIFZ.GT.1.0D-8 .OR. DIFX.GT.1.0D-8)THEN               ! getalex06.f
+           ZE = Z
+           CALL ALEX06TAB
+           WRITE(*,5) XE,ZE                                       ! alex06tab.f
+           STOP
+  ```
+  The failure became returnable with [073b6f92](https://github.com/parallelpro/yrec/commit/073b6f92) (2026-08-21, "kap domain converted to the ierr-not-stop discipline"); the re-read path came with the 2026 re-entrant `run_yrec`.
+- **Now:** `compute_alex06_opacity`, [alex06_opacity.f90:301-309](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/alex06/alex06_opacity.f90#L301-L309); `build_alex06_composition_table`'s bounds, [:175-191](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/alex06/alex06_opacity.f90#L175-L191); `read_alex06_tables`' reset of the table to the first slice, [:148-152](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/alex06/alex06_opacity.f90#L148-L152); the cache, [opacity_tables.f90:195](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/opacity_tables.f90#L195); `kap_init` reads the tables at every call, [kap_lib.f90:411-446](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/kap_lib.f90#L411-L446), [:529-531](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/kap_lib.f90#L529-L531).
+- **What is wrong:**
+  - `compute_alex06_opacity` writes the requested (X, Z) into `alex06_cached_x`/`_z` before it calls the build. When the build refuses the composition it returns `ierr = 1` before touching the table, but the cache now names that composition: the next call at the same (X, Z) (within `alex_composition_tol` = 1e-8) skips the build and interpolates the previous composition's table with `ierr` 0. A retry succeeds where the first call failed.
+  - `read_alex06_tables` sets the table to the (X = 0, Z = 0) slice and leaves the cache alone. After a second `kap_init` in one process, a first lookup at the previous run's last (X, Z) skips the build and uses the X = 0, Z = 0 molecular opacity. A deck that starts past deuterium burning without diffusion repeats its surface composition exactly. Every shipped deck uses Alexander 2006, and each process calls `kap_init` once per run.
+- **Expected behaviour, and why:** the cache names the composition the table holds; a failed call fails again, and a second run's first lookup is the first run's.
+- **What we did:** recorded, not fixed. Proposed fix: set the cache after a successful build (or to an impossible value on failure), and set it to (0, 0) where `read_alex06_tables` loads that slice; `test_kap` checks that a refused composition fails twice and that a second `kap_init` gives the same κ at the same point. Byte-identical.
+
+### M220. Seven more kap table opens and most table reads have no status: a missing table is a Fortran runtime error, and a missing OPAL92 path is created empty and read as success
+
+- **Status:** open. The kap evaluation's finding 2, confirmed in the code; it corrects M170, which says every other table reader reports and exits 1. Error paths: no shipped deck uses OPAL92, LAOL89, Kurucz 1990 or Alexander 1994/95; all use OPAL95, the pure-Z table and Alexander 2006 (whose open is M170). Kind A.
+- **In the original F77?** Yes: none of the opens has `IOSTAT`, and SETLLO's has no `STATUS` ([setllo.f:50](https://github.com/parallelpro/yrec/blob/6cd56739/src/setllo.f#L50), [ll95tbl.f:48](https://github.com/parallelpro/yrec/blob/6cd56739/src/ll95tbl.f#L48), [rdlaol.f:32](https://github.com/parallelpro/yrec/blob/6cd56739/src/rdlaol.f#L32), [:80](https://github.com/parallelpro/yrec/blob/6cd56739/src/rdlaol.f#L80), [rdzlaol.f:32](https://github.com/parallelpro/yrec/blob/6cd56739/src/rdzlaol.f#L32), [setkrz.f:45](https://github.com/parallelpro/yrec/blob/6cd56739/src/setkrz.f#L45), [:76](https://github.com/parallelpro/yrec/blob/6cd56739/src/setkrz.f#L76), [alxtbl.f:59](https://github.com/parallelpro/yrec/blob/6cd56739/src/alxtbl.f#L59)); SETLLO's count `NUMTM` is set only inside its loop, as now ([setllo.f:53](https://github.com/parallelpro/yrec/blob/6cd56739/src/setllo.f#L53), [:67](https://github.com/parallelpro/yrec/blob/6cd56739/src/setllo.f#L67)):
+  ```fortran
+        OPEN(UNIT=ILLDAT,FILE=FLLDAT)                             ! setllo.f
+          READ(ILLDAT,190,END=97)GRIDX(I),GRIDZ(I)
+     93    NUMTM=K-1
+  ```
+  L5's fix ([a9de5f99](https://github.com/parallelpro/yrec/commit/a9de5f99)) did not reach kap's readers; only the conductive table's open got a status.
+- **Now:** the opens, [opal95_opacity.f90:61](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/opal95/opal95_opacity.f90#L61), [opal92_opacity.f90:60](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/opal92/opal92_opacity.f90#L60), [:66](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/opal92/opal92_opacity.f90#L66), [laol_opacity.f90:92-93](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/laol89/laol_opacity.f90#L92-L93), [:412-413](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/laol89/laol_opacity.f90#L412-L413), [kurucz_opacity.f90:90](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/kurucz90/kurucz_opacity.f90#L90), [alex94_opacity.f90:67-68](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/alex94/alex94_opacity.f90#L67-L68) (and M170's [alex06_opacity.f90:62](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/alex06/alex06_opacity.f90#L62)), against the conductive table's, [conductive_opacity.f90:51](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/conductive/conductive_opacity.f90#L51); `read_opal92_table`, [opal92_opacity.f90:87-107](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/opal92/opal92_opacity.f90#L87-L107), with `num_temps_read` declared at [:55](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/opal92/opal92_opacity.f90#L55).
+- **What is wrong:**
+  - Five opens have `status='OLD'` and no `iostat`: a missing OPAL95, LAOL89, pure-Z, Kurucz 1990 or Alexander 1994/95 table ends the run in "Fortran runtime error: Cannot open file" with exit 2, as M170's Alexander 2006 open does. atm's two readers and the conductive table report and return `ierr`.
+  - The two OPAL92 opens have no `status` either: gfortran creates a missing path empty where the directory allows. `read_opal92_table` then meets the end of file at once (`end=97`), sets `num_x = 0` and `num_temps` from `num_temps_read`, which nothing set (0 under the Makefile's `-finit-local-zero`, whatever the stack holds under ifort or ifx), and `kap_init` returns 0; the review traces the run to "compute_opal92_opacity: T out of table" at its first lookup. A truncated OPAL92 file returns success with fewer temperature rows.
+  - LAOL89's 18 reads, Alexander 2006's 6 and the conductive table's 3 have no `iostat` or `end=`: a short or malformed table is a runtime error.
+- **Expected behaviour, and why:** a missing or short table is reported with its path and returns `ierr` from `kap_init`, which stops the run with exit 1 (L5's rule, and `kap_init`'s own header).
+- **What we did:** recorded, not fixed. Proposed fix: one `open_table(path, unit, label, ierr)` in kap opening with `status='old', action='read', iostat, iomsg`, used by every reader (M170's open included); `iostat` on every read; `num_temps_read = 0` before the loop and a short OPAL92 table an error. Byte-identical.
+
+### M221. An Allard [Fe/H] or [α/Fe] the file does not hold reads the table at indices 0 and −1, and the reader's own diagnostic is a format error
+
+- **Status:** open. The atm evaluation's finding 3, confirmed in the code and in `Nextgen2.all`. Latent: the 116 shipped Allard decks keep the defaults [Fe/H] = 0, [α/Fe] = 0, which the file holds. Kind A.
+- **In the original F77?** Yes for the format: ALTABINIT wrote two character items under `(A,I3)` ([altabinit.f:104-106](https://github.com/parallelpro/yrec/blob/6cd56739/src/altabinit.f#L104-L106)):
+  ```fortran
+  	   write(ISHORT,910) 'ALTABINIT: Bad input Allard Table: ',
+       x      'Less than 4 rows: nTeff = ',nTeff
+   910	   format(A,I3)
+  ```
+  The [Fe/H] and [α/Fe] filter is the F77 reader's as well (the 2008 NextGen 2 support).
+- **Now:** the filter, [allard_atmosphere.f90:482-486](https://github.com/parallelpro/yrec/blob/bfb50705/src/atm/tables/allard_atmosphere.f90#L482-L486); `find_allard_table_bounds`, [:738-742](https://github.com/parallelpro/yrec/blob/bfb50705/src/atm/tables/allard_atmosphere.f90#L738-L742) and the row check, [:795-800](https://github.com/parallelpro/yrec/blob/bfb50705/src/atm/tables/allard_atmosphere.f90#L795-L800).
+- **What is wrong:** `read_allard_tables` keeps only the records at `allard_target_feh` and `allard_target_alpha`. `Nextgen2.all` holds [Fe/H] = 0, −0.5, −1, −1.3, −1.5, −2, −3, −3.5 and −4 and [α/Fe] = 0 only, so a deck asking [Fe/H] = −0.3 or [α/Fe] = 0.4 keeps no record and `allard_num_teff = 0`. Nothing checks it: `find_allard_table_bounds` reads `allard_teffl_grid(allard_num_teff)` and `(allard_num_teff-1)`, indices 0 and −1. Its "Less than 4 rows" check would catch it, but writes two character items under `910 format(a,i3)`, and gfortran stops with a format runtime error instead of the message; the same hides the message for any table of fewer than four rows.
+- **Expected behaviour, and why:** a composition the file does not hold is an error that names what was asked and what the file has, returned through `atm_init`'s `ierr`.
+- **What we did:** recorded, not fixed. Proposed fix: after the first pass, `allard_num_teff == 0` returns `ierr` with that message; the format becomes `(2a,i3)`. A `test_atm` check of both. Byte-identical.
+
+### M222. The conductive opacity's low-density branch flips the sign of the mixture's conductivity and extrapolates the wrong way
+
+- **Status:** open. The kap evaluation's finding 4a, from the 2026-08-31 sweep (recorded in `docs/ROADMAP.md` and `docs/MODERNIZATION_CHANGES.md`, not here until now); confirmed in the code. Reached by every shipped deck with conduction: the branch runs at log ρ < −6 with log R ≥ 0, which includes the solar photosphere (log T 3.76, log ρ ≈ −6.6, log R ≈ 0.1). Conduction is negligible there (the review estimates κ_c ≳ 1e6 against κ_rad ≲ 1, so κ moves by about 1e-6 relative). Kind B (tiny).
+- **In the original F77?** Yes ([condopacpint.f:57](https://github.com/parallelpro/yrec/blob/6cd56739/src/condopacpint.f#L57) against [:85](https://github.com/parallelpro/yrec/blob/6cd56739/src/condopacpint.f#L85) and [:89-92](https://github.com/parallelpro/yrec/blob/6cd56739/src/condopacpint.f#L89-L92)):
+  ```fortran
+             CONDL = -LOG10(WtH1*CONDX + WtHe4*CONDY + WtOx*CONDZ)   ! log rho >= -6
+             CONDL = LOG10(WtH1*CONDX + WtHe4*CONDY + WtOx*CONDZ)    ! log rho < -6
+             OCL = OCL + QODC*(-6.0D0-DL)
+  ```
+- **Now:** `compute_conductive_opacity`, the main branch [conductive_opacity.f90:170](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/conductive/conductive_opacity.f90#L170), [:195](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/conductive/conductive_opacity.f90#L195), against the low-density branch [:201-228](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/conductive/conductive_opacity.f90#L201-L228) (the mixture at [:217](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/conductive/conductive_opacity.f90#L217), the extrapolation at [:225-226](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/conductive/conductive_opacity.f90#L225-L226)).
+- **What is wrong:** the main branch takes `mix = −log10(Σ wᵢ 10^(−Kᵢ))` (Kᵢ each species' log10 opacity) and log κ_c from `−mix`; the branch below log ρ = −6 evaluates the same sum at log ρ = −6 but takes `+log10(...)`, so the conductivity term enters log κ_c with the opposite sign. It then moves from log ρ = −6 to the point with `+ dlnκ/dlnρ (−6 − log ρ)`, the wrong direction: log κ(log ρ) = log κ(−6) + (dlnκ/dlnρ)(log ρ + 6).
+- **Expected behaviour, and why:** the branch is the main formula at log ρ = −6 extrapolated linearly to the point, continuous with the main branch at log ρ = −6.
+- **What we did:** recorded, not fixed. Proposed fix: `−log10(...)` at :217 and `(log10_density + 6)` at :226, with a `test_kap` check of continuity at log ρ = −6. Results move by about 1e-6 in κ near the photosphere: a measured commit.
+
+### M223. OPAL95's low-X, low-T shortcut reads an unset local and the previous call's extrapolation flags
+
+- **Status:** open. The kap evaluation's finding 4b, from the 2026-08 sweeps (`docs/ROADMAP.md`); confirmed in the code. Latent: it needs X < 0.2 where the interior table is consulted at the bottom of its T grid (`opal95_index_t ≤ 5`, log T below about 4.1, inside the molecular ramp), a hydrogen-poor envelope no shipped deck has. Kind A for `density_shifted = .false.` (`-finit-local-zero` gives that already); resetting `opal95_extrap_hi` changes that path only.
+- **In the original F77?** Partly. GETOPAL95 skipped the same block (`GOTO 60`) and set a flag nothing read, and `LSHIFT` and `LEXTH` were saved, so it used the previous call's values ([getopal95.f:53](https://github.com/parallelpro/yrec/blob/6cd56739/src/getopal95.f#L53), [:133-142](https://github.com/parallelpro/yrec/blob/6cd56739/src/getopal95.f#L133-L142), [:180](https://github.com/parallelpro/yrec/blob/6cd56739/src/getopal95.f#L180)):
+  ```fortran
+        IF(X.LT.0.2D0 .AND. JT. LE. 5)THEN
+           LCHK = .TRUE.
+           GOTO 60
+  ```
+  The unset local came with [5cadb1e7](https://github.com/parallelpro/yrec/commit/5cadb1e7) (2026-08-22, "Save migration: eos and kap are fully save-free"), which made `density_shifted` an unsaved local.
+- **Now:** `compute_opal95_opacity`: the declaration, [opal95_opacity.f90:414](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/opal95/opal95_opacity.f90#L414); the shortcut and the skipped block, [:461-506](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/opal95/opal95_opacity.f90#L461-L506); the read, [:508](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/opal95/opal95_opacity.f90#L508); the flags in `opacity_table`, [opacity_tables.f90:264](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/opacity_tables.f90#L264).
+- **What is wrong:** for X < 0.2 and `opal95_index_t ≤ 5` the branch sets `low_regime_flag` and skips the block that sets `density_shifted`, `opal95_extrap_hi` and `opal95_extrap_hi_row`; `density_shifted` is then read undefined, and the two extrapolation flags keep the previous call's values. `low_regime_flag` is read nowhere: the check its comment postpones ("since the empty region depends on Z ... postpone until you know if it is a 2d, 3d, or 4d interpolation") was never written.
+- **Expected behaviour, and why:** every input of the interpolation is set in the call; a point outside the table's data is found and reported, not interpolated from stale flags.
+- **What we did:** recorded, not fixed. Proposed fix: `density_shifted = .false.` and both extrapolation flags reset before the branch (or the low regime's check written and the flag dropped). The first is byte-identical under the Makefile's flags.
+
+### M224. OPAL95's fixed-Z table refuses 0.08 < Z ≤ 0.10, which its tables cover
+
+- **Status:** open. The kap evaluation's finding 4c, from the 2026-08 sweeps; confirmed in the code. Latent: `opal95_single_table_z` is 0 in every shipped deck. Kind A.
+- **In the original F77?** Yes ([op95ztab.f:30-40](https://github.com/parallelpro/yrec/blob/6cd56739/src/op95ztab.f#L30-L40)):
+  ```fortran
+        DO I = 3,NUMZ-1
+           IF(ZZG(I).GE.Z)THEN
+  C DESIRED Z > 0.1D0; STOP
+  ```
+- **Now:** `build_opal95_fixed_z_table`, [opal95_opacity.f90:211-225](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/opal95/opal95_opacity.f90#L211-L225), called from `read_opal95_tables` with `opal95_single_table_z` ([:181-183](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/opal95/opal95_opacity.f90#L181-L183)); the Z grid, [opacity_tables.f90:222-225](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/opacity_tables.f90#L222-L225).
+- **What is wrong:** the search runs to `n_opal95_z − 1`, whose node is Z = 0.08, so an `opal95_single_table_z` in (0.08, 0.10] finds no stencil and `kap_init` stops with "DESIRED Z ... OUTSIDE OP95 TABLE RANGE / RUN STOPPED". The tables reach Z = 0.10, and the 4-D path interpolates there. The comment says "Desired Z > 0.1d0".
+- **Expected behaviour, and why:** a Z the tables cover gives a table; the last stencil is the top four nodes, as `build_alex06_composition_table` takes it (`iz = n − 3`).
+- **What we did:** recorded, not fixed. Proposed fix: after the loop, Z ≤ the top node takes `z_table_index = n_opal95_z − 3`, and only Z above it is refused; the comment says so. Byte-identical for the shipped decks.
+
+### M225. Alexander 2006's fourth X node is 1 − Z for every Z > 0.06, also where the table at that position is X = 0.9 or lower
+
+- **Status:** open. The kap evaluation's finding 4d, from the 2026-08 sweeps (`docs/ROADMAP.md`); confirmed in the code. Latent: Z > 0.06 where the molecular opacity is used. Kind A for the shipped decks.
+- **In the original F77?** Yes: the table choice tests both indices, the node only `IZ` ([alex06tab.f:76](https://github.com/parallelpro/yrec/blob/6cd56739/src/alex06tab.f#L76) against [:100-104](https://github.com/parallelpro/yrec/blob/6cd56739/src/alex06tab.f#L100-L104)):
+  ```fortran
+        IF(IX.EQ.NUMX-3.AND.IZ.EQ.NUMZ-3)THEN
+        IF(IZ.EQ.NUMZ-3)THEN
+           QR(4) = 1.0D0-ZE
+  ```
+- **Now:** `build_alex06_composition_table`, the fourth table's choice at [alex06_opacity.f90:237](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/alex06/alex06_opacity.f90#L237) and its node at [:263-267](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/alex06/alex06_opacity.f90#L263-L267).
+- **What is wrong:** for Z > 0.06 (`iz = n_alex06_z − 3`) the fourth X node is 1 − Z whatever `alex06_index_x` is, but the fourth table is the X = 1 − Z table only when `alex06_index_x = n_alex06_x − 3` (X > 0.8). For X ≤ 0.8 it is the table at `alex06_grid_x(alex06_index_x + 3)`, X = 0.9 or lower, so the X interpolation places that table at the wrong abscissa.
+- **Expected behaviour, and why:** each node is the X of the table at that position.
+- **What we did:** recorded, not fixed. Proposed fix: test both indices at :263, as :237 does. Byte-identical for the shipped decks.
+
+### M226. A helium-burning core with the pure-Z table and no OPAL95, OPAL92 or LAOL89 table gets an undefined opacity with ierr 0
+
+- **Status:** open. The kap evaluation's finding 4e, from the 2026-08 sweeps; confirmed in the code. Latent: every shipped deck uses OPAL95. Kind A.
+- **In the original F77?** Yes: GETOPAC's chain has no `ELSE` either ([getopac.f:81-92](https://github.com/parallelpro/yrec/blob/6cd56739/src/getopac.f#L81-L92)).
+- **Now:** `kap_eval`'s helium-core branch, [kap_lib.f90:205-233](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/kap_lib.f90#L205-L233), and the blend after it, [:234-241](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/kap_lib.f90#L234-L241).
+- **What is wrong:** with `use_pure_z_table` and none of `use_opal95_tables`, `use_opal92_tables` and `use_laol89_tables`, at Z > 0.1 and log T > 7 the chain sets neither the interior opacity (the `intent(out)` results) nor `table_metal_fraction`, and `blend_in_z` blends undefined values toward the pure-Z table, returning them with `ierr` 0. The branch for Z < 0.1 ends in "NO OPACITY TABLE CHOSEN" and `ierr = 1`.
+- **Expected behaviour, and why:** no interior table is an error, here as in the other branch, and best refused at `kap_init` (M236).
+- **What we did:** recorded, not fixed. Proposed fix: an `else` that returns `ierr` with the "no opacity table chosen" message, and the settings check of M236. Byte-identical.
+
+### M227. The LAOL89 extrapolation tolerance is a natural log on a log10 ρ axis, while its description says log10
+
+- **Status:** open. The kap evaluation's finding 4f, from the 2026-08 sweeps; confirmed in the code. No shipped deck uses LAOL89. Kind A to correct the description; Kind B to change the code (LAOL89 decks only).
+- **In the original F77?** Yes for the code ([gtlaol.f:28](https://github.com/parallelpro/yrec/blob/6cd56739/src/gtlaol.f#L28)): `TOLL = LOG(TOLLAOL)`. The description is 2026's.
+- **Now:** `compute_laol_opacity` and `compute_pure_z_opacity`, [laol_opacity.f90:262](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/laol89/laol_opacity.f90#L262) and [:522](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/laol89/laol_opacity.f90#L522), used against log10 ρ at [:306](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/laol89/laol_opacity.f90#L306), [:317](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/laol89/laol_opacity.f90#L317), [:553](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/laol89/laol_opacity.f90#L553) and [:564](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/laol89/laol_opacity.f90#L564); the description, [controls_buffer.f90:809-810](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/controls_buffer.f90#L809-L810) (`physics.defaults` and `controls_registry.md`, inlist name `laol_z_tolerance`).
+- **What is wrong:** `log(laol_extrapolation_tolerance)` is ln, applied as a distance in log10 ρ: the default 10 allows 2.30 dex beyond a table edge. The description says "up to a distance of log10 of this value", 1 dex.
+- **Expected behaviour, and why:** the description says what the control does.
+- **What we did:** recorded, not fixed. Proposed fix: the description says "ln of this value (2.3 dex for the default 10)", byte-identical; or `log10` in the code, which moves LAOL89 runs only.
+
+### M228. The second LAOL89 table's temperatures are converted to log10 over the first table's row count
+
+- **Status:** open. The kap evaluation's finding 4g, confirmed in the code (whose comment leaves it "an R6 decision"). Latent: no shipped deck uses LAOL89, and it needs two tables with different T rows. Kind A.
+- **In the original F77?** Yes ([sulaol.f:64-68](https://github.com/parallelpro/yrec/blob/6cd56739/src/sulaol.f#L64-L68)): `DO IT=1, NUMT` / `OT2(IT) = LOG10(OT2(IT))`, then the spline loop to `NT2`.
+- **Now:** `build_laol_splines`, [laol_opacity.f90:173-179](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/laol89/laol_opacity.f90#L173-L179).
+- **What is wrong:** with `use_two_z_tables`, the loop that takes the second table's T grid to log10 runs to `laol(1)%num_t`. A second table with more rows keeps its last temperatures unconverted, and one with fewer takes log10 of rows it never read.
+- **Expected behaviour, and why:** each table's grid is converted over its own rows.
+- **What we did:** recorded, not fixed. Proposed fix: loop to `laol(2)%num_t`, and the comment goes. Byte-identical for equal grids.
+
+### M229. The Kurucz 1990 opacity reader does not bound a row's density count, and skips a malformed record silently
+
+- **Status:** open. The kap evaluation's finding 4h, confirmed in the code. Latent: no shipped deck uses Kurucz 1990. Kind A.
+- **In the original F77?** Yes: SETKRZ bounded the temperature count, not `ID`, and rereads after an error ([setkrz.f:51-63](https://github.com/parallelpro/yrec/blob/6cd56739/src/setkrz.f#L51-L63)):
+  ```fortran
+        READ(IKUR,1,ERR=110,END=120)TOUT,PRES,OKURU0,OKURU1,
+        RHO(IPUT,ID)=DENS
+        ID=ID+1
+  ```
+- **Now:** `read_kurucz_table`, [kurucz_opacity.f90:96-122](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/kurucz90/kurucz_opacity.f90#L96-L122) (the skip at [:100](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/kurucz90/kurucz_opacity.f90#L100), the store at [:120-122](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/kurucz90/kurucz_opacity.f90#L120-L122)); `kurucz_max_num_densities` = 50, [opacity_tables.f90:41](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/opacity_tables.f90#L41).
+- **What is wrong:** `density_index` grows with every record of a temperature and is never compared with `kurucz_max_num_densities`, so a table with more than 50 densities at one temperature writes past the row's arrays. A record that fails to read (`read_status > 0`) is skipped without a word.
+- **Expected behaviour, and why:** a table that does not fit, or does not parse, is an error naming the file, as the temperature count already is.
+- **What we did:** recorded, not fixed. Proposed fix: compare `density_index` with `kurucz_max_num_densities` and return `ierr`; a malformed record returns `ierr` with its line. Byte-identical.
+
+### M230. Alexander 2006's first header check prints "RUN STOPPED" and carries on, and its log R check covers 16 of 19 columns
+
+- **Status:** open. The kap evaluation's finding 4i, confirmed in the code. Latent: the shipped table passes every check (the review's `alex06_headers.py`). Kind A.
+- **In the original F77?** Yes: READALEX06's first check has its `STOP` commented out, and both log R checks run to 16 ([readalex06.f:67-71](https://github.com/parallelpro/yrec/blob/6cd56739/src/readalex06.f#L67-L71), [:75](https://github.com/parallelpro/yrec/blob/6cd56739/src/readalex06.f#L75)):
+  ```fortran
+              IF(XX.NE.XXG06(I) .OR. ZZ.NE.ZZG06(II))THEN
+                 WRITE(*,15)XXG06(I),XX,ZZG06(II),ZZ
+  C               STOP
+              DO KK=1,16
+  ```
+- **Now:** `read_alex06_tables`, the X, Z check of the main loop, [alex06_opacity.f90:73-78](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/alex06/alex06_opacity.f90#L73-L78), against the same check for the X = 1 − Z tables, [:117-123](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/alex06/alex06_opacity.f90#L117-L123); the log R checks, [:81](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/alex06/alex06_opacity.f90#L81), [:125](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/alex06/alex06_opacity.f90#L125).
+- **What is wrong:** a table whose header X or Z differs from the grid prints "ERROR IN ALEXANDER OPACITY TABLES ... RUN STOPPED" and is read on, while the same check for the last tables returns `ierr = 1`; the log R checks compare columns 1-16 of the 19 (`n_alex06_d`).
+- **Expected behaviour, and why:** one check, one outcome: a mismatched header returns `ierr`, and every column is checked.
+- **What we did:** recorded, not fixed. Proposed fix: `ierr = 1` and return at :77 (the commented `STOP` goes); both loops to `n_alex06_d`. Byte-identical for the shipped table.
+
+### M231. The Castelli/Kurucz lookup interpolates over the −999 sentinels of the tables' last row, above about 48 kK
+
+- **Status:** open. The atm evaluation's finding 5a, from the 2026-08 sweeps (recorded in `docs/MODERNIZATION_CHANGES.md`); confirmed in the shipped tables. Latent: no shipped deck uses `atm_choice` 5. Kind A for the shipped decks.
+- **In the original F77?** Yes ([surfp.f:47-51](https://github.com/parallelpro/yrec/blob/6cd56739/src/surfp.f#L47-L51)): rows above log Teff 4.55 interpolate linearly between columns NG − 1 and NG, whatever they hold.
+- **Now:** `interpolate_surface_pressure`, [kurucz_atmosphere.f90:89-114](https://github.com/parallelpro/yrec/blob/bfb50705/src/atm/tables/kurucz_atmosphere.f90#L89-L114).
+- **What is wrong:** rows above log Teff 4.5 take the top three (3-point Lagrange) or two (linear, above 4.55) log g columns without the row's `gmin_index`/`gmax_index`. In every shipped Castelli/Kurucz table checked (`atmk2004p00.tab`, `atmk2004m10.tab`) the last row, log Teff 4.699, holds −999 at log g 3.5, 4.0 and 4.5, and only log g 5.0 is valid; the rows below it hold log g 4.5 and 5.0. So once the four-row stencil reaches the last row (log Teff above the 74th row, 4.681, Teff ≈ 48 kK), one node of the T interpolation is the linear blend of −999 and the log g 5.0 value, and log P is garbage with `ierr` 0. Choice 5 has no fallback to gray.
+- **Expected behaviour, and why:** a lookup uses only tabulated values, or reports that the point is outside the table.
+- **What we did:** recorded, not fixed. Proposed fix: use each row's valid range in the 2- and 3-point branches, or refuse a stencil that reaches a row without the needed columns (an `ierr`, or a stop above the last full row). Byte-identical for the shipped decks.
+
+### M232. The Kurucz and Castelli/Kurucz lookups have no upper range check, though their header promises one
+
+- **Status:** open. The atm evaluation's finding 5b, confirmed in the code. Latent for the shipped decks (choice 3's switch to gray at log Teff 3.95 keeps the 12 Kurucz decks inside). Kind A.
+- **In the original F77?** Yes ([surfp.f:25](https://github.com/parallelpro/yrec/blob/6cd56739/src/surfp.f#L25)): `IF(TEFFL.LT.3.5D0 .OR. GL.LT.-0.5D0)THEN`, under the same comment.
+- **Now:** `interpolate_surface_pressure`: the header, [kurucz_atmosphere.f90:28-33](https://github.com/parallelpro/yrec/blob/bfb50705/src/atm/tables/kurucz_atmosphere.f90#L28-L33), the comment [:49-52](https://github.com/parallelpro/yrec/blob/bfb50705/src/atm/tables/kurucz_atmosphere.f90#L49-L52), the check [:59-71](https://github.com/parallelpro/yrec/blob/bfb50705/src/atm/tables/kurucz_atmosphere.f90#L59-L71).
+- **What is wrong:** the header says "a point more than one table step outside the table returns ierr = 1", but only log Teff < 3.5 and log g < −0.5 are refused. Above the top row or column the splines extrapolate without limit, with `ierr` 0.
+- **Expected behaviour, and why:** the check the header states, at both ends.
+- **What we did:** recorded, not fixed. Proposed fix: refuse log Teff above the last row plus one step and log g above the last column plus one step; a `test_atm` check. Byte-identical for the shipped decks.
+
+### M233. The Allard tables' low-gravity extension is four column widths, while both headers say one
+
+- **Status:** open. The atm evaluation's finding 5c, confirmed in the code. Kind A (documentation).
+- **In the original F77?** Yes: ALTABINIT's code and comment disagree the same way ([altabinit.f:68-78](https://github.com/parallelpro/yrec/blob/6cd56739/src/altabinit.f#L68-L78)): `GLmin(i) = GLs(j1) - 4D0*(GLs(j1+1) - GLs(j1))` under "one column's width less than the row minimum".
+- **Now:** `find_allard_table_bounds`, [allard_atmosphere.f90:771](https://github.com/parallelpro/yrec/blob/bfb50705/src/atm/tables/allard_atmosphere.f90#L771), against its headers, [:715-718](https://github.com/parallelpro/yrec/blob/bfb50705/src/atm/tables/allard_atmosphere.f90#L715-L718) and [:762-764](https://github.com/parallelpro/yrec/blob/bfb50705/src/atm/tables/allard_atmosphere.f90#L762-L764), and `interpolate_allard_surface`'s, [:41-46](https://github.com/parallelpro/yrec/blob/bfb50705/src/atm/tables/allard_atmosphere.f90#L41-L46).
+- **What is wrong:** a row's lowest permitted log g is four column widths below its first valid entry (the highest is one width above its last); the headers say one width at both ends, so a reader takes the low-gravity extrapolation to be four times shorter than it is.
+- **Expected behaviour, and why:** the comments describe the code; which width is meant is the authors' choice.
+- **What we did:** recorded, not fixed. Proposed fix: the headers say four widths below and one above (byte-identical), unless the authors mean one, which would move decks that reach the extension.
+
+### M234. The Kurucz lookup's general gravity search misses log g between a row's last two valid columns, and an all −999 row reads past the table
+
+- **Status:** open. The atm evaluation's finding 5d, confirmed in the code. Latent with the shipped tables (the review). Kind A.
+- **In the original F77?** Yes: G. Somers' 5/15 change bounds the loop by the row's valid columns with the same start ([surfp.f:84-87](https://github.com/parallelpro/yrec/blob/6cd56739/src/surfp.f#L84-L87), [:105-107](https://github.com/parallelpro/yrec/blob/6cd56739/src/surfp.f#L105-L107)):
+  ```fortran
+           DO K = IMINMAX(J)-3,IMIN(J),-1
+              IF(GL.LT.ATMGL(K+2).AND.GL.GE.ATMGL(K+1))THEN
+  ```
+- **Now:** `interpolate_surface_pressure`, [kurucz_atmosphere.f90:135-172](https://github.com/parallelpro/yrec/blob/bfb50705/src/atm/tables/kurucz_atmosphere.f90#L135-L172); `find_gravity_edges`, [:275-301](https://github.com/parallelpro/yrec/blob/bfb50705/src/atm/tables/kurucz_atmosphere.f90#L275-L301).
+- **What is wrong:**
+  - The loop starts at k = `gmax_index − 3` and tests log g ∈ [logg(k+1), logg(k+2)), so the interval [logg(gmax − 1), logg(gmax)] is never found in a row whose valid columns end below the top (the branch above the loop handles only log g above the table's second-to-last column); the point falls through to "use first 4 points" and is extrapolated from the row's low end.
+  - A row of all −999 has `gmin_index = ng` and `gmax_index = 0`: the loop does not run and the fall-through reads columns ng to ng + 3, past the table's 11.
+- **Expected behaviour, and why:** a log g inside a row's valid range is interpolated from its neighbours; a row without data is an error.
+- **What we did:** recorded, not fixed. Proposed fix: start the loop at `gmax_index − 2`; a row with fewer than four valid columns returns `ierr`. Byte-identical with the shipped tables.
+
+### M235. Every Allard lookup writes two lines to the run log
+
+- **Status:** open. The atm evaluation's finding 5e, confirmed in the code and in a pinned log. Kind B: the run logs of the 116 Allard decks lose the notes, among them `Test_solarGS98_allard`'s pin.
+- **In the original F77?** Yes: ALSURFP wrote the note whenever its print flag was off ([alsurfp.f:254-266](https://github.com/parallelpro/yrec/blob/6cd56739/src/alsurfp.f#L254-L266)), and ENVINT passed `LPRT.AND.LSTATM` ([envint.f:144](https://github.com/parallelpro/yrec/blob/6cd56739/src/envint.f#L144)).
+- **Now:** `interpolate_allard_surface`, [allard_atmosphere.f90:310-324](https://github.com/parallelpro/yrec/blob/bfb50705/src/atm/tables/allard_atmosphere.f90#L310-L324); `atm_get_surface_pt` passes `.false.`, [atm_lib.f90:97](https://github.com/parallelpro/yrec/blob/bfb50705/src/atm/atm_lib.f90#L97).
+- **What is wrong:** the `.not. print_to_files` branch, which is every call, writes "ALSURFP: PL,TL at T=TEFF,GL INTERPOLATED FROM ALLARD TABULATED VALUES:" and the point. `testsuite/standard/Test_solarGS98_allard.log` holds 960 such pairs, 1,920 of its 7,383 lines (26%).
+- **Expected behaviour, and why:** a successful lookup is not a run-log event; the log reports what a reader acts on.
+- **What we did:** recorded, not fixed. Proposed fix: drop the note (or put it under `solver_diagnostics()`), with atm's messages module (the plan's KA-9); the Allard pins are re-pinned in the package's message commit.
+
+### M236. kap_init and atm_init install their settings unchecked: equal Z tables give a NaN opacity, and an unknown atm_choice runs the HSRA relation
+
+- **Status:** open. The kap and atm evaluation's finding 6, confirmed in the code and corrected (below: the ramp limits). Latent: no shipped deck sets any of these. Kind A.
+- **In the original F77?** Partly. GETOPAC had the same if-chains and divisions, and an unknown KTTAU left TL stale in QATM and ENVINT ([qatm.f:48-54](https://github.com/parallelpro/yrec/blob/6cd56739/src/qatm.f#L48-L54), [envint.f:166-171](https://github.com/parallelpro/yrec/blob/6cd56739/src/envint.f#L166-L171)); the silent HSRA came with the `else` branches of [1ccc13d1](https://github.com/parallelpro/yrec/commit/1ccc13d1) (2026-08-30, ttau_lib).
+- **Now:** `kap_init`, [kap_lib.f90:411-446](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/kap_lib.f90#L411-L446), and `set_kap_settings`, a copy ([opacity_tables.f90:321-324](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/opacity_tables.f90#L321-L324)); `atm_init`, [atm_lib.f90:43-67](https://github.com/parallelpro/yrec/blob/bfb50705/src/atm/atm_lib.f90#L43-L67); `blend_in_z`, [kap_lib.f90:474-483](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/kap_lib.f90#L474-L483); the ramp, [:326-332](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/kap_lib.f90#L326-L332); `use_two_z_tables`, [kap_settings_builder.f90:49](https://github.com/parallelpro/yrec/blob/bfb50705/src/setup/kap_settings_builder.f90#L49); the T-tau `else` branches, [t_tau_relations.f90:44-46](https://github.com/parallelpro/yrec/blob/bfb50705/src/atm/t_tau_relations.f90#L44-L46), [:62-64](https://github.com/parallelpro/yrec/blob/bfb50705/src/atm/t_tau_relations.f90#L62-L64), [:77-79](https://github.com/parallelpro/yrec/blob/bfb50705/src/atm/t_tau_relations.f90#L77-L79); the banner, [derived_controls.f90:327-340](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/derived_controls.f90#L327-L340).
+- **What is wrong:** both inits copy the record and load tables without a check (`set_net_settings`, GUIDELINES' model, checks first and returns `ierr`). All of these return `ierr` 0:
+  - `use_two_z_tables` (on with the Z ramp or diffusion of Z) with equal table Zs divides 0 by 0 in `blend_in_z`, a NaN opacity. The defaults are `opal_table_z1 = opal_table_z2 = 0`, likewise for LAOL89 and Kurucz 1990 (`control.defaults:311-347`), so a deck that turns on either with one of those families and leaves the Zs gets NaN;
+  - `molecular_opacity_logt_min = _max` divides 0 by 0 in the ramp weight at that log T. Correction to the review, which says `min >= max`: with min > max the ramp branch is never taken and κ jumps from the molecular to the interior value at log T = max, without a NaN;
+  - the helium-core branch without an interior table (M226);
+  - an `atm_choice` outside 0-5 loads no table, prints no banner line (the `select case` has no default) and, since the envelope consults tables only for 3-5, integrates the atmosphere with the HSRA relation, the T-tau functions' `else`. `controls_check` does not range-check `atm_choice`.
+- **Expected behaviour, and why:** settings that cannot work are refused when installed, with a message naming the control, not met as a NaN or a different physics later.
+- **What we did:** recorded, not fixed. Proposed fix: `check_kap_settings` and `check_atm_settings`, called by the two inits and returning `ierr`: one interior table when `use_pure_z_table` is set; distinct Zs under `use_two_z_tables`; min < max; `atm_choice` in 0..5. The T-tau `else` becomes `atm_choice == 2`. Byte-identical.
+
+### M237. The run-log banner and the control's description call the pure-Z opacity table "pure C and N"; it is pure C and O
+
+- **Status:** open. The kap evaluation's finding 8, confirmed in the table's header and the pins. Kind A for the descriptions; Kind B for the banner: every shipped deck sets `use_pure_z_table`, and 35 pinned run logs carry the line.
+- **In the original F77?** Yes ([parmin.f:1263](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L1263); "PURE CN" at [:694](https://github.com/parallelpro/yrec/blob/6cd56739/src/parmin.f#L694)): `WRITE(ISHORT,*) ' USING PURE C AND N OPACITY TABLES'`. The description and the README rows are 2026's.
+- **Now:** the banner, [derived_controls.f90:341](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/derived_controls.f90#L341); the description, [controls_buffer.f90:323-324](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/controls_buffer.f90#L323-L324) (`control.defaults:176`, `controls_registry.md:81`); [kap/README.md:15](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/README.md#L15) and [laol_opacity.f90:3-6](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/laol89/laol_opacity.f90#L3-L6).
+- **What is wrong:** the shipped table, `input/opacity/atomic/lanl/PURECO.DBGLAOL`, is a "Pure mixture of equal numbers of C and O" (its first line). The banner says "opacity: pure C and N tables enabled", and the description "Use the pure C and N opacity tables ... for metal-enriched mixtures", while kap uses the table only in helium-burning cores (Z > 0.1, log T > 7). kap's README and the LAOL module's header place it at "(X = 0, Y + Z = 1)", while `kap_eval` blends toward it at Z = 1.
+- **Expected behaviour, and why:** the texts name what the table is and where it is used.
+- **What we did:** recorded, not fixed. Proposed fix: "pure C and O" in the banner and the description, "for helium-burning cores (Z > 0.1, log T > 7)" in the description, "Z = 1 (C and O)" in the README and the header. The banner's change re-pins 35 logs (the package's message commit).
+
+### M238. kap's and atm's "add a table" recipes name about half the files a new family needs
+
+- **Status:** open. The kap and atm evaluation's finding 11, traced by the review and checked against the code. Documentation. Kind A.
+- **In the original F77?** No: the READMEs are 2026's.
+- **Now:** [kap/README.md:46](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/README.md#L46) and [atm/README.md:46](https://github.com/parallelpro/yrec/blob/bfb50705/src/atm/README.md#L46); the places they leave out below.
+- **What is wrong:**
+  - kap's "Add a table family" names the module, `opacity_table`, the `use_*` flag in `kap_settings_t` and `kap_settings_from_star`, the three branches and `test_kap`. It leaves out the path field in `kap_table_paths_t` and `kap_table_paths_from_star` ([kap_settings_builder.f90:79-89](https://github.com/parallelpro/yrec/blob/bfb50705/src/setup/kap_settings_builder.f90#L79-L89)); the controls themselves (io/README §5: the flag and the path with their registry rows and settings cells); `python3 tools/gen_makefile_deps.py` (which eos/README states); where the family goes in each precedence chain; and the README row and the re-pins (`expected_test_kap.out`, `test_controls`' `pristine.txt`). The review counts about 8 hand-edited files of 15 changed, of which the recipe names 4.
+  - atm's "Add a table of model atmospheres" leaves out the path control, `atm_table_paths_t` and `atm_table_paths_from_star`; the envelope kernel's list of tabulated choices ([envelope_integration_kernel.f90:306](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/envelope/envelope_integration_kernel.f90#L306)), without which the new table is never consulted; `switch_atmosphere_choice`'s fallback ([surface_boundary.f90:136-174](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/structure/surface_boundary.f90#L136-L174)); the run-log banner ([derived_controls.f90:327-340](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/derived_controls.f90#L327-L340)); and the control's description. "Add a T-tau relation" leaves out the banner and the description, and a missed branch falls into HSRA silently (M236).
+- **Expected behaviour, and why:** a recipe a newcomer follows names every file and command, traced (the README standard).
+- **What we did:** recorded, not fixed. Proposed fix: list every file, with io/README §5 for the controls, and name where each choice number is tested; better, one atm function that says whether a choice is tabulated, used by the kernel and the boundary. Retrace both on a throwaway branch.
+
+### M239. An Allard deck must name a Kurucz atmosphere table that nothing reads, and stops if it is missing
+
+- **Status:** open. Part of the kap and atm evaluation's finding 12 (its other parts are plan items), confirmed in the code. Error path: the 116 shipped Allard decks name the table, which ships. Kind A.
+- **In the original F77?** Yes: SETUPS read the Kurucz table for KTTAU 3 or 4 ([setups.f:196](https://github.com/parallelpro/yrec/blob/6cd56739/src/setups.f#L196)), and ENVINT's KTTAU 4 branch called ALSURFP only ([envint.f:130-150](https://github.com/parallelpro/yrec/blob/6cd56739/src/envint.f#L130-L150)).
+- **Now:** `atm_init`'s load, [atm_lib.f90:51-54](https://github.com/parallelpro/yrec/blob/bfb50705/src/atm/atm_lib.f90#L51-L54); `atm_get_surface_pt`, which reads `kurucz_surface_p` for choice 3 only, [:89-97](https://github.com/parallelpro/yrec/blob/bfb50705/src/atm/atm_lib.f90#L89-L97); the fallback from 4 is gray, [surface_boundary.f90:149-158](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/structure/surface_boundary.f90#L149-L158).
+- **What is wrong:** with `atm_choice` 4, `atm_init` reads the Kurucz surface-pressure table as well as the Allard tables, but no lookup reads it: the envelope passes 4 (or 0 after the fallback) and accretion passes 4. An Allard deck whose Kurucz path is missing stops at `atm_init`; atm/README's "with the Kurucz table loaded as well" describes a load with no use.
+- **Expected behaviour, and why:** a run needs only the tables it uses.
+- **What we did:** recorded, not fixed. Proposed fix: load the Kurucz table for choice 3 only, and drop the README's phrase. Byte-identical.
+
+### M240. Stale or inexact statements in kap and atm
+
+- **Status:** open. The kap and atm evaluation's finding 13, each checked in the code. Comments and docs. Kind A.
+- **In the original F77?** Partly: the Allard comments with F77 names are the F77's; the message in `kap_eval` came with the YREC team's [5b1a5ed6](https://github.com/parallelpro/yrec/commit/5b1a5ed6) (2025-12-17), which moved GETOPAC's test from log T 7.7 to 7.0 ([getopac.f:70](https://github.com/parallelpro/yrec/blob/6cd56739/src/getopac.f#L70)), and whose companion [a8e60674](https://github.com/parallelpro/yrec/commit/a8e60674) updated only the other message; the rest is 2026's.
+- **Now:** the places below, at bfb50705.
+- **What is wrong:**
+  - [kap_lib.f90:191-193](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/kap_lib.f90#L191-L193): "Z>0.10 T > 5 X 10^7 K" under the test `log10_temperature > 7.0d0` ([:189](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/kap_lib.f90#L189)), 10⁷ K;
+  - [opal95_opacity.f90:427-428](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/opal95/opal95_opacity.f90#L427-L428): "the facade (kap_lib's kap_get) stops when its caller passes no ierr"; `kap_get`'s `ierr` is required and nothing stops;
+  - [opal95_opacity.f90:390-391](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/opal95/opal95_opacity.f90#L390-L391): "cubic spline interploation" for a 4-point Lagrange scheme; its "Desired Z > 0.1d0" is M224;
+  - [opacity_tables.f90:239-243](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/opacity_tables.f90#L239-L243): "atm/turnover/acoustic_depths.f90 ... now maps onto ... this same type"; no such file exists;
+  - [opal92_opacity.f90:39-41](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/opal92/opal92_opacity.f90#L39-L41): "the first table on the fixed unit opal92_table_unit", and [kurucz_opacity.f90:37](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/kurucz90/kurucz_opacity.f90#L37): "the controls' kurucz_table_unit"; every open uses `newunit`;
+  - routines cited as files (`build_opal92_surface_table.f90`, `kurucz.f90`, `read_kurucz_tables.f90`, `read_laol_tables.f90`, `compute_alex06_opacity.f90`, ...): [opal92_opacity.f90:34](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/opal92/opal92_opacity.f90#L34), [kurucz_opacity.f90:34](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/kurucz90/kurucz_opacity.f90#L34), [:141-143](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/kurucz90/kurucz_opacity.f90#L141-L143), [laol_opacity.f90:154-155](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/laol89/laol_opacity.f90#L154-L155), [:455](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/laol89/laol_opacity.f90#L455), [alex06_opacity.f90:160-162](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/alex06/alex06_opacity.f90#L160-L162), [:283](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/alex06/alex06_opacity.f90#L283); in [conductive_opacity.f90:80-83](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/conductive/conductive_opacity.f90#L80-L83) `condopacp.f90` and `kap_get` (the caller is `kap_eval`), and at [:238](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/conductive/conductive_opacity.f90#L238) "condall.d" for the shipped `condall06.d`;
+  - [kap/README.md:11](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/README.md#L11) presents `kap_eval` as interface, which `check_boundaries` calls domain-internal; [:19](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/README.md#L19) lists `hunt` among Potekhin's routines in the conductive module (it is `numerics_lib`'s); §2 ([:23-29](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/README.md#L23-L29)) leaves out the error for a Z off the single table ([kap_lib.f90:243-252](https://github.com/parallelpro/yrec/blob/bfb50705/src/kap/kap_lib.f90#L243-L252)) and that OPAL95's fixed-Z table is at `opal95_single_table_z`, not the envelope Z;
+  - [tools/check_boundaries.py:64-67](https://github.com/parallelpro/yrec/blob/bfb50705/src/tools/check_boundaries.py#L64-L67): two contradictory comments ("kap_get_r is the ... variant of kap_get"; "kap_get is the ... (the former kap_get_r)");
+  - [allard_atmosphere.f90:30-33](https://github.com/parallelpro/yrec/blob/bfb50705/src/atm/tables/allard_atmosphere.f90#L30-L33): it "returns Log(P) ... as well as Log(P) and Log(T) at Tau = 100"; it returns one pair (the τ = 100 one with `allard_use_tau100`); the extension widths are M233, and the Kurucz header's range claim M232;
+  - F77 unit and flag names in allard_atmosphere's comments: LPRT, ISHORT and IMODPT ([:111](https://github.com/parallelpro/yrec/blob/bfb50705/src/atm/tables/allard_atmosphere.f90#L111)), KTTAU ([:130-133](https://github.com/parallelpro/yrec/blob/bfb50705/src/atm/tables/allard_atmosphere.f90#L130-L133)), LAlFail ([:167](https://github.com/parallelpro/yrec/blob/bfb50705/src/atm/tables/allard_atmosphere.f90#L167)), FALLARD and IOATMA ([:393](https://github.com/parallelpro/yrec/blob/bfb50705/src/atm/tables/allard_atmosphere.f90#L393)).
+- **Expected behaviour, and why:** comments describe the code as it is now (`docs/GUIDELINES.md`, Code style rule 5).
+- **What we did:** recorded, not fixed. Proposed fix: each statement corrected in today's names. Byte-identical.
+
+### M241. Semiconvection evaluates zone 1 whatever it is: below the envelope when there is no convective core, and at stale bounds when there is no convection zone
+
+- **Status:** open. The convection evaluation's finding 1, confirmed in the code. No pinned deck reaches it: the configuration matrix's `cm_semiconvection` is fully convective for all its models (M255), and the two UpperMS sample decks that set `use_semiconvection` are not pinned. Kind B: the results of decks with semiconvection and no convective core (or no convection zone) move.
+- **In the original F77?** No. The import's SCONVEC looped over every zone ([sconvec.f:54](https://github.com/parallelpro/yrec/blob/6cd56739/src/sconvec.f#L54), `DO 210 I = 1,NZONE`), so it worked below envelopes by design and did nothing with NZONE = 0. The core-only switch came with the YREC team's [a8e60674](https://github.com/parallelpro/yrec/commit/a8e60674) (2025-12-17, "Toggles now allow for semi-convection"), without a test that zone 1 is a core:
+  ```fortran
+  c$$$      DO 210 I = 1,NZONE
+        L_ONLY_CORE = .TRUE.
+        IF(L_ONLY_CORE)THEN
+           ILOOP = 1
+  ```
+- **Now:** `extend_by_semiconvection`: the switch, [semiconvection.f90:69-71](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/semiconvection.f90#L69-L71), the loop's bound, [:106-113](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/semiconvection.f90#L106-L113), the zone's kind, [:119-133](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/semiconvection.f90#L119-L133), and its edge, [:141-143](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/semiconvection.f90#L141-L143); `find_convection_zones`' return without a convection zone, which leaves `mixed_zone_bounds` as it was, [convection_zones.f90:116-127](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/convection_zones.f90#L116-L127); the call and the homogenization after it, [composition_step.f90:139-153](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/step/composition_step.f90#L139-L153); [convection/README.md:20](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/README.md#L20).
+- **What is wrong:** `only_check_core` sets the loop to zone 1 whatever zone 1 is, and whatever the zone count.
+  - With no convection zone (`num_zones_mixed = 0`), `find_convection_zones` returns before it writes `s%mixed_zone_bounds`, so semiconvection evaluates, and may move, an edge an earlier call left, and step 5 homogenizes the moved bounds. With the bounds still zero, zone 1 counts as intermediate and its lower edge reads `luminosity_lsun(-1)`.
+  - With no convective core, zone 1 is the envelope (or an intermediate zone): the downward branch computes semiconvection below its base and the extended bounds are homogenized, while the header (:69-70, "only ever evaluated at the convective core") and README.md:20 ("at the edge of the convective core") say core only. The review's example: `cm_semiconvection` run past its twelfth model, once its 1 Msun pre-main-sequence star forms a radiative core.
+- **Expected behaviour, and why:** semiconvection acts where the header says, and a model without a convection zone has no edge to extend.
+- **What we did:** recorded, not fixed. Proposed fix: return when `num_zones_mixed < 1`, and with `only_check_core` also when `mixed_zone_bounds(1,1) /= 1`; or, if the authors want envelope semiconvection (as SCONVEC had before a8e60674), say so in the header and README. A `test_convection` case for each (with M255's semiconvection test).
+
+### M242. With starspots, the convective gradient's T and P derivatives use the unspotted radiative gradient and leave out the contrast's own T dependence
+
+- **Status:** open. The convection evaluation's finding 2, confirmed in the code and corrected (the factor, below). Related to O1, which lists the Jacobian's other gaps but not this one. Jacobian only: the converged model is unchanged, but Newton's direction is off in every superadiabatic shell of the three spotted testsuite decks (`Test_m0p1feh+0p0GS98_spot25_ZAMS` and the 0.3 and 1.0 Msun ones; not pinned), low-mass stars where O3 says convergence is fragile. Kind B: their iteration counts and round-off move.
+- **In the original F77?** Yes. TPGRAD divides DELR by the spot factor in DELDEL and keeps DELR in the derivatives ([tpgrad.f:88-95](https://github.com/parallelpro/yrec/blob/6cd56739/src/tpgrad.f#L88-L95), [:163-164](https://github.com/parallelpro/yrec/blob/6cd56739/src/tpgrad.f#L163-L164)):
+  ```fortran
+           DELDEL = DELR/(SPOTF * DEEPX**4.0 + 1.0 - SPOTF) - DELA
+  	 QDDELT = ((-4.0D0 + TEMPOT)*DELR - QDELAT)/DELDEL
+  	 QDDELP = ((+1.0D0 + TEMPOP)*DELR - QDELAP)/DELDEL
+  ```
+- **Now:** `compute_temperature_gradients`: the spotted ∇_rad − ∇_ad, [temperature_gradients.f90:156-166](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/temperature_gradients.f90#L156-L166); its derivatives, [:234-235](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/temperature_gradients.f90#L234-L235), and the gradient's, [:251-256](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/temperature_gradients.f90#L251-L256); `test_convection`'s spot cases, which pin the derivatives without a finite-difference check, [test_convection.f90:149-160](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/test/test_convection.f90#L149-L160).
+- **What is wrong:** with a filling factor f and a contrast x, Δ∇ = ∇_rad/S − ∇_ad with S = f x⁴ + 1 − f. `qddelt` and `qddelp` take the ∇_rad terms as ((−4 + d ln κ/d ln T) ∇_rad − ...)/Δ∇ where ∇_rad/S belongs, and with `spot_depth_varies` (x = 1 − (1 − x_s) T_eff,u/T, so dx/d ln T = 1 − x) they leave out −(∇_rad/S) d ln S/d ln T, with d ln S/d ln T = 4 f x³ (1 − x)/S. Correction to the review, which took x = 0.8: the three decks set f = 0.25 and a surface contrast of 0.85, so the ∇_rad terms are too small by 1/S = 1.14 at x = 0.85, falling toward 1 with depth, and the missing term is 0.10 there (x = 0.8 is `test_convection`'s contrast, at f = 0.3). `test_structure` checks the partials against finite differences without spots.
+- **Expected behaviour, and why:** the Jacobian differentiates the residual it solves, so that Newton converges quadratically (O1's reasoning).
+- **What we did:** recorded, not fixed. Proposed fix: ∇_rad/S in both terms, the d ln S/d ln T term when the contrast varies with depth, and a `test_convection` check of the three derivatives against centred differences with spots on (constant and depth-dependent contrast); or record it under O1. Changes the spotted decks' iteration counts and round-off.
+
+### M243. The original settling routines' Noerdlinger term of dD1/dX has the wrong sign, and dD2/dX lacks it
+
+- **Status:** open. The element_diffusion evaluation's finding 3(a), confirmed in the code (docs/ROADMAP.md lists it, unverified, among the 2026 agent findings). No deck uses the original routines (element_diffusion/README.md §3), so only `test_element_diffusion`'s pins see it (with M244-M246, M33 and O21, the defects of those routines). Kind B: those pins move.
+- **In the original F77?** Yes ([setup_grsett.f:146-150](https://github.com/parallelpro/yrec/blob/6cd56739/src/setup_grsett.f#L146-L150), [:274-279](https://github.com/parallelpro/yrec/blob/6cd56739/src/setup_grsett.f#L274-L279)):
+  ```fortran
+           IF(ILAMBDA.EQ.2)  THEN
+             QCOD1X(I)=QCOD1X(I) + COD1(I)*1.5D0/
+       *     (LN_LAMBDA*(3.0D0*X+1.0D0))
+  ```
+- **Now:** `gravitational_settling_setup`: Noerdlinger's lnΛ, [original_settling.f90:503-507](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/original_settling.f90#L503-L507); the prefactor's 1/lnΛ, [:516](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/original_settling.f90#L516); D2's X derivative, [:534-536](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/original_settling.f90#L534-L536); the term, [:640-645](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/original_settling.f90#L640-L645).
+- **What is wrong:** with `coulomb_log_choice = 2`, lnΛ = −19.7 + ½ ln(0.75X + 0.25) − ½ ln ρ + 1.5 ln T, so d lnΛ/dX = 1.5/(3X + 1). D1 and D2 carry the prefactor's 1/lnΛ, so each X derivative gains −D·1.5/((3X + 1) lnΛ). The code adds +D1·1.5/(lnΛ(3X + 1)) to dD1/dX and nothing to dD2/dX. The derivatives correct the midpoint coefficients for the abundance change (the Lax-Wendroff step's D1, the iteration's D2), so the step's result moves. Found while checking this entry: the Thoul branch multiplies D1 and D2 by `constant_mixing_coeff` but not their X derivatives ([original_settling.f90:607-612](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/original_settling.f90#L607-L612); the F77's the same, [setup_grsett.f:241-244](https://github.com/parallelpro/yrec/blob/6cd56739/src/setup_grsett.f#L241-L244)), so with the factor ≠ 1 the derivatives are not the coefficients'.
+- **Expected behaviour, and why:** the derivative of the coefficient the code uses.
+- **What we did:** recorded, not fixed. Proposed fix: −D1·1.5/(lnΛ(3X + 1)) in dD1/dX and the same term for D2, with a `test_element_diffusion` check of both against finite differences in X; or retire the original routines with the authors' agreement (the plan's element_diffusion round).
+
+### M244. With Noerdlinger's or Loeb's Coulomb logarithm and the full Thoul et al. solution, the original settling routines divide by lnΛ twice
+
+- **Status:** open. The element_diffusion evaluation's finding 3(b), confirmed in the code; the factor recomputed (below). Only `test_element_diffusion`'s pins see it (M243). Kind B: those pins move.
+- **In the original F77?** Yes. SETUP_GRSETT gives every pair the variable logarithm, divides the prefactor by it, and its time unit carries the 2.2 ([setup_grsett.f:121-122](https://github.com/parallelpro/yrec/blob/6cd56739/src/setup_grsett.f#L121-L122), [:146-159](https://github.com/parallelpro/yrec/blob/6cd56739/src/setup_grsett.f#L146-L159), [:221-228](https://github.com/parallelpro/yrec/blob/6cd56739/src/setup_grsett.f#L221-L228)):
+  ```fortran
+  C     INCLUDES FACTOR OF 2.2 FROM LN LAMBDA
+        CON_TIME=2.7D13*CSECYR_BAH
+           FAC=FGRY*HRU(I)**2*HTU(I)**2.5D0/LN_LAMBDA
+                          TCL(II,JJ) = LN_LAMBDA
+  ```
+- **Now:** [original_settling.f90:503-516](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/original_settling.f90#L503-L516) (the logarithm and the prefactor), [:585-597](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/original_settling.f90#L585-L597) (the pairs and the Thoul call), [:617](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/original_settling.f90#L617) (the metals' prefactor); the resistance coefficients ∝ the pair's logarithm, [thoul_solver.f90:135-138](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/thoul_solver.f90#L135-L138); the time unit, [bahcall_loeb_units.f90:26-28](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/bahcall_loeb_units.f90#L26-L28).
+- **What is wrong:** with `coulomb_log_choice` 2 or 3, `use_thoul_diffusion` on and `use_thoul_fit` off, every pair's `coulomb_log(i,j)` is lnΛ, so Thoul et al.'s coefficients scale as 1/lnΛ; the prefactor divides by lnΛ again, and the Bahcall & Loeb time unit carries one 2.2. So helium and the metals settle at 2.2/lnΛ of their rate. Recomputed for the Sun's radiative interior (at the centre and at ρ = 10 g/cm³, T = 10⁷ K): lnΛ is 2.5-3.2 by Noerdlinger's formula and 3.2-3.9 by Loeb's, so the factor is 0.55-0.9 (the review: about 0.8, at lnΛ ≈ 2.7). Choices 1 and 4 (2.2 in the prefactor; with 4 each pair's own logarithm in the solve), the Thoul fit and the older analytic coefficients are consistent with the unit.
+- **Expected behaviour, and why:** the logarithm enters the rate once, as 1/lnΛ.
+- **What we did:** recorded, not fixed. Proposed fix: with the full solution and a variable logarithm, divide the prefactor by 2.2, as choice 4 does (the pairs carry lnΛ); a `test_element_diffusion` check that choices 1 and 2 agree when lnΛ = 2.2; or retire the original routines (M243).
+
+### M245. The original settling iteration stores each midpoint's abundance change one slot off
+
+- **Status:** open. The element_diffusion evaluation's finding 3(c), confirmed in the code. Only `test_element_diffusion`'s pins see it (M243). Kind B: those pins move.
+- **In the original F77?** Yes. GRSETT stores the change between points I−1 and I at EX_H(I), and GET_IMP_DIFFCO reads ECOD2_H(I) as the midpoint between I and I+1 ([grsett.f:159-161](https://github.com/parallelpro/yrec/blob/6cd56739/src/grsett.f#L159-L161), [get_imp_diffco.f:12-23](https://github.com/parallelpro/yrec/blob/6cd56739/src/get_imp_diffco.f#L12-L23)):
+  ```fortran
+           DO 30 I = 2,NPT
+              EX_H(I) = 0.5D0*(EX(I)+EX(I-1)-EX_P(I)-EX_P(I-1))
+           B(I) = 1.0D0 + ALPHA(I)*(ECOD2_H(I-1)+ECOD2_H(I))       ! get_imp_diffco.f
+  ```
+- **Now:** the store, [original_settling.f90:228-232](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/original_settling.f90#L228-L232); `implicit_diffusion_coeffs`, [diffusion_scheme.f90:160-179](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/diffusion_scheme.f90#L160-L179); mid(1)'s value from the Lax-Wendroff half step, [original_settling.f90:174-176](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/original_settling.f90#L174-L176); microdiff's copy of the loop, [microdiff_run.f90:154-158](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/microdiff_run.f90#L154-L158).
+- **What is wrong:** `implicit_diffusion_coeffs` corrects `diffusion_coeff_mid(i)`, the coefficient between points i and i+1 (row i's diagonal uses i−1 and i), with `delta_abundance_mid(i)`; the iteration stores at index i the change between points i−1 and i. So with the original routines' nonzero dD2/dX each midpoint coefficient is corrected with its inner neighbour's change, and mid(1) is never refreshed: it keeps the Lax-Wendroff half step's abundance, not a change. In microdiff the same loop is harmless, since its derivatives are zero (M253).
+- **Expected behaviour, and why:** each coefficient is corrected with the change at its own midpoint.
+- **What we did:** recorded, not fixed. Proposed fix: store the change at index i−1 (`do i = 1, n-1: mid(i) = ½(X(i)+X(i+1)−...)`), with a `test_element_diffusion` check; or retire the original routines (M243).
+
+### M246. Both settling solvers' convergence tests take the largest signed change
+
+- **Status:** open. The element_diffusion evaluation's finding 3(d), confirmed in the code. In the original routines only `test_element_diffusion`'s pins see it (M243); in microdiff the pass it cuts short would repeat an identical solve (M253), so its results do not move. Kind B: the original routines' pins move.
+- **In the original F77?** Yes ([grsett.f:179-187](https://github.com/parallelpro/yrec/blob/6cd56739/src/grsett.f#L179-L187), [microdiff_run.f:137-143](https://github.com/parallelpro/yrec/blob/6cd56739/src/microdiff_run.f#L137-L143)):
+  ```fortran
+           DXMAX = 0.0D0
+              DX = EX(I)-EX_P(I)
+              IF(DX.GT.DXMAX)THEN
+  ```
+- **Now:** [original_settling.f90:258-266](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/original_settling.f90#L258-L266) with the exit at [:272](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/original_settling.f90#L272); [microdiff_run.f90:186-194](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/microdiff_run.f90#L186-L194) with the exit at [:200](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/microdiff_run.f90#L200).
+- **What is wrong:** the largest change starts at 0 and takes a correction only when it is larger, signed, so an iteration whose corrections are all negative counts as converged at once (0 < tolerance), and the "FAILED TO CONVERGE" warning cannot fire for it.
+- **Expected behaviour, and why:** convergence is |correction| below the tolerance, whatever its sign.
+- **What we did:** recorded, not fixed. Proposed fix: `abs(dx)` in both tests.
+
+### M247. Both settling pipelines search only the first num_eq_points model zones for the first midpoint, and extrapolate from inside a convective core beyond them
+
+- **Status:** open. The element_diffusion evaluation's finding 4, confirmed in the code. Latent: it needs the diffusion region's first zone (the top of a convective core) at or beyond the equal grid's point count; whether a shipped settling deck reaches it was not measured (the review judged not, from the decks' structure). Kind A: byte-identical wherever the search succeeds today.
+- **In the original F77?** Yes ([microdiff_mte.f:59-62](https://github.com/parallelpro/yrec/blob/6cd56739/src/microdiff_mte.f#L59-L62), [model_to_equal.f:55-58](https://github.com/parallelpro/yrec/blob/6cd56739/src/model_to_equal.f#L55-L58)):
+  ```fortran
+        DO 15 IU=2,NPT
+           IF(HRU(IU).GE.ER_H(1))GOTO 17
+     15 CONTINUE
+        IU=NPT
+  ```
+- **Now:** `map_microdiff_to_equal_grid`, [microdiff_mapping.f90:82-97](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/microdiff_mapping.f90#L82-L97), whose point count comes from the spacing of the region's outer 20 zones, [:51-66](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/microdiff_mapping.f90#L51-L66); `model_to_equal`, [settling_grid.f90:91-100](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/settling_grid.f90#L91-L100).
+- **What is wrong:** the first midpoint, at r(zone_begin) + ½Δr_grid, is interpolated between model zones iu − 1 and iu, with iu searched over 2 .. num_eq_points, the equal grid's point count rather than the region's zones. Every zone up to zone_begin lies below that radius, so when zone_begin ≥ num_eq_points the search finds nothing, iu = num_eq_points, and midpoint 1's mass, ρ, T, d ln P/dr, ∇, X, Y, Z (and Li, Be) are extrapolated linearly from two zones deep inside the core. Where the search succeeds it finds the zone a search from zone_begin + 1 finds.
+- **Expected behaviour, and why:** the first midpoint lies inside the region, so it is interpolated from the region's own zones.
+- **What we did:** recorded, not fixed. Proposed fix: search zone_begin + 1 .. zone_end in both routines, and a `test_element_diffusion` case with a convective core (zone_begin > 1).
+
+### M248. find_convection_zones uses 11 of its 12 zone slots and drops the zones beyond without an error
+
+- **Status:** open. The convection evaluation's finding 5, confirmed in the code. Latent: no tracked output carries the message. Kind A.
+- **In the original F77?** Yes ([convec.f:72-74](https://github.com/parallelpro/yrec/blob/6cd56739/src/convec.f#L72-L74)):
+  ```fortran
+           IF(J.LT.12) GO TO 11
+           WRITE(ISHORT,661)
+    661    FORMAT(' -----TOO MANY MIX ZONES')
+  ```
+- **Now:** [convection_zones.f90:105-113](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/convection_zones.f90#L105-L113), the edges [:152-157](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/convection_zones.f90#L152-L157); `max_convective_zones = 12`, [star_info_lib.f90:85](https://github.com/parallelpro/yrec/blob/bfb50705/src/state/star_info_lib.f90#L85); `homogenize_convection_zones`' own list, [convection_zones.f90:469](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/convection_zones.f90#L469) and [:492-502](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/convection_zones.f90#L492-L502).
+- **What is wrong:** a zone is recorded only while `j_idx < size(mixed_zone_bounds, 1)` after it, so the twelfth slot is never used: the eleventh zone's end writes "TOO MANY MIX ZONES" and leaves the scan, even when no zone follows. From a twelfth zone on, every zone, the surface one included, is dropped with ierr 0; `envelope_cz_edge` then becomes `num_zones` (no envelope) for settling, the Li/Be burn and the rezone. `homogenize_convection_zones` scans the flags again into its own 24 slots (12 zones) and drops the rest without a word.
+- **Expected behaviour, and why:** the array's size is the limit, and a model beyond it is an error the caller sees (`docs/GUIDELINES.md`, Code style rule 7).
+- **What we did:** recorded, not fixed. Proposed fix: record up to `size(mixed_zone_bounds, 1)` zones, return `ierr` beyond it (or merge the innermost pair), and size homogenize's list from `max_convective_zones`.
+
+### M249. The adiabatic overshoot region outlives a model without convection zones, and can be an intermediate zone's
+
+- **Status:** open. The convection evaluation's finding 6, confirmed in the code. Latent: no shipped deck sets `adiabatic_overshoot_active` or `intermediate_overshoot_active` (every deck that names them, 528, sets them false). Kind B in principle; no deck moves.
+- **In the original F77?** Yes. OVERSH resets IOV1 and IOV2 at entry and sets them in every downward branch, and CONVEC calls it only with an overshoot switch on, after its own early returns ([oversh.f:25-26](https://github.com/parallelpro/yrec/blob/6cd56739/src/oversh.f#L25-L26), [:108-109](https://github.com/parallelpro/yrec/blob/6cd56739/src/oversh.f#L108-L109), [convec.f:122-123](https://github.com/parallelpro/yrec/blob/6cd56739/src/convec.f#L122-L123)):
+  ```fortran
+        IOV1 = -1
+        IOV2 = -1
+              IOV2 = ID
+              IOV1 = MXZONE(I,1)
+  ```
+- **Now:** `extend_by_overshoot`'s reset, [convection_zones.f90:258-261](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/convection_zones.f90#L258-L261), and its store in the downward branch, which envelope and intermediate zones share, [:298-329](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/convection_zones.f90#L298-L329), [:355-357](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/convection_zones.f90#L355-L357); `find_convection_zones`' returns before it, with no convection zone ([:116-127](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/convection_zones.f90#L116-L127)) and for a fully convective model ([:138-146](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/convection_zones.f90#L138-L146)), and its call only with a switch on ([:161-165](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/convection_zones.f90#L161-L165)); the readers, [shell_physics.f90:122](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/step/shell_physics.f90#L122) and [structure_equations.f90:169](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/structure/structure_equations.f90#L169), and the gate, [temperature_gradients.f90:118-120](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/temperature_gradients.f90#L118-L120); the region "below the envelope", [convection/README.md:39](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/README.md#L39), [star_info_lib.f90:670-679](https://github.com/parallelpro/yrec/blob/bfb50705/src/state/star_info_lib.f90#L670-L679).
+- **What is wrong:**
+  - The region (`s%envelope_overshoot_bottom_index`, `_top_index`) is reset only inside `extend_by_overshoot`. A model with no convection zone, or a fully convective one, returns before it and keeps the previous model's region, so with `adiabatic_overshoot_active` its radiative shells there take ∇_ad.
+  - The region is set by any zone's downward overshoot, the last processed winning. With intermediate overshoot on and envelope overshoot off, it is an intermediate zone's region, which the README and the members describe as below the envelope.
+- **Expected behaviour, and why:** the adiabatic region is this model's overshoot below its surface convection zone, or none.
+- **What we did:** recorded, not fixed. Proposed fix: set both to −1 on `find_convection_zones`' early returns and when no overshoot switch is on, and store them only for the zone that reaches the surface; a `test_convection` case for each.
+
+### M250. microdiff scales the light elements' settling by the metals' factor settling_z_factor
+
+- **Status:** open. The element_diffusion evaluation's finding 7, confirmed in the code. Latent in the shipped decks: every deck sets the factor to 1 (511 inlists and 17 legacy decks); a Monte Carlo run that samples it (M151) moves Li and Be with it. Kind A to document; Kind B to change (Monte Carlo runs that sample the factor).
+- **In the original F77?** No. The import's MICRODIFF_COD applies no factor ([microdiff_cod.f:112-113](https://github.com/parallelpro/yrec/blob/6cd56739/src/microdiff_cod.f#L112-L113), with a commented-out per-light-element `FGRLI(KK)`). The YREC team's [224c9f0d](https://github.com/parallelpro/yrec/commit/224c9f0d) (2026-01-26, "Made FGRY and FGRZ work with new diffusion routines") added it by column, and column 3 serves the metals and the light elements:
+  ```fortran
+           IF(J.EQ.3)THEN
+              FAC=FGRZ*HRU_I**2*HTU_I**2.5D0/LN_LAMBDA
+  ```
+- **Now:** [microdiff_coefficients.f90:152-160](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/microdiff_coefficients.f90#L152-L160); the light elements diffused in column 3, [microdiff_driver.f90:226-235](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/microdiff_driver.f90#L226-L235); the description, [controls_buffer.f90:1141-1143](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/controls_buffer.f90#L1141-L1143).
+- **What is wrong:** Li6, Li7 and Be9 settle at `settling_z_factor` times their rate. The control's description ("the factor on the metals' settling coefficients") and the README do not say so. The unscaled value set first (:154) is dead: every call is column 1 or 3.
+- **Expected behaviour, and why:** a factor reaches what its description names; whether the light elements should share the metals' factor is the authors' choice.
+- **What we did:** recorded, not fixed. Proposed fix (the authors' choice): scale only the metals' call, passing the factor in from `microdiff`; or say in the description and the README that it reaches Li and Be (M258).
+
+### M251. diffuse_elements' diffuse_helium is always true, so the documented case of metals settling without helium never happens
+
+- **Status:** open. The element_diffusion evaluation's finding 8, confirmed in the code. Documentation of a case no call reaches; the unset gradient it would read is latent. Kind A.
+- **In the original F77?** Partly. MIX called MICRODIFF only under LDIFY, and MICRODIFF tested LDIFY again ([mix.f:377-379](https://github.com/parallelpro/yrec/blob/6cd56739/src/mix.f#L377-L379), [:419-420](https://github.com/parallelpro/yrec/blob/6cd56739/src/mix.f#L419-L420), [microdiff.f:115](https://github.com/parallelpro/yrec/blob/6cd56739/src/microdiff.f#L115)), so its branch was dead too; the statements that the metals settle regardless came with [ce7648e2](https://github.com/parallelpro/yrec/commit/ce7648e2) (2026-10-12).
+- **Now:** the argument and its description, [element_diffusion_lib.f90:29-31](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/element_diffusion_lib.f90#L29-L31), [:48](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/element_diffusion_lib.f90#L48); microdiff's test, [microdiff_driver.f90:167](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/microdiff_driver.f90#L167); the callers, which settle only while `settling_active` and pass it, [composition_step.f90:161-163](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/step/composition_step.f90#L161-L163), [:262-265](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/step/composition_step.f90#L262-L265), [:304-307](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/step/composition_step.f90#L304-L307), and [mid_timestep_model.f90:462-465](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/mid_timestep_model.f90#L462-L465), [:483-486](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/mid_timestep_model.f90#L483-L486), [:571-575](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/mid_timestep_model.f90#L571-L575); the hydrogen gradient only the hydrogen call writes, [microdiff_coefficients.f90:212-217](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/microdiff_coefficients.f90#L212-L217); [element_diffusion/README.md:5](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/README.md#L5).
+- **What is wrong:** both callers call `diffuse_elements` only while `s%settling_active` is true, and pass that flag; the original routines ignore it. So "the metals and light elements settle regardless" (the header) and README.md:5's "two values that change within a card" describe a case no call makes. If it were made, the metal and light-element calls would read `hydrogen_dlnc_dr`, which only the hydrogen call writes: an unset local of `microdiff` (M33's class).
+- **Expected behaviour, and why:** an argument that can only be true is no argument, and the docs describe the calls that happen.
+- **What we did:** recorded, not fixed. Proposed fix: drop the argument and microdiff's branch (byte-identical), and the two statements; or, if metals settling without helium is wanted, zero the gradient and test the case.
+
+### M252. microdiff_grid's light-element array has a literal 3 rows, not species_table's count
+
+- **Status:** open. The element_diffusion evaluation's finding 9, confirmed in the code. Latent: a trap for the next light element. Kind A.
+- **In the original F77?** No. MICRODIFF_MTE sized ELI(NLIGHT,JSON) from its argument ([microdiff_mte.f:15-20](https://github.com/parallelpro/yrec/blob/6cd56739/src/microdiff_mte.f#L15-L20)); the literal came with the type, [f2d05f1e](https://github.com/parallelpro/yrec/commit/f2d05f1e) (2026-10-12).
+- **Now:** `microdiff_grid`, [microdiff_mapping.f90:15-24](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/microdiff_mapping.f90#L15-L24), written up to `num_light` at [:99-101](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/microdiff_mapping.f90#L99-L101) and below; `num_light_diffused` and the rows, [species_table.f90:46-55](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/species_table.f90#L46-L55); `num_light = num_light_diffused`, [microdiff_driver.f90:78](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/microdiff_driver.f90#L78).
+- **What is wrong:** species_table presents the light elements as a table (a count and one row each), so a newcomer adding a fourth (B11, say) raises the count and adds the row; `map_microdiff_to_equal_grid` and `microdiff_etm` then write `eq%light(4,i)` past the component's end, without a bounds check in a release build.
+- **Expected behaviour, and why:** a size is written once (`docs/GUIDELINES.md`, Code style rule 2).
+- **What we did:** recorded, not fixed. Proposed fix: `light(num_light_diffused, json)`. Byte-identical.
+
+### M253. microdiff's "iteration on the diffusion coefficients" repeats one identical solve
+
+- **Status:** open. The element_diffusion evaluation's finding 10, confirmed in the code. Every settling deck runs it (microdiff). Kind A: solving once is byte-identical.
+- **In the original F77?** Yes. MICRODIFF_RUN zeroes the derivative inside its loop and solves again ([microdiff_run.f:111-133](https://github.com/parallelpro/yrec/blob/6cd56739/src/microdiff_run.f#L111-L133)):
+  ```fortran
+              EQCOD2X_H(I) = 0.0
+           CALL GET_IMP_DIFFCO(ALPHA,ECOD2_H,ED_H,EQCOD2X_H,A,B,C,NPT)
+           CALL TRIDIAG_GS(A,B,C,ED_PRIME,NPT,ED)
+  ```
+- **Now:** `run_microdiff`'s loop, [microdiff_run.f90:151-210](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/microdiff_run.f90#L151-L210); the correction that adds 0, [diffusion_scheme.f90:160-166](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/diffusion_scheme.f90#L160-L166); microdiff's header, "the implicit scheme iterates on the diffusion coefficients", [microdiff_driver.f90:34-37](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/microdiff_driver.f90#L34-L37); the two controls, [controls_buffer.f90:1144-1147](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/controls_buffer.f90#L1144-L1147).
+- **What is wrong:** `run_microdiff` passes zero derivatives, so `implicit_diffusion_coeffs` adds 0 to D2 and every pass solves the same tridiagonal system for the same right-hand side. Iteration 1's "change" is the implicit step itself, and iteration 2's is 0. So `settling_tolerance` and `settling_num_iterations`, described as the solver's tolerance and iteration limit, decide only whether a second identical solve runs (two per species per sub-step at the defaults, 1e-8 and 10), and with `settling_num_iterations = 1` "MICRODIFF FAILED TO CONVERGE" prints whenever the step changes an abundance by more than the tolerance (and, with M246's signed test, never when every change is negative).
+- **Expected behaviour, and why:** a loop that cannot change its answer is one solve, and controls are described by what they do.
+- **What we did:** recorded, not fixed. Proposed fix: solve once in `run_microdiff` (byte-identical); the header, the two descriptions and the README say that the iteration and its controls act only in the original routines.
+
+### M254. Convection's run-log formats cannot hold their values
+
+- **Status:** open. The convection evaluation's finding 11, confirmed by writing the formats on a scratch build (gfortran). Correction to the review, which calls it Kind A: the "MIXED REGIONS" lines with the stray `[` are in all 12 pinned testsuite logs (`testsuite/standard/`; 5,406 such lines in `Test_solarGS98_base.log`) and in `test_convection`'s pin, so that format's fix is Kind B (pinned text); the cubic's and the merges' formats are Kind A (no pinned log holds them).
+- **In the original F77?** Yes, all ([tpgrad.f:135-136](https://github.com/parallelpro/yrec/blob/6cd56739/src/tpgrad.f#L135-L136), [convec.f:131-134](https://github.com/parallelpro/yrec/blob/6cd56739/src/convec.f#L131-L134), [oversh.f:136-140](https://github.com/parallelpro/yrec/blob/6cd56739/src/oversh.f#L136-L140), [sconvec.f:222-223](https://github.com/parallelpro/yrec/blob/6cd56739/src/sconvec.f#L222-L223), [:235-237](https://github.com/parallelpro/yrec/blob/6cd56739/src/sconvec.f#L235-L237)):
+  ```fortran
+     20 FORMAT(' -----CUBIC NON-CONVERGENCE(PL,TL,CAPPA,CP,QDT)='
+       *       ,2F10.6/1P3E12.6)
+  ```
+- **Now:** [temperature_gradients.f90:208-211](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/temperature_gradients.f90#L208-L211); [convection_zones.f90:174-178](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/convection_zones.f90#L174-L178), [:385-392](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/convection_zones.f90#L385-L392); [semiconvection.f90:306-310](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/semiconvection.f90#L306-L310), [:320-325](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/semiconvection.f90#L320-L325).
+- **What is wrong:**
+  - `1p3e12.6` leaves no room for a sign or a separator: in "CUBIC NON-CONVERGENCE" dρ/dT, always negative, prints as `************`, and κ and c_P run together (`5.000000E+032.000000E+08************` for κ = 5e3, c_P = 2e8, −0.95).
+  - The overshoot and semiconvection merge messages print zone indices with `i3`, so from zone 1000 on `OLD[  1-***][***-***] NEW[  1-***]`: a local run of `examples/run_from_zahb_to_tahb`'s `ZAHB_m1p0feh+0p0_TAHB` deck prints it 330 times. Semiconvection's edge message has the same `i3`.
+  - The `4('[',i4,'-',i4,' ]')` formats end every line with a stray `[` (format reversion stops after the next literal), as in ` MIXED REGIONS WITH OVERSHOOT   [ 503- 776 ][`.
+- **Expected behaviour, and why:** a message shows the values it prints.
+- **What we did:** recorded, not fixed. Proposed fix: `1p3e13.5` (or `es`), `i5`, and formats that stop at their last item (a `:` before the closing literal); with convection's messages module (the plan's CD-15), the `[` fix in the package's re-pin commit.
+
+### M255. No test or pinned deck reaches a semiconvective extension, although convection's README and test say the configuration matrix's deck pins it
+
+- **Status:** open. The convection evaluation's finding 12, confirmed in the code and the deck's reference log. A test gap and a misleading statement. Kind A (docs and test).
+- **In the original F77?** No: the README and the test came with [238a7be2](https://github.com/parallelpro/yrec/commit/238a7be2) and [2e9d3ea6](https://github.com/parallelpro/yrec/commit/2e9d3ea6) (2026-10-11).
+- **Now:** [convection/README.md:56](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/README.md#L56), [test_convection.f90:18-19](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/test/test_convection.f90#L18-L19); the deck, [cm_semiconvection.inlist:29](https://github.com/parallelpro/yrec/blob/bfb50705/examples/run_config_matrix/cm_semiconvection.inlist#L29), [:38](https://github.com/parallelpro/yrec/blob/bfb50705/examples/run_config_matrix/cm_semiconvection.inlist#L38), [:73](https://github.com/parallelpro/yrec/blob/bfb50705/examples/run_config_matrix/cm_semiconvection.inlist#L73), [:144](https://github.com/parallelpro/yrec/blob/bfb50705/examples/run_config_matrix/cm_semiconvection.inlist#L144); the fully convective return, [semiconvection.f90:122](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/semiconvection.f90#L122).
+- **What is wrong:** "Semiconvection needs the opacity tables, so the configuration matrix's semiconvection deck pins it." `cm_semiconvection` rescales the 1 Msun deuterium-birthline model (`m1000gs98z018804_Dbl.first`) and evolves 10 models; its reference log (the git-ignored `standard/` pin) shows log Teff 3.647, log L 0.80 to 0.76 and ages 1.6-1.9e5 yr, a Hayashi-track star, fully convective for about another million years (the review). So `extend_by_semiconvection` returns at :122 on every call, and no test or pinned deck computes a semiconvective extension, a merge or the Castellani limit (the two UpperMS sample decks that use it are not pinned). The deck's own comment says semiconvection is for "core He-burning models". M241 and M254's semiconvection formats went unseen for this reason.
+- **Expected behaviour, and why:** a statement that a deck pins a code path holds only if the deck runs it; the README is what a newcomer trusts.
+- **What we did:** recorded, not fixed. Proposed fix: give `cm_semiconvection` a model with a convective core (a ZAHB or upper-main-sequence start), or add a `test_convection` case on a synthetic model with the opacity tables `test_kap` already loads; correct the sentence in both places.
+
+### M256. convection's and element_diffusion's recipes name too few of the files a new treatment touches
+
+- **Status:** open. The convection and element_diffusion evaluations' finding 13, traced by the review; the files it names were confirmed to hold what it says. Kind A (docs).
+- **In the original F77?** No: the recipes came with [2e9d3ea6](https://github.com/parallelpro/yrec/commit/2e9d3ea6) (2026-10-11) and [ce7648e2](https://github.com/parallelpro/yrec/commit/ce7648e2) (2026-10-12).
+- **Now:** [convection/README.md:58-61](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/README.md#L58-L61), [element_diffusion/README.md:44](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/README.md#L44); rotation's recipes, the model, [rotation/README.md:110-121](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/README.md#L110-L121).
+- **What is wrong:**
+  - convection's "Add a convection treatment (for example a different overshoot prescription)" names the settings field, its copy, the branch and a test case. A new treatment also needs the control (io/controls_buffer.f90 and defaults/controls_registry.tsv with its settings cell, io/README §5), `check_star_contracts --fix` for the builder's `star reads:`, and `test_convection`'s expected output; an envelope overshoot rule also touches `envelope_overshoot_depth` ([step_driver.f90:690-705](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/step/step_driver.f90#L690-L705)), [convection_geometry.f90:126](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/step/convection_geometry.f90#L126), the rezone's overshoot base, with α as a depth in log P ([rezoning.f90:309-322](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/model/rezoning.f90#L309-L322), [:876](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/model/rezoning.f90#L876), [:1017](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/model/rezoning.f90#L1017)) and the rotation sub-step's depth ([evolve_rotation.f90:390-398](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/evolve_rotation.f90#L390-L398), O10's gate). The recipe names 4 of these 6 to 10 files and none of the steps after them.
+  - element_diffusion's "Add a settling treatment" names three of: the module, the control (two io files), the settings field and its copy, `diffuse_elements`, `python3 tools/gen_makefile_deps.py` (CI runs `--check`), the test and its expected output, and the README's table.
+  - Neither says that the settings record is the only way in, as rotation's "Add a control" does.
+- **Expected behaviour, and why:** a recipe followed literally builds and passes the tests (`docs/GUIDELINES.md`'s README standard).
+- **What we did:** recorded, not fixed. Proposed fix: numbered recipes naming every file and command, each traced on a throwaway branch; for overshoot, after the extent moves into convection/ (the plan's CD-14).
+
+### M257. Stale or inexact text in element_diffusion and convection
+
+- **Status:** open. The convection and element_diffusion evaluations' finding 16, each statement checked against the code. Kind A (comments and docs; dropping microdiff_etm's unused arguments is byte-identical).
+- **In the original F77?** Partly. The D1 comment ([setup_grsett.f:139-140](https://github.com/parallelpro/yrec/blob/6cd56739/src/setup_grsett.f#L139-L140)) and "BAHCALL AND LOEB 1989" ([grsett.f:28](https://github.com/parallelpro/yrec/blob/6cd56739/src/grsett.f#L28), [microdiff.f:39](https://github.com/parallelpro/yrec/blob/6cd56739/src/microdiff.f#L39)) are the F77's; the rest is 2026 ([238a7be2](https://github.com/parallelpro/yrec/commit/238a7be2), [ce7648e2](https://github.com/parallelpro/yrec/commit/ce7648e2), [f2d05f1e](https://github.com/parallelpro/yrec/commit/f2d05f1e)), the in-place statements stale since O16's fix ([c66901c9](https://github.com/parallelpro/yrec/commit/c66901c9), 2026-10-28).
+- **Now:** each place is named below, at bfb50705.
+- **What is wrong:**
+  - [element_diffusion/README.md:30](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/README.md#L30) says the routines convert the timestep, the masses and d ln P/dr "in place and convert them back ... The round trip can change the last bit of the enclosed mass (`star%m`)". Since O16, `microdiff`, every deck's pipeline, converts copies ([microdiff_driver.f90:123-131](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/microdiff_driver.f90#L123-L131)); only the original routines still round-trip. Likewise [bahcall_loeb_units.f90:4-6](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/bahcall_loeb_units.f90#L4-L6) ("microdiff_etm and equal_to_model read them back") and `microdiff_etm`'s header, "converts DT/STOT/HS1/HQPR back" ([microdiff_mapping.f90:250-255](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/microdiff_mapping.f90#L250-L255)), which its own [:405-407](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/microdiff_mapping.f90#L405-L407) contradicts; `microdiff_etm` still takes five arguments it never reads (`diff_scr`, `timestep`, `dlnp_dr`, `enclosed_mass`, `total_mass`; [:258-261](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/microdiff_mapping.f90#L258-L261)).
+  - [microdiff_coefficients.f90:4-8](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/microdiff_coefficients.f90#L4-L8): "0.0, 1.0, 0.5, 2.2 ... numerically different from a D0-suffixed literal". Only 2.2 differs; 0.0, 1.0 and 0.5 are exact in single precision.
+  - [original_settling.f90:494-499](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/original_settling.f90#L494-L499) states D1 with "X * (1-X)" and "DEL*6*(X-0.32)"; the code ([:523-533](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/original_settling.f90#L523-L533)), and its X derivative's 3.384 + 2.88X + 4.5X², have X(1 − X − Z − He3) and (X + 0.32).
+  - "BAHCALL AND LOEB 1989" ([microdiff_driver.f90:20](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/microdiff_driver.f90#L20), [original_settling.f90:20](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/original_settling.f90#L20)), where the README and `bahcall_loeb_units` cite 1990.
+  - [temperature_gradients.f90:189-191](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/temperature_gradients.f90#L189-L191) names "core/main, core/crrect, core/starin, setup/hpoint" as the callers that keep the historical stop; no such files exist.
+  - [convection_configuration.f90:33-35](https://github.com/parallelpro/yrec/blob/bfb50705/src/convection/convection_configuration.f90#L33-L35): "the job flags lovstm etc.", "lovmax", "betac", the F77 names of today's physics controls.
+- **Expected behaviour, and why:** comments describe the code as it is now (`docs/GUIDELINES.md`, Code style rule 5).
+- **What we did:** recorded, not fixed. Proposed fix: each statement corrected (the in-place ones to "the original routines convert in place and back; microdiff converts copies"); `microdiff_etm`'s five arguments dropped. The provenance history at temperature_gradients.f90:18-26 goes with the plan's Sources sections.
+
+### M258. element_diffusion's README and two control descriptions mis-state which settings act where
+
+- **Status:** open. The element_diffusion evaluation's finding 17, confirmed in the code. Kind A (docs).
+- **In the original F77?** No: the README came with [ce7648e2](https://github.com/parallelpro/yrec/commit/ce7648e2) (2026-10-12), the descriptions with the registry draft [4b6b6470](https://github.com/parallelpro/yrec/commit/4b6b6470) (2026-08-22).
+- **Now:** [element_diffusion/README.md:5](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/README.md#L5), [:32](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/README.md#L32); the descriptions, [controls_buffer.f90:1162-1165](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/controls_buffer.f90#L1162-L1165); where the two factors act, [original_settling.f90:607-609](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/original_settling.f90#L607-L609), [:630-635](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/original_settling.f90#L630-L635); microdiff's own logarithms, [microdiff_coefficients.f90:74](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/microdiff_coefficients.f90#L74), [:126-142](https://github.com/parallelpro/yrec/blob/bfb50705/src/element_diffusion/microdiff_coefficients.f90#L126-L142); the callers' flags, [composition_step.f90:304-307](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/step/composition_step.f90#L304-L307) and [mid_timestep_model.f90:554-575](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/mid_timestep_model.f90#L554-L575).
+- **What is wrong:**
+  - README.md:32 names `use_thoul_fit` and `use_thoul_diffusion` as acting only in the original routines. `coulomb_log_choice`, `constant_mixing_coeff` and `constant_settling_reduction` do too: microdiff always takes the pairwise Coulomb logarithm and neither factor.
+  - `constant_mixing_coeff` is described as "Constant added diffusion coefficient (mixing)". It is a factor on D1 and D2 (and the metals' coefficients), applied only with the Thoul et al. coefficients in the original routines; `constant_settling_reduction` ("Constant coefficient mimicking mixing to reduce settling") multiplies only the metals' D1 there.
+  - `settling_z_factor` reaches Li and Be (M250), and `diffuse_lithium`'s overrides (M181) are documented in io but not in this README.
+  - README.md:5 says the two callers "call it the same way". They pass different convective flags: core the deep-mix flags (the convective flags, without overshoot), rotation the mixed regions with overshoot, so with overshoot on the settling region's top differs between a rotating and a non-rotating step.
+- **Expected behaviour, and why:** a control's description and the domain's README say where it acts (M181's reasoning).
+- **What we did:** recorded, not fixed. Proposed fix: a short "which settings act where" table in the README (each control against the two pipelines, and the two callers' flags); the two descriptions corrected.
+
+### M259. A transport region widened through a convection zone overwrites that zone's abundance with the end zone's instead of adding the change
+
+- **Status:** open. The rotation evaluation's finding 1, confirmed in the code. It came with O13's fix. Latent: O13 records that no shipped rotating deck reaches the case (the 26 rotating decks were byte-identical under that fix). Kind B: rotating runs whose transport region ends at a radiative zone next to a convection zone, and the centre or surface zone (below).
+- **In the original F77?** No. MIXCOM copied the end zone's abundance into the neighbouring convection zone only when the end zone was itself in it, so the copy was the change ([mixcom.f:97](https://github.com/parallelpro/yrec/blob/6cd56739/src/mixcom.f#L97), [:110](https://github.com/parallelpro/yrec/blob/6cd56739/src/mixcom.f#L110), [:135-148](https://github.com/parallelpro/yrec/blob/6cd56739/src/mixcom.f#L135-L148)):
+  ```fortran
+           IF(LCZ(IBEG).AND.IBEG.GT.1)THEN
+  ...
+                 HCOMP(ID(N),I)=HCOMP(ID(N),IBEG)
+  ```
+  [ed8f7af6](https://github.com/parallelpro/yrec/commit/ed8f7af6) (2026-10-28, O13) widened the zones through any convection zone beside the region and kept the copy.
+- **Now:** `diffuse_composition`, the widening and the write-back, [rotational_mixing.f90:261-295](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/seculr/rotational_mixing.f90#L261-L295); the end cells' sums, which take in those zones' masses, `composition_grid`, [:433-470](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/seculr/rotational_mixing.f90#L433-L470); the end zones flagged convective during the transport, [secular_transport.f90:198](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/seculr/secular_transport.f90#L198), [:229](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/seculr/secular_transport.f90#L229), [:273-278](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/seculr/secular_transport.f90#L273-L278); the check, [test_rotation_kernels.f90:1043-1058](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/test/test_rotation_kernels.f90#L1043-L1058).
+- **What is wrong:**
+  - With a radiative end zone whose abundance differs from the convection zone's beyond it, the convection zone below takes `composition(., zone_begin)` and the one above `composition(., zone_end)`, the end zone's new value, not its own value plus the end point's change. The species' mass then changes by m_cz (X_end − X_cz) beyond what the transport computed, and no rescale corrects it (the composition has none, O13).
+  - The same holds at zone 1 and the surface zone, which `flag_end_zones_convective` marks convective during the transport: a region that starts at zone 2 or ends at zone nz − 1, both radiative, copies their abundance into the centre or the surface zone.
+  - The angular momentum's write-back is right: `equal_grid_to_model` multiplies j by (1 + ΔJ/J) in the widened zones ([am_grid.f90:396-420](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/seculr/am_grid.f90#L396-L420)).
+  - The kernel test gives the convection zone the end zone's composition before the call ([:1047](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/test/test_rotation_kernels.f90#L1047)), where a copy and a change agree, so it passes either way.
+- **Expected behaviour, and why:** the zones whose masses the end cell sums take the end cell's change (O13's rule), so each species is conserved by construction.
+- **What we did:** recorded, not fixed. Proposed fix: add `eval_y(1)` to each zone below the region and `eval_y(ntab)` to each zone above, as `equal_grid_to_model` does for j, and give the test's convection zone an abundance different from the end zone's. A measured commit.
+
+### M260. Nothing checks the sub-step controls, and a non-positive one hangs the rotation step or switches its ω limit off
+
+- **Status:** open. The rotation evaluation's finding 2, confirmed in the code. Latent: every shipped deck sets both controls positive (a scan of the decks' `time_dw_mix` and `time_dw_global`). Kind A: byte-identical.
+- **In the original F77?** Yes: GETW divides the same way, unchecked ([getw.f:170-177](https://github.com/parallelpro/yrec/blob/6cd56739/src/getw.f#L170-L177)):
+  ```fortran
+        NSTEP = INT(DWMAX/DTDIF)
+        IF (MOD(DWMAX,DTDIF).NE.0.0D0) NSTEP = NSTEP + 1
+        NSTEP2 = INT(DTWIND/DTDIF)
+        DT = DELTS/DFLOAT(NSTEP)
+  ```
+- **Now:** `count_substeps`, [evolve_rotation.f90:278-286](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/evolve_rotation.f90#L278-L286); `advance_substep_clock`, [:291-299](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/evolve_rotation.f90#L291-L299); the loop's exit, [:207](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/evolve_rotation.f90#L207); `check_controls`, which checks `max_diffusion_iters` and neither of these, [controls_check.f90:91-98](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/controls_check.f90#L91-L98); the controls, `diffusion_timestep_factor` (legacy DTDIF) and `max_domega_global` (DTWIND), set from `time_dw_mix` and `time_dw_global` under `use_new_rate_variables` ([user_inputs.f90:257-258](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/user_inputs.f90#L257-L258)).
+- **What is wrong:** in a rotating run with instability transport:
+  - `diffusion_timestep_factor` ≤ 0 or `max_domega_global` < 0 gives a sub-step count ≤ 0 (or `int` of an infinity, undefined), a non-positive or negative sub-step, and `advance_substep_clock` then moves the elapsed time away from the step's end: the exit test never holds and the step hangs, interpolating backward in time;
+  - `max_domega_global` = 0 gives a count of 0 and an infinite sub-step: one sub-step over the whole step, so the ω-change limit is off without a word.
+- **Expected behaviour, and why:** a control that cannot work is refused at the read, naming it, as `max_diffusion_iters` is.
+- **What we did:** recorded, not fixed. Proposed fix: `check_controls` requires both > 0 for a rotating run with instability transport (or documents 0 as "no limit" and codes it), in one message naming the inlist controls. Byte-identical.
+
+### M261. A redone rotation sub-step burns deuterium from the failed attempt's end rate
+
+- **Status:** open. The rotation evaluation's finding 3, confirmed in the code. Latent: it needs surface deuterium above 1e-14 (pre-main sequence), instability transport, and a cut after the first sub-step of a step. Kind B where reached.
+- **In the original F77?** Yes. MIDMOD accumulates DRATEM the same way, and GETW's redo rewinds AMUM, HJM and HCOMP only ([midmod.f:280-291](https://github.com/parallelpro/yrec/blob/6cd56739/src/midmod.f#L280-L291), [getw.f:283-293](https://github.com/parallelpro/yrec/blob/6cd56739/src/getw.f#L283-L293)):
+  ```fortran
+              DRATEM0(I) = DRATEM(I)                       ! midmod.f
+              DRATEM(I) = DRATEM(I)+FAC2*(DRATE(I)-DRATE0(I))
+              AMUM(I) = AMUM(I) - FX*(HAMU(I)-AMUO(I))     ! getw.f
+  ```
+- **Now:** `burn_deuterium_over_substep`, [mid_timestep_model.f90:248-262](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/mid_timestep_model.f90#L248-L262), called under the surface deuterium gate at [:141](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/mid_timestep_model.f90#L141); the redo in `apply_instability_transport`, [evolve_rotation.f90:364-374](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/evolve_rotation.f90#L364-L374), which rewinds the clock, j, μ ("the caller takes the share back out on a redo", [mid_timestep_model.f90:175-179](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/mid_timestep_model.f90#L175-L179)) and the composition.
+- **What is wrong:** after the first sub-step the rate is accumulated, `deuterium_rate_start = deuterium_rate; deuterium_rate += (Δt_sub/Δt)(r₁ − r₀)`. A redo rewinds everything above but not these two rates, so the redone sub-step starts from the failed attempt's end rate, and every later sub-step of the step burns deuterium ahead of its clock by the failed share.
+- **Expected behaviour, and why:** a redone sub-step starts from the state its first attempt started from; the rate at a sub-step's ends is the linear interpolation at those times.
+- **What we did:** recorded, not fixed. Proposed fix: form both rates from the clock, r₀ + f (r₁ − r₀) at the sub-step's start and end fractions (nothing accumulates, nothing to rewind), or rewind them with μ. A measured commit.
+
+### M262. The θ component of the effective gravity on an equipotential drops the quadrupole term's r and has its sign reversed
+
+- **Status:** open. The rotation evaluation's finding 4, confirmed by differentiating the potential the header writes. Kind B: by the report's estimate ⟨g⟩ and ⟨1/g⟩ move at O(a³) relative, round-off for the Sun (a ~ 2e-5) and of order 1e-3 near break-up.
+- **In the original F77?** Yes ([func.f:32](https://github.com/parallelpro/yrec/blob/6cd56739/src/func.f#L32)):
+  ```fortran
+        QPHITH = CONST*(P2*Q*QR0T-3.0D0*AINT*CS) - W2*R*CS
+  ```
+- **Now:** `equipotential_integrand`, the potential at [shell_quadrature.f90:148-152](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/shape/shell_quadrature.f90#L148-L152), `qr0t` at [:166-168](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/shape/shell_quadrature.f90#L166-L168), the term at [:180-184](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/shape/shell_quadrature.f90#L180-L184).
+- **What is wrong:** with Ψ's quadrupole term (4π/3) aint(r₀) P₂/r³ and `qr0t` = −(1/r) dr₀/dθ, (1/r) ∂Ψ/∂θ of that term is (4π/3)(−r P₂ q qr0t − 3 aint cos θ sin θ)/r⁴. The code has `+p2*q*qr0t`: without the factor r (q·qr0t is cm⁴ s⁻² where 3 aint is cm⁵ s⁻²) and with the opposite sign, as its own comment at :182-183 notes. Divided by r ~ 1e10 cm, the term is in effect dropped; the correct term is a fraction of order a of the aint term.
+- **Expected behaviour, and why:** the gradient of the potential the header states.
+- **What we did:** recorded, not fixed. Proposed fix: `const*(-r*p2*q*qr0t - 3.0d0*aint*cs)`, with a check of f_P and f_T at O(ω⁶) or against a Roche model. A measured commit.
+
+### M263. The viscosity's Coulomb logarithm uses Z̄ρ/m_u for the electron density, 1.26 times the fully ionized value at X = 0.70
+
+- **Status:** open. The rotation evaluation's finding 5, recomputed (below). Kind B: every rotating deck's viscosity, by the report's estimate the ion viscosity about 4% high in the solar core.
+- **In the original F77?** Yes ([viscos.f:43](https://github.com/parallelpro/yrec/blob/6cd56739/src/viscos.f#L43), [:55](https://github.com/parallelpro/yrec/blob/6cd56739/src/viscos.f#L55)):
+  ```fortran
+           ELECN = ZF*RHO/AMU
+           LAMBD1 = 9.424536845D0 + 0.5D0*DLOG(T2*T*FACTOR/(ELECN*ZF**2))
+  ```
+- **Now:** `viscos`, [viscosity.f90:58-75](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/viscosity.f90#L58-L75) and the logarithm at [:92-94](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/viscosity.f90#L92-L94).
+- **What is wrong:** the code's n_e is Z̄ ρ/m_u, with Z̄ = Σnᵢ Zᵢ/Σnᵢ and the lumped metals counted as neutral particles of weight 1; the electron density is (ρ/m_u) Σ Xᵢ Zᵢ/Aᵢ, as the comment itself says ("the two agree only when sum n_i = 1"). For X = 0.70, Y = 0.28, Z = 0.02 the code's value is 1.0637 ρ/m_u against 0.8445 with the metals fully ionized (Z/A = 1/2): 1.26 times, so the Coulomb logarithm is 0.5 ln 1.26 = 0.12 too low. ν enters the secular-shear threshold (through the Prandtl number) and the GSF's viscous inhibition.
+- **Expected behaviour, and why:** the electron density of the gas the logarithm describes (Spitzer 1962).
+- **What we did:** recorded, not fixed. Proposed fix: n_e = (ρ/m_u) Σ Xᵢ Zᵢ/Aᵢ, the metals' electrons included; a measured commit, or a decision to keep the F77's value, stated in the comment.
+
+### M264. Rotation's stop and cut messages say things that are not so
+
+- **Status:** open. The rotation evaluation's finding 9, the wrong statements in it (the capitals and the settling lines' route to the run log are the plan's). Kind A for results; Kind B for text: the kernel test's pin (expected_test_rotation_kernels.out:96-112) and `test_rotation`'s (expected_test_rotation.out:41) carry these lines.
+- **In the original F77?** Yes, each text ([checkj.f:89-99](https://github.com/parallelpro/yrec/blob/6cd56739/src/checkj.f#L89-L99), [checkc.f:78-91](https://github.com/parallelpro/yrec/blob/6cd56739/src/checkc.f#L78-L91), [wind.f:38](https://github.com/parallelpro/yrec/blob/6cd56739/src/wind.f#L38)); CHECKJ's stop already came at the first negative j (`IF(IREDO.GT.0)`, the `.GT.3` test commented out). The routines they name were renamed in 2026.
+  ```fortran
+              IREDO = IREDO + 1                                    ! checkj.f
+  C            IF(IREDO.GT.3)THEN
+              IF(IREDO.GT.0)THEN
+  ```
+- **Now:** `reject_negative_j`, [transport_checks.f90:126-143](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/seculr/transport_checks.f90#L126-L143); the composition cut and stop, [:421-446](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/seculr/transport_checks.f90#L421-L446); `burn_and_settle`'s surface-zone stop, [mid_timestep_model.f90:488-495](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/mid_timestep_model.f90#L488-L495); the wind's, [magnetic_braking.f90:494-496](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/magnetic_braking.f90#L494-L496).
+- **What is wrong:**
+  - The negative-j stop says "NEGATIVE J/M ENCOUNTERED IN ZONE n AND 3 ATTEMPTS AT CUTTING TIMESTEP FAILED"; no cut is attempted (the code's own comment at :126-129 says so), and `cut_count` counts a cut it does not make.
+  - A recoverable cut, after which the sub-step is redone, is printed as "ERROR IN SR CHECKC ... TIMESTEP CUT NUMBER n", to the terminal and the run log.
+  - The messages name routines that no longer exist (CHECKJ, CHECKC, MIX, WIND), so a user cannot find where they come from; the wind's ends "...5.000E-01STOPPED", the number run into the word.
+  - Correction to the review: its "LIMIT prints an omega" is not wrong: the note prints the zones' ω and the inner ω at the limit, as the comment above it says ([transport_mechanisms.f90:87-96](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/seculr/transport_mechanisms.f90#L87-L96)).
+- **Expected behaviour, and why:** a message says what happened, in today's names, and an error is an error: `docs/GUIDELINES.md` "Code style" rule 7.
+- **What we did:** recorded, not fixed. Proposed fix: "check_angular_momentum: j <= 0 in zone 20; the run stops" and the like, the cut as a note, with the re-pin of the two rotation test outputs (the plan's per-package re-pin commit).
+
+### M265. rotation/README's rule for STAR_BLIND_FILES is not the one the list follows, and five star-free files are unguarded
+
+- **Status:** open. The rotation evaluation's finding 10, confirmed and corrected (below). Kind A: documentation and the checker.
+- **In the original F77?** No: the README and `STAR_BLIND_FILES` are 2026's.
+- **Now:** the rule, [rotation/README.md:14](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/README.md#L14); the list, [check_boundaries.py:164-200](https://github.com/parallelpro/yrec/blob/bfb50705/src/tools/check_boundaries.py#L164-L200), and `check_star_blind`, [:258-265](https://github.com/parallelpro/yrec/blob/bfb50705/src/tools/check_boundaries.py#L258-L265); `rotation_scratch_lib`'s `use star_info_lib, only: json`, [rotation_scratch_lib.f90:34](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/rotation_scratch_lib.f90#L34).
+- **What is wrong:**
+  - The README says "the kernels that touch no scratch either are listed". Three listed files use `rotation_scratch_lib`: `region_transport` ([:13](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/seculr/region_transport.f90#L13)), `transport_mechanisms` ([:21](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/seculr/transport_mechanisms.f90#L21)) and `rotating_shape` ([:41](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/shape/rotating_shape.f90#L41), a whole-module use it does not need).
+  - The check refuses a listed file whose text names `star_info_lib` or `star%`, so these three pass while compiling against `star_info_lib` through the scratch module.
+  - Five files take no star and are not listed: circulation, am_grid, equal_grid, rotational_mixing and stability_coefficients (2,084 lines). Correction to the review: they use the scratch module too, so the README's rule would leave them out; what keeps them off the list is the check, since each imports `json` (rotational_mixing also the slots) from `star_info_lib`. Nothing then guards them from gaining a star reference.
+- **Expected behaviour, and why:** the README states the rule the check enforces, and every file that takes no star is under it.
+- **What we did:** recorded, not fixed. Proposed fix: `json` and the slots from `composition_layout` in those five files and in `rotation_scratch_lib`; drop `rotating_shape`'s unused use; list the five; the README's rule "every file that takes no star", with the check following the scratch module's imports. Byte-identical.
+
+### M266. rotation/README's "Add a transport mechanism" leaves out the controls' declarations and the steps that finish the change
+
+- **Status:** open. The rotation evaluation's finding 13, traced against Stage E's addition ([73ca7732](https://github.com/parallelpro/yrec/commit/73ca7732), 2026-10-29), whose hand edits include `io/controls_buffer.f90` and `io/legacy_controls.f90`. Kind A: text.
+- **In the original F77?** No: the recipe is 2026's.
+- **Now:** [rotation/README.md:112-117](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/README.md#L112-L117), step 4 at [:116](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/README.md#L116).
+- **What is wrong:** step 4, "Add its two controls to the registry (`defaults/controls_registry.tsv`, then the generators)", omits their declarations in `io/controls_buffer.f90`, the only home of a control's default and description (io/README §5 step 1; gen_inlist refuses a row without one), and, unlike "Add a control" above it, does not point to io/README §5. It also omits `check_star_contracts --fix` for the builder's `star reads:` line, `test_controls`' `pristine.txt` re-pin and the kernel test pin's new lines.
+- **Expected behaviour, and why:** a recipe followed literally gives a change that builds and passes the tests.
+- **What we did:** recorded, not fixed. Proposed fix: step 4 "as io/README.md §5 says (the declaration, the row with `settings` = `rotation_settings%velocity_scale(i_mech_<name>)`, the builder's copy, the contracts and the re-pins)", re-traced with a dummy mechanism.
+
+### M267. Stale rotation comments and docs: the history check, the solid-body flag's setter, three mechanisms, the coverage date, the core services, the sub-step rule, two TARGET_ARCHITECTURE rows, and τ_cz "zero without Rossby scaling"
+
+- **Status:** open. The rotation evaluation's finding 14, each statement checked; its bullet on README's `test_rotation` list was fixed by [a8c9da6d](https://github.com/parallelpro/yrec/commit/a8c9da6d) (2026-11-10), and its finding 12's stale header sentence is added here. Kind A: comments and docs.
+- **In the original F77?** No: each statement is a 2026 comment or document.
+- **What is wrong:**
+  - [transport_checks.f90:101-102](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/seculr/transport_checks.f90#L101-L102): "max_diffusion_iters is not checked against it"; its own header ([:17-19](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/seculr/transport_checks.f90#L17-L19)) and `check_controls` ([controls_check.f90:91-98](https://github.com/parallelpro/yrec/blob/bfb50705/src/io/controls_check.f90#L91-L98)) check it (O14).
+  - [rotation_configuration.f90:147-149](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/rotation_configuration.f90#L147-L149): the controls read sets `solid_body_mode_flag = 1`; the builder does ([rotation_settings_builder.f90:100](https://github.com/parallelpro/yrec/blob/bfb50705/src/setup/rotation_settings_builder.f90#L100)). Its [:66-70](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/rotation_configuration.f90#L66-L70), [:76-79](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/rotation_configuration.f90#L76-L79) and [:86-87](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/rotation_configuration.f90#L86-L87) list three mechanisms' controls, written before Solberg–Høiland.
+  - [equal_grid.f90:18-23](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/seculr/equal_grid.f90#L18-L23) describes the advection branch's interpolation as a block that stays with the callers; it is retired.
+  - [magnetic_braking.f90:106](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/magnetic_braking.f90#L106) and `domega`'s header ([:515-518](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/magnetic_braking.f90#L515-L518)): τ_cz "zero without Rossby scaling, as in the original"; since O17, `set_matt_law` sets it with B-field scaling alone ([:452-454](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/magnetic_braking.f90#L452-L454)).
+  - rotation/README.md: [:67](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/README.md#L67) says rotation calls core for "two services"; it uses three core modules and eight procedures (`compute_shell_physics`; burn_step's `store_end_li_be_rates`, `burn_li_be`, `network_rates_of_model`, `burn_regions`, `burn_network_region` and `surface_accretion_now`; convection_geometry's `pressure_scale_height`); [:51](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/README.md#L51) starts a sentence "its banner"; [:106](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/README.md#L106) dates the coverage, 96.9% of 2168 lines, 2026-10-29: it was measured at [2c88d896](https://github.com/parallelpro/yrec/commit/2c88d896) (00:33), before [c7d8beff](https://github.com/parallelpro/yrec/commit/c7d8beff) and [d4bcaf27](https://github.com/parallelpro/yrec/commit/d4bcaf27) (19:05, 19:10) added error paths at nine osplin calls and the polint report; `docs/ROTATION_VALIDATION.md:87` carries the same figure.
+  - docs/TARGET_ARCHITECTURE.md: [:507](https://github.com/parallelpro/yrec/blob/bfb50705/docs/TARGET_ARCHITECTURE.md#L507) names `rotation/burn_settle_mix.f90` and `burn_mix_extrapolated.f90` (now `rotation/retired/*.f90.txt`); [:542](https://github.com/parallelpro/yrec/blob/bfb50705/docs/TARGET_ARCHITECTURE.md#L542) puts `solve_angular_momentum_transport` in secular_transport.f90 (it is in am_transport_coefficients.f90); Phase 4 ([:456-466](https://github.com/parallelpro/yrec/blob/bfb50705/docs/TARGET_ARCHITECTURE.md#L456-L466)) lists the mechanism list and one name per quantity as work (done in Stages C-D) and says rotation has no truth-level test, beside ROTATION_VALIDATION's MESA comparison.
+  - [docs/HOW_YREC_WORKS.md:531-532](https://github.com/parallelpro/yrec/blob/bfb50705/docs/HOW_YREC_WORKS.md#L531-L532): the sub-steps are a "`dtdif` fraction of the diffusion time"; they divide the step's largest ω change by `diffusion_timestep_factor` ([evolve_rotation.f90:278-286](https://github.com/parallelpro/yrec/blob/bfb50705/src/rotation/evolve_rotation.f90#L278-L286)).
+- **Expected behaviour, and why:** comments describe the code as it is now (`docs/GUIDELINES.md`, "Code style" rule 5).
+- **What we did:** recorded, not fixed. Proposed fix: each statement corrected; the coverage remeasured.
+
+### M268. The star calibration writes cards 51 and 52 when it reaches the radius on card 50
+
+- **Status:** open. The core evaluation's finding 1, confirmed in the code. Latent: it needs a calibration that has not converged by card 50 (24 passes without success, as an unreachable target or a too-tight tolerance gives); no shipped deck calibrates a star. Kind A: only runs that today write out of bounds change.
+- **In the original F77?** Yes. CHKSCAL wrote NK+1 and NK+2 unconditionally, against SETSCAL's 50 runs ([chkscal.f:89-95](https://github.com/parallelpro/yrec/blob/6cd56739/src/chkscal.f#L89-L95), [:109-111](https://github.com/parallelpro/yrec/blob/6cd56739/src/chkscal.f#L109-L111), [:128-130](https://github.com/parallelpro/yrec/blob/6cd56739/src/chkscal.f#L128-L130), [setscal.f:63](https://github.com/parallelpro/yrec/blob/6cd56739/src/setscal.f#L63)):
+  ```fortran
+           LENDAG(NK+1) = .TRUE.                     ! chkscal.f
+           ENDAGE(NK+1) = AGER*1.0D9
+           LENDAG(NK+2) = .TRUE.
+        NUMRUN = 50                                  ! setscal.f
+  ```
+- **Now:** `check_star_calibration`, [calibration.f90:264-282](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/run/calibration.f90#L264-L282) (a match), [:283-319](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/run/calibration.f90#L283-L319) (the next X guess); `setup_star_calibration`'s `num_cards = max_runs`, [:468](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/run/calibration.f90#L468); its call on every model of an even card, [stop_conditions.f90:170-178](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/run/stop_conditions.f90#L170-L178); the card arrays, declared `(max_runs)`, [star_info_lib.f90:282](https://github.com/parallelpro/yrec/blob/bfb50705/src/state/star_info_lib.f90#L282), [:301](https://github.com/parallelpro/yrec/blob/bfb50705/src/state/star_info_lib.f90#L301), [:315](https://github.com/parallelpro/yrec/blob/bfb50705/src/state/star_info_lib.f90#L315), [:319](https://github.com/parallelpro/yrec/blob/bfb50705/src/state/star_info_lib.f90#L319).
+- **What is wrong:**
+  - On card 50 a crossing of R* writes `card_stops_active`, `card_max_age_yr`, `card_rescale_targets(i_target_x,:)` and `card_initial_x` at 51 and 52: past the arrays, into the star's next members (the report names `card_initial_z`, `card_z_ramp_core_z`, `card_stops_active`, `card_central_deuterium_stop`); a `-fcheck=bounds` build aborts there.
+  - On a match the run prints "Have hit R* & L*, prepare final run to age", but no card is left: `step_leave_run_loop` abandons the card, the list ends, and the run ends without a verdict; a calibration that runs out of cards also ends without one. The solar calibration says "solar calibration NOT converged after 14 cycles" ([run_driver.f90:306-308](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/run/run_driver.f90#L306-L308)).
+- **Expected behaviour, and why:** a calibration never writes past its run list, and its end says whether it converged.
+- **What we did:** recorded, not fixed. Proposed fix: when `run_index + 2 > s%num_cards`, set a termination reason ("star calibration NOT converged after 24 passes", or "R* and L* reached on the last card, no final run") and leave the run list, as the solar verdict does; a `test_error_exit`-style deck with a target out of reach. Byte-identical for every run that stays within the list.
+
+### M269. henyey_iterate leaves its intent(out) divergence flag undefined on its commonest return
+
+- **Status:** open. The core evaluation's finding 2, confirmed in the code. Latent: gfortran keeps the caller's `.false.` in practice; a compiler that poisons `intent(out)` dummies would stop every run at its first step. Kind A: byte-identical.
+- **In the original F77?** No. CRRECT's LARGE had no intent and kept the caller's value on the same return ([crrect.f:113](https://github.com/parallelpro/yrec/blob/6cd56739/src/crrect.f#L113)):
+  ```fortran
+        IF(LSBC .AND. .NOT.LFLP .AND. LFINI) RETURN
+  ```
+  The `intent(out)` came with [aefb76f4](https://github.com/parallelpro/yrec/commit/aefb76f4) (2026-08-20).
+- **Now:** `corrections_too_large`, [henyey_iteration.f90:169](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/structure/henyey_iteration.f90#L169), and the early return, [:189-192](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/structure/henyey_iteration.f90#L189-L192); the actual argument `s%model_diverged_flag`, [step_driver.f90:681-684](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/step/step_driver.f90#L681-L684), read at [:481](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/step/step_driver.f90#L481).
+- **What is wrong:** the return when the surface boundary was rechecked without a new envelope and the previous level converged (level 2 of every step whose level 1 converged and whose triangle still holds the point) assigns nothing to the flag, so it is undefined on return, and `solve_structure` reads it. M135 records gfortran 15 at -O3 already treating an unassigned `intent(out)` scalar as clobbered.
+- **Expected behaviour, and why:** an `intent(out)` argument is set on every path.
+- **What we did:** recorded, not fixed. Proposed fix: `corrections_too_large = .false.` beside `ierr = 0` at the top. Byte-identical.
+
+### M270. The starting model's mismatch warning prints an unset flag as the model's, and calls itself an error in STARIN
+
+- **Status:** open. The core evaluation's finding 3, confirmed in the code. Kind B: the text of the run logs where it fires, one pinned (`examples/run_config_matrix/standard/cm_basic_composition.log`, "EXTENDED COMP-USER DESIRES F MODEL USED F").
+- **In the original F77?** Yes. The 9/03 typo fix corrected the test, not the write ([starin.f:217-224](https://github.com/parallelpro/yrec/blob/6cd56739/src/starin.f#L217-L224)):
+  ```fortran
+  C MHP 9/03 FIXED TYPO
+           IF(.NOT.LMIXL .OR. LEXCOM0.NEQV.LEXCOM) THEN
+              WRITE(ISHORT,1040) CMIXL,CMIXL0,LEXCOM,LEXCP0
+  ```
+- **Now:** `check_model_against_controls`, [starting_model.f90:357-379](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/model/starting_model.f90#L357-L379); `lexcp0`, declared and never set, with a comment that keeps the bug, [:147-150](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/model/starting_model.f90#L147-L150).
+- **What is wrong:** when an evolved model's mixing length or extended-composition flag differs from the deck's, the warning prints `lexcp0` under "MODEL USED": F under the Makefile's `-finit-local-zero` whatever the model holds, undefined under a compiler without it. The message heads itself "ERROR IN SUBROUTINE STARIN" for a warning after which the run goes on, naming a routine that no longer exists.
+- **Expected behaviour, and why:** a diagnostic prints the value it names, and a warning says it is one.
+- **What we did:** recorded, not fixed. Proposed fix: print `header%use_extended_composition`, drop `lexcp0`, word it as a warning in one report call; the pinned log moves by its four lines (the plan's re-pin commit).
+
+### M271. The C entry cuts a path over 256 characters silently, and the C entry and the re-entry prologue close the host's units 7-99
+
+- **Status:** open. The core evaluation's finding 4, confirmed in the code. Latent: no shipped caller passes such a path or keeps a unit open across calls. Kind A.
+- **In the original F77?** No: the C entry came with [18db37b9](https://github.com/parallelpro/yrec/commit/18db37b9) (2026-08-22) and the prologue's sweep with [d5798fd7](https://github.com/parallelpro/yrec/commit/d5798fd7) (2026-08-21).
+- **Now:** `c_string_value`, [yrec_capi.f90:71-81](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/run/yrec_capi.f90#L71-L81), into the 256-character overrides ([star_info_lib.f90:1239-1240](https://github.com/parallelpro/yrec/blob/bfb50705/src/state/star_info_lib.f90#L1239-L1240)); `close_open_units`, [yrec_capi.f90:57-69](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/run/yrec_capi.f90#L57-L69), after every run; `yrec_run_prologue`'s loop, [yrec_reset.f90:47-51](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/run/yrec_reset.f90#L47-L51), before every run after the first.
+- **What is wrong:**
+  - A namelist path from C or Python (pyyrec) longer than 256 characters is cut without a word, and the run opens, or fails to open, a path the caller never named. M179 fixed the same class for the control paths.
+  - Both sweeps close every open unit 7-99, so a Fortran host that keeps one of those units open across `run_yrec` calls (two calls from a program like `examples/other_energy`) has its file closed under it.
+- **Expected behaviour, and why:** a path that does not fit is an error naming it (M179's rule); the engine closes what it opened.
+- **What we did:** recorded, not fixed. Proposed fix: take the C string's length up to its NUL into a deferred-length override and refuse a path the controls read cannot hold; close only the units the run opened (run_files knows them; `newunit` units are negative). Byte-identical.
+
+### M272. evolve_step's header says its saved locals carry state between steps alongside evolve_state; none does, and evolve_state does not exist
+
+- **Status:** open. The core evaluation's finding 7, the trace spot-checked (below). Kind A: byte-identical, by the trace.
+- **In the original F77?** No: the header, the `save` with its reset block and `evolve_step_reset_pending` came with the 2026 extraction of `evolve_step` and re-entrancy ([c58da748](https://github.com/parallelpro/yrec/commit/c58da748), [d5798fd7](https://github.com/parallelpro/yrec/commit/d5798fd7), 2026-08-21); `evolve_state` ([d66ec03b](https://github.com/parallelpro/yrec/commit/d66ec03b)) is gone.
+- **Now:** the header, [step_driver.f90:46-51](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/step/step_driver.f90#L46-L51); the `save` and the reset of 19 locals, [:138-168](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/step/step_driver.f90#L138-L168); the flag, [star_info_lib.f90:1241](https://github.com/parallelpro/yrec/blob/bfb50705/src/state/star_info_lib.f90#L1241), armed at [yrec_reset.f90:48](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/run/yrec_reset.f90#L48).
+- **What is wrong:** the header says "several carry state from one step to the next (the convergence bookkeeping, the surface convection zone's base zone of the previous step) ... alongside evolve_state". Each local is assigned in the call before it is read: `new_atmosphere_fit_needed` is cleared before `change_mass` sets it and `target_envelope_mass` ([:316-322](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/step/step_driver.f90#L316-L322)) and only then gates the rebuild that reads it ([:210-212](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/step/step_driver.f90#L210-L212)); `envelope_cz_zone_prev` is set at [:396](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/step/step_driver.f90#L396) under the extended composition, the only case in which `burn_li_be` and rotation's sub-steps read it; the rest per the report's trace. M169's bisection likewise found that the saved locals did not matter. A reader of the header looks for cross-step state that is not there, and the reset machinery is dead.
+- **Expected behaviour, and why:** comments describe the code as it is now; state that does not exist needs no reset.
+- **What we did:** recorded, not fixed. Proposed fix: remove the `save`, the reset block, `evolve_step_reset_pending` and its arming, checked with the poison build of ROADMAP's method. Byte-identical.
+
+### M273. The shell kernel's inverse year is not its year's inverse, the structure timestep limit's ln 10 is 2.3026, and the solar calibration's card loops end at literals
+
+- **Status:** open. The core evaluation's finding 10, its concrete defects (the named values are the plan's); the first number recomputed (below). Kind B for the year and ln 10 (every deck, at the 1e-5 level in ε_grav's floor and the L limit); Kind A for the loops (latent: they agree while `max_runs` = 50).
+- **In the original F77?** Yes for the values ([coefft.f:97-98](https://github.com/parallelpro/yrec/blob/6cd56739/src/coefft.f#L97-L98), [:264](https://github.com/parallelpro/yrec/blob/6cd56739/src/coefft.f#L264), [ptime.f:96-97](https://github.com/parallelpro/yrec/blob/6cd56739/src/ptime.f#L96-L97)) and for the loops, which matched SETCAL's 48 runs ([setcal.f:28](https://github.com/parallelpro/yrec/blob/6cd56739/src/setcal.f#L28), [:36](https://github.com/parallelpro/yrec/blob/6cd56739/src/setcal.f#L36), [:54](https://github.com/parallelpro/yrec/blob/6cd56739/src/setcal.f#L54)):
+  ```fortran
+           TIME = 3.1558D7                                    ! coefft.f
+           TIMEI = 3.1688D-8
+        IF (HMAX(4)/(ATIME(11)*2.3026D0).GT.FAC) THEN         ! ptime.f
+        NUMRUN = 48                                           ! setcal.f
+        DO I = 4,46,3
+  ```
+  The count became `max_runs - 2` with [a648258c](https://github.com/parallelpro/yrec/commit/a648258c) (2026-09-04); the loops kept their literals.
+- **Now:** [shell_equations.f90:146-147](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/structure/shell_equations.f90#L146-L147), used at [:285-286](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/structure/shell_equations.f90#L285-L286); [timestep_control.f90:331-332](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/step/timestep_control.f90#L331-L332); `setup_solar_calibration`, [calibration.f90:360-364](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/run/calibration.f90#L360-L364), [:373](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/run/calibration.f90#L373), [:392](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/run/calibration.f90#L392), against [:402](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/run/calibration.f90#L402).
+- **What is wrong:**
+  - `one_year_sec_inv = 3.1688d-8` is not 1/`one_year_sec` = 3.16877e-8: 9.9e-6 relative (correction to the review's 7e-6). It is the 1/Δt of ε_grav in zones with X > 0.01 when the step is shorter than a year; `one_year_sec` itself is `physical_constants`' `seconds_per_year` written again.
+  - The limit on the luminosity change divides by `2.3026d0` for ln 10 (2.302585...), 6.5e-6 relative.
+  - The rescale and settling cards are laid out by `do i = 4,46,3` and `do i = 5,47,3`, while the card count and the solar-age cards' loop follow `num_calibration_runs = max_runs - 2`. Should `max_runs` change, the later triples keep the deck's cards, and `check_max_runs` (M192) does not read loop bounds.
+- **Expected behaviour, and why:** each constant once and exact (`docs/GUIDELINES.md`, "Code style" rule 2); a layout from one count.
+- **What we did:** recorded, not fixed. Proposed fix: `seconds_per_year` and its exact inverse; `ln10`; the loops to `num_calibration_runs - 2` and `- 1`. The first two are measured commits; the loops are byte-identical.
+
+### M274. Stale core text: the negative step, the triangle test, prepare_run, "no pinned deck rescales", accretion's conservation, level 4, the equations' home, Phase 2's status, and seven comments
+
+- **Status:** open. The core evaluation's finding 12, each statement checked, with the stale path its finding 9 and the net evaluation's finding 3 name. Kind A: comments and docs.
+- **In the original F77?** No: each is a 2026 comment or document.
+- **What is wrong:**
+  - core/README.md [:82](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/README.md#L82): "A negative `s%dt` means 'solve, do not age' ... made positive after convergence"; the aging flag replaced it in [88b32a90](https://github.com/parallelpro/yrec/commit/88b32a90) (2026-10-28; [step_driver.f90:417-423](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/step/step_driver.f90#L417-L423)); [timestep_control.f90:39-40](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/step/timestep_control.f90#L39-L40) ("a model being relaxed") likewise.
+  - [:92](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/README.md#L92), test_triangle_fit: degenerate fitting points "give non-finite coefficients, unchecked", and the walk "would never end"; since [d2ff6886](https://github.com/parallelpro/yrec/commit/d2ff6886) the fit returns ierr and the walk stops after `max_reflections` ([triangle_fit.f90:38](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/structure/triangle_fit.f90#L38), [:171-172](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/structure/triangle_fit.f90#L171-L172), [:196-221](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/structure/triangle_fit.f90#L196-L221)), and the test checks both.
+  - [:26](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/README.md#L26): `prepare_run` "(that, then the Monte-Carlo run range)"; it sets the run plan's envelope Z, then calls that, then reads the Monte Carlo samples ([run_setup.f90:28-47](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/run/run_setup.f90#L28-L47)); the range is `first_mc_run`/`last_mc_run`, functions of the controls.
+  - [:87](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/README.md#L87): "No pinned deck rescales a model"; the pinned solar decks' card 1 is a rescale-and-evolve card (`KINDRN(1) = 3`, [Test_solar_noGS_norot.nml1:22-27](https://github.com/parallelpro/yrec/blob/bfb50705/examples/run_standard_solar_model/Test_solar_noGS_norot.nml1#L22-L27)); no pinned deck covers the horizontal-branch rescale.
+  - [:93](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/README.md#L93): test_mass_change's "accretion conserves every basic species" holds on the test's convection zone of uniform composition, the one case O7's mixing conserves.
+  - [:72](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/README.md#L72): "with rotation on, level 4 inside the structure⇄rotation iteration"; level 4 runs for every model, the iteration having one pass without rotation.
+  - [:81](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/README.md#L81) and [docs/TARGET_ARCHITECTURE.md:235](https://github.com/parallelpro/yrec/blob/bfb50705/docs/TARGET_ARCHITECTURE.md#L235) send the reader to structure_equations for the equations and `qt_dl`; they are in shell_equations' header, as [structure_equations.f90:29-32](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/structure/structure_equations.f90#L29-L32) says.
+  - [docs/TARGET_ARCHITECTURE.md:444](https://github.com/parallelpro/yrec/blob/bfb50705/docs/TARGET_ARCHITECTURE.md#L444): Phase 2's status lists the coupling iterations in the step driver and the `aging` flag as open; both are done.
+  - Comments: [step_driver.f90:51](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/step/step_driver.f90#L51)'s `evolve_state` (M272); [henyey_iteration.f90:247](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/structure/henyey_iteration.f90#L247) cites "reports/henyey-wave2.md", which is `audit/readability-sweep-2026-09-03/reports/henyey-wave2.md`, as observables.f90:128 has it; [calibration.f90:202-204](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/run/calibration.f90#L202-L204), "despite the log_r_* names of the model values", where they are `r_rsun_*`; [stop_conditions.f90:129-131](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/run/stop_conditions.f90#L129-L131), "iteration 1 only primes previous-model state", where nothing is called at iteration 1 ([:172](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/run/stop_conditions.f90#L172)); [yrec_capi.f90:5-6](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/run/yrec_capi.f90#L5-L6), "the ctypes binding under /Applications/YREC/pyyrec", one machine's path for the repository's `pyyrec/`; [burn_step.f90:90-91](https://github.com/parallelpro/yrec/blob/bfb50705/src/core/step/burn_step.f90#L90-L91), "rotation/burn_li_be_midpoint.f90", now `rotation/retired/burn_li_be_midpoint.f90.txt` ([d51f2ea7](https://github.com/parallelpro/yrec/commit/d51f2ea7), 2026-10-28).
+  - [test_reentry.py:13-17](https://github.com/parallelpro/yrec/blob/bfb50705/test_reentry.py#L13-L17): the m0030 deck "ends via the BSSTEP numerics stop, which kills the process mid-call"; bsstep returns a status, and numerics has no stop (`check_no_io`).
+- **Expected behaviour, and why:** comments and docs describe the code as it is now (`docs/GUIDELINES.md`, "Code style" rule 5).
+- **What we did:** recorded, not fixed. Proposed fix: each corrected. Not here: calibration.f90:250-251's `dlogl_dlogr` and `dage_dlogr`, names its comment calls wrong (a rename, the plan's).
