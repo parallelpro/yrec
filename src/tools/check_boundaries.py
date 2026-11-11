@@ -24,6 +24,12 @@ import sys
 import pathlib
 import collections
 
+# The sibling tools this one imports (check_style, check_star_contracts,
+# gen_star_docs) are found under `python3 -I` too, which leaves the
+# script's directory off sys.path.
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import check_style
+
 SRC = pathlib.Path(__file__).resolve().parent.parent
 
 DOMAINS = ["eos", "kap", "atm", "net", "convection",
@@ -1148,26 +1154,68 @@ def check_facade_imports(src_root):
     return problems
 
 
-# Directories whose code does no I/O and never stops the run (2026-10):
-# their routines return a status code and their callers report
-# (numerics/README.md, section 3).
+# Code that does no I/O and never stops the run: its routines return a
+# status code and their callers report (numerics/README.md, section 3;
+# GUIDELINES "Code style" 7, kernels print nothing). The directories
+# NO_IO_DIRS, every file of STAR_BLIND_FILES and every file of
+# KERNEL_FILES. An I/O statement is check_style's io_statement (write,
+# read, print, open, close, inquire, rewind, backspace, endfile, flush,
+# wait), so an internal write or read into a character variable (a
+# message formatted for the caller) is not one.
 NO_IO_DIRS = ["numerics", "math"]
-IO_STATEMENT = re.compile(r"(?i)(?<![\w%])(?:(?:write|read|open|close|inquire)\s*\(|print\s*[*'0-9\x22])")
+
+# Star-free kernels that are not star-blind files (a domain's kernels,
+# arguments in and results out). Empty to start: each package round adds
+# its kernels here when its messages module lands (PLAN.md, section 4).
+KERNEL_FILES = []
+
+# Today's covered files that still print, read tables or stop, each with
+# the round that removes the I/O (PLAN.md's rounds). A round deletes its
+# entries; an entry whose file is clean, or not covered, is an error.
+NO_IO_ALLOWANCE = {
+    "core/envelope/envelope_integration_kernel.f90":
+        "core round (b: core_messages; the kernel returns codes, core.md finding 5)",
+    "core/envelope/envelope_integrands.f90":
+        "core round (b: its dead `if (.false.) print` lines, core.md finding 5)",
+    "eos/yale/yale_eos.f90": "eos round (the Fermi-Dirac table read, with the source descriptor)",
+    "eos/scv/scv_eos.f90": "eos round (the SCV table read, with the source descriptor)",
+    "eos/opal/opal_eos.f90": "eos round (the OPAL table read, with the source descriptor)",
+    "eos/opal/opal95_eos.f90": "eos round (the OPAL 1995 table read, with the source descriptor)",
+    "eos/mhd/mhd_eos.f90": "eos round (the MHD table read, with the source descriptor)",
+    "rotation/seculr/instability_velocities.f90":
+        "rotation follow-up, outside PLAN.md's rounds (rotation.md finding 6: the RAT print)",
+}
 STOP_STATEMENT = re.compile(r"(?i)(?<![\w%])(?:error\s+)?stop(?![\w%])")
 
-def check_no_io(src_root):
-    problems = []
+
+def no_io_files(src_root):
+    files = set(STAR_BLIND_FILES) | set(KERNEL_FILES)
     for d in NO_IO_DIRS:
-        for f in sorted((src_root / d).rglob("*.f90")):
-            rel = f.relative_to(src_root).as_posix()
-            if "/test/" in rel:
-                continue
-            for i, line in enumerate(f.read_text(errors="replace").splitlines(), 1):
-                code = mask_strings(line)
-                if IO_STATEMENT.search(code):
-                    problems.append(f"{rel}:{i}: I/O statement in a no-I/O directory: {line.strip()[:60]}")
-                if STOP_STATEMENT.search(code):
-                    problems.append(f"{rel}:{i}: stop in a no-I/O directory (return a status): {line.strip()[:60]}")
+        files |= {f.relative_to(src_root).as_posix() for f in (src_root / d).rglob("*.f90")
+                  if "/test/" not in f.relative_to(src_root).as_posix()}
+    return sorted(files)
+
+
+def check_no_io(src_root):
+    problems, allowed_dirty = [], set()
+    shared_chars = check_style.shared_character_names(check_style.production_files(src_root))
+    covered = no_io_files(src_root)
+    for rel in covered:
+        src = check_style.Source((src_root / rel).read_text(errors="replace"))
+        found = [f"{rel}:{i}: I/O statement in a no-I/O file: {stmt[:60]}"
+                 for i, stmt in check_style.io_statements(src, shared_chars)]
+        found += [f"{rel}:{i}: stop in a no-I/O file (return a status): {src.lines[i - 1].strip()[:60]}"
+                  for i, code in enumerate(src.code, 1) if STOP_STATEMENT.search(code)]
+        if rel in NO_IO_ALLOWANCE:
+            if found:
+                allowed_dirty.add(rel)
+            continue
+        problems += found
+    for rel, round_ in sorted(NO_IO_ALLOWANCE.items()):
+        if rel not in covered:
+            problems.append(f"{rel}: in NO_IO_ALLOWANCE but not a no-I/O file")
+        elif rel not in allowed_dirty:
+            problems.append(f"{rel}: no I/O left; delete its NO_IO_ALLOWANCE entry ({round_})")
     return problems
 
 
@@ -1453,7 +1501,7 @@ def main():
 
     io_problems = check_no_io(SRC)
     if io_problems:
-        print("NO-I/O CONTRACT VIOLATIONS (numerics/, math/):")
+        print("NO-I/O CONTRACT VIOLATIONS (NO_IO_DIRS, STAR_BLIND_FILES, KERNEL_FILES):")
         for m in io_problems:
             print("  " + m)
         return 1
