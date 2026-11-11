@@ -30,10 +30,14 @@ module scv_eos
            numerics_status_text
       use eos_messages, only: eos_log, eos_report, message_length, unwritten_line
       use eos_mixture, only: mean_weights_from_density
+      use eos_configuration, only: eos_settings, eos_table_paths_t
+      use eos_table_source, only: eos_table_source_t, stage_in_place_of_saha, always_in_window, &
+           whole_weight_inside, adopt_whole_result, blend_table_result
       use math_lib
       implicit none
       private
-      public :: compute_scv_envelope_eos, build_scv_envelope_table, read_scv_tables
+      public :: compute_scv_envelope_eos, build_scv_envelope_table, read_scv_tables, &
+           scv_table_source
 
 ! the lowest log10 P_gas (cgs) the tables cover; how far a zone's X or
 ! Z may be from the envelope table's for the table to serve it
@@ -41,6 +45,49 @@ module scv_eos
            scv_composition_tolerance = 1.0d-5
 
 contains
+
+!----------------------------------------------------------------------
+! scv_table_source
+!----------------------------------------------------------------------
+! SCV as a table source (eos_table_source): selected by use_scv_eos, its
+! three tables read at eos_init, consulted below the Saha cutoff in place
+! of the Saha solution (compute_scv_envelope_eos, from a copy of it), and
+! taken whole wherever its tables cover the point: it has no edge weight
+! yet (M88).
+function scv_table_source() result(src)
+      type(eos_table_source_t) :: src
+      src%name = 'SCV'
+      src%stage = stage_in_place_of_saha
+      src%selected => scv_selected
+      src%read_tables => read_scv_source
+      src%in_window => always_in_window
+      src%lookup => scv_lookup
+      src%edge_weight => whole_weight_inside
+      src%adopt => adopt_whole_result
+      src%blend => blend_table_result
+end function scv_table_source
+
+logical function scv_selected()
+      scv_selected = eos_settings%use_scv_eos
+end function scv_selected
+
+subroutine read_scv_source(paths, ierr)
+      type(eos_table_paths_t), intent(in) :: paths
+      integer, intent(out) :: ierr
+      call read_scv_tables(trim(paths%scv_h), trim(paths%scv_he), trim(paths%scv_z), ierr)
+end subroutine read_scv_source
+
+! the lookup takes P from table_r (the copy of the Saha result), not from
+! log10_pressure
+subroutine scv_lookup(log10_temperature, log10_pressure, hydrogen_fraction, metal_fraction, &
+     table_r, covers, ierr)
+      real(dp), intent(in) :: log10_temperature, log10_pressure, hydrogen_fraction, metal_fraction
+      type(eos_result), intent(inout) :: table_r
+      logical, intent(out) :: covers
+      integer, intent(out) :: ierr
+      call compute_scv_envelope_eos(log10_temperature, hydrogen_fraction, metal_fraction, &
+           table_r, covers, ierr)
+end subroutine scv_lookup
 
 !----------------------------------------------------------------------
 ! compute_scv_envelope_eos (formerly eqscve)

@@ -110,3 +110,31 @@ check = 'Debye-Hueckel: the two rises of rho are in the ratio of the charge-weig
 file = 'eos/yale/yale_eos.f90'
 old = '''            almix = almix + debye_huckel_nu(ii)*dh%metals(ii)'''
 new = '''            almix = almix + 6.0d0*dh%metals(ii)'''
+
+[[mutation]]
+id = 'source_list-01'
+check = 'table sources: SCV, OPAL and MHD listed, each with its stage, switch and procedures'
+file = 'eos/scv/scv_eos.f90'
+old = '''      src%stage = stage_in_place_of_saha'''
+new = '''      src%stage = stage_in_place_of_saha + 1'''
+
+[[mutation]]
+id = 'source_list-02'
+check = 'table sources: SCV, OPAL and MHD listed, each with its stage, switch and procedures'
+file = 'eos/mhd/mhd_eos.f90'
+old = '''      src%edge_weight => whole_weight_inside
+      src%adopt => adopt_whole_result
+      src%blend => blend_table_result
+end function mhd_table_source'''
+new = '''      src%edge_weight => whole_weight_inside
+      src%adopt => adopt_whole_result
+end function mhd_table_source'''
+
+[[mutation]]
+id = 'source_list-03'
+check = "continuity: where the OPAL 2006 edge ramp reaches OPAL"
+file = 'eos/blended_eos.f90'
+old = '''      if (.not. near_edge) then
+         call src%adopt(table_r, r)'''
+new = '''      if (.true.) then
+         call src%adopt(table_r, r)'''

@@ -1,14 +1,16 @@
 !----------------------------------------------------------------------
 ! blended_eos
 !----------------------------------------------------------------------
-! The equation of state of every run that does not use MHD: the
-! Yale EOS, with the SCV table at low temperature and an OPAL table
-! blended in where it covers the point.
+! The equation of state of every run that does not use a whole-EOS
+! source (MHD): the Yale EOS, with the table sources of eos_source_list
+! (SCV at low temperature, an OPAL table) applied where they cover the
+! point.
 !     blend_eos            one evaluation at (log T, log P, X, Z):
-!                          Saha (or SCV) below the ionization cutoff,
-!                          fully ionized above it, interpolated across
-!                          it, then the OPAL result adopted inside the
-!                          table or blended in near its edge
+!                          Saha below the ionization cutoff (SCV in its
+!                          place where it covers the point), fully
+!                          ionized above it, interpolated across it,
+!                          then the OPAL result adopted inside the table
+!                          or blended in near its edge
 !     compute_blended_eos  blend_eos, with the T and P derivatives of
 !                          the gradients taken numerically (four more
 !                          evaluations) when use_numerical_derivatives
@@ -18,8 +20,9 @@ module blended_eos
       use eos_results, only: eos_result
       use yale_eos, only: compute_saha_eos, compute_fully_ionized_eos
       use yale_eos_tables, only: debye_huckel_composition
-      use scv_eos, only: compute_scv_envelope_eos
-      use opal_eos, only: compute_opal_eos, find_opal_edge_ramp, opal_layout, esac06
+      use eos_table_source, only: eos_table_source_t, stage_in_place_of_saha, stage_over_the_gas
+      use eos_source_list, only: table_sources, n_table_sources
+      use opal_eos, only: esac06
       use opal_eos_tables, only: i_opal_gamma1, i_opal_gamma2_ratio, opal_tables, iv_opal06
       use physical_constants, only: gas_constant, ln10, &
            radiation_constant_over_3
@@ -29,8 +32,7 @@ module blended_eos
            debye_huckel_composition_of, &
            inverse_a_hydrogen, inverse_a_helium, electrons_per_nucleon_metals, &
            ix_c, ix_h, ix_he, ix_na, ix_ne, ix_o, n_mix_species
-      use eos_configuration, only: eos_settings, opal_vintage_none, opal_vintage_2006, &
-           saha_ramp_width
+      use eos_configuration, only: eos_settings, opal_vintage_2006, saha_ramp_width
       use math_lib
 
       implicit none
@@ -146,15 +148,16 @@ end subroutine compute_blended_eos
 !   radiation_share        beta = P_gas/P (beta <= 0, radiation pressure
 !                          at or above P, is an error)
 !   gas_eos                above the ionization cutoff, a fully ionized
-!                          gas; below it the Saha equations, SCV's
-!                          result where SCV is on and its table covers
-!                          the point, and within saha_ramp_width of the
-!                          cutoff that blended into the fully ionized one
-!   opal_step              inside the selected vintage's (T, rho) window,
-!                          OPAL's result where its table covers the
-!                          point, blended in near the table's edge
-! A table source added later is one more step after these (or before
-! opal_step, to let OPAL win where both cover the point).
+!                          gas; below it the Saha equations, with the
+!                          selected sources of stage_in_place_of_saha
+!                          (SCV) applied to them, and within
+!                          saha_ramp_width of the cutoff that blended
+!                          into the fully ionized one
+!   the sources of stage_over_the_gas (OPAL), each applied in the list's
+!                          order (apply_table_source): its result where
+!                          its table covers the point, blended in near
+!                          the table's edge
+! A table source added later is one more entry of eos_source_list.
 subroutine blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
      metal_fraction, dh, r, want_derivatives, in_atmosphere, saha_iterations, ierr)
       real(dp), intent(in) :: log10_temperature, log10_pressure
@@ -166,6 +169,8 @@ subroutine blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
       integer, intent(inout) :: saha_iterations
       integer, intent(out) :: ierr
       real(dp) :: saha_number_fractions(n_mix_species)
+      type(eos_table_source_t) :: sources(n_table_sources)
+      integer :: k
 
       ierr = 0
       call zone_mixture(hydrogen_fraction, metal_fraction, &
@@ -176,8 +181,14 @@ subroutine blend_eos(log10_temperature, log10_pressure, hydrogen_fraction, &
       call gas_eos(log10_temperature, log10_pressure, hydrogen_fraction, metal_fraction, &
            saha_number_fractions, dh, r, want_derivatives, in_atmosphere, saha_iterations, ierr)
       if (ierr /= 0) return
-      call opal_step(log10_temperature, log10_pressure, hydrogen_fraction, metal_fraction, &
-           r, ierr)
+      sources = table_sources()
+      do k = 1, n_table_sources
+         if (sources(k)%stage /= stage_over_the_gas) cycle
+         if (.not. sources(k)%selected()) cycle
+         call apply_table_source(sources(k), log10_temperature, log10_pressure, &
+              hydrogen_fraction, metal_fraction, r, ierr)
+         if (ierr /= 0) return
+      end do
 end subroutine blend_eos
 
 !----------------------------------------------------------------------
@@ -216,12 +227,13 @@ end subroutine radiation_share
 !----------------------------------------------------------------------
 ! The gas, by log T against the Saha cutoff T_c: at and above it a
 ! fully ionized gas (fully_ionized_gas); below it the Saha equations
-! (compute_saha_eos), and SCV's result in their place where SCV is on
-! and its table covers the point (its density, the mean weights that
-! density implies, the ionization fractions and the first derivatives;
-! the Saha second derivatives stay; outside the table the Saha result
-! stands); within saha_ramp_width of T_c that blended into the fully
-! ionized gas (blend_saha_into).
+! (compute_saha_eos), and the selected sources of stage_in_place_of_saha
+! applied to that result (apply_table_source; SCV's lookup refines a copy
+! of it: its density, the mean weights that density implies, the
+! ionization fractions and the first derivatives, the Saha second
+! derivatives staying; outside the table the Saha result stands);
+! within saha_ramp_width of T_c that blended into the fully ionized gas
+! (blend_saha_into).
 subroutine gas_eos(log10_temperature, log10_pressure, hydrogen_fraction, metal_fraction, &
      saha_number_fractions, dh, r, want_derivatives, in_atmosphere, saha_iterations, ierr)
       real(dp), intent(in) :: log10_temperature, log10_pressure
@@ -235,9 +247,10 @@ subroutine gas_eos(log10_temperature, log10_pressure, hydrogen_fraction, metal_f
 ! the scale that maps the Saha ramp (saha_ramp_width below the cutoff)
 ! onto a weight from 1 (its foot) to 0 (the cutoff)
       real(dp), parameter :: saha_ramp_scale = 1.0d0/saha_ramp_width
-! the Saha (or SCV) result, blended into the fully ionized one; SCV's
-      type(eos_result) :: saha, scv
-      logical :: scv_covers
+! the Saha (or SCV) result, blended into the fully ionized one
+      type(eos_result) :: saha
+      type(eos_table_source_t) :: sources(n_table_sources)
+      integer :: k
 
       ierr = 0
       if (log10_temperature >= eos_settings%saha_log10t_cutoff) then
@@ -246,13 +259,14 @@ subroutine gas_eos(log10_temperature, log10_pressure, hydrogen_fraction, metal_f
       end if
       call compute_saha_eos(saha_number_fractions, log10_temperature, &
            log10_pressure, r, want_derivatives, in_atmosphere, saha_iterations)
-      if (eos_settings%use_scv_eos) then
-         scv = r
-         call compute_scv_envelope_eos(log10_temperature, hydrogen_fraction, &
-              metal_fraction, scv, scv_covers, ierr)
+      sources = table_sources()
+      do k = 1, n_table_sources
+         if (sources(k)%stage /= stage_in_place_of_saha) cycle
+         if (.not. sources(k)%selected()) cycle
+         call apply_table_source(sources(k), log10_temperature, log10_pressure, &
+              hydrogen_fraction, metal_fraction, r, ierr)
          if (ierr /= 0) return
-         if (scv_covers) r = scv
-      end if
+      end do
       if (log10_temperature <= eos_settings%saha_log10t_cutoff - saha_ramp_width) return
       saha = r
       call fully_ionized_gas(log10_temperature, log10_pressure, hydrogen_fraction, dh, r, ierr)
@@ -263,46 +277,43 @@ subroutine gas_eos(log10_temperature, log10_pressure, hydrogen_fraction, metal_f
 end subroutine gas_eos
 
 !----------------------------------------------------------------------
-! opal_step
+! apply_table_source
 !----------------------------------------------------------------------
-! The selected OPAL vintage, inside its (T, rho) window: compute_opal_eos
-! finds the density that gives P; where the table covers the point its
-! result replaces r's (adopt_table_result), and near the table's edge it
-! is blended in with the edge weight (find_opal_edge_ramp,
-! blend_table_result); elsewhere r stands. T and P become OPAL's own
-! (from its exp10) once it is consulted.
-subroutine opal_step(log10_temperature, log10_pressure, hydrogen_fraction, metal_fraction, &
-     r, ierr)
+! One table source at the point (eos_table_source): inside its window
+! (in_window), its lookup from a copy of r; T and P become the lookup's
+! (OPAL's come from its own exp10; SCV's are r's); where its table covers
+! the point its result replaces r's (adopt) or, near the table's edge,
+! is blended in with its edge weight (edge_weight, blend); elsewhere r
+! stands. ierr is the lookup's or the edge weight's.
+subroutine apply_table_source(src, log10_temperature, log10_pressure, hydrogen_fraction, &
+     metal_fraction, r, ierr)
+      type(eos_table_source_t), intent(in) :: src
       real(dp), intent(in) :: log10_temperature, log10_pressure
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       type(eos_result), intent(inout) :: r
       integer, intent(out) :: ierr
-! the OPAL result, adopted or blended in, and its edge weight
+! the source's result, adopted or blended in, and its edge weight
       type(eos_result) :: table_r
-      real(dp) :: ramp_factor
-      logical :: in_opal_table, needs_ramp, opal_covers_point
-      integer :: vintage
+      real(dp) :: weight
+      logical :: covers, in_table, near_edge
 
       ierr = 0
-      vintage = eos_settings%opal_vintage
-      if (vintage == opal_vintage_none) return
-      if (.not. inside_opal_window(vintage, r%temperature, log10_temperature, &
-           r%log10_density)) return
-      call compute_opal_eos(vintage, log10_temperature, log10_pressure, &
-           hydrogen_fraction, metal_fraction, table_r, ierr, opal_covers_point)
+      if (.not. src%in_window(log10_temperature, r)) return
+      table_r = r
+      call src%lookup(log10_temperature, log10_pressure, hydrogen_fraction, metal_fraction, &
+           table_r, covers, ierr)
       r%temperature = table_r%temperature
       r%pressure = table_r%pressure
-      if (ierr /= 0 .or. .not. opal_covers_point) return
-      call find_opal_edge_ramp(vintage, r%temperature, table_r%log10_density, &
-           ramp_factor, in_opal_table, needs_ramp, ierr)
+      if (ierr /= 0 .or. .not. covers) return
+      call src%edge_weight(r%temperature, table_r%log10_density, weight, in_table, near_edge, ierr)
       if (ierr /= 0) return
-      if (.not. in_opal_table) return
-      if (.not. needs_ramp) then
-         call adopt_table_result(table_r, r)
+      if (.not. in_table) return
+      if (.not. near_edge) then
+         call src%adopt(table_r, r)
       else
-         call blend_table_result(table_r, ramp_factor, r)
+         call src%blend(table_r, weight, r)
       end if
-end subroutine opal_step
+end subroutine apply_table_source
 
 !----------------------------------------------------------------------
 ! zone_mixture
@@ -458,66 +469,6 @@ subroutine blend_saha_into(saha, ramp_weight, want_derivatives, r)
       r%adiabatic_gradient_dp = r%adiabatic_gradient_dp + &
            f*(saha%adiabatic_gradient_dp - r%adiabatic_gradient_dp)
 end subroutine blend_saha_into
-
-! the (T, rho) window inside which a vintage is consulted at all (the
-! table's edge is then find_opal_edge_ramp's): its row of opal_layout,
-! where 1995 bounds log10 T and the others T
-logical function inside_opal_window(vintage, temperature, log10_temperature, log10_density)
-      integer, intent(in) :: vintage
-      real(dp), intent(in) :: temperature, log10_temperature, log10_density
-      inside_opal_window = temperature >= opal_layout(vintage)%window_t_min .and. &
-           temperature <= opal_layout(vintage)%window_t_max .and. &
-           log10_temperature <= opal_layout(vintage)%window_log10_t_max .and. &
-           log10_density <= opal_layout(vintage)%window_log10_rho_max
-end function inside_opal_window
-
-! Inside a table source's coverage (OPAL's): its density, beta, mean
-! weights and first derivatives replace r's (the second derivatives stay
-! the Yale/SCV ones).
-subroutine adopt_table_result(table_r, r)
-      type(eos_result), intent(in) :: table_r
-      type(eos_result), intent(inout) :: r
-      r%log10_density = table_r%log10_density
-      r%density = exp10(r%log10_density)
-      r%beta = table_r%beta
-      r%beta_inverse = 1.0d0/r%beta
-      r%beta14 = 4.0d0*r%beta_inverse*(1.0d0 - r%beta)
-      r%specific_gas_constant = table_r%specific_gas_constant
-      r%ion_mean_weight_inverse = table_r%ion_mean_weight_inverse
-      r%electron_mean_weight_inverse = table_r%electron_mean_weight_inverse
-      r%dlnrho_dlnt = table_r%dlnrho_dlnt
-      r%dlnrho_dlnp = table_r%dlnrho_dlnp
-      r%specific_heat_cp = table_r%specific_heat_cp
-      r%adiabatic_gradient = table_r%adiabatic_gradient
-end subroutine adopt_table_result
-
-! Near a table source's edge: the same quantities blended with its edge
-! weight, r + w (table - r).
-subroutine blend_table_result(table_r, ramp_factor, r)
-      type(eos_result), intent(in) :: table_r
-      real(dp), intent(in) :: ramp_factor
-      type(eos_result), intent(inout) :: r
-      r%log10_density = r%log10_density + &
-           ramp_factor*(table_r%log10_density - r%log10_density)
-      r%density = exp10(r%log10_density)
-      r%beta = r%beta + ramp_factor*(table_r%beta - r%beta)
-      r%beta_inverse = 1.0d0/r%beta
-      r%beta14 = 4.0d0*r%beta_inverse*(1.0d0 - r%beta)
-      r%specific_gas_constant = r%specific_gas_constant + &
-           ramp_factor*(table_r%specific_gas_constant - r%specific_gas_constant)
-      r%ion_mean_weight_inverse = r%ion_mean_weight_inverse + &
-           ramp_factor*(table_r%ion_mean_weight_inverse - r%ion_mean_weight_inverse)
-      r%electron_mean_weight_inverse = r%electron_mean_weight_inverse + &
-           ramp_factor*(table_r%electron_mean_weight_inverse - r%electron_mean_weight_inverse)
-      r%dlnrho_dlnt = r%dlnrho_dlnt + &
-           ramp_factor*(table_r%dlnrho_dlnt - r%dlnrho_dlnt)
-      r%dlnrho_dlnp = r%dlnrho_dlnp + &
-           ramp_factor*(table_r%dlnrho_dlnp - r%dlnrho_dlnp)
-      r%specific_heat_cp = r%specific_heat_cp + &
-           ramp_factor*(table_r%specific_heat_cp - r%specific_heat_cp)
-      r%adiabatic_gradient = r%adiabatic_gradient + &
-           ramp_factor*(table_r%adiabatic_gradient - r%adiabatic_gradient)
-end subroutine blend_table_result
 
 !----------------------------------------------------------------------
 ! gamma1_at_density (formerly eos_lib's gamma1_at_density)

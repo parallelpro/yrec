@@ -27,7 +27,7 @@ module opal_eos
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use eos_results, only: eos_result
       use opal95_eos, only: esac, rhoofp, find_opal95_ramp
-      use opal_eos_tables, only: find_opal_ramp, gmass01, i_opal_p, &
+      use opal_eos_tables, only: find_opal_ramp, gmass01, i_opal_p, open_opal_eos_table, &
            interpolate_opal_t6_rho, iv_opal95, iv_opal01, iv_opal06, &
            n_eos_mv, n_eos_mx, opal95, opal_tables, opal_layout, opal_shared, &
            opal_eos_vintage, opal_flag_set, opal_rho_not_found, opal_vintage_layout, quad, &
@@ -35,15 +35,88 @@ module opal_eos
       use physical_constants, only: gas_constant
       use eos_messages, only: eos_log, eos_report, message_length, unwritten_line
       use eos_mixture, only: compute_mean_weights
+      use eos_configuration, only: eos_settings, eos_table_paths_t, opal_vintage_none
+      use eos_table_source, only: eos_table_source_t, stage_over_the_gas, adopt_table_result, &
+           blend_table_result
       use math_lib
       implicit none
       private
-      public :: compute_opal_eos, find_opal_edge_ramp, esac06
+      public :: compute_opal_eos, find_opal_edge_ramp, esac06, opal_table_source
 ! for test_eos: the 2001 interpolator's entry point
       public :: esac01
       public :: iv_opal95, iv_opal01, iv_opal06, opal_layout
 
 contains
+
+!----------------------------------------------------------------------
+! opal_table_source
+!----------------------------------------------------------------------
+! OPAL as a table source (eos_table_source): the vintage the settings
+! select (opal_vintage), its table opened at eos_init and read on first
+! use, consulted over the gas's result inside the vintage's (T, rho)
+! window (inside_opal_window), its density, beta, mean weights and first
+! derivatives adopted where its table holds the point and blended in
+! with its edge weight near the table's edge (find_opal_edge_ramp).
+function opal_table_source() result(src)
+      type(eos_table_source_t) :: src
+      src%name = 'OPAL'
+      src%stage = stage_over_the_gas
+      src%selected => opal_selected
+      src%read_tables => open_opal_source
+      src%in_window => opal_in_window
+      src%lookup => opal_lookup
+      src%edge_weight => opal_edge_weight
+      src%adopt => adopt_table_result
+      src%blend => blend_table_result
+end function opal_table_source
+
+logical function opal_selected()
+      opal_selected = eos_settings%opal_vintage /= opal_vintage_none
+end function opal_selected
+
+subroutine open_opal_source(paths, ierr)
+      type(eos_table_paths_t), intent(in) :: paths
+      integer, intent(out) :: ierr
+      call open_opal_eos_table(eos_settings%opal_vintage, trim(paths%opal), ierr)
+end subroutine open_opal_source
+
+logical function opal_in_window(log10_temperature, r)
+      real(dp), intent(in) :: log10_temperature
+      type(eos_result), intent(in) :: r
+      opal_in_window = inside_opal_window(eos_settings%opal_vintage, r%temperature, &
+           log10_temperature, r%log10_density)
+end function opal_in_window
+
+subroutine opal_lookup(log10_temperature, log10_pressure, hydrogen_fraction, metal_fraction, &
+     table_r, covers, ierr)
+      real(dp), intent(in) :: log10_temperature, log10_pressure, hydrogen_fraction, metal_fraction
+      type(eos_result), intent(inout) :: table_r
+      logical, intent(out) :: covers
+      integer, intent(out) :: ierr
+      call compute_opal_eos(eos_settings%opal_vintage, log10_temperature, log10_pressure, &
+           hydrogen_fraction, metal_fraction, table_r, ierr, covers)
+end subroutine opal_lookup
+
+subroutine opal_edge_weight(temperature, log10_density, weight, in_table, near_edge, ierr)
+      real(dp), intent(in) :: temperature, log10_density
+      real(dp), intent(out) :: weight
+      logical, intent(out) :: in_table, near_edge
+      integer, intent(out) :: ierr
+      call find_opal_edge_ramp(eos_settings%opal_vintage, temperature, log10_density, weight, &
+           in_table, near_edge, ierr)
+end subroutine opal_edge_weight
+
+! the (T, rho) window inside which a vintage is consulted at all (the
+! table's edge is then find_opal_edge_ramp's): its row of opal_layout,
+! where 1995 bounds log10 T and the others T
+pure logical function inside_opal_window(vintage, temperature, log10_temperature, log10_density)
+      integer, intent(in) :: vintage
+      real(dp), intent(in) :: temperature, log10_temperature, log10_density
+      inside_opal_window = temperature >= opal_layout(vintage)%window_t_min .and. &
+           temperature <= opal_layout(vintage)%window_t_max .and. &
+           log10_temperature <= opal_layout(vintage)%window_log10_t_max .and. &
+           log10_density <= opal_layout(vintage)%window_log10_rho_max
+end function inside_opal_window
 
 !----------------------------------------------------------------------
 ! compute_opal_eos (formerly oeqos, oeqos01, oeqos06)

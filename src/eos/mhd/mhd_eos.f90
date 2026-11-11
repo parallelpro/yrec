@@ -27,12 +27,56 @@ module mhd_eos
       use eos_messages, only: eos_log, eos_report, message_length, unwritten_line
       use numerics_lib, only: lir, quint
       use eos_mixture, only: compute_mean_weights
+      use eos_configuration, only: eos_settings, eos_table_paths_t
+      use eos_table_source, only: eos_table_source_t, stage_whole_eos, always_in_window, &
+           whole_weight_inside, adopt_whole_result, blend_table_result
       use math_lib
       implicit none
       private
-      public :: compute_mhd_eos, read_mhd_tables, interpolate_mhd_table
+      public :: compute_mhd_eos, read_mhd_tables, interpolate_mhd_table, mhd_table_source
 
 contains
+
+!----------------------------------------------------------------------
+! mhd_table_source
+!----------------------------------------------------------------------
+! MHD as a table source (eos_table_source): selected by use_mhd_eos, its
+! eight tables read at eos_init, and the whole EOS where it is selected
+! (eos_get takes compute_mhd_eos's result alone; a point outside its
+! tables is ierr).
+function mhd_table_source() result(src)
+      type(eos_table_source_t) :: src
+      src%name = 'MHD'
+      src%stage = stage_whole_eos
+      src%selected => mhd_selected
+      src%read_tables => read_mhd_source
+      src%in_window => always_in_window
+      src%lookup => mhd_lookup
+      src%edge_weight => whole_weight_inside
+      src%adopt => adopt_whole_result
+      src%blend => blend_table_result
+end function mhd_table_source
+
+logical function mhd_selected()
+      mhd_selected = eos_settings%use_mhd_eos
+end function mhd_selected
+
+subroutine read_mhd_source(paths, ierr)
+      type(eos_table_paths_t), intent(in) :: paths
+      integer, intent(out) :: ierr
+      call read_mhd_tables(paths%mhd_zams, paths%mhd_centre, ierr)
+end subroutine read_mhd_source
+
+subroutine mhd_lookup(log10_temperature, log10_pressure, hydrogen_fraction, metal_fraction, &
+     table_r, covers, ierr)
+      real(dp), intent(in) :: log10_temperature, log10_pressure, hydrogen_fraction, metal_fraction
+      type(eos_result), intent(inout) :: table_r
+      logical, intent(out) :: covers
+      integer, intent(out) :: ierr
+      call compute_mhd_eos(log10_temperature, log10_pressure, hydrogen_fraction, metal_fraction, &
+           table_r, ierr)
+      covers = ierr == 0
+end subroutine mhd_lookup
 
 !----------------------------------------------------------------------
 ! compute_mhd_eos (formerly meqos)

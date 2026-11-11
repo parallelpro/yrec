@@ -206,9 +206,12 @@ STAR_BLIND_FILES = [
     # the mechanisms' velocities, slot by slot (2026-10-28)
     "rotation/seculr/transport_mechanisms.f90",
     # the equation of state's solvers and interpolators (2026-10-29;
-    # test_eos): the blend, the mixture, the Yale, SCV, OPAL and MHD EOS
+    # test_eos): the blend, the mixture, the table-source descriptor and
+    # its list, the Yale, SCV, OPAL and MHD EOS
     "eos/blended_eos.f90",
     "eos/eos_mixture.f90",
+    "eos/eos_table_source.f90",
+    "eos/eos_source_list.f90",
     "eos/yale/yale_eos.f90",
     "eos/scv/scv_eos.f90",
     "eos/opal/opal_eos.f90",

@@ -43,6 +43,9 @@ program test_eos
       use mhd_eos, only: interpolate_mhd_table
       use scv_eos_tables, only: scv_cell, last_scv_cell
       use eos_messages, only: eos_warned, once_fermi_extrapolation
+      use eos_table_source, only: eos_table_source_t, stage_in_place_of_saha, stage_over_the_gas, &
+           stage_whole_eos
+      use eos_source_list, only: table_sources, n_table_sources
       use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
       type(eos_settings_t) :: settings
@@ -817,6 +820,7 @@ subroutine check_physics()
       call scv_mean_weight_checks()
       call diffusion_z_checks()
       call settings_checks()
+      call source_list_checks()
       call opal_trial_call_checks()
       call scv_reader_checks()
       call table_reader_checks()
@@ -1153,6 +1157,52 @@ subroutine settings_checks()
            s%debye_huckel_eta_max == 1.0d0 .and. s%opal_vintage == opal_vintage_none .and. &
            .not. (s%use_scv_eos .or. s%use_mhd_eos .or. s%use_debye_huckel_correction))
 end subroutine settings_checks
+
+! The table sources' list (eos_source_list): each entry named, uniquely,
+! with a stage and every procedure the blend, eos_init and eos_get call;
+! SCV in place of the Saha solution, OPAL over the gas, MHD the whole EOS,
+! each selected by its switch.
+subroutine source_list_checks()
+      type(eos_table_source_t) :: list(n_table_sources)
+      type(eos_settings_t) :: s, before
+      integer :: k, j
+      logical :: ok, selected(n_table_sources)
+      list = table_sources()
+      ok = .true.
+      do k = 1, n_table_sources
+         ok = ok .and. len_trim(list(k)%name) > 0 .and. associated(list(k)%selected) .and. &
+              associated(list(k)%read_tables) .and. associated(list(k)%in_window) .and. &
+              associated(list(k)%lookup) .and. associated(list(k)%edge_weight) .and. &
+              associated(list(k)%adopt) .and. associated(list(k)%blend) .and. &
+              any(list(k)%stage == [stage_in_place_of_saha, stage_over_the_gas, stage_whole_eos])
+         do j = 1, k - 1
+            ok = ok .and. list(j)%name /= list(k)%name
+         end do
+      end do
+      before = eos_settings
+      s = eos_settings_t()
+      s%use_scv_eos = .true.
+      s%opal_vintage = opal_vintage_2006
+      call set_eos_settings(s)
+      do k = 1, n_table_sources
+         if (ok) selected(k) = list(k)%selected()
+      end do
+      call set_eos_settings(before)
+      do k = 1, n_table_sources
+         if (.not. ok) exit
+         select case (trim(list(k)%name))
+         case ("SCV")
+            ok = list(k)%stage == stage_in_place_of_saha .and. selected(k)
+         case ("OPAL")
+            ok = list(k)%stage == stage_over_the_gas .and. selected(k)
+         case ("MHD")
+            ok = list(k)%stage == stage_whole_eos .and. .not. selected(k)
+         case default
+            ok = .false.
+         end select
+      end do
+      call check("table sources: SCV, OPAL and MHD listed, each with its stage, switch and procedures", ok)
+end subroutine source_list_checks
 
 ! Below the OPAL 2006 table (T = 1500 K) gamma1_at_density takes the
 ! Yale/SCV value (to 1e-6), with OPAL selected as without it.
