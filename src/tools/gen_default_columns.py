@@ -26,7 +26,7 @@ uses column_tables() for the same checks and runs --check.
 
 Usage:
   python3 tools/gen_default_columns.py           # (re)write the .inc
-  python3 tools/gen_default_columns.py --check   # exit 1 if stale or out of sync (CI)
+  python3 tools/gen_default_columns.py --check   # exit 1 if stale or out of sync (make check, CI)
 """
 import pathlib
 import re

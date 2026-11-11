@@ -31,7 +31,7 @@ their own targets but obey the same module ordering.
 
 Usage:
   python3 tools/gen_makefile_deps.py           # (re)write src/deps.mk
-  python3 tools/gen_makefile_deps.py --check   # exit 1 if stale (CI)
+  python3 tools/gen_makefile_deps.py --check   # exit 1 if stale (make check, CI)
 """
 import pathlib
 import re

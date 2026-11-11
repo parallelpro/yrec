@@ -1,12 +1,20 @@
 # CI for YREC.
 #
-# Two jobs, each from a sparse checkout (the repository's input/ tree is
+# Three jobs, each from a sparse checkout (the repository's input/ tree is
 # 3.1 GB; CI fetches only the tables the tests read, about 50 MB, and the
 # starting models the decks name):
 #   build-and-test    the six generators' --check, the build, `make tests`,
 #                     the other-energy example and the library link checks,
 #                     then pytest on every unit-test file and on the deck
 #                     tests that need only the solar deck's tables.
+#   devel-tests       the unit test programs built with the development
+#                     flags (`make devel_tests`: -fcheck=all
+#                     -ffpe-trap=invalid,zero,overflow), each run by
+#                     src/tools/devel_tests.py: it must exit 0 with no
+#                     runtime error and no FAIL line. Nothing is
+#                     byte-compared (the flags move round-off). The cases
+#                     that fail today are skipped by name in the tool's
+#                     KNOWN_FAILURES, each with its defect.
 #   solar-regression  the standard solar case run twice in one job and the
 #                     two runs byte-compared (determinism on Linux).
 #
@@ -28,7 +36,8 @@
 # 2026-11-01, runs cm_monte_carlo twice in a scratch directory and reads
 # that deck, mc_input.dat, startmodels/dbl/ and the tables listed for the
 # configuration-matrix decks); a test that starts reading another table
-# needs its line here.
+# needs its line here, in build-and-test's list and devel-tests' (the
+# same list).
 name: CI
 
 on:
@@ -137,6 +146,69 @@ jobs:
           test_other_energy.py test_error_exit.py test_reentry.py
           test_physics.py test_stop_conditions.py test_inlist_convert.py
           test_mesa_output.py test_pyyrec.py test_monte_carlo.py
+
+  # The unit test programs under the development flags (the header above).
+  devel-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /src/
+            /pyyrec/
+            /conftest.py
+            /pytest.ini
+            /test_*.py
+            /examples/**/*.inlist
+            /examples/**/*.nml1
+            /examples/**/*.nml2
+            /examples/run_config_matrix/mc_input.dat
+            /examples/other_energy/
+            /testsuite/
+            /startmodels/dbl/
+            /startmodels/seed/
+            /startmodels/start/
+            /startmodels/tams/
+            /startmodels/zahb/
+            /startmodels/dbl_grid/m3000gs98z016492_Dbl.first
+            /input/eos/yale/FERMI.TAB
+            /input/eos/scv/h_tab_i.dat
+            /input/eos/scv/he_tab_i.dat
+            /input/eos/scv/z_tab_i.dat
+            /input/eos/opal2006/EOSOPAL06Z0.016492
+            /input/eos/opal2006/EOSOPAL06Z0.018776
+            /input/eos/legacy/opal/OPALeos.0188
+            /input/eos/legacy/opal2001/O01EOS0188z
+            /input/opacity/atomic/lanl/PURECO.DBGLAOL
+            /input/opacity/atomic/legacy/opal92/Z0188AG89.DBGLAOL
+            /input/opacity/atomic/legacy/opal92/Z0190AG91.DBGLAOL
+            /input/opacity/atomic/legacy/opal92/Z0188.OPALN
+            /input/opacity/atomic/legacy/opal92/Z0200.OPALN
+            /input/opacity/atomic/legacy/opal95/GS98.OP17
+            /input/opacity/atomic/op05/GS98.OP17
+            /input/opacity/conductive/potekhin/condall06.d
+            /input/opacity/molecular/alex06/alexmol06gs98.tab
+            /input/opacity/molecular/alexmol06gs98.tab
+            /input/opacity/molecular/legacy/alex/
+            /input/opacity/molecular/legacy/kurmol/kapm05.ross
+            /input/opacity/molecular/legacy/kurmol/kapp00.ross
+            /input/atmos/kurucz/atmk1990p00.tab
+            /input/atmos/CastelliKurucz/atmk2004p00.tab
+            /input/atmos/allard/Nextgen.p00
+            /input/atmos/allard/Nextgen2.all
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gfortran
+
+      - name: Build the test programs with the development flags
+        run: make -C src -j4 devel_tests
+
+      - name: Run them (exit 0, no runtime error, no FAIL line)
+        run: python3 src/tools/devel_tests.py
 
   # The standard solar case run TWICE in one job: the first run is the
   # reference, the second must reproduce it byte for byte (minus the

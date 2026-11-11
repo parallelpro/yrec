@@ -27,15 +27,21 @@
 !                  backend;
 !   large y        an exponent beyond the default integer range (3e9)
 !                  takes the composition and stays finite.
+! The NaN and the infinity of the negative-base and zero-base checks are
+! made on purpose, so those checks run with the invalid, divide-by-zero
+! and overflow traps off (a -ffpe-trap build, make devel_tests, sets
+! them) and the halting mode is restored after them.
 program test_math
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use, intrinsic :: ieee_arithmetic, only: ieee_is_nan, ieee_is_finite
+      use, intrinsic :: ieee_exceptions, only: ieee_usual, ieee_get_halting_mode, &
+           ieee_set_halting_mode
       use math_lib
       implicit none
 
       integer :: failures, n, i
       real(dp) :: x, product, expected, y
-      logical :: holds, crmath_backend
+      logical :: holds, crmath_backend, halting(size(ieee_usual))
       real(dp), parameter :: ulp_tolerance = 4.0d0*epsilon(1.0d0)
 
       failures = 0
@@ -109,6 +115,8 @@ program test_math
       call report_true("pow: (-2)**101 and (-2)**100 to a few ulp of y ln 2", &
            abs(pow(-2.0d0, 101.0d0) + 2.0d0**101) <= 101*ulp_tolerance*2.0d0**101 .and. &
            abs(pow(-2.0d0, 100.0d0) - 2.0d0**100) <= 100*ulp_tolerance*2.0d0**100)
+      call ieee_get_halting_mode(ieee_usual, halting)
+      call ieee_set_halting_mode(ieee_usual, .false.)
       call report_true("pow: (-2)**0.5 is NaN", ieee_is_nan(pow(-2.0d0, 0.5d0)))
 
 ! pow(0, y)
@@ -121,6 +129,7 @@ program test_math
          call report_true("pow: 0**0 = 1 and 0**(-1) = +Inf under the intrinsic backend", &
               pow(0.0d0, 0.0d0) == 1.0d0 .and. .not. ieee_is_finite(pow(0.0d0, -1.0d0)))
       end if
+      call ieee_set_halting_mode(ieee_usual, halting)
 
 ! an exponent beyond the default integer range
       x = 1.0d0 + 1.0d-10

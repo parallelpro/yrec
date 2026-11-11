@@ -16,7 +16,11 @@ precision (es25.17e3), so two dumps are equal exactly when the values
 are bit-identical.
 """
 import pathlib
+import sys
 
+# The sibling modules below are found under `python3 -I` too, which
+# leaves the script's directory off sys.path.
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from generated_files import emit, finish
 import controls_registry
 import gen_controls_state

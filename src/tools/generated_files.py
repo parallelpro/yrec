@@ -6,7 +6,8 @@ writes the files whose text changes and leaves the others alone (their
 times too, so that make recompiles only what uses a changed file: make
 runs the controls generators, src/Makefile); run with --check, it writes
 nothing and exits 1 if any committed output differs from what it would
-write (test_generated_files.py runs every generator this way).
+write (`make check` in src/ and test_generated_files.py run every generator
+this way).
 """
 import io
 import sys

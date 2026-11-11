@@ -48,6 +48,8 @@ out, with the reason. Elsewhere a contract is optional, and checked when
 present (docs/GUIDELINES.md, "The star object: six rules").
 
 usage: check_star_contracts.py              check; exit 1 on any mismatch
+                                            (make check and test_boundaries.py
+                                            run it)
        check_star_contracts.py --fix        rewrite the declared lists
        check_star_contracts.py --self-test  the scan on synthetic cases
                                             (test_boundaries.py runs it)

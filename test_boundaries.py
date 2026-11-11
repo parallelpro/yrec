@@ -4,7 +4,8 @@ Runs src/tools/check_boundaries.py, which enforces that every
 cross-domain call in src/ goes through the target domain's public
 surface (its <domain>_lib facade entries, or the documented de-facto
 public routines of the facade-less domains). See that script's header
-for the maintenance rules.
+for the maintenance rules. Also runs the star-contract check and the
+style ratchet (src/tools/check_style.py with src/tools/style_counts.tsv).
 """
 import pathlib
 import subprocess
@@ -27,6 +28,18 @@ def test_star_contracts():
         [sys.executable, str(script)], capture_output=True, text=True
     )
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_style_ratchet():
+    """No style count of a directory of src/ rises above its allowed value
+    in src/tools/style_counts.tsv (src/tools/check_style.py, after its
+    scanner's self-test). The failure lists the new occurrences."""
+    script = pathlib.Path(__file__).parent / "src" / "tools" / "check_style.py"
+    for args in (["--self-test"], []):
+        result = subprocess.run(
+            [sys.executable, str(script)] + args, capture_output=True, text=True
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_star_tools_self_test():

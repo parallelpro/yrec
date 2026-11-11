@@ -58,8 +58,8 @@ or when a member breaks a class rule:
   the reason), and that class holds nothing else.
 
 usage: gen_star_docs.py              rewrite state/README.md's generated parts
-       gen_star_docs.py --check      exit 1 if they are stale
-                                     (test_generated_files.py runs this)
+       gen_star_docs.py --check      exit 1 if they are stale (make check
+                                     and test_generated_files.py run this)
        gen_star_docs.py --self-test  the writer and reader analysis on
                                      synthetic cases (test_boundaries.py)
 """
@@ -68,6 +68,9 @@ import pathlib
 import re
 import sys
 
+# The sibling modules below are found under `python3 -I` too, which
+# leaves the script's directory off sys.path.
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import check_star_contracts as csc
 from generated_files import emit, finish
 
