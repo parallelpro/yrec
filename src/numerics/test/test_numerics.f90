@@ -24,7 +24,12 @@
 ! tolerance (a contract check prints 0 or 1), and the program stops
 ! with status 1 on any FAIL; numerics/README.md section 6 lists them.
 ! Each was confirmed to fail under a mutation of the code it covers
-! (mutate_numerics.py).
+! (test_numerics.mutations.toml; python3 src/tools/mutate.py numerics).
+! The cases that hand a routine a NaN or a zero tolerance on purpose
+! (ludcmp's and simeqc's NaN column, bsstep's NaN derivatives and its
+! zero tolerance, whose error ratio is infinite) run with the invalid,
+! divide-by-zero and overflow traps off (a -ffpe-trap build, make
+! devel_tests, sets them), and the halting mode is restored after them.
 module test_numerics_callbacks
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
@@ -76,6 +81,8 @@ end module test_numerics_callbacks
 program test_numerics
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use, intrinsic :: ieee_arithmetic, only: ieee_value, ieee_quiet_nan
+      use, intrinsic :: ieee_exceptions, only: ieee_usual, ieee_get_halting_mode, &
+           ieee_set_halting_mode
       use math_lib
       use numerics_lib, only: bsstep, cspline, findex, inter3, interp, &
            lagrange4, lir, locate, &
@@ -102,6 +109,7 @@ program test_numerics
       real(dp) :: a5(5,5), b5(5), sm(15)
       integer :: indx(5), i, idx, klo, khi, ierr, flag, guesses(7), failures
       real(dp) :: pts(10), pts2(10)
+      logical :: halting(size(ieee_usual))
 
       failures = 0
 
@@ -322,7 +330,10 @@ program test_numerics
       write(*,'(a,i3)') "ludcmp, rows (1,2,3),(4,5,6),(7,8,9) (a round-off pivot): ierr", ierr
       a5 = 1.0d0
       a5(1:3,1) = ieee_value(1.0d0, ieee_quiet_nan)
+      call ieee_get_halting_mode(ieee_usual, halting)
+      call ieee_set_halting_mode(ieee_usual, .false.)
       call ludcmp(a5, 3, 5, indx, d, ierr)
+      call ieee_set_halting_mode(ieee_usual, halting)
       write(*,'(a,i3)') "ludcmp, a NaN column: ierr", ierr
       write(*,'(a)') "# simeqc: 3 unknowns (rows interchanged), two right-hand sides; then singular"
       sm(1:15) = [1.0d0, 0.5d0, 4.0d0, 3.0d0, 1.0d0, 2.0d0, 2.0d0, 6.0d0, 1.0d0, &
@@ -470,6 +481,7 @@ subroutine bsstep_check()
       type(harmonic_system) :: sys
       real(dp) :: y(3), dydx(3), yscale(3), err(3), x, h, h_did, h_next
       integer :: step, jerr, limits(3,6)
+      logical :: halting(size(ieee_usual))
       write(*,'(a)') "# bsstep (mmid, ratext)"
       y = [0.0d0, 1.0d0, 1.0d0]
       x = 0.0d0
@@ -499,7 +511,10 @@ subroutine bsstep_check()
       write(*,'(a,2i3)') "bsstep, integrand failure: ierr, derivatives_ierr", ierr, jerr
       sys%fail = .false.
 ! zero tolerance: no step is accepted, so h shrinks until it vanishes
-! against the underflow reference
+! against the underflow reference (the traps off while it and the NaN
+! cases below run)
+      call ieee_get_halting_mode(ieee_usual, halting)
+      call ieee_set_halting_mode(ieee_usual, .false.)
       call bsstep(sys, y, dydx, 3, x, 0.5d0, 0.0d0, yscale, h_did, h_next, err, &
            11, 7, underflow_reference, ierr)
       write(*,'(a,i3,a,i8)') "bsstep, step underflow: ierr", ierr, " deriv calls", sys%calls
@@ -519,6 +534,7 @@ subroutine bsstep_check()
            11, 7, underflow_reference, ierr)
       write(*,'(a,i3,a,2(1pe24.15),l2)') "bsstep, NaN in component 3 of 3: ierr", ierr, &
            " y(1:2), y(3) is NaN", y(1:2), y(3) /= y(3)
+      call ieee_set_halting_mode(ieee_usual, halting)
 ! limits out of range: no step, numerics_bad_input (num_eqs,
 ! max_stage_index, extrap_order)
       limits = reshape([0, 11, 7,  16, 11, 7,  3, 12, 7,  3, 11, 1,  3, 11, 8,  3, 5, 7], [3, 6])
@@ -1060,6 +1076,7 @@ subroutine linear_algebra_checks()
            ref(3,2)
       real(dp) :: nan
       integer :: indx(n), i, j, ierr, indx3(3)
+      logical :: halting(size(ieee_usual))
       do j = 1, n
          do i = 1, n
             a(i,j) = 1.0d0/(i + 2*j - 1) + merge(3.0d0, 0.0d0, i == j)
@@ -1091,7 +1108,10 @@ subroutine linear_algebra_checks()
            ierr == numerics_singular .and. all(a3 == ref3))
       nan = ieee_value(1.0d0, ieee_quiet_nan)
       a3 = reshape([nan, nan, nan,  2.0d0, 5.0d0, 7.0d0,  3.0d0, 6.0d0, 1.0d0], [3, 3])
+      call ieee_get_halting_mode(ieee_usual, halting)
+      call ieee_set_halting_mode(ieee_usual, .false.)
       call ludcmp(a3, 3, 3, indx3, d, ierr)
+      call ieee_set_halting_mode(ieee_usual, halting)
       call report_true("ludcmp: a NaN column is numerics_bad_input", ierr == numerics_bad_input)
 ! simeqc against LU on two right-hand sides, for a matrix whose first
 ! two columns need a row interchange (their largest elements are in
@@ -1125,7 +1145,10 @@ subroutine linear_algebra_checks()
       call report_true("simeqc: a row scaled by 1e-30 is not singular, and solved", &
            ierr == numerics_ok .and. abs(sm(5) - 1.0d0) < 1.0d-15 .and. abs(sm(6) - 1.0d0) < 1.0d-15)
       sm(1:6) = [nan, nan,  1.0d0, 2.0d0,  1.0d0, 1.0d0]
+      call ieee_get_halting_mode(ieee_usual, halting)
+      call ieee_set_halting_mode(ieee_usual, .false.)
       call simeqc(sm(1:6), 3, 2, ierr)
+      call ieee_set_halting_mode(ieee_usual, halting)
       call report_true("simeqc: a NaN column is numerics_bad_input", ierr == numerics_bad_input)
 ! the tridiagonal solve against a dense one, and its two halves
       do i = 1, n
@@ -1170,7 +1193,7 @@ subroutine bsstep_checks()
       real(dp) :: y(3), dydx(3), yscale(3), err(3), x, h, h_did, h_next, x_before, &
            big_y(16), big_dydx(16), big_scale(16), big_err(16), worst
       integer :: ierr, jerr, k, limits(3,6)
-      logical :: advanced
+      logical :: advanced, halting(size(ieee_usual))
       y = [0.0d0, 1.0d0, 1.0d0]
       x = 0.0d0
       h = 0.3d0
@@ -1220,8 +1243,11 @@ subroutine bsstep_checks()
       sys%fail_after_calls = huge(1)
       advanced = ierr == numerics_derivatives_failed .and. &
            all(y == [0.0d0, 1.0d0, 1.0d0]) .and. x == 0.0d0
+      call ieee_get_halting_mode(ieee_usual, halting)
+      call ieee_set_halting_mode(ieee_usual, .false.)
       call bsstep(sys, y, dydx, 3, x, 0.5d0, 0.0d0, yscale, h_did, h_next, err, &
            11, 7, underflow_reference, ierr)
+      call ieee_set_halting_mode(ieee_usual, halting)
       call report_true("bsstep: zero tolerance ends in numerics_step_underflow", &
            ierr == numerics_step_underflow)
       advanced = advanced .and. all(y == [0.0d0, 1.0d0, 1.0d0]) .and. x == 0.0d0
