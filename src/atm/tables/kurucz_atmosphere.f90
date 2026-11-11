@@ -27,10 +27,11 @@ contains
 !----------------------------------------------------------------------
 ! log P at (log Teff, log g) from a surface-pressure table: cubic
 ! splines through 4 points in log Teff and in log g (3-point Lagrangian
-! or linear in log g near the table's high-gravity edge). The result,
-! with log T = log Teff, goes to atm_table%atm_log10_pressure and
-! atm_log10_temperature. A point more than one table step outside the
-! table returns ierr = 1.
+! or linear in log g in the table's top columns above log Teff 4.5). The
+! result, with log T = log Teff, goes to atm_table%atm_log10_pressure
+! and atm_log10_temperature. A point below log Teff 3.5 or log g -0.5,
+! or more than one table step above the top row or column, or a stencil
+! that reaches a row without the columns it needs, returns ierr = 1.
 subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_flag, ierr)
 
       integer :: jerr_gate
@@ -43,8 +44,8 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
            pressure_at_nodes(4), unused_deriv(3), gravity_weights(3), &
            gravity_nodes_3pt(3), pressure_table_vals(4), &
            teff_spline_deriv(4), gravity_spline_deriv(4)
-      real(dp) :: fx, interpolated_value
-      integer :: row, row_base, node, k, kk, kkk
+      real(dp) :: fx, interpolated_value, log_teff_max, log_g_max
+      integer :: row, row_base, node, k, kk, kkk, n, gmin, gmax
 
 ! Interpolates in temperature with a 4-point natural cubic spline
 ! (natural_spline/splint), and in gravity the same way if 4 or more points are
@@ -61,14 +62,16 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
 
       ierr = 0
 
-      if (log10_teff < table_logteff_min .or. log10_gravity < table_logg_min) then
-         write(terminal_unit,911) log10_teff, log10_gravity
-         write(run_log_unit,911) log10_teff, log10_gravity
-  911    format(1X,'DESIRED ATMOSPHERE OUTSIDE TABLE RANGE'/ &
-              ' LOG TEFF',F10.6,' LOG G',F10.6/' RUN STOPPED')
-         ierr = 1
+! Outside the table: below its fixed lower edges, or more than one table
+! step above its top row or column (M232).
+      n = tbl%num_teff
+      log_teff_max = tbl%teff(n) + (tbl%teff(n) - tbl%teff(n-1))
+      log_g_max = tbl%logg(atm_table_ng) + (tbl%logg(atm_table_ng) - tbl%logg(atm_table_ng-1))
+      if (log10_teff < table_logteff_min .or. log10_gravity < table_logg_min .or. &
+           log10_teff > log_teff_max .or. log10_gravity > log_g_max) then
+         call refuse_point()
          return
-      endif
+      end if
 ! Temperature interpolation factors.
       do row = 1,tbl%num_teff
          if (log10_teff <= tbl%teff(row)) exit
@@ -84,10 +87,18 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
 ! Gravity interpolation factors.
       do row = row_base,row_base+3
          node = row-row_base+1
+         gmin = tbl%gmin_index(row)
+         gmax = tbl%gmax_index(row)
 ! Check if 4 log values available - otherwise, use 3 point Lagrangian
-! or linear interpolation.
+! or linear interpolation, in the table's top columns, which the row
+! must hold (M231: the Castelli/Kurucz tables' last row has only the
+! top one).
          if (tbl%teff(row) > logteff_three_point) then
             if (tbl%teff(row) > logteff_two_point) then
+               if (gmin > atm_table_ng-1 .or. gmax < atm_table_ng) then
+                  call refuse_point()
+                  return
+               end if
 ! Linear interpolation
                fx = (log10_gravity-tbl%logg(atm_table_ng-1))/ &
                     (tbl%logg(atm_table_ng)-tbl%logg(atm_table_ng-1))
@@ -96,6 +107,10 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
                     fx*(tbl%log10_pressure(row,atm_table_ng) - &
                     tbl%log10_pressure(row,atm_table_ng-1))
             else
+               if (gmin > atm_table_ng-2 .or. gmax < atm_table_ng) then
+                  call refuse_point()
+                  return
+               end if
 ! 3-point Lagrangian interpolation.
                do k = 1,3
                   gravity_nodes_3pt(k) = tbl%logg(atm_table_ng-3+k)
@@ -106,15 +121,23 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
                     tbl%log10_pressure(row,atm_table_ng-2)*gravity_weights(1) + &
                     tbl%log10_pressure(row,atm_table_ng-1)*gravity_weights(2) + &
                     tbl%log10_pressure(row,atm_table_ng)*gravity_weights(3)
-            endif
+            end if
             cycle
-         endif
-         if (log10_gravity >= tbl%logg(atm_table_ng-1)) then
-! Desired log G above second to top table log G - use top 4 log G values.
+         end if
+! A spline in log g needs 4 valid columns (M234: an all -999 row has
+! gmin = atm_table_ng and gmax = 0).
+         if (gmax - gmin + 1 < 4) then
+            call refuse_point()
+            return
+         end if
+         if (log10_gravity >= tbl%logg(gmax-1)) then
+! Desired log G above the row's second to top valid log G - use its top
+! 4 valid log G values (M234: the row's, not the table's, so that a row
+! ending below the top column is not extrapolated from its low end).
             do kk = 1,4
-               gravity_nodes(kk) = tbl%logg(atm_table_ng-4+kk)
+               gravity_nodes(kk) = tbl%logg(gmax-4+kk)
                pressure_table_vals(kk) = &
-                    tbl%log10_pressure(row,atm_table_ng-4+kk)
+                    tbl%log10_pressure(row,gmax-4+kk)
             end do
             call natural_spline(gravity_nodes, pressure_table_vals, 4, gravity_spline_deriv)
             call splint(gravity_nodes, pressure_table_vals, 4, &
@@ -128,15 +151,15 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
             end if
             pressure_at_nodes(node) = interpolated_value
             cycle
-         endif
+         end if
 ! General case - find 4 nearest points in gravity that are in the table.
 ! G Somers, I changed NG to IMINMAX in the next line. This prevents the
 ! code from using -999 to interpolate in some instances.
-         do k = tbl%gmax_index(row)-3,tbl%gmin_index(row),-1
+         do k = gmax-3,gmin,-1
             if (log10_gravity < tbl%logg(k+2) .and. &
                  log10_gravity >= tbl%logg(k+1)) then
-               kk = max(tbl%gmin_index(row),k)
-               kk = min(atm_table_ng-3,kk)
+               kk = max(gmin,k)
+               kk = min(gmax-3,kk)
                do kkk = 1,4
                   gravity_nodes(kkk) = tbl%logg(kk+kkk-1)
                   pressure_table_vals(kkk) = &
@@ -152,14 +175,14 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
                end if
                pressure_at_nodes(node) = interpolated_value
                exit
-            endif
+            end if
          end do
-         if (k < tbl%gmin_index(row)) then
+         if (k < gmin) then
 ! Desired log G below 2nd table entry -use first 4 points.
          do k = 1,4
-            gravity_nodes(k) = tbl%logg(k+tbl%gmin_index(row)-1)
+            gravity_nodes(k) = tbl%logg(k+gmin-1)
             pressure_table_vals(k) = &
-                 tbl%log10_pressure(row,k+tbl%gmin_index(row)-1)
+                 tbl%log10_pressure(row,k+gmin-1)
          end do
          call natural_spline(gravity_nodes, pressure_table_vals, 4, gravity_spline_deriv)
          call splint(gravity_nodes, pressure_table_vals, 4, &
@@ -191,6 +214,18 @@ subroutine interpolate_surface_pressure(tbl, log10_teff, log10_gravity, print_fl
         write(run_log_unit,71) log10_teff, atm_table%atm_log10_pressure
 71      format(' ',20X,'LOG (Teff) =',F10.5,' LOG P =',F10.5)
       endif
+
+contains
+
+! the point is outside the table: the message, and ierr = 1
+subroutine refuse_point()
+         write(terminal_unit,911) log10_teff, log10_gravity
+         write(run_log_unit,911) log10_teff, log10_gravity
+  911    format(1X,'DESIRED ATMOSPHERE OUTSIDE TABLE RANGE'/ &
+              ' LOG TEFF',F10.6,' LOG G',F10.6/' RUN STOPPED')
+         ierr = 1
+end subroutine refuse_point
+
 end subroutine interpolate_surface_pressure
 
 
