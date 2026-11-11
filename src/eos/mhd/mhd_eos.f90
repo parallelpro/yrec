@@ -212,7 +212,7 @@ end subroutine mhdpx
 !     TLIM1 < TL < TLIM2: Upper part of ZAMS tables
 !     TL > TLIM2:         Centre tables
 !     TMINI,TMAXI:        Temperature interval covered
-!                         BY THE TABLES
+!                         by the tables
 !     (TLIM1/TLIM2/TMINI/TMAXI are mhd%zams_lower_upper_boundary_log10t,
 !     zams_centre_boundary_log10t, table_log10t_min, table_log10t_max.)
 !     A point outside the tables returns ierr = 1 (mhd%mhd_output is
@@ -337,8 +337,8 @@ subroutine mhdpx2(log10_pressure, log10_temperature, family, ic, &
       integer, parameter :: ivarx = mhd_ivarx
       integer, intent(in) :: family, ic, ndimt
       real(dp), intent(in) :: log10_pressure, log10_temperature
-      real(dp), intent(inout) :: table_vars(ndimt,ivarx), &
-           table_hfrac(ndimt)
+      real(dp), intent(inout) :: table_vars(:,:), &
+           table_hfrac(:)
       logical, intent(out) :: in_range
       integer, intent(out) :: ierr
       integer, parameter :: ivarc = mhd_ivarc
@@ -380,13 +380,14 @@ contains
 subroutine interpolate_and_store(table_data, table_dim_t, table_dim_r, &
      num_vars, table_log10t, num_t, num_r, row, hydrogen_mass_fraction)
       integer, intent(in) :: table_dim_t, table_dim_r, num_vars, num_t, num_r, row
-      real(dp), intent(in) :: table_data(table_dim_t,table_dim_r,num_vars)
-      real(dp), intent(in) :: table_log10t(table_dim_t)
+      real(dp), intent(in) :: table_data(:,:,:)
+      real(dp), intent(in) :: table_log10t(:)
       real(dp), intent(in) :: hydrogen_mass_fraction
 
       call interpolate_mhd_table(log10_pressure, log10_temperature, table_data, &
            table_dim_t, table_dim_r, num_vars, table_log10t, num_t, &
-           num_r, intpt_work1, intpt_work2, intpt_y, interpolated_vars, in_range, ierr)
+           num_r, intpt_work1(1:num_vars,:), intpt_work2(1:num_vars,:), intpt_y(1:num_vars), &
+           interpolated_vars(1:num_vars), in_range, ierr)
       do i=1,num_vars
          table_vars(row,i) = interpolated_vars(i)
       end do
@@ -411,12 +412,14 @@ subroutine interpolate_mhd_table(log10_pressure, log10_temperature, table_data, 
      work1, work2, y_work, interp_vars, in_range, ierr)
       integer, intent(in) :: table_dim_t, table_dim_r, num_vars
       real(dp), intent(in) :: log10_pressure, log10_temperature
-      real(dp), intent(in) :: table_data(table_dim_t,table_dim_r,num_vars)
-      real(dp), intent(in) :: table_log10t(table_dim_t)
+      real(dp), intent(in) :: table_data(:,:,:)
+      real(dp), intent(in) :: table_log10t(:)
       integer, intent(in) :: num_t, num_r
-      real(dp), intent(inout) :: work1(num_vars,4), work2(num_vars,4)
-      real(dp), intent(inout) :: y_work(num_vars)
-      real(dp), intent(out) :: interp_vars(num_vars)
+! work arrays of num_vars rows (lir reads them so: num_vars is its
+! leading dimension)
+      real(dp), intent(inout) :: work1(:,:), work2(:,:)
+      real(dp), intent(inout) :: y_work(:)
+      real(dp), intent(out) :: interp_vars(:)
       logical, intent(out) :: in_range
 ! lir's status (numerics_status): nonzero for coincident table nodes
       integer, intent(out) :: ierr

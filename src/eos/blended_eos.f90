@@ -122,7 +122,7 @@ contains
 ! derivatives, in first.
 subroutine evaluate_shifted(lt, lp, first)
       real(dp), intent(in) :: lt, lp
-      real(dp), intent(out) :: first(4)
+      real(dp), intent(out) :: first(:)
       shifted = r
       shifted%log10_density = shifted_log10_density
       shifted%density = shifted_density
@@ -331,7 +331,7 @@ subroutine zone_mixture(hydrogen_fraction, metal_fraction, need_saha_solution, &
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       logical, intent(in) :: need_saha_solution
       real(dp), intent(out) :: ion_mean_weight_inverse
-      real(dp), intent(inout) :: saha_number_fractions(n_mix_species)
+      real(dp), intent(inout) :: saha_number_fractions(:)
       integer :: species_idx
       real(dp) :: metal_ratio, metal_weight_excess, h_excess, y_excess
       real(dp) :: metal_number_scale

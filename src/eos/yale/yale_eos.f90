@@ -18,7 +18,7 @@ module yale_eos
       use eos_results, only: eos_result
       use yale_eos_tables, only: debye_huckel_coefficient, debye_huckel_nu, &
            debye_huckel_composition, n_debye_huckel_metals, yale, fermi_n_x, &
-           fermi_n_t, fermi_log10t_origin, fermi_log10t_step, fermi_rows_per_dex, fermi_log10t_min, &
+           fermi_n_t, fermi_n_bins, fermi_bins_per_unit_x, fermi_log10t_origin, fermi_log10t_step, fermi_rows_per_dex, fermi_log10t_min, &
            fermi_log10t_max
       use physical_constants, only: clni, cmkh, gas_constant, ln10
       use eos_messages, only: eos_log, eos_report, message_length, unwritten_line
@@ -265,7 +265,7 @@ subroutine set_saha_constants(log10_temperature, log10_pressure, r, s)
          end if
       end do
       s%nz0 = i - 1
-      s%nz1 = min0(nz,s%nz1)
+      s%nz1 = min(nz,s%nz1)
 ! helium: skipped when absent, and when neutral (its fractions zero);
 ! He++ skipped when its exponent is below the tolerance (x2 zero)
       s%skip_helium_i = .true.
@@ -819,9 +819,9 @@ subroutine iterate_fully_ionized_density(log10_temperature, log10_pressure, r, f
 ! Begin iteration loop for correct density (was label 10)
 !  find index (ID1,ID2,ID3) for 3-pt interpolation in X
       xx = f%dml - 1.50d0*f%tl8
-      pr6= 20.0d0*(xx - yale%fermi_table_x_grid(1)) + 1.0d0
+      pr6= fermi_bins_per_unit_x*(xx - yale%fermi_table_x_grid(1)) + 1.0d0
       kk = int(pr6)
-      kk = min0(261,max0(1,kk))
+      kk = min(fermi_n_bins, max(1, kk))
       f%id1 = yale%fermi_table_x_lookup(kk)
 !  If index unchanged from previous loop,skip this section
       if (f%id1 /= f%id1p) then

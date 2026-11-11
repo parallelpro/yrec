@@ -432,7 +432,6 @@ subroutine interpolate_opal_t6_rho(v, slr, slt)
 ! .....    eos(i) smoothed in left 3x4
          dix = (v%t6_grid(v%t6_index_3) - slt)*v%t6_grid_spacing_inv(v%t6_index_3)
          v%esact = v%esact*dix + esact2*(1.0d0 - dix)
-! endif   ! moved to loc a
          if (v%density_interp_order == 3) then
 
 ! .....     eos(i) in upper-right 3x3.

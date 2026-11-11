@@ -28,7 +28,7 @@ contains
 ! cannot be opened, or a table that fails mhdst's checks, returns
 ! ierr = 1 with a message to the terminal and the run log.
 subroutine read_mhd_tables(zams_paths, centre_paths, ierr)
-      character(len=*), intent(in) :: zams_paths(mhd_n_zams), centre_paths(mhd_n_centre)
+      character(len=*), intent(in) :: zams_paths(:), centre_paths(:)
       integer, intent(out) :: ierr
       character(len=message_length) :: eos_lines(4)
       integer :: unit_zams(mhd_n_zams), unit_centre(mhd_n_centre), ic
@@ -85,7 +85,7 @@ end subroutine open_mhd_table
 ! centre tables above.
 subroutine mhdst(unit_zams, unit_centre, ierr)
 
-      integer, intent(in) :: unit_zams(mhd_n_zams), unit_centre(mhd_n_centre)
+      integer, intent(in) :: unit_zams(:), unit_centre(:)
 
       integer, intent(out) :: ierr
 
@@ -183,23 +183,25 @@ subroutine mhdst1(table_unit,table_kind,nt1m,nr1m,ivar1,nt2m,nr2m,ivar2,nchem0, 
       integer, intent(in) :: table_unit, table_kind, nt1m, nr1m, ivar1, &
            nt2m, nr2m, ivar2, nchem0
       integer, intent(inout) :: num_t1, num_r1, num_t2, num_r2, num_chem
-      real(dp), intent(inout) :: log10t1(nt1m), &
-           table_vars1(nt1m,nr1m,ivar1), &
-           log10t2(nt2m), table_vars2(nt2m,nr2m,ivar2)
+      real(dp), intent(inout) :: log10t1(:), &
+           table_vars1(:,:,:), &
+           log10t2(:), table_vars2(:,:,:)
       real(dp), intent(inout) :: drho1, drho2
-      real(dp), intent(inout) :: atomic_weight(nchem0), &
-           number_abundance(nchem0), mass_fraction(nchem0), mean_molecular_weight
+      real(dp), intent(inout) :: atomic_weight(:), &
+           number_abundance(:), mass_fraction(:), mean_molecular_weight
 
       integer, intent(out) :: ierr
 
-      real(dp) :: log10t_down(nt2m), log10t_up(nt2m)
-      real(dp) :: table_vars_centroid(nt2m,nr2m,ivar1)
-      real(dp) :: table_vars_down(nt2m,nr2m,ivar1)
-      real(dp) :: table_vars_up(nt2m,nr2m,ivar1)
-      real(dp) :: atomic_weight_down(nchem0), number_abundance_down(nchem0), &
-           mass_fraction_down(nchem0)
-      real(dp) :: atomic_weight_up(nchem0), number_abundance_up(nchem0), &
-           mass_fraction_up(nchem0)
+! the work arrays mhdst lends (assumed shape: a centre table's rows are
+! fewer than the arrays'; each is written before it is read)
+      real(dp), intent(inout) :: log10t_down(:), log10t_up(:)
+      real(dp), intent(inout) :: table_vars_centroid(:,:,:)
+      real(dp), intent(inout) :: table_vars_down(:,:,:)
+      real(dp), intent(inout) :: table_vars_up(:,:,:)
+      real(dp), intent(inout) :: atomic_weight_down(:), number_abundance_down(:), &
+           mass_fraction_down(:)
+      real(dp), intent(inout) :: atomic_weight_up(:), number_abundance_up(:), &
+           mass_fraction_up(:)
       integer :: num_composition_reads, composition_pass, num_vars_read, &
            table_kind_read, composition_flag_read, composition_flag_expected
       real(dp) :: delta_x, composition_tolerance
@@ -332,8 +334,8 @@ subroutine rabu(table_unit, nchem0, num_chem, atomic_weight, &
 
       integer, intent(in) :: table_unit, nchem0
       integer, intent(out) :: num_chem
-      real(dp), intent(out) :: atomic_weight(nchem0), &
-           number_abundance(nchem0), mass_fraction(nchem0)
+      real(dp), intent(out) :: atomic_weight(:), &
+           number_abundance(:), mass_fraction(:)
       real(dp), intent(out) :: mean_molecular_weight
       integer, intent(out) :: ierr
 
@@ -367,8 +369,8 @@ subroutine rtab(file_unit,max_t_points,max_rho_points,num_vars, &
       integer, intent(out) :: num_rho_points
 
 !     NT is input; NR,TL,tdvar are output
-      real(dp), intent(out) :: log_t(max_t_points), &
-           table_data(max_t_points,max_rho_points,num_vars)
+      real(dp), intent(out) :: log_t(:), &
+           table_data(:,:,:)
 
       integer, intent(out) :: ierr
 ! --- locals ---
