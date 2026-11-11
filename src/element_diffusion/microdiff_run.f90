@@ -57,6 +57,7 @@ subroutine run_microdiff(diff_scr, grid_spacing, timestep, total_mass, num_eq_po
 ! (rot_scr%metal_* vectors, used only by gravitational_settling).
       logical :: use_generic_diffusion_vectors
       double precision :: fac, max_abundance_change, dx
+      logical :: converged
 
 !
 ! CREATE DUMMY VECTORS FOR THE DIFFUSING ELEMENT. THIS ALLOWS A SINGLE
@@ -147,8 +148,19 @@ subroutine run_microdiff(diff_scr, grid_spacing, timestep, total_mass, num_eq_po
          alpha(i) = fac/(eq_mid%mass(i)-eq_mid%mass(i-1))
       enddo
       alpha(num_eq_points) = fac/(total_mass-eq_mid%mass(num_eq_points-1))
-!  START ITERATION LOOP FOR THE NEW RUN OF ABUNDANCES.
-      do iter=1,diffusion_settings%settling_num_iterations
+! The implicit solve, once. The midpoint coefficients carry no
+! derivative in the abundance here (implicit_diffusion_coeffs adds zero
+! times the change), so each pass of the original iteration solved the
+! same system for the same right-hand side: the first pass's answer is
+! the answer, and every later pass changed nothing (docs/bug_sweep.md
+! M253). settling_num_iterations and settling_tolerance keep their
+! effect on the messages: the first pass's change is the solve's, every
+! later pass's change is zero (at shell 0), and the solve "fails to
+! converge" when no pass's change is below the tolerance. With no pass
+! (settling_num_iterations < 1) there is no implicit solve.
+      max_abundance_change = 0.0d0
+      max_change_zone = 0
+      if (diffusion_settings%settling_num_iterations >= 1) then
 !  FIND CHANGE IN D AT THE ZONE MIDPOINTS, GIVEN CHANGE IN D AT
 !  THE ZONE CENTERS.
          do i = 2,num_eq_points
@@ -156,18 +168,13 @@ subroutine run_microdiff(diff_scr, grid_spacing, timestep, total_mass, num_eq_po
                  diffused_abundance(i-1)-diffused_abundance_prev(i)- &
                  diffused_abundance_prev(i-1))
          enddo
-!  STORE CURRENT RUN OF ABUNDANCES IN VECTOR ED_P. THE ITERATION
-!  LOOP IS COMPLETED ONCE ED - ED_P IS EVERYWHERE LESS THAN THE TOLERANCE
-!  GRTOL. ALSO ZERO OUT EQCOD2X_H, WHICH IS ONLY USED IN GRSETT (OLD SETTLING
-!  ROUTINE), BUT RETAINED FOR LEGACY.
+!  STORE THE RUN OF ABUNDANCES BEFORE THE SOLVE IN diffused_abundance_prev,
+!  AND ZERO THE COEFFICIENTS' DERIVATIVE (ONLY THE ORIGINAL ROUTINES HAVE ONE).
          do i = 1,num_eq_points-1
             diffused_abundance_prev(i) = diffused_abundance(i)
             diffusion_coeff2_deriv_mid(i) = 0.0
          enddo
          diffused_abundance_prev(num_eq_points) = diffused_abundance(num_eq_points)
-!  GET NEW DIFFUSION COEFFICIENTS, TAKING INTO ACCOUNT THE CHANGE IN D
-!  FROM THE PREVIOUS ITERATION.
-!
          call implicit_diffusion_coeffs(alpha, diffusion_coeff2_mid, &
               diffused_abundance_mid, diffusion_coeff2_deriv_mid, sub_diag, &
               diag, super_diag, num_eq_points)
@@ -180,11 +187,7 @@ subroutine run_microdiff(diff_scr, grid_spacing, timestep, total_mass, num_eq_po
             write(*,*) 'solve_tridiagonal: '//numerics_status_text(ierr)
             return
          end if
-!
-!  CHECK TO SEE IF THE CORRECTIONS TO THE HYDROGEN ABUNDANCE ARE SMALL
-!  ENOUGH TO EXIT.
-         max_abundance_change = 0.0d0
-         max_change_zone = 0
+!  THE LARGEST (SIGNED) CHANGE OF THE SOLVE.
          do i = 1,num_eq_points
             dx = diffused_abundance(i)-diffused_abundance_prev(i)
             if(dx.gt.max_abundance_change)then
@@ -192,14 +195,25 @@ subroutine run_microdiff(diff_scr, grid_spacing, timestep, total_mass, num_eq_po
                max_change_zone = i
             endif
          enddo
+      end if
+! The passes' report: the change of pass 1, then zero, until one is below
+! the tolerance.
+      converged = .false.
+      do iter=1,diffusion_settings%settling_num_iterations
+         if (iter > 1) then
+            max_abundance_change = 0.0d0
+            max_change_zone = 0
+         end if
 ! solver forensics
          if (solver_diagnostics()) &
               write(run_log_unit,90)iter,max_abundance_change,max_change_zone
    90    format(1x,'ITERATION ',i3,' DXMAX ',1pe10.2,' IMAX ',i4)
-!  EXIT ITERATION LOOP IF SYSTEM HAS CONVERGED.
-         if(max_abundance_change.lt.diffusion_settings%settling_tolerance)exit
+         if(max_abundance_change.lt.diffusion_settings%settling_tolerance)then
+            converged = .true.
+            exit
+         end if
       end do
-      if (iter > diffusion_settings%settling_num_iterations) then
+      if (.not. converged) then
       write(terminal_unit,110)diffusion_settings%settling_tolerance,diffusion_settings%settling_num_iterations, &
            max_abundance_change,max_change_zone
       write(run_log_unit,110)diffusion_settings%settling_tolerance,diffusion_settings%settling_num_iterations, &
