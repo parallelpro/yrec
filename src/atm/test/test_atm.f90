@@ -27,8 +27,8 @@
 !     (a synthetic file), the low-gravity extension (M233), and the
 !     reader's errors (M221, too few rows);
 !   atm_lib's contracts: an unknown atm_choice, a table not read, a
-!     choice that is not a table, and the choice descriptor and its
-!     switch to gray.
+!     clean state at each atm_init (M283), a choice that is not a table,
+!     and the choice descriptor and its switch to gray.
 ! Each check fails under a mutation of the code it covers
 ! (test_atm.mutations.toml; python3 src/tools/mutate.py atm); the program
 ! stops with status 1 on any FAIL. The envelope integration that uses
@@ -581,10 +581,10 @@ subroutine write_truncated_copy(source, path, num_lines)
       close(out)
 end subroutine write_truncated_copy
 
-! atm_lib's contracts: the settings check, lookups it cannot make, and
-! the choice descriptor.
+! atm_lib's contracts: the settings check, a clean state at each
+! atm_init, lookups it cannot make, and the choice descriptor.
 subroutine facade_checks()
-      type(atm_settings_t) :: bad
+      type(atm_settings_t) :: bad, each
       real(dp) :: log_p, log_t
       logical :: failed, holds
       integer :: ierr, choice
@@ -595,6 +595,26 @@ subroutine facade_checks()
       bad%atm_choice = -1
       call atm_init(bad, atm_table_paths_t("", ""), ierr)
       call report_true("atm_init: an atm_choice that is none of the choices returns ierr 1 (M236)", &
+           holds .and. ierr == 1)
+! M283: each atm_init starts clean, so the table an earlier one read is
+! not loaded after it (Allard, then Kurucz, then Castelli/Kurucz, then
+! Allard again, which the switch checks below use)
+      each%atm_choice = atm_allard
+      call atm_init(each, atm_table_paths_t("", allard_path), ierr)
+      holds = ierr == 0
+      each%atm_choice = atm_kurucz
+      call atm_init(each, atm_table_paths_t(kurucz_atm_path, ""), ierr)
+      holds = holds .and. ierr == 0 .and. atm_allard_teff_max() == 0.0d0
+      each%atm_choice = atm_castelli_kurucz
+      call atm_init(each, atm_table_paths_t(castelli_path, ""), ierr)
+      holds = holds .and. ierr == 0
+      call atm_get_surface_pt(atm_kurucz, 3.7d0, 4.4d0, log_p, log_t, failed, ierr)
+      holds = holds .and. ierr == 1
+      each%atm_choice = atm_allard
+      call atm_init(each, atm_table_paths_t("", allard_path), ierr)
+      holds = holds .and. ierr == 0
+      call atm_get_surface_pt(atm_castelli_kurucz, 3.7d0, 4.4d0, log_p, log_t, failed, ierr)
+      call report_true("atm_init: each starts clean, without the tables an earlier one read (M283)", &
            holds .and. ierr == 1)
       log_p = 7.0d0
       call atm_get_surface_pt(atm_hsra, 3.7d0, 4.4d0, log_p, log_t, failed, ierr)

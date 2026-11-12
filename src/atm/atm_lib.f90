@@ -53,8 +53,9 @@ module atm_lib
            ttau_photosphere_x_limit, hsra_t_tau_offset
 
 ! The run's settings and tables: atm_init installs them, and nothing else
-! writes them. A table atm_init did not read keeps its type's defaults
-! (not loaded; the Allard tables' limits 0).
+! writes them. Each atm_init starts from every table's unread state, its
+! type's defaults (not loaded; the Allard tables' limits 0), so that a
+! table a previous run in the same process read is not loaded (M283).
       type(atm_settings_t) :: installed_settings
       type(surface_pressure_table) :: kurucz_table, castelli_table
       type(allard_table) :: allard_tables
@@ -64,9 +65,10 @@ contains
 !----------------------------------------------------------------------
 ! atm_init
 !----------------------------------------------------------------------
-! Checks the settings, installs them, and reads the table they select:
-! the Kurucz table (atm_choice 3), the Allard tables (4) or the
-! Castelli/Kurucz table (5). An atm_choice outside 0-5, or a table that
+! Checks the settings, installs them, returns every table to its unread
+! state (M283), and reads the table they select: the Kurucz table
+! (atm_choice 3), the Allard tables (4) or the Castelli/Kurucz table
+! (5). An atm_choice outside 0-5, or a table that
 ! cannot be read, returns ierr = 1 after its message; an Allard file
 ! without the deck's [Fe/H] and [alpha/Fe], 2 (allard_table_reader's
 ! allard_composition_missing).
@@ -82,6 +84,9 @@ subroutine atm_init(settings, paths, ierr)
          return
       end if
       installed_settings = settings
+      kurucz_table = surface_pressure_table()
+      castelli_table = surface_pressure_table()
+      allard_tables = allard_table()
 
       select case (settings%atm_choice)
       case (atm_kurucz)

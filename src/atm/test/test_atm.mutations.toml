@@ -22,6 +22,23 @@ old = 'if (.not. atm_choice_is_known(settings%atm_choice)) then'
 new = 'if (.false.) then'
 
 [[mutation]]
+id = 'atm_lib-07'
+check = 'atm_init: each starts clean, without the tables an earlier one read (M283)'
+file = 'atm/atm_lib.f90'
+old = '''
+      kurucz_table = surface_pressure_table()
+      castelli_table = surface_pressure_table()'''
+new = '''
+'''
+
+[[mutation]]
+id = 'atm_lib-08'
+check = 'atm_init: each starts clean, without the tables an earlier one read (M283)'
+file = 'atm/atm_lib.f90'
+old = '      allard_tables = allard_table()'
+new = ''
+
+[[mutation]]
 id = 'atm_lib-03'
 check = 'atm_get_surface_pt: a choice that is not a table returns ierr 1'
 file = 'atm/atm_lib.f90'
