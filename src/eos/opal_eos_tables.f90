@@ -177,7 +177,7 @@ module opal_eos_tables
 ! ==================== what tells the vintages apart ====================
 ! One row per vintage (opal_layout(iv_opal95), (iv_opal01),
 ! (iv_opal06)); the code reads its vintage's row instead of branching
-! on the vintage (only the messages keep each vintage's own words).
+! on the vintage (its messages too, which start with its name).
       type, public :: opal_vintage_layout
 ! the table's density columns and T6 rows, and its hydrogen-fraction grid
          integer :: nr, nt
@@ -213,8 +213,8 @@ module opal_eos_tables
 ! amu and log10 n_e)
          character(len=48) :: header_format, row_format
          integer :: n_skipped_columns
-! the prefix of the interpolator's messages
-         character(len=15) :: routine_id
+! the vintage's name, which its messages start with
+         character(len=13) :: eos_name
 ! compute_opal_eos's T6 range, and whether it checks that the
 ! interpolated pressure reproduces P (1995)
          real(dp) :: t6_min, t6_max
@@ -251,7 +251,7 @@ module opal_eos_tables
                 ionization_energy=[-3388.637d0, -1970.918d0, -1431.717d0, -993.2303d0, &
                 -76.2315d0, -15.29409d0], counts_electron_mass=.true., &
                 header_format="(3X,F6.4,3X,F6.4,11X,F10.7,17X,F10.7)", &
-                row_format="(F8.4,1X,F6.2,3E13.5,E11.3,6F8.4)", n_skipped_columns=1, routine_id="", &
+                row_format="(F8.4,1X,F6.2,3E13.5,E11.3,6F8.4)", n_skipped_columns=1, eos_name="OPAL 1995 EOS", &
                 t6_min=0.0050d0, t6_max=100.0d0, checks_pressure=.true., &
                 search_density_index_edge=[opal95_density_index_edge, (0, i=n_eos95_nt+1, n_eos_nt_max)], &
                 search_rad_const_over_c=1.8914785d-3, search_subtracts_radiation=.false., &
@@ -268,7 +268,7 @@ module opal_eos_tables
                 ionization_energy=gmass01_ionization_energy, counts_electron_mass=.false., &
                 header_format="(3X,F6.4,3X,F12.9,11X,F10.7,17X,F10.7)", &
                 row_format="(F9.5,1X,F6.2,3E13.5,6F8.4)", n_skipped_columns=1, &
-                routine_id="OPALEOS/ESAC01:", &
+                eos_name="OPAL 2001 EOS", &
                 t6_min=0.0020d0, t6_max=100.0d0, checks_pressure=.false., &
                 search_density_index_edge=[opal01_search_density_index_edge, &
                 (0, i=n_eos01_nt+1, n_eos_nt_max)], &
@@ -285,7 +285,7 @@ module opal_eos_tables
                 ionization_energy=gmass01_ionization_energy, counts_electron_mass=.false., &
                 header_format="(3X,F6.4,3X,F12.9,11X,F10.7,17X,F10.7)", &
                 row_format="(F11.6,1X,F6.4,E11.4,2E13.6,2E11.3,5F10.6)", n_skipped_columns=2, &
-                routine_id="OPALEOS/ESAC06:", &
+                eos_name="OPAL 2006 EOS", &
                 t6_min=0.001870d0, t6_max=200.0d0, checks_pressure=.false., &
                 search_density_index_edge=opal06_density_index_edge, &
                 search_rad_const_over_c=real(1.8914785e-3, dp), search_subtracts_radiation=.true., &
@@ -505,7 +505,7 @@ subroutine find_opal_ramp(nt, t6_grid, t_row_index, density_edge_at_t, &
          eos_lines = unwritten_line
          write(eos_lines,5) t6, t6_top_of_table, t_row_index
          call eos_report(eos_lines)
-    5    format(' ERROR IN OPAL EOS: OUTSIDE TABLE IN T6',2F10.6,I5)
+    5    format('find_opal_ramp: T6 outside the table: T6, the table''s last, row',2F10.6,I5)
          ierr = 1
          return
          end if

@@ -870,7 +870,7 @@ subroutine table_reader_checks()
       call configure_eos("production", opal2006=.true., scv=.true., file="opal06_x_overflow")
       call esac06(opal_tables(iv_opal06), 0.3d0, 0.95d0, 0.09d0, 9, 1, ierr, in_table)
       call check("OPAL 2006: an entry only the second X quadratic reads, past 1e20 there, is named; ierr = 1", &
-           ierr == 1 .and. run_log_contains("OPALEOS/ESAC06: problem it,ir,l3,k3,iq,ip="))
+           ierr == 1 .and. run_log_contains("OPAL 2006 EOS: an X-interpolated value beyond 1e20"))
 ! a huge entry that enters with a negative weight gives a hugely
 ! negative value, which a test of the sign alone let through as a
 ! negative pressure (M292): the same entry made +1e21, which the second
@@ -930,7 +930,7 @@ logical function opal06_entry_is_refused(line_no, text, x)
       integer, intent(in) :: line_no
       character(len=*), intent(in) :: text
       real(dp), intent(in) :: x
-      character(len=*), parameter :: named = "OPALEOS/ESAC06: problem it,ir,l3,k3,iq,ip="
+      character(len=*), parameter :: named = "OPAL 2006 EOS: an X-interpolated value beyond 1e20"
       integer :: ierr, named_before
       logical :: in_table
       call copy_editing(opal06_path, "opal06_doctored", line_no, 30, text)

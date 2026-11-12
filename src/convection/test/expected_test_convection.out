@@ -64,8 +64,8 @@ fully convective: core_edge env_edge n_rad n_mix n_mix_no_os ierr   1   1   0   
   radiative   0   0
   iov1 iov2  -1  -1
 # find_convection_zones with overshoot (Yale EOS scale heights)
- -----SAHA FAILURE (TL,PL)=  5.951389 11.780960  (E,DE)=      0.651428866251      0.694651594534
- -----SAHA FAILURE (TL,PL)=  4.906156  8.322135  (E,DE)=      0.651709326372      0.694466572492
+Saha solver: no convergence in 20 iterations at log T, log P  5.951389 11.780960; E, last step      0.651428866251      0.694651594534; the last iterate stands
+Saha solver: no convergence in 20 iterations at log T, log P  4.906156  8.322135; E, last step      0.651709326372      0.694466572492; the last iterate stands
 find_convection_zones: mixed regions without overshoot [    1-    5] [   18-   21] [   31-   40]
 find_convection_zones: mixed regions with overshoot    [    1-    6] [   18-   21] [   31-   40]
 core, intermediate, envelope: core_edge env_edge n_rad n_mix n_mix_no_os ierr   5  31   2   3   3   0
@@ -78,7 +78,7 @@ fully convective: core_edge env_edge n_rad n_mix n_mix_no_os ierr   1   1   0   
   mixed without overshoot   1  40
   radiative   0   0
   iov1 iov2  -1  -1
- -----SAHA FAILURE (TL,PL)=  4.906156  8.322135  (E,DE)=      0.651709326372      0.694466572492
+Saha solver: no convergence in 20 iterations at log T, log P  4.906156  8.322135; E, last step      0.651709326372      0.694466572492; the last iterate stands
 find_convection_zones: mixed regions without overshoot [    1-    5] [   31-   40]
 find_convection_zones: mixed regions with overshoot    [    1-    5] [   31-   40]
 core, lovmax limit: core_edge env_edge n_rad n_mix n_mix_no_os ierr   5  31   1   2   2   0
@@ -86,7 +86,7 @@ core, lovmax limit: core_edge env_edge n_rad n_mix n_mix_no_os ierr   5  31   1 
   mixed without overshoot   1   5  31  40
   radiative   6  30
   iov1 iov2  31  31
- -----SAHA FAILURE (TL,PL)=  4.906156  8.322135  (E,DE)=      0.651709326372      0.694466572492
+Saha solver: no convergence in 20 iterations at log T, log P  4.906156  8.322135; E, last step      0.651709326372      0.694466572492; the last iterate stands
 find_convection_zones: mixed regions without overshoot [    1-    5] [    9-   12] [   31-   40]
 find_convection_zones: mixed regions with overshoot    [    1-   10] [    7-   13] [   31-   40]
 find_convection_zones: mixed regions [    1-   10] [    7-   13] merged by overshoot into [    1-   13]
@@ -95,7 +95,7 @@ core and intermediate merging: core_edge env_edge n_rad n_mix n_mix_no_os ierr  
   mixed without overshoot   1   5   9  12  31  40
   radiative  14  30
   iov1 iov2  31  31
- -----SAHA FAILURE (TL,PL)=  4.906156  8.322135  (E,DE)=      0.651709326372      0.694466572492
+Saha solver: no convergence in 20 iterations at log T, log P  4.906156  8.322135; E, last step      0.651709326372      0.694466572492; the last iterate stands
 find_convection_zones: mixed regions without overshoot [    1-    5] [   31-   40]
 find_convection_zones: mixed regions with overshoot    [    1-    6] [   30-   40]
 tiny envelope overshoot, rotating: core_edge env_edge n_rad n_mix n_mix_no_os ierr   5  31   1   2   2   0
@@ -183,8 +183,8 @@ zones: a thirteenth zone returns convection_too_many_zones                 0.00E
 # overshoot: checks
 pressure_scale_height = P r^2/(G m rho)                                    1.33E-15  ok
 envelope_overshoot_depth = 0 with envelope overshoot off                   0.00E+00  ok
- -----SAHA FAILURE (TL,PL)=  4.906156  8.322135  (E,DE)=      0.651709326372      0.694466572492
- -----SAHA FAILURE (TL,PL)=  4.906156  8.322135  (E,DE)=      0.651709326372      0.694466572492
+Saha solver: no convergence in 20 iterations at log T, log P  4.906156  8.322135; E, last step      0.651709326372      0.694466572492; the last iterate stands
+Saha solver: no convergence in 20 iterations at log T, log P  4.906156  8.322135; E, last step      0.651709326372      0.694466572492; the last iterate stands
 envelope_overshoot_depth = alpha_env H_P (the EOS's rho) at the base       2.66E-15  ok
 find_convection_zones: mixed regions without overshoot [    1-    5] [   31-   40]
 find_convection_zones: mixed regions with overshoot    [    1-   10] [   31-   40]
@@ -192,20 +192,20 @@ overshoot, core: the last shell within alpha_core H_P above                0.00E
 find_convection_zones: mixed regions without overshoot [    1-    5] [   31-   40]
 find_convection_zones: mixed regions with overshoot    [    1-    7] [   31-   40]
 overshoot, core: limited to beta r (Woo & Demarque)                        0.00E+00  ok
- -----SAHA FAILURE (TL,PL)=  4.906156  8.322135  (E,DE)=      0.651709326372      0.694466572492
+Saha solver: no convergence in 20 iterations at log T, log P  4.906156  8.322135; E, last step      0.651709326372      0.694466572492; the last iterate stands
 find_convection_zones: mixed regions without overshoot [    1-    5] [   31-   40]
 find_convection_zones: mixed regions with overshoot    [    1-    5] [   30-   40]
- -----SAHA FAILURE (TL,PL)=  4.906156  8.322135  (E,DE)=      0.651709326372      0.694466572492
+Saha solver: no convergence in 20 iterations at log T, log P  4.906156  8.322135; E, last step      0.651709326372      0.694466572492; the last iterate stands
 overshoot, envelope: the deepest shell within alpha_env H_P                0.00E+00  ok
 overshoot, envelope: the region below it, bottom..old edge                 0.00E+00  ok
 overshoot region: none without a zone or fully convective (M249)           0.00E+00  ok
- -----SAHA FAILURE (TL,PL)=  5.951389 11.780960  (E,DE)=      0.651428866251      0.694651594534
+Saha solver: no convergence in 20 iterations at log T, log P  5.951389 11.780960; E, last step      0.651428866251      0.694651594534; the last iterate stands
 find_convection_zones: mixed regions without overshoot [    1-    5] [   18-   21] [   31-   40]
 find_convection_zones: mixed regions with overshoot    [    1-    5] [   16-   22] [   31-   40]
- -----SAHA FAILURE (TL,PL)=  5.951389 11.780960  (E,DE)=      0.651428866251      0.694651594534
+Saha solver: no convergence in 20 iterations at log T, log P  5.951389 11.780960; E, last step      0.651428866251      0.694651594534; the last iterate stands
 overshoot, intermediate: both edges by alpha_int H_P                       0.00E+00  ok
 overshoot, intermediate: no region below the envelope (M249)               0.00E+00  ok
- -----SAHA FAILURE (TL,PL)=  4.906156  8.322135  (E,DE)=      0.651709326372      0.694466572492
+Saha solver: no convergence in 20 iterations at log T, log P  4.906156  8.322135; E, last step      0.651709326372      0.694466572492; the last iterate stands
 find_convection_zones: mixed regions without overshoot [    1-    5] [   31-   40]
 find_convection_zones: mixed regions with overshoot    [    1-    6] [   30-   40]
 overshoot, rotating: at least one shell below the envelope                 0.00E+00  ok

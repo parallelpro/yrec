@@ -15,14 +15,15 @@
 ! internal write (one record per element) after setting every element
 ! to unwritten_line; the lines the write did not reach are not printed,
 ! so the output has the records the format makes, as a write to a unit
-! would. The terminal is standard output.
+! would. A line holds message_length characters, room for a table's path
+! (256) and the text before it. The terminal is standard output.
 module eos_messages
       use, intrinsic :: iso_fortran_env, only: output_unit
       use run_messages, only: run_log_unit
       implicit none
       private
       public :: eos_log, eos_report, eos_log_once, reset_eos_warnings, eos_warned
-      integer, parameter, public :: message_length = 200
+      integer, parameter, public :: message_length = 400
       character(len=*), parameter, public :: unwritten_line = achar(0)
 ! the warnings written once per eos_init: the fully ionized gas
 ! extrapolating the Fermi-Dirac table

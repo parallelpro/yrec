@@ -356,10 +356,11 @@ subroutine solve_saha_system(saha_number_fractions, log10_temperature, log10_pre
       end do
       if (isaha > max_saha_iterations) then
          eos_lines = unwritten_line
-         write(eos_lines,99) log10_temperature, log10_pressure, s%mean_electrons_per_ion, &
-              delta_electrons_per_ion
+         write(eos_lines,99) max_saha_iterations, log10_temperature, log10_pressure, &
+              s%mean_electrons_per_ion, delta_electrons_per_ion
          call eos_log(eos_lines)
- 99      format(' -----SAHA FAILURE (TL,PL)=',2F10.6,'  (E,DE)=',2F20.12)
+ 99      format('Saha solver: no convergence in ',I0,' iterations at log T, log P',2F10.6, &
+              '; E, last step',2F20.12,'; the last iterate stands')
       end if
 end subroutine solve_saha_system
 
@@ -800,7 +801,7 @@ end subroutine start_fully_ionized_solution
 ! max_second_order_log10 first, so that it does not overflow far from the
 ! root), and max_density_iterations steps
 ! without convergence (to density_tolerance_dex) is a failure
-! (converged false, its message in the run log). For details consult
+! (converged false, its message on the terminal and in the run log). For details consult
 ! Prather's thesis. The electron pressure pe is tabulated against
 ! X = log rho - log mu_e - 1.5 log T (3-point Lagrange, unequal spacing)
 ! and Y = log T (3-point Newton, equal spacing); pa is the ion pressure,
@@ -940,10 +941,10 @@ subroutine iterate_fully_ionized_density(log10_temperature, log10_pressure, r, f
        f%nden = f%nden + 1
        if(f%nden <= max_density_iterations) cycle density_iter
        eos_lines = unwritten_line
-       write(eos_lines,40) log10_temperature,log10_pressure,ptl,f%dml,corr
-       call eos_log(eos_lines)
-   40    format('EQRELV: Did not Converge: T,P,Pcalc,Dcalc,CORR', &
-                4F10.6,F20.12)
+       write(eos_lines,40) max_density_iterations, log10_temperature, log10_pressure, ptl, f%dml, corr
+       call eos_report(eos_lines)
+   40    format('fully ionized gas: the density iteration did not converge in ',I0, &
+              ' steps: log T, log P, log P reached, log rho + log(1/mu_e)',3F10.6,F14.6,'; last step',F20.12)
        converged = .false.
        return
       end if

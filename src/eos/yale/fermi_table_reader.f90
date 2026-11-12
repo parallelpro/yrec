@@ -82,10 +82,9 @@ subroutine read_fermi_table(fermi_table_path, ierr)
          do grid_idx = 1, fermi_n_x - 2
             if (yale%fermi_table_x_grid(grid_idx+1) <= yale%fermi_table_x_grid(grid_idx)) then
                eos_lines = unwritten_line
-               write(eos_lines,1000) grid_idx
+               write(eos_lines,'(a,i0,a,a)') 'read_fermi_table: abscissa ', grid_idx, &
+                    ' does not increase: ', trim(fermi_table_path)
                call eos_report(eos_lines)
- 1000          format(1x,39('>'),40('<')/1x,'read_fermi_table: abscissa',i4, &
-                    ' does not increase')
                ierr = 1
                exit
             end if

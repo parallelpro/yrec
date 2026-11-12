@@ -70,7 +70,7 @@ g1  4   1.664333375060509E+00   3.989501157492898E-01
 # test_eos: MHD path SKIPPED (YREC_MHD_TABLES not set; no MHD tables ship with YREC)
 # test_eos: error paths via ierr
 err facade-success ierr =    0
-OPALEOS/ESAC06: Irad must be 0 or 1
+OPAL 2006 EOS: rad_flag must be 0 or 1, not 2
 err bad-rad-flag   ierr =    1
 # test_eos: configuration opal95
 eos  3.700  4.500 -7.003746870870781E+00  9.999496800553952E-01 -1.008422387052862E+00  1.000766386687491E+00
@@ -613,6 +613,7 @@ ok   radiation-dominated: grad_ad and cp of the gas plus radiation
 ok   radiation-dominated: grad_ad -> 1/4
  blend_eos: beta = P_gas/P is not positive: log T, log P, beta   7.5000000000000000        15.400000000000000       -4.0148916156006464E-003
 ok   radiation pressure above P: beta <= 0 returns ierr
+fully ionized gas: the density iteration did not converge in 20 steps: log T, log P, log P reached, log rho + log(1/mu_e)  7.000000 16.000000 13.401740   -180.073493; last step     -4.000000000000
 ok   fully ionized gas: a density iteration that does not converge returns ierr = 1
 ok   fully ionized gas: a new record converges where log rho 0 as its start did not (M290)
 ok   fully ionized gas: a point beyond the Fermi-Dirac table is reported, one inside it not
@@ -686,7 +687,7 @@ ok   OPAL 2001: trial calls keep the other slots and give the full call's pressu
 ok   SCV reader: after a re-read the envelope table waits for its rebuild
  eos_init: cannot open the SCV table scv_missing
 ok   SCV reader: a missing table returns ierr = 1 and leaves no table open
-eos_init: an SCV table ends early or is corrupt, at T row 9; the H table: scv_truncated
+eos_init: the SCV H table ends early or is corrupt, at T row 9: scv_truncated
 ok   SCV reader: a truncated table returns ierr = 1
 eos_init: an SCV table's grid (log T, point count or log P_gas) is not the H table's, at T row 1: scv_he_off_grid
 eos_init: an SCV table's grid (log T, point count or log P_gas) is not the H table's, at T row 2: scv_z_off_grid
@@ -699,33 +700,33 @@ read_fermi_table: card 100 is for abscissa 44 and row 3, not the next in the tab
 read_fermi_table: the abscissae span more than the 261 bins of the X lookup: fermi_wide_x
 ok   Fermi table: a card out of its place, or abscissae wider than the lookup, returns ierr = 1
 # test_eos: configuration production
-OPALEOS/ESAC06: the OPAL EOS table ends early or is corrupt: X block 1, density column 15
+OPAL 2006 EOS: the table ends early or is corrupt: X block 1, density column 15
 ok   OPAL 2006 table: a truncated table returns ierr = 1 on first use, its unit closed
  eos_init: cannot open the OPAL EOS table opal06_missing
 ok   OPAL 2006 table: a missing table returns ierr = 1 at eos_init
 # test_eos: configuration production
-OPALEOS/ESAC06: problem it,ir,l3,k3,iq,ip=   48  105  105   49    3    3
-  0.8084E+02  0.1012E+03 -0.1000E+22
+OPAL 2006 EOS: an X-interpolated value beyond 1e20 (an empty or corrupt entry) at T6 row 48, density column 105; l3, k3, iq, ip =  105   49    3    3
+     the table's values there:  8.0837E+01  1.0123E+02 -1.0000E+21
 ok   OPAL 2006: an entry only the second X quadratic reads, past 1e20 there, is named; ierr = 1
 # test_eos: configuration production
-OPALEOS/ESAC06: problem it,ir,l3,k3,iq,ip=   48  105  105   49    3    3
-  0.8084E+02  0.1012E+03  0.1000E+22
+OPAL 2006 EOS: an X-interpolated value beyond 1e20 (an empty or corrupt entry) at T6 row 48, density column 105; l3, k3, iq, ip =  105   49    3    3
+     the table's values there:  8.0837E+01  1.0123E+02  1.0000E+21
 ok   OPAL 2006: a huge entry the second X quadratic weights by -1/8 is named; ierr = 1 (M292)
 # test_eos: configuration production
-OPALEOS/ESAC06: problem it,ir,l3,k3,iq,ip=   48  105  105   49    3    3
-  0.1000E+22  0.8084E+02  0.1012E+03
+OPAL 2006 EOS: an X-interpolated value beyond 1e20 (an empty or corrupt entry) at T6 row 48, density column 105; l3, k3, iq, ip =  105   49    3    3
+     the table's values there:  1.0000E+21  8.0837E+01  1.0123E+02
 ok   OPAL 2006: a huge entry the first X quadratic weights by -1/8 is named; ierr = 1 (M292)
 # test_eos: configuration production
-OPALEOS/ESAC06: problem it,ir,l3,k3,iq,ip=   48  105  105   49    3    3
- -0.1000E+22
+OPAL 2006 EOS: an X-interpolated value beyond 1e20 (an empty or corrupt entry) at T6 row 48, density column 105; l3, k3, iq, ip =  105   49    3    3
+     the table's values there: -1.0000E+21
 ok   OPAL 2006: a huge negative entry read alone (X = 0) is named; ierr = 1 (M292)
 # test_eos: configuration production
-OPALEOS/ESAC06: the OPAL EOS table's X block 4 is not on the first block's grid: the T6 of density column 105, row 48 is   1.000100 against   1.000000
+OPAL 2006 EOS: the table's X block 4 is not on the first block's grid: the T6 of density column 105, row 48 is   1.000100 against   1.000000
 # test_eos: configuration production
-OPALEOS/ESAC06: the OPAL EOS table's X block 4 is not on the first block's grid: the density of column 105 is  1.0000001E-01 against  1.0000000E-01
+OPAL 2006 EOS: the table's X block 4 is not on the first block's grid: the density of column 105 is  1.0000001E-01 against  1.0000000E-01
 ok   OPAL 2006 table: an X block off the first block's T6 or density grid returns ierr = 1 (M291)
 # test_eos: configuration opal95
-READCO: Error:  56-th T6 value is zero
+OPAL 1995 EOS: the table's T6 row 56 is zero
 ok   OPAL 1995 table: a zero T6 returns ierr = 1 on first use
 # test_eos: configuration production
 test_eos: done

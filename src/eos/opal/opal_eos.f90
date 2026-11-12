@@ -17,9 +17,9 @@
 ! vintages differ in (the table's size and grids, the slots, the
 ! radiation constants and correction, the mass per particle, the
 ! reader's formats, how the density search
-! treats radiation, which edge the table has) is their row of
-! opal_layout (opal_eos_tables). The report_* procedures keep each
-! vintage's messages in its own words. The 1995 code follows Rogers,
+! treats radiation, which edge the table has, the name its messages
+! start with) is their row of opal_layout (opal_eos_tables); the
+! report_* procedures write each message once. The 1995 code follows Rogers,
 ! Swenson & Iglesias (1996), the 2001 code Rogers & Nayfonov (2002); the
 ! 2006 tables are the 2005 update.
 module opal_eos
@@ -179,7 +179,8 @@ subroutine compute_opal_eos(vintage, log10_temperature, log10_pressure, &
            t_million_k, density_cgs, deriv_order, rad_flag, ierr, in_table)
       if (.not. in_table) then
          eos_lines = unwritten_line
-         write(eos_lines,*) 'WARNNING... OPAL TBL FAIL'
+         write(eos_lines,'(a,a)') trim(opal_layout(vintage)%eos_name), ': the table cannot ' // &
+              'interpolate at the density the search found; the result without OPAL stands'
          call eos_log(eos_lines)
          return
       end if
@@ -536,9 +537,9 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
       ierr = 0
       in_table = .true.
 
-      if (deriv_order > lay%n_vars) call report_order_too_high(vintage)
+      if (deriv_order > lay%n_vars) call report_order_too_high(vintage, deriv_order)
       if ((rad_flag /= 0) .and. (rad_flag /= 1)) then
-         call report_bad_rad_flag(vintage)
+         call report_bad_rad_flag(vintage, rad_flag)
          ierr = 1
          return
       end if
@@ -1229,34 +1230,28 @@ real(dp) function opal_mass_per_mole(lay, hydrogen_fraction, metal_fraction, &
 end function opal_mass_per_mole
 
 !----------------------------------------------------------------------
-! The interpolators' and the reader's messages, each vintage's in its
-! original words (the 1995 ones in capitals, as its code wrote them;
-! their rewording is for a re-pin commit), to the run log (eos_log) or,
-! for an error, to the terminal and the run log (eos_report).
+! The interpolator's messages, one text for every vintage after its name
+! (opal_layout's eos_name), to the run log (eos_log) or, for an error, to
+! the terminal and the run log (eos_report). The numbers in parentheses
+! are OPAL's own error numbers.
 !----------------------------------------------------------------------
 ! deriv_order above the table's variable count (the call goes on)
-subroutine report_order_too_high(vintage)
-      integer, intent(in) :: vintage
+subroutine report_order_too_high(vintage, deriv_order)
+      integer, intent(in) :: vintage, deriv_order
       character(len=message_length) :: eos_lines(4)
       eos_lines = unwritten_line
-      if (vintage == iv_opal95) then
-         write(eos_lines,'(" IORDER CANNOT EXCEED 10")')
-      else
-         write(eos_lines,'(A, " iorder cannot exceed 9")') opal_layout(vintage)%routine_id
-      end if
+      write(eos_lines,'(a,a,i0,a,i0,a)') trim(opal_layout(vintage)%eos_name), ': deriv_order ', &
+           deriv_order, ' is above the table''s ', opal_layout(vintage)%n_vars, ' variables'
       call eos_log(eos_lines)
 end subroutine report_order_too_high
 
 ! rad_flag neither 0 nor 1
-subroutine report_bad_rad_flag(vintage)
-      integer, intent(in) :: vintage
+subroutine report_bad_rad_flag(vintage, rad_flag)
+      integer, intent(in) :: vintage, rad_flag
       character(len=message_length) :: eos_lines(4)
       eos_lines = unwritten_line
-      if (vintage == iv_opal95) then
-         write(eos_lines,'(" IRAD MUST BE 0 OR 1")')
-      else
-         write(eos_lines,'(A, " Irad must be 0 or 1")') opal_layout(vintage)%routine_id
-      end if
+      write(eos_lines,'(a,a,i0)') trim(opal_layout(vintage)%eos_name), &
+           ': rad_flag must be 0 or 1, not ', rad_flag
       call eos_report(eos_lines)
 end subroutine report_bad_rad_flag
 
@@ -1266,77 +1261,33 @@ subroutine report_mass_fractions(vintage, table_z, hydrogen_fraction)
       real(dp), intent(in) :: table_z, hydrogen_fraction
       character(len=message_length) :: eos_lines(4)
       eos_lines = unwritten_line
-      if (vintage == iv_opal95) then
-         write(eos_lines,'(" MASS FRACTIONS EXCEED UNITY (61)")')
-         call eos_report(eos_lines)
-         eos_lines = unwritten_line
-         write(eos_lines,*) table_z, hydrogen_fraction
-      else
-         write(eos_lines,*) opal_layout(vintage)%routine_id, "Mass fractions exceed unity (61)"
-         call eos_report(eos_lines)
-         eos_lines = unwritten_line
-         write(eos_lines,*) 'Z, XH', table_z, hydrogen_fraction
-      end if
+      write(eos_lines,'(a,a,2es14.6)') trim(opal_layout(vintage)%eos_name), &
+           ': the table''s Z and X add up to more than 1 (61): Z, X =', table_z, hydrogen_fraction
       call eos_report(eos_lines)
 end subroutine report_mass_fractions
+
 ! (T6, rho) outside the table
 subroutine report_outside_table(vintage, t6, density, t6_first, t6_last, &
      density_first, density_last)
       integer, intent(in) :: vintage
       real(dp), intent(in) :: t6, density, t6_first, t6_last, density_first, density_last
       character(len=message_length) :: eos_lines(4)
-      character(len=15) :: id
-      id = opal_layout(vintage)%routine_id
-      if (vintage == iv_opal95) then
-         eos_lines = unwritten_line
-         write(eos_lines,'(" T6/LOGR OUTSIDE OF TABLE RANGE (62)")')
-         call eos_log(eos_lines)
-         eos_lines = unwritten_line
-         write(eos_lines,*) t6_first, t6, t6_last
-         call eos_log(eos_lines)
-         eos_lines = unwritten_line
-         write(eos_lines,*) density_first, density, density_last
-         call eos_log(eos_lines)
-      else if (vintage == iv_opal01) then
-         eos_lines = unwritten_line
-         write(eos_lines,*) id, " T6 or rho outside of table range (62)"
-         call eos_log(eos_lines)
-         eos_lines = unwritten_line
-         write(eos_lines,*) "t6, t6a(1),t6a(nt):", t6, t6_first, t6_last
-         call eos_log(eos_lines)
-         eos_lines = unwritten_line
-         write(eos_lines,*) "slr,r,rho(1),rho(nr):", density, density, density_first, density_last
-         call eos_log(eos_lines)
-      else
-         eos_lines = unwritten_line
-         write(eos_lines,*) id, " T6/LogR outside of table range (62)"
-         call eos_log(eos_lines)
-         eos_lines = unwritten_line
-         write(eos_lines,*) "slt, t6a(1),t6a(nt):", t6, t6_first, t6_last
-         call eos_log(eos_lines)
-         eos_lines = unwritten_line
-         write(eos_lines,*) "slr, rho(1), rho(nr):", density, density_first, density_last
-         call eos_log(eos_lines)
-      end if
+      eos_lines = unwritten_line
+      write(eos_lines,'(a,a/a,es14.6,a,es14.6,a,es14.6,a/a,es14.6,a,es14.6,a,es14.6,a)') &
+           trim(opal_layout(vintage)%eos_name), ': (T6, rho) outside the table (62):', &
+           '     T6 ', t6, ' (the table: ', t6_first, ' to ', t6_last, ')', &
+           '     rho', density, ' (the table: ', density_first, ' to ', density_last, ')'
+      call eos_log(eos_lines)
 end subroutine report_outside_table
 
-! the T6 search found no row (the 2001 message never printed its indices)
+! the T6 search found no row
 subroutine report_t6_search(vintage, hi_idx, lo_idx, mid_idx)
       integer, intent(in) :: vintage, hi_idx, lo_idx, mid_idx
       character(len=message_length) :: eos_lines(4)
-      if (vintage == iv_opal95) then
-         eos_lines = unwritten_line
-         write(eos_lines,'(" IHI,ILO,IMD",3I5)')
-         call eos_log(eos_lines)
-      else if (vintage == iv_opal01) then
-         eos_lines = unwritten_line
-         write(eos_lines,'(A, " ihi,ilo,imd",3I5)') opal_layout(vintage)%routine_id
-         call eos_log(eos_lines)
-      else
-         eos_lines = unwritten_line
-         write(eos_lines,'(A, " ihi,ilo,imd",3I5)') opal_layout(vintage)%routine_id, hi_idx, lo_idx, mid_idx
-         call eos_log(eos_lines)
-      end if
+      eos_lines = unwritten_line
+      write(eos_lines,'(a,a,3i5)') trim(opal_layout(vintage)%eos_name), &
+           ': the T6 search found no row: ihi, ilo, imd =', hi_idx, lo_idx, mid_idx
+      call eos_log(eos_lines)
 end subroutine report_t6_search
 
 ! (T6, rho) in an empty region of the table
@@ -1344,26 +1295,10 @@ subroutine report_empty_region(vintage, hydrogen_fraction, t6, density)
       integer, intent(in) :: vintage
       real(dp), intent(in) :: hydrogen_fraction, t6, density
       character(len=message_length) :: eos_lines(4)
-      if (vintage == iv_opal95) then
-         eos_lines = unwritten_line
-         write(eos_lines,'("T6/LOG RHO IN EMPTY REGION OF TABLE (65)")')
-         call eos_log(eos_lines)
-         eos_lines = unwritten_line
-         write(eos_lines,'("XH,T6,R=", 3E12.4)') hydrogen_fraction, t6, density
-         call eos_log(eos_lines)
-         return
-      else if (vintage == iv_opal01) then
-         eos_lines = unwritten_line
-         write(eos_lines,*) opal_layout(vintage)%routine_id, "T6/rho in empty region of OPAL 2001 EOS", &
-              " table (65)"
-         call eos_log(eos_lines)
-      else
-         eos_lines = unwritten_line
-         write(eos_lines,*) opal_layout(vintage)%routine_id, "T6/log rho in empty region of table (65)"
-         call eos_log(eos_lines)
-      end if
       eos_lines = unwritten_line
-      write(eos_lines,'("xh,t6,r=", 3E12.4)') hydrogen_fraction, t6, density
+      write(eos_lines,'(a,a,3es12.4)') trim(opal_layout(vintage)%eos_name), &
+           ': (T6, rho) in an empty region of the table (65): X, T6, rho =', &
+           hydrogen_fraction, t6, density
       call eos_log(eos_lines)
 end subroutine report_empty_region
 
@@ -1371,19 +1306,10 @@ end subroutine report_empty_region
 subroutine report_tables_z(vintage)
       integer, intent(in) :: vintage
       character(len=message_length) :: eos_lines(4)
-      if (vintage == iv_opal95) then
-         eos_lines = unwritten_line
-         write(eos_lines,'("Z DOES NOT MATCH Z IN EOSDATA FILES YOU ARE" ," USING")')
-         call eos_report(eos_lines)
-      else if (vintage == iv_opal01) then
-         eos_lines = unwritten_line
-         write(eos_lines,'(A,"Z does not match Z in OEOS01 files you are" ," using")') opal_layout(vintage)%routine_id
-         call eos_report(eos_lines)
-      else
-         eos_lines = unwritten_line
-         write(eos_lines,'(A,"Z does not match Z in OEOS06 files you are" ," using")') opal_layout(vintage)%routine_id
-         call eos_report(eos_lines)
-      end if
+      eos_lines = unwritten_line
+      write(eos_lines,'(a,a)') trim(opal_layout(vintage)%eos_name), &
+           ': the stencil''s X tables are not all for one Z'
+      call eos_report(eos_lines)
 end subroutine report_tables_z
 
 ! an X-interpolated value beyond 1e20 either way (an empty or corrupt
@@ -1394,87 +1320,41 @@ subroutine report_x_interpolation(vintage, v, t6_idx, density_idx, x_first, x_la
       type(opal_eos_vintage), intent(in) :: v
       character(len=message_length) :: eos_lines(4)
       integer :: k
-      if (vintage == iv_opal95) then
-         eos_lines = unwritten_line
-         write(eos_lines,'(" PROBLEM IT IR,L3,K3,IQ,IP=", 6I5)') t6_idx, density_idx, &
-              v%density_index_3, v%t6_index_3, v%density_interp_order, v%t6_interp_order
-         call eos_report(eos_lines)
-      else if (vintage == iv_opal01) then
-         eos_lines = unwritten_line
-         write(eos_lines,'(A," problem it ir,l3,k3,iq,ip=", 6I5)') opal_layout(vintage)%routine_id, &
-              t6_idx, density_idx, v%density_index_3, v%t6_index_3, v%density_interp_order, &
-              v%t6_interp_order
-         call eos_report(eos_lines)
-      else
-         eos_lines = unwritten_line
-         write(eos_lines,'(A," problem it,ir,l3,k3,iq,ip=", 6I5)') opal_layout(vintage)%routine_id, &
-              t6_idx, density_idx, v%density_index_3, v%t6_index_3, v%density_interp_order, &
-              v%t6_interp_order
-         call eos_report(eos_lines)
-      end if
       eos_lines = unwritten_line
-      write(eos_lines,'(3E12.4)') (v%x_interp_workspace(k,t6_idx,density_idx), k=x_first,x_last)
+      write(eos_lines,'(a,a,i0,a,i0,a,4i5)') trim(opal_layout(vintage)%eos_name), &
+           ': an X-interpolated value beyond 1e20 (an empty or corrupt entry) at T6 row ', &
+           t6_idx, ', density column ', density_idx, '; l3, k3, iq, ip =', v%density_index_3, &
+           v%t6_index_3, v%density_interp_order, v%t6_interp_order
+      write(eos_lines(2),'(a,3es12.4)') '     the table''s values there:', &
+           (v%x_interp_workspace(k,t6_idx,density_idx), k=x_first,x_last)
       call eos_report(eos_lines)
 end subroutine report_x_interpolation
 
-! the run's Z differs from the table's
+! an X table's Z differs from the first X table's (the table's Z)
 subroutine report_run_z(vintage, v, hydrogen_fraction, t6, density)
       integer, intent(in) :: vintage
       type(opal_eos_vintage), intent(in) :: v
       real(dp), intent(in) :: hydrogen_fraction, t6, density
       character(len=message_length) :: eos_lines(4)
-      if (vintage == iv_opal95) then
-         eos_lines = unwritten_line
-         write(eos_lines,'(" Z DOES NOT MATCH Z IN EOSDATA* FILES YOU ARE", " USING (66)")')
-         call eos_report(eos_lines)
-         eos_lines = unwritten_line
-         write(eos_lines,'("MF,ZZ(MF)=",I5,E12.4)') v%x_index_lo, v%z_table(v%x_index_lo)
-         call eos_report(eos_lines)
-         eos_lines = unwritten_line
-         write(eos_lines,'("  IQ,IP,K3,L3,XH,T6,R,Z= ",4I5,4E12.4)') v%t6_interp_order, &
-              v%density_interp_order, v%t6_index_3, v%density_index_3, hydrogen_fraction, &
-              t6, density, opal_shared%table_metal_fraction(vintage)
-         call eos_report(eos_lines)
-         return
-      else if (vintage == iv_opal01) then
-         eos_lines = unwritten_line
-         write(eos_lines,*) opal_layout(vintage)%routine_id, " Z does not match Z in OPAL 2001 EOS files", &
-              " you are using (66)"
-         call eos_report(eos_lines)
-      else
-         eos_lines = unwritten_line
-         write(eos_lines,*) opal_layout(vintage)%routine_id, " Z does not match Z in EOSdata* files you ", &
-              "are using (66)"
-         call eos_report(eos_lines)
-      end if
       eos_lines = unwritten_line
-      write(eos_lines,'("mf,zz(mf)=",I5,E12.4)') v%x_index_lo, v%z_table(v%x_index_lo)
-      call eos_report(eos_lines)
-      eos_lines = unwritten_line
-      write(eos_lines,'("  iq,ip,k3,l3,xh,t6,r,z= ",4I5,4E12.4)') v%t6_interp_order, &
-           v%density_interp_order, v%t6_index_3, v%density_index_3, hydrogen_fraction, &
-           t6, density, opal_shared%table_metal_fraction(vintage)
+      write(eos_lines,'(a,a,i0,a,es12.4,a,es12.4,a/a,4i5,a,3es12.4)') &
+           trim(opal_layout(vintage)%eos_name), ': X table ', v%x_index_lo, '''s Z,', &
+           v%z_table(v%x_index_lo), ', is not the table''s,', &
+           opal_shared%table_metal_fraction(vintage), ' (66)', &
+           '     iq, ip, k3, l3 =', v%t6_interp_order, v%density_interp_order, v%t6_index_3, &
+           v%density_index_3, '; X, T6, rho =', hydrogen_fraction, t6, density
       call eos_report(eos_lines)
 end subroutine report_run_z
 
-
-! the T6-rho interpolation's indices out of range
+! the T6-rho interpolation's value out of range (an empty entry)
 subroutine report_interpolation_indices(vintage)
       integer, intent(in) :: vintage
       character(len=message_length) :: eos_lines(4)
-      if (vintage == iv_opal95) then
-         eos_lines = unwritten_line
-         write(eos_lines,'("INTERPOLATION INDICES OUT OF RANGE", ";PLEASE REPORT CONDITIONS.")')
-         call eos_report(eos_lines)
-      else if (vintage == iv_opal01) then
-         eos_lines = unwritten_line
-         write(eos_lines,'("Interpolation indices out of range", ";please report conditions.")')
-         call eos_report(eos_lines)
-      else
-         eos_lines = unwritten_line
-         write(eos_lines,'("T6RINTEOS06: Interpolation indices out", " of range;please report conditions.")')
-         call eos_report(eos_lines)
-      end if
+      eos_lines = unwritten_line
+      write(eos_lines,'(a,a)') trim(opal_layout(vintage)%eos_name), &
+           ': the T6-rho interpolation''s value is out of range (an empty entry in its ' // &
+           'stencil); please report the conditions'
+      call eos_report(eos_lines)
 end subroutine report_interpolation_indices
 !======================================================================
 ! Sources: the OPAL EOS interpolation codes of Rogers, Swenson & Iglesias
