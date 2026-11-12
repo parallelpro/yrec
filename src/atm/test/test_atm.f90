@@ -240,11 +240,13 @@ subroutine ttau_checks()
 
       hsra_offset = hsra_t_tau_offset()
 ! the photosphere: T = Teff where each relation ends its integration
+! (Eddington's to round-off, Krishna-Swamy's to its photospheric log tau's
+! nine decimals)
       call report("ttau eddington: T = Teff at tau = 2/3", &
-           abs(ttau_log10_temperature(cc23, log_teff, atm_eddington_gray, 0.0d0) - log_teff), 1.0d-6)
+           abs(ttau_log10_temperature(cc23, log_teff, atm_eddington_gray, 0.0d0) - log_teff), 1.0d-14)
       tau = exp10(ttau_photosphere_x_limit(atm_krishna_swamy))
       call report("ttau krishna-swamy: T = Teff at its photospheric tau", &
-           abs(ttau_log10_temperature(tau, log_teff, atm_krishna_swamy, 0.0d0) - log_teff), 1.0d-6)
+           abs(ttau_log10_temperature(tau, log_teff, atm_krishna_swamy, 0.0d0) - log_teff), 1.0d-9)
       call report("ttau hsra: T = Teff at tau = 2/3", &
            abs(ttau_log10_temperature(cc23, log_teff, atm_hsra, hsra_offset) - log_teff), 1.0d-14)
       call report("ttau: the photosphere of Eddington and HSRA is log10 tau = log10(2/3)", &

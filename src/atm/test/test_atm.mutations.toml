@@ -101,6 +101,13 @@ old = '+ 0.25d0*log10(tau + cc23)'
 new = '+ 0.25d0*log10(tau + 0.6667d0)'
 
 [[mutation]]
+id = 't_tau-10'
+check = 'ttau eddington: T = Teff at tau = 2/3'
+file = 'atm/t_tau_relations.f90'
+old = 'quarter_log10_three_quarters = 0.25d0*log10(0.75d0)'
+new = 'quarter_log10_three_quarters = -0.031235d0'
+
+[[mutation]]
 id = 't_tau-02'
 check = 'ttau krishna-swamy: T = Teff at its photospheric tau'
 file = 'atm/t_tau_relations.f90'

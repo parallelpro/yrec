@@ -32,9 +32,11 @@ module t_tau_relations
       public :: ttau_log10_temperature, ttau_start_log10_temperature, &
            ttau_photosphere_x_limit, hsra_t_tau_offset
 
-! (1/4) log10(3/4) = -0.0312347, kept at the F77's five decimals: T =
-! Teff at the photosphere to 3.2e-7 in log10 T (computing it is B)
-      real(dp), parameter :: quarter_log10_three_quarters = -0.031235d0
+! (1/4) log10(3/4), the Eddington and Krishna-Swamy relations' constant:
+! quarter_log10_three_quarters() computes it at each call (a parameter
+! cannot call math_lib's log10, crmath's in a crmath build), so that T =
+! Teff at the photosphere to round-off (the F77's -0.031235 missed by
+! 3.2e-7 in log10 T)
 ! log10 tau at the photosphere, T = Teff: tau = 2/3 for Eddington and
 ! HSRA; for Krishna-Swamy the root of tau + q(tau) = 4/3, tau = 0.312156
       real(dp), parameter :: log10_tau_photosphere_eddington = -0.176091259d0
@@ -52,6 +54,11 @@ module t_tau_relations
 
 contains
 
+pure function quarter_log10_three_quarters()
+      real(dp) :: quarter_log10_three_quarters
+      quarter_log10_three_quarters = 0.25d0*log10(0.75d0)
+end function quarter_log10_three_quarters
+
 ! the value of the three functions for a choice that is not a relation
 pure function not_a_relation()
       real(dp) :: not_a_relation
@@ -68,9 +75,9 @@ pure function ttau_log10_temperature(tau, log10_teff, atm_choice, hsra_log_t_off
 
       select case (atm_choice)
       case (atm_eddington_gray)
-         log10_t = log10_teff + quarter_log10_three_quarters + 0.25d0*log10(tau + cc23)
+         log10_t = log10_teff + quarter_log10_three_quarters() + 0.25d0*log10(tau + cc23)
       case (atm_krishna_swamy)
-         log10_t = log10_teff + quarter_log10_three_quarters + 0.25d0*log10(tau + &
+         log10_t = log10_teff + quarter_log10_three_quarters() + 0.25d0*log10(tau + &
               ks_q_far - ks_a1*exp(-ks_k1*tau) - ks_a2*exp(-ks_k2*tau))
       case (atm_hsra)
          log10_t = log10_teff + harvard_t_tau(tau) - hsra_log_t_offset
@@ -90,9 +97,9 @@ pure function ttau_start_log10_temperature(log10_teff, atm_choice, hsra_log_t_of
 
       select case (atm_choice)
       case (atm_eddington_gray)
-         log10_t = log10_teff + quarter_log10_three_quarters + 0.25d0*log10(cc23)
+         log10_t = log10_teff + quarter_log10_three_quarters() + 0.25d0*log10(cc23)
       case (atm_krishna_swamy)
-         log10_t = log10_teff + quarter_log10_three_quarters + 0.25d0*log10(ks_q_start)
+         log10_t = log10_teff + quarter_log10_three_quarters() + 0.25d0*log10(ks_q_start)
       case (atm_hsra)
          log10_t = log10_teff + harvard_t_tau(cc23) - hsra_log_t_offset
       case default
