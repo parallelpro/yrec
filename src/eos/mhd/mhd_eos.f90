@@ -152,7 +152,7 @@ subroutine compute_mhd_eos(log10_temperature, log10_pressure, &
       r%electron_degeneracy_parameter = mhd%mhd_output(i_mhd_eta)
       r%specific_gas_constant = exp10(mhd%mhd_output(i_mhd_log10_pgas))/(r%density*r%temperature)
       call compute_mean_weights(r%temperature, r%pressure, r%density, hydrogen_fraction, &
-           metal_fraction, specific_gas_constant_check, &
+           metal_fraction, eos_settings%use_diffusion_z, specific_gas_constant_check, &
            r%ion_mean_weight_inverse, r%electron_mean_weight_inverse, r%beta)
       if (abs((r%specific_gas_constant-specific_gas_constant_check)/ &
            r%specific_gas_constant) > gas_constant_tolerance) then

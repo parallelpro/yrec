@@ -26,9 +26,10 @@ module blended_eos
            radiation_constant_over_3
       use eos_messages, only: eos_log, eos_report, eos_log_once, once_fermi_extrapolation, &
            message_length, unwritten_line
-      use eos_mixture, only: eos_mix, ion_mean_weight_excess, mean_weights_from_density, &
+      use eos_mixture, only: eos_mix, ion_mean_weight_excess, scaled_metals_ion_mean_weight, &
+           mean_weights_from_density, &
            debye_huckel_composition_of, &
-           inverse_a_hydrogen, inverse_a_helium, electrons_per_nucleon_metals, &
+           inverse_a_hydrogen, electrons_per_nucleon_metals, &
            ix_c, ix_h, ix_he, ix_na, ix_ne, ix_o, n_mix_species
       use eos_configuration, only: eos_settings, saha_ramp_width
       use math_lib
@@ -322,10 +323,11 @@ end subroutine apply_table_source
 ! X_i/A_i over inverse_atomic_weight = sum_j X_j/A_j, set by
 ! eos_set_mixture). With use_diffusion_z all the metals scale
 ! with Z/Z_env (MHP 3/94), and H and He add their excess over the
-! envelope; otherwise, and when the envelope has no metals to scale
-! (Z_env = 0), the zone differs from the envelope by its excess H, He
-! and metals, the metals counted as carbon (ion_mean_weight_excess,
-! which compute_mean_weights shares).
+! envelope (scaled_metals_ion_mean_weight); otherwise, and when the
+! envelope has no metals to scale (Z_env = 0), the zone differs from the
+! envelope by its excess H, He and metals, the metals counted as carbon
+! (ion_mean_weight_excess). compute_mean_weights, OPAL's and MHD's,
+! takes 1/mu_ion by the same rule (M129).
 subroutine zone_mixture(hydrogen_fraction, metal_fraction, need_saha_solution, &
      ion_mean_weight_inverse, saha_number_fractions)
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction
@@ -333,29 +335,14 @@ subroutine zone_mixture(hydrogen_fraction, metal_fraction, need_saha_solution, &
       real(dp), intent(out) :: ion_mean_weight_inverse
       real(dp), intent(inout) :: saha_number_fractions(:)
       integer :: species_idx
-      real(dp) :: metal_ratio, metal_weight_excess, h_excess, y_excess
+      real(dp) :: metal_ratio, h_excess, y_excess
       real(dp) :: metal_number_scale
       real(dp) :: dfx1, dfx12, dfx4, ion_mean_weight, envelope_number_scale
       logical :: use_envelope_mixture
 
       if (eos_settings%use_diffusion_z .and. eos_mix%envelope_metal_fraction > 0.0d0) then
-         metal_ratio = metal_fraction/eos_mix%envelope_metal_fraction
-         metal_weight_excess = (metal_ratio - 1.0d0)*eos_mix%inverse_atomic_weight
-         ion_mean_weight_inverse = eos_mix%inverse_atomic_weight
-         do species_idx = ix_na, ix_c
-            ion_mean_weight_inverse = ion_mean_weight_inverse + &
-                 metal_weight_excess*eos_mix%number_fractions(species_idx)
-         end do
-         h_excess = (hydrogen_fraction - eos_mix%envelope_hydrogen_fraction)* &
-              inverse_a_hydrogen
-         ion_mean_weight_inverse = ion_mean_weight_inverse + h_excess
-         do species_idx = ix_o, ix_ne
-            ion_mean_weight_inverse = ion_mean_weight_inverse + &
-                 metal_weight_excess*eos_mix%number_fractions(species_idx)
-         end do
-         y_excess = (eos_mix%envelope_hydrogen_fraction + eos_mix%envelope_metal_fraction - &
-              hydrogen_fraction - metal_fraction)*inverse_a_helium
-         ion_mean_weight_inverse = ion_mean_weight_inverse + y_excess
+         call scaled_metals_ion_mean_weight(hydrogen_fraction, metal_fraction, &
+              ion_mean_weight_inverse, metal_ratio, h_excess, y_excess)
          if (.not. need_saha_solution) return
          metal_number_scale = metal_ratio*eos_mix%inverse_atomic_weight/ion_mean_weight_inverse
          do species_idx = ix_na, ix_c

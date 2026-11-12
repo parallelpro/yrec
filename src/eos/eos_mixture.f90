@@ -8,9 +8,12 @@
 ! The star layer sets it through eos_set_mixture whenever it
 ! recomputes the envelope composition (set_eos_mixture_state; eos_mix is
 ! protected, so nothing else writes it). Also here:
-!     ion_mean_weight_excess  1/mu_ion of a mixture with other X and Z
+!     ion_mean_weight_excess  1/mu_ion of a mixture with other X and Z,
+!                             the excess metals as carbon
+!     scaled_metals_ion_mean_weight  the same with the envelope's metals
+!                             scaled to the zone's Z (diffusion of Z)
 !     compute_mean_weights    1/mu_ion, 1/mu_e and the gas constant of
-!                             a zone
+!                             a zone, 1/mu_ion by zone_mixture's rule
 !     mean_weights_from_density  R/mu and 1/mu_e that a result's density
 !                             implies
 !     debye_huckel_composition_of  the Debye-Hueckel correction's
@@ -56,8 +59,8 @@ module eos_mixture
            26.99d0, 24.32d0, 55.86d0, 28.1d0, 12.015d0, 1.008d0, 16.0d0, &
            14.01d0, 39.96d0, 20.19d0, 4.004d0]
 
-      public :: set_eos_mixture_state, ion_mean_weight_excess, compute_mean_weights, &
-           mean_weights_from_density, debye_huckel_composition_of
+      public :: set_eos_mixture_state, ion_mean_weight_excess, scaled_metals_ion_mean_weight, &
+           compute_mean_weights, mean_weights_from_density, debye_huckel_composition_of
 
 ! The composition terms' constants (EQSTAT's ATOMWT): 1/A of H, He and
 ! C [1/amu] (0.9921 ~ 1/1.008, 0.24975 = 1/4.004, 0.08322 ~ 1/12.015),
@@ -116,31 +119,69 @@ pure subroutine ion_mean_weight_excess(x, z, mu_ion_inv, dfx1, dfx12, dfx4, &
       end if
 end subroutine ion_mean_weight_excess
 
+! scaled_metals_ion_mean_weight: under diffusion of Z (MHP 3/94) the
+! inverse ion mean molecular weight of a zone with hydrogen fraction x
+! and metal fraction z, every metal of the envelope mixture scaled by
+! metal_ratio = z/Z_env and the zone's excess H and He over the envelope
+! added (h_excess, y_excess, weighted by 1/A); the three are returned for
+! the Saha abundances (blend_eos's zone_mixture). Z_env must be positive.
+pure subroutine scaled_metals_ion_mean_weight(x, z, mu_ion_inv, metal_ratio, h_excess, &
+     y_excess)
+      real(dp), intent(in) :: x, z
+      real(dp), intent(out) :: mu_ion_inv, metal_ratio, h_excess, y_excess
+      real(dp) :: metal_weight_excess
+      integer :: species_idx
+      metal_ratio = z/eos_mix%envelope_metal_fraction
+      metal_weight_excess = (metal_ratio - 1.0d0)*eos_mix%inverse_atomic_weight
+      mu_ion_inv = eos_mix%inverse_atomic_weight
+      do species_idx = ix_na, ix_c
+         mu_ion_inv = mu_ion_inv + metal_weight_excess*eos_mix%number_fractions(species_idx)
+      end do
+      h_excess = (x - eos_mix%envelope_hydrogen_fraction)*inverse_a_hydrogen
+      mu_ion_inv = mu_ion_inv + h_excess
+      do species_idx = ix_o, ix_ne
+         mu_ion_inv = mu_ion_inv + metal_weight_excess*eos_mix%number_fractions(species_idx)
+      end do
+      y_excess = (eos_mix%envelope_hydrogen_fraction + eos_mix%envelope_metal_fraction - &
+           x - z)*inverse_a_helium
+      mu_ion_inv = mu_ion_inv + y_excess
+end subroutine scaled_metals_ion_mean_weight
+
 ! compute_mean_weights: the ion and electron inverse mean molecular
 ! weights and the specific gas constant R*(1/mu_ion + 1/mu_e) of a
-! zone for the OPAL and MHD paths: 1/mu_ion from ion_mean_weight_excess,
+! zone for the OPAL and MHD paths: 1/mu_ion by blend_eos's zone_mixture
+! rule, so that a zone has one 1/mu_ion whichever source gives its
+! density (M129): with scale_metals (use_diffusion_z) and an envelope
+! with metals, scaled_metals_ion_mean_weight, else ion_mean_weight_excess;
 ! and 1/mu_e backed out of the ideal-gas law with the given beta (the
 ! gas-pressure fraction). So the R it returns equals beta P/(rho T) for
 ! any input: MHD's comparison of the two catches only a table result
 ! inconsistent with its own P (a stale or empty row), not a wrong mu.
 pure subroutine compute_mean_weights(temperature, pressure, density, hydrogen_fraction, &
-     metal_fraction, specific_gas_constant, ion_mean_weight_inverse, &
+     metal_fraction, scale_metals, specific_gas_constant, ion_mean_weight_inverse, &
      electron_mean_weight_inverse, beta)
 
 
       real(dp), intent(in) :: temperature, pressure, density, &
            hydrogen_fraction, metal_fraction, beta
+      logical, intent(in) :: scale_metals
       real(dp), intent(out) :: specific_gas_constant, &
            ion_mean_weight_inverse, electron_mean_weight_inverse
 
-! dfx1/dfx12/dfx4: per-species excesses returned by
-! ion_mean_weight_excess; only ion_mean_weight_inverse is needed here.
-      real(dp) :: dfx1, dfx12, dfx4, ee
+! dfx1/dfx12/dfx4 (ion_mean_weight_excess) and metal_ratio, h_excess,
+! y_excess (scaled_metals_ion_mean_weight): the excesses; only
+! ion_mean_weight_inverse is needed here.
+      real(dp) :: dfx1, dfx12, dfx4, ee, metal_ratio, h_excess, y_excess
       logical :: use_envelope
 
-! Ion mean weight from the envelope mixture plus the H/he/metal excess
-      call ion_mean_weight_excess(hydrogen_fraction, metal_fraction, &
-           ion_mean_weight_inverse, dfx1, dfx12, dfx4, use_envelope)
+! Ion mean weight from the envelope mixture, by zone_mixture's rule
+      if (scale_metals .and. eos_mix%envelope_metal_fraction > 0.0d0) then
+         call scaled_metals_ion_mean_weight(hydrogen_fraction, metal_fraction, &
+              ion_mean_weight_inverse, metal_ratio, h_excess, y_excess)
+      else
+         call ion_mean_weight_excess(hydrogen_fraction, metal_fraction, &
+              ion_mean_weight_inverse, dfx1, dfx12, dfx4, use_envelope)
+      end if
       ee = ((beta*pressure)/(density*temperature*gas_constant* &
            ion_mean_weight_inverse)) - 1.0d0
       electron_mean_weight_inverse = ee*ion_mean_weight_inverse

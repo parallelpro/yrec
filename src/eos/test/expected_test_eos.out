@@ -668,6 +668,8 @@ ok   diffusion of Z: at the envelope's Z, the default mixture's 1/mu_ion and rho
 # test_eos: configuration yale_only
 # test_eos: configuration yale_diffusion_z
 ok   diffusion of Z: an envelope without metals takes the default mixture
+# test_eos: configuration diffusion_z
+ok   diffusion of Z: at Z = 1.1 Z_env, one 1/mu_ion inside the OPAL table and beyond it (M129)
  eos_init: more than one OPAL EOS vintage selected
 ok   settings: two OPAL vintages selected, eos_init returns ierr = 1
  eos_init: the Debye-Hueckel degeneracy range needs eta_max > eta_min:   1.0000000000000000        1.0000000000000000

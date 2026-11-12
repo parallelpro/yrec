@@ -217,7 +217,7 @@ subroutine compute_opal_eos(vintage, log10_temperature, log10_pressure, &
       r%beta14 = 4.0d0*r%beta_inverse*radiation_fraction
       r%specific_gas_constant = r%pressure*r%beta/(r%density*r%temperature)
       call compute_mean_weights(r%temperature, r%pressure, r%density, hydrogen_fraction, &
-           metal_fraction, specific_gas_constant_check, &
+           metal_fraction, eos_settings%use_diffusion_z, specific_gas_constant_check, &
            r%ion_mean_weight_inverse, r%electron_mean_weight_inverse, r%beta)
       if (r%electron_mean_weight_inverse <= 0.0d0) then
          r%electron_mean_weight_inverse = 0.0d0

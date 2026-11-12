@@ -1155,6 +1155,19 @@ subroutine diffusion_z_checks()
       end do
       call set_envelope_mixture(envelope_hydrogen_fraction, envelope_metal_fraction)
       call check("diffusion of Z: an envelope without metals takes the default mixture", ok)
+! one 1/mu_ion whichever source gives the density (M129): at Z = 1.1
+! Z_env, inside the OPAL 2006 table (log T 5, log P 12.80, OPAL's own
+! result) and beyond it (13.05, SCV's general path), the scaled mixture's
+! (OPAL's counted the excess metals as carbon, 3.9e-5 higher), and 1/mu_e
+! the gas constant's rest on both sides
+      call configure_eos("diffusion_z", opal2006=.true., scv=.true., diffusion_z=.true., file=opal06_path)
+      call eos_at(5.0d0, 12.80d0, 0.70d0, 1.1d0*envelope_metal_fraction, plain, ierr1)
+      call eos_at(5.0d0, 13.05d0, 0.70d0, 1.1d0*envelope_metal_fraction, diffusion, ierr2)
+      call check("diffusion of Z: at Z = 1.1 Z_env, one 1/mu_ion inside the OPAL table and beyond it (M129)", &
+           ierr1 == 0 .and. ierr2 == 0 .and. &
+           abs(plain%ion_mean_weight_inverse - diffusion%ion_mean_weight_inverse) < 1.0d-14 .and. &
+           abs(plain%electron_mean_weight_inverse - (plain%specific_gas_constant/gas_constant - &
+           plain%ion_mean_weight_inverse)) < 1.0d-12)
 end subroutine diffusion_z_checks
 
 ! an envelope of hydrogen (x) and helium alone, as eos_set_mixture takes it

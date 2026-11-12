@@ -469,11 +469,9 @@ new = '''      r%density = exp(ln10*r%log10_density)'''
 [[mutation]]
 id = 'diffusion_z-01'
 check = "diffusion of Z: at the envelope's Z, the default mixture's 1/mu_ion and rho"
-file = 'eos/blended_eos.f90'
-old = '''         h_excess = (hydrogen_fraction - eos_mix%envelope_hydrogen_fraction)* &
-              inverse_a_hydrogen'''
-new = '''         h_excess = (hydrogen_fraction - eos_mix%envelope_hydrogen_fraction)* &
-              1.01d0*inverse_a_hydrogen'''
+file = 'eos/eos_mixture.f90'
+old = '''      h_excess = (x - eos_mix%envelope_hydrogen_fraction)*inverse_a_hydrogen'''
+new = '''      h_excess = (x - eos_mix%envelope_hydrogen_fraction)*1.01d0*inverse_a_hydrogen'''
 
 [[mutation]]
 id = 'diffusion_z-02'
@@ -645,3 +643,10 @@ check = "continuity: where SCV's high-pressure ramp reaches SCV (log P_gas 11.2)
 file = 'eos/scv/scv_eos.f90'
 old = '''      weight = scv_ramp_weight((top - log10_gas_pressure)/step_p)* &'''
 new = '''      weight = merge(1.0d0, 0.9d0*scv_ramp_weight((top - log10_gas_pressure)/step_p), top - log10_gas_pressure >= step_p)* &'''
+
+[[mutation]]
+id = 'one_ion_weight-01'
+check = "diffusion of Z: at Z = 1.1 Z_env, one 1/mu_ion inside the OPAL table and beyond it (M129)"
+file = 'eos/opal/opal_eos.f90'
+old = '''           metal_fraction, eos_settings%use_diffusion_z, specific_gas_constant_check, &'''
+new = '''           metal_fraction, .false., specific_gas_constant_check, &'''
