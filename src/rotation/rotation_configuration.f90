@@ -121,10 +121,8 @@ module rotation_configuration
 ! helium floors and the sub-step as a fraction of the settling time
          real(dp) :: hydrogen_diffusion_floor = 0.0d0, helium_diffusion_min = 0.0d0, &
               settling_timestep_fraction = 0.0d0
-! the extended (15-species) composition; overshoot of intermediate
-! convection zones (physics%intermediate_overshoot_active) and the envelope's overshoot extent
-         logical :: use_extended_composition = .false., intermediate_overshoot = .false.
-         real(dp) :: overshoot_alpha_envelope = 0.0d0
+! the extended (15-species) composition
+         logical :: use_extended_composition = .false.
 ! the solar units: the luminosity (erg/s; star%solar_luminosity_cgs,
 ! which a Monte-Carlo run rescales), the unit of the luminosity_lsun
 ! arrays, and its log10; the radius (cm) and the mass (g)

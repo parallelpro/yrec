@@ -125,7 +125,7 @@ physics	atmp	string	new_species_value_mode	live		new_species_value_mode	buffer		
 physics	acfpft	real	fpft_average_weight	live		fpft_average_weight	physics		run		rotation_settings%shape_tolerance
 physics	atime	real(14)	timestep_factors	live		timestep_factors	physics		run		
 physics	alphac	real	overshoot_alpha_core	live	~ MESA overshoot f	overshoot_alpha_core	physics		run		convection_settings%overshoot_alpha_core
-physics	alphae	real	overshoot_alpha_envelope	live		overshoot_alpha_envelope	physics		run		convection_settings%overshoot_alpha_envelope,rotation_settings%overshoot_alpha_envelope
+physics	alphae	real	overshoot_alpha_envelope	live		overshoot_alpha_envelope	physics		run		convection_settings%overshoot_alpha_envelope
 physics	alfa	real	wind_law_index	live		wind_law_index	physics		run		
 physics	alpham	real	overshoot_alpha_min	live		overshoot_alpha_min	physics		run		convection_settings%overshoot_alpha_intermediate
 physics	atmstp	real	atm_step_size	live		atm_step_size	physics		run		
@@ -193,7 +193,7 @@ physics	lnewcp	logical	rescale_species_active	live		rescale_species_active	physi
 physics	lkuthe	logical	helium_flash_active	live		helium_flash_active	physics		run		
 physics	lovstc	logical	core_overshoot_active	live		core_overshoot_active	physics		run		convection_settings%core_overshoot
 physics	lovste	logical	envelope_overshoot_active	live		envelope_overshoot_active	physics		run		convection_settings%envelope_overshoot
-physics	lovstm	logical	intermediate_overshoot_active	live		intermediate_overshoot_active	physics		run		convection_settings%intermediate_overshoot,rotation_settings%intermediate_overshoot
+physics	lovstm	logical	intermediate_overshoot_active	live		intermediate_overshoot_active	physics		run		convection_settings%intermediate_overshoot
 physics	lovmax	logical	overshoot_max_extent_flag	live		overshoot_max_extent_flag	physics		run		convection_settings%limit_core_overshoot
 physics	lexcom	logical	use_extended_composition	live		use_extended_composition	physics		run		convection_settings%use_extended_composition,rotation_settings%use_extended_composition
 physics	lrot	logical	rotation_flag	live	mesa: rotation_flag	rotation_active	physics		run		convection_settings%rotation_active

@@ -170,15 +170,15 @@ new = '2.0d0*log_radius + log_density - &'
 id = 'overshoot-02'
 check = 'envelope_overshoot_depth = 0 with envelope overshoot off'
 file = 'convection/overshoot.f90'
-old = 'if (convection_settings%envelope_overshoot) then'
-new = 'if (.true.) then'
+old = 'if (.not. convection_settings%envelope_overshoot) return'
+new = 'if (.false.) return'
 
 [[mutation]]
 id = 'overshoot-03'
-check = 'envelope_overshoot_depth = alpha_env H_P at the base'
+check = "envelope_overshoot_depth = alpha_env H_P (the EOS's rho) at the base"
 file = 'convection/overshoot.f90'
-old = 'envelope_overshoot_depth = convection_settings%overshoot_alpha_envelope*'
-new = 'envelope_overshoot_depth = convection_settings%overshoot_alpha_core*'
+old = 'depth = convection_settings%overshoot_alpha_envelope*scale_height'
+new = 'depth = convection_settings%overshoot_alpha_core*scale_height'
 
 [[mutation]]
 id = 'overshoot-04'

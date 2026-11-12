@@ -18,7 +18,7 @@ Code outside convection/ uses it only through `convection_lib` (`tools/check_bou
 | `convection_configuration` | The settings record `convection_settings_t` and the installed copy `convection_settings`; the error codes `convection_unstable_radicand` and `convection_too_many_zones`. |
 | `temperature_gradients` | `compute_temperature_gradients` (formerly TPGRAD), as named steps: the radiative gradient (`radiative_gradient_of`), the adiabatic shortcut above `log10_t_cut` (`take_adiabatic`), the starspot correction (`spot_factor`, Somers 2014), the mixing-length coefficients and cubic (`mixing_length_coefficients`, `solve_mlt_cubic`), the convective velocity, and the gradient's log derivatives for the Henyey Jacobian (`mlt_derivatives`). The module header writes the equations, the derivatives included. |
 | `convection_zones` | `find_convection_zones` (formerly CONVEC): the convection zones from the flags (`next_convective_run`, `list_convection_zones`), extended by overshoot and merged (`merge_overlapping_zones`), and the radiative regions between them (`list_radiative_regions`). `homogenize_convection_zones` (formerly MIXCZ) mixes each zone (`homogenize_region`) and floors the composition (`apply_composition_floors`). |
-| `overshoot` | Step overshoot: `extend_by_overshoot` (formerly OVERSH) moves the edges of the mixed regions by α H_P (`extend_upward`, `extend_downward`, H_P at the edge with the EOS's density in `edge_scale_height`, formerly HSUBP); `pressure_scale_height`, H_P = P r²/(G m ρ); `envelope_overshoot_depth`, α_env H_P below the surface convection zone. |
+| `overshoot` | Step overshoot: `extend_by_overshoot` (formerly OVERSH) moves the edges of the mixed regions by α H_P (`extend_upward`, `extend_downward`, H_P at the edge with the EOS's density in `edge_scale_height`, formerly HSUBP); `pressure_scale_height`, H_P = P r²/(G m ρ); `envelope_overshoot_depth`, α_env H_P below the surface convection zone (H_P from `edge_scale_height`): the extent `extend_by_overshoot` moves that zone's edge by and the one its callers outside take. |
 | `semiconvection` | `extend_by_semiconvection` (formerly SCONVEC): semiconvection at the upper edge of the convective core (Castellani et al. 1971), the edge in `extend_core_edge`, each shell's ∇_rad in `radiative_gradient_at`. |
 | `convection_messages` | Every message of the directory, with its text and destination (§3). |
 
@@ -37,7 +37,7 @@ convection/ is called, never calls back into the star layer; it calls eos_lib (`
    4. core homogenizes the mixed regions and settles the elements (element_diffusion);
    5. after deep mixing, `find_convection_zones` again with the ordinary flags.
 4. **After the step converges:** core's `evolve_step` mixes the convection zones (`homogenize_convection_zones` with the convective flags); for the Li/Be burn it finds the end-of-step zones (`find_convection_zones`) and the overshoot depth below the surface convection zone at the start and the end of the step (`envelope_overshoot_depth`).
-5. **Rotation** (rotating models): the regions for angular momentum transport (`am_convective_regions` → `find_convection_zones`, at the start, after a rezone and in each sub-step), the sub-step's mixing (`homogenize_convection_zones` with the transport's flags) and its Li/Be burn (`find_convection_zones`, then α_env × `pressure_scale_height` under rotation's own switch, O10).
+5. **Rotation** (rotating models): the regions for angular momentum transport (`am_convective_regions` → `find_convection_zones`, at the start, after a rezone and in each sub-step), the sub-step's mixing (`homogenize_convection_zones` with the transport's flags) and its Li/Be burn (`find_convection_zones`, then `envelope_overshoot_depth` when the surface is convective).
 
 ## 3. Conventions
 
@@ -50,7 +50,6 @@ convection/ is called, never calls back into the star layer; it calls eos_lib (`
   - semiconvection acts at the convective core only (the YREC team's core-only switch of 2025, a8e60674): nothing below an envelope or an intermediate zone (bug_sweep M241, the authors' choice of 2026-11-11);
   - the cubic's start A3^-0.333333333 (the F77's literal for -1/3; results depend on it);
   - the semiconvection search evaluates every shell at the first outside shell's radius (the F77's; the radius enters only the cubic);
-  - two scale heights: overshoot's edges use the EOS's density, `envelope_overshoot_depth` the model's (merging them moves results: the B list).
 
 ## 4. Tests
 
@@ -66,7 +65,7 @@ convection/ is called, never calls back into the star layer; it calls eos_lib (`
   - with spots (constant and depth-varying contrast): ∇ and v_c against the computed solution, and the three derivatives against centred differences, the T and P ones with ∇_rad/S and d ln S/d ln T (bug_sweep M242);
   - the error contract: a negative radicand returns `convection_unstable_radicand`;
 - **zones:** runs of one shell are not zones; the mixed and radiative regions tile the model; twelve zones fill the twelve rows; a thirteenth returns `convection_too_many_zones`;
-- **overshoot:** `pressure_scale_height` = P r²/(G m ρ); `envelope_overshoot_depth` = α_env H_P, and 0 when off; each kind of region's moved edge is the last shell within α H_P (H_P from the Yale EOS, computed in the test), the core's limited to β r; the overshoot region below the envelope, and none without a convection zone, for a fully convective model or from an intermediate zone's overshoot (bug_sweep M249); the rotating rule's one shell, below the envelope and above the core; the merge of regions that meet, their union when the lower one's overshoot reaches past the upper one's top (bug_sweep M285);
+- **overshoot:** `pressure_scale_height` = P r²/(G m ρ); `envelope_overshoot_depth` = α_env H_P with the EOS's density, and 0 when off; each kind of region's moved edge is the last shell within α H_P (H_P from the Yale EOS, computed in the test), the core's limited to β r; the overshoot region below the envelope, and none without a convection zone, for a fully convective model or from an intermediate zone's overshoot (bug_sweep M249); the rotating rule's one shell, below the envelope and above the core; the merge of regions that meet, their union when the lower one's overshoot reaches past the upper one's top (bug_sweep M285);
 - **homogenization:** each species' mass in each zone is kept; each zone is uniform; the radiative shells are untouched; a uniform composition stays; the floors (X ≥ 0, Z ≤ 1 − X, O16 ≥ 0.99×10⁻³ of the CNO);
 - **semiconvection**, on a 40-shell model with a convective core under a hydrogen gradient (X = 0.30 in the core, 0.45 to 0.70 above), with the OPAL95 opacities (`kap_init`) and the Yale EOS: the core's edge moves out two shells; f ∇_rad ≥ ∇_ad in the shells it adds and not in the next (one shell has ∇_rad > ∇_ad but f ∇_rad < ∇_ad); a 1 s timestep adds only the first shell (the propagation limit); a region the extension overlaps is merged, one that only shares the edge shell is not; a stable edge stays; nothing moves without a convective core (on the same structure, a surface convection zone, X = 0.70 above 0.45, whose lower edge would move with its composition, and a region off the centre) or without a mixed region (a row an earlier model left) (bug_sweep M241).
 
@@ -90,8 +89,8 @@ Traced on 2026-11-10 on a throwaway branch (a least distance for core overshoot,
 
 **Add an overshoot prescription** (a different extent, or a cap):
 1. Its setting(s), as above.
-2. The extent in `overshoot.f90`: the region's branch in `extend_by_overshoot` (the distance, or the moved shell in `extend_upward`/`extend_downward`); for the surface convection zone, `envelope_overshoot_depth` too, which core's Li/Be burn uses.
-3. For an envelope rule, the two callers that apply their own envelope overshoot until the B phase makes them `envelope_overshoot_depth` calls: rotation's sub-step depth (`rotation/evolve_rotation.f90`, `burn_light_elements_over_substep`) and the rezone's overshoot base (`core/model/rezoning.f90`, α taken as a depth in log P).
+2. The extent in `overshoot.f90`: the region's branch in `extend_by_overshoot` (the distance, or the moved shell in `extend_upward`/`extend_downward`); for the surface convection zone, `envelope_overshoot_depth`, which that branch, core's Li/Be burn and rotation's sub-steps take.
+3. For an envelope rule, the caller that applies its own envelope overshoot: the rezone's overshoot base (`core/model/rezoning.f90`, α taken as a depth in log P).
 4. A check in `test_convection`'s `overshoot_checks` (the moved edge against the new extent, as the α H_P checks do), its mutation in `convection/test/test_convection.mutations.toml` (`python3 src/tools/mutate.py convection --only <id>`), and `convection/test/expected_test_convection.out` regenerated for the lines it adds.
 5. With the new setting at its default nothing moves; a deck that sets it moves (a measured commit for a changed default, `docs/GUIDELINES.md` "Changes that move results").
 

@@ -58,7 +58,7 @@ subroutine evolve_angular_momentum(s, full_timestep, max_domega_step, wind_loss_
       use secular_transport
       use magnetic_braking, only: brake_convection_zone, wind_conditions
       use convection_lib, only: find_convection_zones, homogenize_convection_zones, &
-           pressure_scale_height
+           envelope_overshoot_depth
       use star_info_lib, only: star_info, json, n_species_basic, n_species_extended
       use physical_constants
       use burn_step, only: store_end_li_be_rates, burn_li_be
@@ -376,7 +376,8 @@ end subroutine apply_instability_transport
 
 ! ---------------------------------------------------------------
 ! Light-element burning over the sub-step: the surface convection zone
-! at its end (with envelope overshoot under lovstm), the end rates from
+! at its end (with the envelope overshoot depth, convection_lib's, when
+! the surface is convective), the end rates from
 ! the mid-sub-step model, the burn, then the convection zones mixed, the
 ! tiny abundances zeroed and the start of the next sub-step stored.
 subroutine burn_light_elements_over_substep()
@@ -387,12 +388,11 @@ subroutine burn_light_elements_over_substep()
            envelope_boundary_zone_cur,num_radiative_zones,num_convective_zones, &
            num_convective_zones_burn, s%envelope_overshoot_bottom_index, s%envelope_overshoot_top_index, ierr)
       if (ierr /= 0) return
-      if(rotation_settings%intermediate_overshoot .and. sub_model%convective_flag(s%nz))then
-         s%envelope_overshoot_depth_end = rotation_settings%overshoot_alpha_envelope* &
-              pressure_scale_height(sub_model%log_pressure(envelope_boundary_zone_cur), &
-              sub_model%log_radius(envelope_boundary_zone_cur), &
-              sub_model%log_density(envelope_boundary_zone_cur), &
-              s%log_mass(envelope_boundary_zone_cur))
+      if(sub_model%convective_flag(s%nz))then
+         call envelope_overshoot_depth(s%xa, sub_model%log_density, sub_model%log_pressure, &
+              sub_model%log_radius, s%log_mass, sub_model%log_temperature, &
+              envelope_boundary_zone_cur, s%envelope_overshoot_depth_end, ierr)
+         if (ierr /= 0) return
       else
          s%envelope_overshoot_depth_end = 0.0D0
       endif

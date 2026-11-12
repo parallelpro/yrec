@@ -176,7 +176,9 @@ zones: a thirteenth zone returns convection_too_many_zones                 0.00E
 # overshoot: checks
 pressure_scale_height = P r^2/(G m rho)                                    1.33E-15  ok
 envelope_overshoot_depth = 0 with envelope overshoot off                   0.00E+00  ok
-envelope_overshoot_depth = alpha_env H_P at the base                       0.00E+00  ok
+ -----SAHA FAILURE (TL,PL)=  4.906156  8.322135  (E,DE)=      0.651709326372      0.694466572492
+ -----SAHA FAILURE (TL,PL)=  4.906156  8.322135  (E,DE)=      0.651709326372      0.694466572492
+envelope_overshoot_depth = alpha_env H_P (the EOS's rho) at the base       2.66E-15  ok
  MIXED REGIONS WITHOUT OVERSHOOT[   1-   5 ][  31-  40 ][
  MIXED REGIONS WITH OVERSHOOT   [   1-  10 ][  31-  40 ][
 overshoot, core: the last shell within alpha_core H_P above                0.00E+00  ok

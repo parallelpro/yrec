@@ -731,13 +731,14 @@ subroutine overshoot_checks()
       expected = 10.0d0**log_p(31)*(10.0d0**log_r(31))**2/(10.0d0**( &
            cs%log10_gravitational_constant + log_m(31))*10.0d0**log_rho(31))
       call check("pressure_scale_height = P r^2/(G m rho)", abs(h_p/expected - 1.0d0), 1.0d-13)
+      call envelope_overshoot_depth(xa, log_rho, log_p, log_r, log_m, log_t, 31, d, ierr)
       call check_that("envelope_overshoot_depth = 0 with envelope overshoot off", &
-           envelope_overshoot_depth(log_p, log_r, log_rho, log_m, 31) == 0.0d0)
+           ierr == 0 .and. d == 0.0d0)
       cs%envelope_overshoot = .true.
       call set_convection_settings(cs)
-      call check("envelope_overshoot_depth = alpha_env H_P at the base", abs( &
-           envelope_overshoot_depth(log_p, log_r, log_rho, log_m, 31)/(0.7d0*h_p) - 1.0d0), &
-           1.0d-14)
+      call envelope_overshoot_depth(xa, log_rho, log_p, log_r, log_m, log_t, 31, d, ierr)
+      call check("envelope_overshoot_depth = alpha_env H_P (the EOS's rho) at the base", &
+           abs(d/(0.7d0*eos_scale_height(31)) - 1.0d0), 1.0d-13)
 ! the core: up by alpha_core H_P
       cs%envelope_overshoot = .false.
       cs%core_overshoot = .true.

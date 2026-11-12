@@ -135,7 +135,7 @@ Decided by default in the cleanup round (2026-11-01), revisable: M111 and M171 (
 | O7 | Accretion mixing assumes a uniform convection zone | Yes | Open |
 | O8 | Li/Be rate store zeroes both rate sets | Yes | Open |
 | O9 | Surface ⁷Li noise floor of ~0.005 dex | Yes | Open |
-| O10 | Overshoot edge width from two models; wrong overshoot gate | Width yes, gate no | Open |
+| O10 | Overshoot edge width from two models; wrong overshoot gate | Width yes, gate no | Open (the gate fixed in round 1B, 2026-11-11) |
 | **O** | **Open: rotation, wind, microphysics and output (§6)** | | |
 | O11 | Dynamical-shear limit can overshoot or go negative | Yes | Fixed |
 | O12 | Solid-body Newton tolerance never set | Yes | Fixed (1e-14) |
@@ -1332,7 +1332,7 @@ These are found, recorded and left as they are, because each fix changes results
 
 ### O10. The overshoot edge's zone width mixes two models, and the rotation sub-steps gate envelope overshoot on the wrong switch
 
-- **Status:** open.
+- **Status:** open: the gate fixed in round 1B (2026-11-11, convection item 4, with the one H_P; What we did), the width open.
 - **In the original F77?**
   - **The width: yes.** LIBURN divides by a width whose outer radius is the start-of-step `HRO` and whose inner radius is the current `HR` ([liburn.f:111-118](https://github.com/parallelpro/yrec/blob/6cd56739/src/liburn.f#L111-L118)):
     ```fortran
@@ -1347,9 +1347,9 @@ These are found, recorded and left as they are, because each fix changes results
   - The edge fraction used in the end-of-step Li/Be average divides by a zone width taken from two models.
   - With `LOVSTE` on and `LOVSTM` off, a rotating model's sub-steps take the overshoot branch (which is gated on `envelope_overshoot_active`) with zero depth, so their Li/Be burning ignores the overshoot region.
 - **Expected behaviour, and why:** the width should be r(k) − r(k−1) of one model. The same physical switch should set the envelope overshoot depth in both places, as in the F77.
-- **Proposed fix:**
-  - Restore the `envelope_overshoot_active` gate in the rotation sub-steps. No shipped deck has both envelope overshoot and rotation on, so this should change no pinned output.
-  - The width fix changes decks with envelope overshoot and extended composition (for example cm_env_overshoot) and needs a measured commit.
+- **What we did:**
+  - The gate, round 1B (2026-11-11, convection item 4, the one H_P): the rotation sub-steps' depth is convection_lib's `envelope_overshoot_depth` when the surface is convective (GETW's `LOVSTE .AND. LCM(M)`), gated inside on `envelope_overshoot` (the control `envelope_overshoot_active`) and with the EOS's density at the base, as the mixing's extent; rotation_settings' `intermediate_overshoot` and `overshoot_alpha_envelope` are gone. No shipped deck has both envelope overshoot and rotation on (76 decks set envelope overshoot, none rotates), and no compared deck moves through this path.
+  - Proposed for the width: r(k) − r(k−1) of the current model; it changes decks with envelope overshoot and extended composition (for example cm_env_overshoot) and needs a measured commit.
 
 ## 6. Open: rotation, wind, microphysics and output
 
