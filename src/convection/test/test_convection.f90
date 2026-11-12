@@ -571,8 +571,8 @@ subroutine gradient_checks()
       call check("derivatives vs centred differences: dln del/dln T", errors(1), 1.0d-6)
       call check("derivatives vs centred differences: dln del/dln P", errors(2), 1.0d-6)
       call check("derivatives vs centred differences: dln del/dln r", errors(3), 1.0d-6)
-! with spots: the r derivative holds; the T and P ones miss the spot
-! factor (M242), so their errors are printed, not checked
+! with spots: del, v_c and the three derivatives (the T and P ones with
+! del_rad/S and dln S/dln T, M242)
       cs%spot_filling_factor = 0.3d0
       cs%spot_temp_contrast = 0.8d0
       do k = 1, 2
@@ -589,16 +589,16 @@ subroutine gradient_checks()
                  1.0d-10)
             call check("spots, constant contrast: dln del/dln r vs centred difference", &
                  errors(3), 1.0d-6)
-            write(*,'(a,2(1pe10.2))') "  known gap (M242), dln del/dln T and dln P:", &
-                 errors(1), errors(2)
+            call check("spots, constant contrast: dln del/dln T, P vs centred differences", &
+                 max(errors(1), errors(2)), 1.0d-6)
          else
             call check("spots, depth-varying contrast: del and v_c as the equations give", &
                  max(abs(grad/expected - 1.0d0), abs(velocity/expected_velocity - 1.0d0)), &
                  1.0d-10)
             call check("spots, depth-varying contrast: dln del/dln r vs centred difference", &
                  errors(3), 1.0d-6)
-            write(*,'(a,2(1pe10.2))') "  known gap (M242), dln del/dln T and dln P:", &
-                 errors(1), errors(2)
+            call check("spots, depth-varying contrast: dln del/dln T, P vs centred differences", &
+                 max(errors(1), errors(2)), 1.0d-6)
          end if
       end do
       call gradient_settings()

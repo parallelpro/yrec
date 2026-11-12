@@ -100,8 +100,8 @@ new = 'dexcess_dv = excess*(mlt%a1 + mlt%v)'
 id = 'gradient-14'
 check = 'spots, depth-varying contrast: del and v_c as the equations give'
 file = 'convection/temperature_gradients.f90'
-old = 'contrast = 1.0d0 - (1.0d0 - convection_settings%spot_temp_contrast)'
-new = 'contrast = 1.0d0 - (1.1d0 - convection_settings%spot_temp_contrast)'
+old = 'contrast_drop = (1.0d0 - convection_settings%spot_temp_contrast)'
+new = 'contrast_drop = (1.1d0 - convection_settings%spot_temp_contrast)'
 
 [[mutation]]
 id = 'gradient-15'
@@ -144,6 +144,20 @@ check = 'zones: a thirteenth zone returns convection_too_many_zones'
 file = 'convection/convection_zones.f90'
 old = 'ierr = convection_too_many_zones'
 new = 'ierr = 0'
+
+[[mutation]]
+id = 'gradient-17'
+check = 'spots, constant contrast: dln del/dln T, P vs centred differences'
+file = 'convection/temperature_gradients.f90'
+old = 'call mlt_derivatives(eos_res, kap_res, spotted_gradient,'
+new = 'call mlt_derivatives(eos_res, kap_res, radiative_gradient,'
+
+[[mutation]]
+id = 'gradient-18'
+check = 'spots, depth-varying contrast: dln del/dln T, P vs centred differences'
+file = 'convection/temperature_gradients.f90'
+old = '(-4.0d0 + dlnkap_dlnt_p - dlns_dlnt)'
+new = '(-4.0d0 + dlnkap_dlnt_p - 0.0d0*dlns_dlnt)'
 
 [[mutation]]
 id = 'overshoot-01'

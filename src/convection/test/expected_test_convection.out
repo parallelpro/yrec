@@ -22,11 +22,11 @@ mixing length, no derivatives: convective ierr T  0
 spots, constant contrast: convective ierr T  0
    2.500870965248657E-01   7.359634450190175E+03
   velocity   3.153218092144326E+05
-  derivatives  -2.874784210025409E-02   9.708176807310788E-03  -4.643530207239685E-04
+  derivatives  -2.938526803147643E-02   9.789602829492736E-03  -4.643530207239685E-04
 spots, contrast varying with depth: convective ierr T  0
    2.500776417549994E-01   7.359634450190175E+03
   velocity   2.977153777847110E+05
-  derivatives  -2.938035618022762E-02   9.803286099667272E-03  -4.139607937270451E-04
+  derivatives  -2.945658771053478E-02   9.812437562909343E-03  -4.139607937270451E-04
 ***WARNING***
 TPGRAD TRIED TO TAKE SQUARE ROOT OF NEGATIVE NUMBER - ASSUMED ADIABATIC CONVECTION
  DELDEL    7.359E+03 QDT    5.000E-01 DISC.   -1.072E-02
@@ -158,10 +158,10 @@ derivatives vs centred differences: dln del/dln P                          2.21E
 derivatives vs centred differences: dln del/dln r                          1.14E-10  ok
 spots, constant contrast: del and v_c as the equations give                4.88E-15  ok
 spots, constant contrast: dln del/dln r vs centred difference              1.28E-10  ok
-  known gap (M242), dln del/dln T and dln P:  9.75E+00  1.06E+00
+spots, constant contrast: dln del/dln T, P vs centred differences          5.56E-08  ok
 spots, depth-varying contrast: del and v_c as the equations give           6.00E-15  ok
 spots, depth-varying contrast: dln del/dln r vs centred difference         1.33E-10  ok
-  known gap (M242), dln del/dln T and dln P:  9.07E-02  2.30E-01
+spots, depth-varying contrast: dln del/dln T, P vs centred differences     3.71E-08  ok
 ***WARNING***
 TPGRAD TRIED TO TAKE SQUARE ROOT OF NEGATIVE NUMBER - ASSUMED ADIABATIC CONVECTION
  DELDEL    7.582E+03 QDT    5.000E-01 DISC.   -1.105E-02
