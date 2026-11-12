@@ -4235,7 +4235,7 @@ stay as they were.
   copy of the agent's final outputs and pins (`bverify_<package>`: ALL
   IDENTICAL, 35 pins OK), the old baseline and
   pins backed up (the work directory's `backups/pre_b1kap`,
-  `pre_b1atm`, `pre_b1convection`), the new ones installed in
+  `pre_b1atm`, `pre_b1convection`, `pre_b1eos`), the new ones installed in
   `.compare_decks/base` and the `standard/` pins, and the MESA baseline
   (`test_mesa_baselines`) reseeded where it moved and compared with the
   agent's reseed. Each merge is `--no-ff`; nothing is pushed.
@@ -4396,7 +4396,9 @@ control.
   equal to the agent's.
 - convection, at 6fcc96cb: the same sequence with the same results
   (`mutate.py convection` 0 survived).
-- eos: verified at 1395075b.
+- eos, at 1395075b: the same sequence with the same results
+  (`mutate.py eos` 0 survived; the devel run 0 failed, test_eos
+  included now that M305 is fixed).
 
 #### Learned
 
