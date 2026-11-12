@@ -1592,6 +1592,21 @@ subroutine continuity_checks()
            ramp_end_is_continuous(5.0d0, 12.80d0, 12.94d0, opal2006_alone))
       call check("continuity: at the OPAL 2006 table's edge (the Yale/SCV result beyond)", &
            ramp_end_is_continuous(5.0d0, 13.05d0, 12.94d0, without_opal))
+! SCV's tables' edges in P_gas (M88): its result is blended into the Saha
+! one within one table interval (0.2 dex) of an edge, the ionization
+! fractions too, so every blended field is continuous at both ends of
+! the ramp: above the first column (log P_gas 4.0 to 4.2, at log T 3.5)
+! and below the cells' top (11.2 to 11.4 at log T 3.33, where the tops
+! are 11.4); the Saha result beyond, SCV's own inside
+      call configure_eos("scv_only", scv=.true.)
+      call check("continuity: at SCV's low-pressure edge (log P_gas 4), the Saha result beyond (M88)", &
+           ramp_end_is_continuous(3.5d0, 3.9d0, 4.1d0, without_scv))
+      call check("continuity: where SCV's low-pressure ramp reaches SCV (log P_gas 4.2) (M88)", &
+           ramp_end_is_continuous(3.5d0, 4.3d0, 4.1d0, scv_alone))
+      call check("continuity: at SCV's high-pressure edge (log P_gas 11.4), the Saha result beyond (M88)", &
+           ramp_end_is_continuous(3.33d0, 11.5d0, 11.3d0, without_scv))
+      call check("continuity: where SCV's high-pressure ramp reaches SCV (log P_gas 11.2) (M88)", &
+           ramp_end_is_continuous(3.33d0, 11.1d0, 11.3d0, scv_alone))
 end subroutine continuity_checks
 
 ! A table source's edge ramp at log T = lt, in log P, between lp_equal
@@ -1653,6 +1668,35 @@ subroutine opal2006_alone(lt, lp, x, z, r)
       r = eos_result()
       call compute_opal_eos(iv_opal06, lt, lp, x, z, r, ierr, covers)
 end subroutine opal2006_alone
+
+! the blend without SCV (the Saha result below the Saha ramp)
+subroutine without_scv(lt, lp, x, z, r)
+      real(dp), intent(in) :: lt, lp, x, z
+      type(eos_result), intent(out) :: r
+      type(eos_settings_t) :: s, before
+      integer :: ierr
+      before = eos_settings
+      s = eos_settings
+      s%use_scv_eos = .false.
+      call set_eos_settings(s)
+      call eos_at(lt, lp, x, z, r, ierr)
+      call set_eos_settings(before)
+end subroutine without_scv
+
+! SCV's lookup alone, from the Saha result (what the blend adopts inside
+! its tables, beyond the ramps)
+subroutine scv_alone(lt, lp, x, z, r)
+      real(dp), intent(in) :: lt, lp, x, z
+      type(eos_result), intent(out) :: r
+      type(eos_table_source_t) :: list(n_table_sources)
+      integer :: k, ierr
+      logical :: covers
+      call without_scv(lt, lp, x, z, r)
+      list = table_sources()
+      do k = 1, n_table_sources
+         if (list(k)%name == 'SCV') call list(k)%lookup(lt, lp, x, z, r, covers, ierr)
+      end do
+end subroutine scv_alone
 
 subroutine without_opal(lt, lp, x, z, r)
       real(dp), intent(in) :: lt, lp, x, z

@@ -95,13 +95,15 @@ subroutine opal_lookup(log10_temperature, log10_pressure, hydrogen_fraction, met
            hydrogen_fraction, metal_fraction, table_r, ierr, covers)
 end subroutine opal_lookup
 
-subroutine opal_edge_weight(temperature, log10_density, weight, in_table, near_edge, ierr)
-      real(dp), intent(in) :: temperature, log10_density
+! the edge weight at the lookup's T and density (table_r's)
+subroutine opal_edge_weight(log10_temperature, table_r, weight, in_table, near_edge, ierr)
+      real(dp), intent(in) :: log10_temperature
+      type(eos_result), intent(in) :: table_r
       real(dp), intent(out) :: weight
       logical, intent(out) :: in_table, near_edge
       integer, intent(out) :: ierr
-      call find_opal_edge_ramp(eos_settings%opal_vintage, temperature, log10_density, weight, &
-           in_table, near_edge, ierr)
+      call find_opal_edge_ramp(eos_settings%opal_vintage, table_r%temperature, &
+           table_r%log10_density, weight, in_table, near_edge, ierr)
 end subroutine opal_edge_weight
 
 ! the (T, rho) window inside which a vintage is consulted at all (the

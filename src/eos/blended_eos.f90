@@ -303,7 +303,7 @@ subroutine apply_table_source(src, log10_temperature, log10_pressure, hydrogen_f
       r%temperature = table_r%temperature
       r%pressure = table_r%pressure
       if (ierr /= 0 .or. .not. covers) return
-      call src%edge_weight(r%temperature, table_r%log10_density, weight, in_table, near_edge, ierr)
+      call src%edge_weight(log10_temperature, table_r, weight, in_table, near_edge, ierr)
       if (ierr /= 0) return
       if (.not. in_table) return
       if (.not. near_edge) then

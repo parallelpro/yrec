@@ -613,3 +613,35 @@ check = 'SCV: the H+ fraction counts an H2 molecule as two hydrogen nuclei (M128
 file = 'eos/scv/scv_eos.f90'
 old = '''      ion_fraction(1) = xtf_hp / (2.0d0*xtf_h2 + xtf_h1 + xtf_hp)'''
 new = '''      ion_fraction(1) = xtf_hp / (xtf_h2 + xtf_h1 + xtf_hp)'''
+
+[[mutation]]
+id = 'scv_edge-01'
+check = "continuity: at SCV's low-pressure edge (log P_gas 4), the Saha result beyond (M88)"
+file = 'eos/scv/scv_eos.f90'
+old = '''      near_edge = weight < 1.0d0
+'''
+new = '''      near_edge = .false.
+'''
+
+[[mutation]]
+id = 'scv_edge-02'
+check = "continuity: at SCV's high-pressure edge (log P_gas 11.4), the Saha result beyond (M88)"
+file = 'eos/scv/scv_eos.f90'
+old = '''      weight = scv_ramp_weight((top - log10_gas_pressure)/step_p)* &'''
+new = '''      weight = scv_ramp_weight((top + 0.2d0 - log10_gas_pressure)/step_p)* &'''
+
+[[mutation]]
+id = 'scv_edge-03'
+check = "continuity: where SCV's low-pressure ramp reaches SCV (log P_gas 4.2) (M88)"
+file = 'eos/scv/scv_eos.f90'
+old = '''      r%ion_fraction = r%ion_fraction + weight*(table_r%ion_fraction - r%ion_fraction)
+'''
+new = '''
+'''
+
+[[mutation]]
+id = 'scv_edge-04'
+check = "continuity: where SCV's high-pressure ramp reaches SCV (log P_gas 11.2) (M88)"
+file = 'eos/scv/scv_eos.f90'
+old = '''      weight = scv_ramp_weight((top - log10_gas_pressure)/step_p)* &'''
+new = '''      weight = merge(1.0d0, 0.9d0*scv_ramp_weight((top - log10_gas_pressure)/step_p), top - log10_gas_pressure >= step_p)* &'''

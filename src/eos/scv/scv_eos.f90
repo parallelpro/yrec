@@ -33,7 +33,7 @@ module scv_eos
       use scv_table_reader, only: read_scv_tables
       use eos_configuration, only: eos_settings, eos_table_paths_t
       use eos_table_source, only: eos_table_source_t, stage_in_place_of_saha, always_in_window, &
-           whole_weight_inside, adopt_whole_result, blend_table_result
+           adopt_whole_result
       use math_lib
       implicit none
       private
@@ -51,9 +51,10 @@ contains
 !----------------------------------------------------------------------
 ! SCV as a table source (eos_table_source): selected by use_scv_eos, its
 ! three tables read at eos_init, consulted below the Saha cutoff in place
-! of the Saha solution (compute_scv_envelope_eos, from a copy of it), and
-! taken whole wherever its tables cover the point: it has no edge weight
-! yet (M88).
+! of the Saha solution (compute_scv_envelope_eos, from a copy of it),
+! taken whole inside its tables and blended into the Saha result near
+! their edges (scv_edge_weight, blend_scv_over_saha; M88: it was taken
+! whole wherever its tables covered the point, a step at their edges).
 function scv_table_source() result(src)
       type(eos_table_source_t) :: src
       src%name = 'SCV'
@@ -62,9 +63,9 @@ function scv_table_source() result(src)
       src%read_tables => read_scv_source
       src%in_window => always_in_window
       src%lookup => scv_lookup
-      src%edge_weight => whole_weight_inside
+      src%edge_weight => scv_edge_weight
       src%adopt => adopt_whole_result
-      src%blend => blend_table_result
+      src%blend => blend_scv_over_saha
 end function scv_table_source
 
 logical function scv_selected()
@@ -76,6 +77,89 @@ subroutine read_scv_source(paths, ierr)
       integer, intent(out) :: ierr
       call read_scv_tables(trim(paths%scv_h), trim(paths%scv_he), trim(paths%scv_z), ierr)
 end subroutine read_scv_source
+
+! The weight of SCV's result at (log T, log P_gas), log P_gas from the
+! lookup's result: a ramp one table interval wide inside each edge of
+! the tables, falling linearly to 0 at the edge, the factors of the four
+! edges multiplied (as the OPAL 2006 table's ramps are):
+!   log P_gas  above the tables' first column, 4.0 (0.2 dex), and below
+!              their top at the point's T (0.2 dex), where the top is
+!              linear in log T between its value at the two rows around
+!              the point; a row's value is the highest log P_gas of the
+!              cell the interval below it uses (find_scv_cell's first row,
+!              whose points the cell covers), so the edge is continuous
+!              in T, never above what the lookup covers, where that steps
+!              up at a row (log T 3.70: 11.4 to 13.6);
+!   log T      above the first row and below the last (one row).
+! Outside the ramps the weight is 1 (adopt_whole_result); where it is 0
+! the Saha result stands (in_table false).
+subroutine scv_edge_weight(log10_temperature, table_r, weight, in_table, near_edge, ierr)
+      real(dp), intent(in) :: log10_temperature
+      type(eos_result), intent(in) :: table_r
+      real(dp), intent(out) :: weight
+      logical, intent(out) :: in_table, near_edge
+      integer, intent(out) :: ierr
+      integer, parameter :: nts = scv_nt
+      real(dp) :: log10_gas_pressure, step_p, top_lo, top_hi, top, s
+      integer :: k
+      ierr = 0
+      log10_gas_pressure = log10(table_r%beta*table_r%pressure)
+! the point's T interval [tlogx(k), tlogx(k+1)]
+      k = 1
+      do while (k < nts - 1 .and. log10_temperature >= tlogx(k+1))
+         k = k + 1
+      end do
+      s = (log10_temperature - tlogx(k))/(tlogx(k+1) - tlogx(k))
+      top_lo = scv_row_top(k - 1)
+      top_hi = scv_row_top(k)
+      top = top_lo + max(0.0d0, min(1.0d0, s))*(top_hi - top_lo)
+      step_p = tablex(1,2,iscv_log10_p) - tablex(1,1,iscv_log10_p)
+      weight = scv_ramp_weight((top - log10_gas_pressure)/step_p)* &
+           scv_ramp_weight((log10_gas_pressure - tablex(1,1,iscv_log10_p))/step_p)* &
+           scv_ramp_weight((log10_temperature - tlogx(1))/(tlogx(2) - tlogx(1)))* &
+           scv_ramp_weight((tlogx(nts) - log10_temperature)/(tlogx(nts) - tlogx(nts-1)))
+      in_table = weight > 0.0d0
+      near_edge = weight < 1.0d0
+
+contains
+
+! the cell's top in log P_gas over the T interval [tlogx(j), tlogx(j+1)]
+! (the highest point of find_scv_cell's first row for it, clamped to the
+! table's cells), the interval before the first counting as the first
+pure real(dp) function scv_row_top(j)
+      integer, intent(in) :: j
+      integer :: first_row
+      first_row = max(1, min(j - 1, nts - 3))
+      scv_row_top = tablex(first_row, nptsx(first_row), iscv_log10_p)
+end function scv_row_top
+
+pure real(dp) function scv_ramp_weight(distance)
+      real(dp), intent(in) :: distance
+      scv_ramp_weight = max(0.0d0, min(1.0d0, distance))
+end function scv_ramp_weight
+
+end subroutine scv_edge_weight
+
+! SCV's blend into the Saha result near its tables' edges: r + w (table -
+! r) for log rho (and rho), the ionization fractions and the first
+! derivatives, then R/mu and 1/mu_e from the blended density
+! (mean_weights_from_density), as the Saha ramp's blend does; beta, the
+! second derivatives and the Saha solver's fields stay r's (the lookup
+! leaves them as it found them).
+subroutine blend_scv_over_saha(table_r, weight, r)
+      type(eos_result), intent(in) :: table_r
+      real(dp), intent(in) :: weight
+      type(eos_result), intent(inout) :: r
+      r%log10_density = r%log10_density + weight*(table_r%log10_density - r%log10_density)
+      r%density = exp(ln10*r%log10_density)
+      call mean_weights_from_density(r)
+      r%ion_fraction = r%ion_fraction + weight*(table_r%ion_fraction - r%ion_fraction)
+      r%dlnrho_dlnt = r%dlnrho_dlnt + weight*(table_r%dlnrho_dlnt - r%dlnrho_dlnt)
+      r%dlnrho_dlnp = r%dlnrho_dlnp + weight*(table_r%dlnrho_dlnp - r%dlnrho_dlnp)
+      r%specific_heat_cp = r%specific_heat_cp + weight*(table_r%specific_heat_cp - r%specific_heat_cp)
+      r%adiabatic_gradient = r%adiabatic_gradient + &
+           weight*(table_r%adiabatic_gradient - r%adiabatic_gradient)
+end subroutine blend_scv_over_saha
 
 ! the lookup takes P from table_r (the copy of the Saha result), not from
 ! log10_pressure
