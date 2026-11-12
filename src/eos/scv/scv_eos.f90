@@ -700,7 +700,9 @@ end subroutine find_scv_cell
 ! fractions of H2 and H (columns 2 and 3) and the pure He table's of
 ! neutral He and He+, interpolated in P at the cell's four rows and then
 ! in T; the H+, electron and He++ fractions follow from the
-! conservation of particles and of charge.
+! conservation of particles and of charge. The hydrogen nuclei number
+! 2 x_H2 + x_H + x_H+ of the particles (an H2 molecule holds two, as the
+! envelope table's build counts them; M128).
 subroutine scv_ionization_fractions(idtt, idp, temp_interp_weights, press_interp_weights, &
      ion_fraction)
       integer, intent(in) :: idtt, idp
@@ -735,7 +737,7 @@ subroutine scv_ionization_fractions(idtt, idp, temp_interp_weights, press_interp
       xtf_hepp = 1d0 - xtf_he - xtf_hep - xtf_he_e
 ! the fractions of the H nuclei that are H+, and of the He nuclei that
 ! are He+ and He++
-      ion_fraction(1) = xtf_hp / (xtf_h2 + xtf_h1 + xtf_hp)
+      ion_fraction(1) = xtf_hp / (2.0d0*xtf_h2 + xtf_h1 + xtf_hp)
       ion_fraction(2) = xtf_hep / (xtf_he + xtf_hep + xtf_hepp)
       ion_fraction(3) = xtf_hepp / (xtf_he + xtf_hep + xtf_hepp)
 end subroutine scv_ionization_fractions

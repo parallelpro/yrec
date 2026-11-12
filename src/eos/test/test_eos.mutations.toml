@@ -606,3 +606,10 @@ check = 'fully ionized gas: a new record converges where log rho 0 as its start 
 file = 'eos/yale/yale_eos.f90'
 old = '''      if (r%log10_density == 0.0d0 .and. r%density == 0.0d0) then'''
 new = '''      if (.false.) then'''
+
+[[mutation]]
+id = 'scv_hydrogen_ion-01'
+check = 'SCV: the H+ fraction counts an H2 molecule as two hydrogen nuclei (M128)'
+file = 'eos/scv/scv_eos.f90'
+old = '''      ion_fraction(1) = xtf_hp / (2.0d0*xtf_h2 + xtf_h1 + xtf_hp)'''
+new = '''      ion_fraction(1) = xtf_hp / (xtf_h2 + xtf_h1 + xtf_hp)'''

@@ -10,8 +10,9 @@
 !                            OPAL's names
 ! and, re-exported from the modules that hold them, the internals the
 ! checks call or inspect: the settings' installer, the OPAL lookup and
-! its tables' instances, the MHD table lookup, SCV's search start and its
-! envelope table (whose never-built entries a check fills), the warnings'
+! its tables' instances, the MHD table lookup, SCV's search start, its
+! envelope table (whose never-built entries a check fills) and its H
+! table (whose particle fractions a check reads), the warnings'
 ! flags, the table sources' list and the Debye-Hueckel record.
 module eos_test_entries
       use, intrinsic :: iso_fortran_env, only: dp => real64
@@ -24,7 +25,8 @@ module eos_test_entries
            iv_opal01, iv_opal06, i_opal_cv, i_opal01_cv, i_opal_p, i_opal01_p, i_opal_gamma1, &
            i_opal_gamma2_ratio
       use mhd_eos, only: interpolate_mhd_table
-      use scv_eos_tables, only: scv_cell, last_scv_cell, tablenv, nptsx
+      use scv_eos_tables, only: scv_cell, last_scv_cell, tablenv, nptsx, tablex, tlogx, &
+           iscv_log10_p, iscv_frac_neutral, iscv_frac_atom_ion1
       use eos_messages, only: eos_warned, once_fermi_extrapolation
       use eos_table_source, only: eos_table_source_t, stage_in_place_of_saha, stage_over_the_gas, &
            stage_whole_eos
@@ -38,7 +40,8 @@ module eos_test_entries
       public :: gamma1_at_density, esac95, esac01, esac06
       public :: eos_settings, set_eos_settings, compute_opal_eos, opal_tables, &
            iv_opal95, iv_opal01, iv_opal06, i_opal_cv, i_opal01_cv, i_opal_p, i_opal01_p, &
-           interpolate_mhd_table, scv_cell, last_scv_cell, tablenv, nptsx, eos_warned, &
+           interpolate_mhd_table, scv_cell, last_scv_cell, tablenv, nptsx, tablex, tlogx, &
+           iscv_log10_p, iscv_frac_neutral, iscv_frac_atom_ion1, eos_warned, &
            once_fermi_extrapolation, &
            eos_table_source_t, stage_in_place_of_saha, stage_over_the_gas, stage_whole_eos, &
            table_sources, n_table_sources, debye_huckel_composition_of, debye_huckel_composition, &

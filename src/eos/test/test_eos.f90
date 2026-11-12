@@ -33,7 +33,7 @@ program test_eos
            eos_table_paths_t, opal_vintage_none, opal_vintage_1995, opal_vintage_2001, &
            opal_vintage_2006, opal_vintage_conflict
       use eos_test_entries
-      use physical_constants, only: gas_constant
+      use physical_constants, only: gas_constant, radiation_constant_over_3
       use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
       type(eos_settings_t) :: settings
@@ -1309,7 +1309,31 @@ subroutine scv_mean_weight_checks()
            abs(above%electron_mean_weight_inverse - below%electron_mean_weight_inverse) < 1.0d-6)
       call scv_search_checks()
       call scv_short_row_checks()
+      call scv_hydrogen_ion_checks()
 end subroutine scv_mean_weight_checks
+
+! SCV's H+ fraction is the fraction of the hydrogen nuclei that are
+! ionized: at the H table's node log T 3.86, log P_gas 12.0 (row 23,
+! column 41; H2 is 85% of the particles there), (1 - x_H2 - x_H)/(1 +
+! 3 x_H2 + x_H) from the table's particle fractions, 1.6e-2, where
+! counting each H2 as one nucleus gave 87% more (M128)
+subroutine scv_hydrogen_ion_checks()
+      real(dp), parameter :: x = 0.70d0, z = 0.016492d0
+      integer, parameter :: row = 23, column = 41
+      type(eos_result) :: r
+      real(dp) :: lt, lp, x_h2, x_h, expected
+      integer :: ierr
+      call configure_eos("scv_only", scv=.true.)
+      lt = tlogx(row)
+      lp = log10(10.0d0**tablex(row, column, iscv_log10_p) + &
+           radiation_constant_over_3*(10.0d0**lt)**4)
+      call eos_at(lt, lp, x, z, r, ierr)
+      x_h2 = tablex(row, column, iscv_frac_neutral)
+      x_h = tablex(row, column, iscv_frac_atom_ion1)
+      expected = (1.0d0 - x_h2 - x_h)/(1.0d0 + 3.0d0*x_h2 + x_h)
+      call check("SCV: the H+ fraction counts an H2 molecule as two hydrogen nuclei (M128)", &
+           ierr == 0 .and. abs(r%ion_fraction(1)/expected - 1.0d0) < 1.0d-8)
+end subroutine scv_hydrogen_ion_checks
 
 ! SCV's envelope lookup reads only the envelope table's built entries:
 ! at log T 3.71, log P 12.1 the cell's first row (log T 3.62) holds 49
