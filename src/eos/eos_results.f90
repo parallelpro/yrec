@@ -10,7 +10,8 @@
 ! fields are also inputs:
 ! - density and log10_density are the starting guess of the fully
 !   ionized density iteration (the result depends on them within that
-!   iteration's tolerance);
+!   iteration's tolerance); a new record, both zero, starts it from the
+!   ideal gas's density;
 ! - the Saha solver's three unknowns (saha_*) are its starting point and
 !   come back as its solution, so a record carried from one call to the
 !   next warm-starts the solver (a new record starts from E = 0.1, no

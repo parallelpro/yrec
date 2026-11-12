@@ -1381,7 +1381,7 @@ subroutine ideal_gas_checks()
 ! weakly degenerate, fully ionized points (eta from -4.9 to -2.6)
       real(dp), parameter :: fi_lt(4) = [6.0d0, 6.3d0, 6.5d0, 7.0d0]
       real(dp), parameter :: fi_lp(4) = [13.0d0, 14.3d0, 15.0d0, 16.5d0]
-      type(eos_result) :: r
+      type(eos_result) :: r, near
       real(dp) :: mu_e_inv, mu_inv, rho_ideal, correction, cp, grad, worst
       integer :: k, ierr, ierr_far, it
       logical :: ok
@@ -1451,6 +1451,18 @@ subroutine ideal_gas_checks()
       call eos_get(7.0d0, 16.0d0, x, z, r, .true., .false., it, ierr=ierr)
       call check("fully ionized gas: a density iteration that does not converge returns ierr = 1", &
            ierr_far == 1 .and. ierr == 0)
+! a new record at log T 9, log P 22, where its log rho 0 as the start ran
+! the iteration away toward the radiation pressure (M290): it starts from
+! the ideal gas's density and converges, to what a start near the answer
+! gives
+      call eos_at(9.0d0, 22.0d0, x, z, r, ierr)
+      near = eos_result()
+      near%log10_density = r%log10_density + 0.1d0
+      near%density = 10.0d0**near%log10_density
+      it = 0
+      call eos_get(9.0d0, 22.0d0, x, z, near, .true., .false., it, ierr=ierr_far)
+      call check("fully ionized gas: a new record converges where log rho 0 as its start did not (M290)", &
+           ierr == 0 .and. ierr_far == 0 .and. abs(r%log10_density - near%log10_density) < 1.0d-8)
 ! the Fermi-Dirac table's range, log T 5.2-9 and log rho - log mu_e -
 ! 1.5 log T from -16 to -3: a run's first point beyond it, in T (log T
 ! 9.2, from a start near its density, log rho 5.59) or in degeneracy

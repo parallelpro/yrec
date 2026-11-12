@@ -684,7 +684,8 @@ end subroutine differentiate_saha_solution_twice
 ! Debye-Hueckel term) add up to P, then sets the density, its first and
 ! second derivatives, cp, grad_ad and their derivatives, and eta (the
 ! second derivatives always: the caller keeps or discards them). The
-! density iteration starts from r's density; when it does not converge
+! density iteration starts from r's density, or from the ideal gas's for
+! a new record (start_fully_ionized_solution); when it does not converge
 ! (iterate_fully_ionized_density) r keeps its other fields and ierr is
 ! 1. extrapolated tells whether the converged point lies outside the
 ! Fermi-Dirac table (log T from fermi_log10t_min to fermi_log10t_max, X
@@ -736,7 +737,13 @@ end subroutine compute_fully_ionized_eos
 !----------------------------------------------------------------------
 ! The pressures that do not depend on density (radiation, and the
 ! Debye-Hueckel mass terms), the log T row of the Fermi table and its
-! interpolation factors, and the starting log density.
+! interpolation factors, and the starting log density: r's, the caller's
+! guess or the previous call's at the zone, except for a new record
+! (log10_density and density both zero, eos_result's defaults), which
+! starts from the ideal gas's density beta P/((R/mu) T) with r's R/mu.
+! From log rho 0, a new record's, the iteration ran away toward the
+! radiation pressure from log T 7.25 up (M290); from the ideal gas's it
+! converges over log T 5.7 to 9.6 and log P 6 to 28 (beta down to 1e-12).
 subroutine start_fully_ionized_solution(log10_temperature, log10_pressure, dh, r, f)
       real(dp), intent(in) :: log10_temperature, log10_pressure
       type(debye_huckel_composition), intent(in) :: dh
@@ -764,7 +771,11 @@ subroutine start_fully_ionized_solution(log10_temperature, log10_pressure, dh, r
       f%ttud = fermi_rows_per_dex*(f%tl8 - (fermi_log10t_origin + fermi_log10t_step*real(f%jt1, dp)))
       f%ttcu = 0.50d0*f%ttud*(f%ttud - 1.0d0)
       f%ttdcu = f%ttud - 0.50d0
-      f%dml = r%log10_density + f%emul
+      if (r%log10_density == 0.0d0 .and. r%density == 0.0d0) then
+         f%dml = log10(r%beta*r%pressure/(r%specific_gas_constant*r%temperature)) + f%emul
+      else
+         f%dml = r%log10_density + f%emul
+      end if
       f%nden = 1
       f%id1p = -100
 ! DBG 7/92 calculate D-H terms: Alpha-mixture, mass-FRAC0, mass-FRAC1

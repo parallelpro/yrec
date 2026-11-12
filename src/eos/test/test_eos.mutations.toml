@@ -599,3 +599,10 @@ check = "SCV general path: cp and grad_ad before the envelope table is built, as
 file = 'eos/scv/scv_eos.f90'
 old = '''            zone_mixing_entropy(k) = scv_mixing_entropy(ii, idp+k-1, hydrogen_fraction)'''
 new = '''            zone_mixing_entropy(k) = smix(ii, idp+k-1)'''
+
+[[mutation]]
+id = 'fully_ionized_start-01'
+check = 'fully ionized gas: a new record converges where log rho 0 as its start did not (M290)'
+file = 'eos/yale/yale_eos.f90'
+old = '''      if (r%log10_density == 0.0d0 .and. r%density == 0.0d0) then'''
+new = '''      if (.false.) then'''

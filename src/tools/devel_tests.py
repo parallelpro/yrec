@@ -78,7 +78,7 @@ _O4 = ("O4 (docs/bug_sweep.md): the starting model's stitched atmosphere reads "
        "env_log10_radius(0), core/diagnostics/stitched_model.f90:475, a bounds error")
 KNOWN_FAILURES = {
     "test_eos": "the fully ionized density iteration's second-order step overflows far from "
-                "its root, eos/yale/yale_eos.f90:914 (iterate_fully_ionized_density), an "
+                "its root, eos/yale/yale_eos.f90:925 (iterate_fully_ionized_density), an "
                 "overflow trap at test_eos's check of a start 100 dex off (M93's)",
     "test_structure[tams]": _O4,
     "test_structure[yale]": _O4,
