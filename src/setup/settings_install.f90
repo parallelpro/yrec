@@ -52,9 +52,9 @@ contains
 ! install_run_settings: the opacities (kap_init), the equation of state
 ! (eos_init: the Fermi-Dirac degenerate-electron table always, and the
 ! OPAL, MHD and SCVH tables when the settings select them) and the
-! tabulated surface boundary conditions (atm_init: the Kurucz (atm_choice
-! 3 and 4), Allard (4) and Kurucz/Castelli (5) tables), each with its
-! table paths. The table paths are controls, so the controls read must
+! tabulated surface boundary condition (atm_init: the Kurucz (atm_choice
+! 3), Allard (4) or Castelli/Kurucz (5) table), each with its table
+! paths. The table paths are controls, so the controls read must
 ! have run. Errors return through ierr.
 !   star reads: envelope_hydrogen_fraction, envelope_metal_fraction
 !   star writes: none

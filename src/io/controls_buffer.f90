@@ -403,7 +403,7 @@ module controls_buffer
       character(len=256) :: opal2001_eos_table_path = repeat(achar(0), 256)
 ! OPAL 2006 EOS table (use_opal2006_eos)
       character(len=256) :: opal2006_eos_table_path = repeat(achar(0), 256)
-! Kurucz (atm_choice 3 and 4) or Castelli/Kurucz (5) surface-pressure table
+! Kurucz (atm_choice 3) or Castelli/Kurucz (5) surface-pressure table
       character(len=256) :: atm_table_path = repeat(achar(0), 256)
 ! Allard NextGen model-atmosphere table
       character(len=256) :: allard_table_path = repeat(achar(0), 256)

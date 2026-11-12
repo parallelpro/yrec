@@ -25,7 +25,7 @@
 ! accreted composition are computed by the star-blind kernels of
 ! mass_change_kernel.f90.
 module mass_change
-      use atm_lib, only: atm_get_surface_pt
+      use atm_lib, only: atm_get_surface_pt, atm_table_is_loaded, atm_allard
       use star_info_lib, only: json, star_info
       use mass_change_kernel, only: wind_angular_momentum, &
            convection_zone_mass, change_shell_masses, &
@@ -49,12 +49,12 @@ contains
 ! old_log_envelope_mass_fraction = log10(m(nz)/M) before the change
 ! (set only when the step runs), and new_atmosphere_fit_needed, true
 ! when matter was accreted.
-!   star reads: dm, envelope_cz_bottom_index, log10_solar_luminosity,
-!     log_L_lsun, log_Teff, log_total_mass, logP, logR, logRho, logT,
-!     nz, physics%mass_accretion_rate, physics%reimers_scaling_factor,
-!     physics%use_reimers_wind, solar_mass_cgs, solar_radius_cgs,
-!     star_mass, xa
-!   star writes: atm_point, convective_turnover_timescale,
+!   star reads: atm_point, dm, envelope_cz_bottom_index,
+!     log10_solar_luminosity, log_L_lsun, log_Teff, log_total_mass,
+!     logP, logR, logRho, logT, nz, physics%mass_accretion_rate,
+!     physics%reimers_scaling_factor, physics%use_reimers_wind,
+!     solar_mass_cgs, solar_radius_cgs, star_mass, xa
+!   star writes: convective_turnover_timescale,
 !     envelope_cz_bottom_index_start, mass_change_active
 subroutine change_mass(s, old_log_envelope_mass_fraction, new_atmosphere_fit_needed, ierr)
       type(star_info), intent(inout) :: s
@@ -82,8 +82,8 @@ subroutine change_mass(s, old_log_envelope_mass_fraction, new_atmosphere_fit_nee
 ! (ideal gas, up to a constant; erg/(g K)), zeroed after it is computed
 ! (below), so the accretion shifts it drives are zero
       double precision :: envelope_specific_entropy
-      double precision :: log10_gravity
-      logical :: allard_surface_failed
+      double precision :: log10_gravity, allard_log10_pressure, allard_log10_temperature
+      logical :: allard_lookup_failed
       double precision :: log10_temperature_local, log10_pressure_local, &
            log10_density_local
       double precision :: hydrogen_fraction_local, metal_fraction_local
@@ -244,23 +244,29 @@ subroutine average_envelope_energies()
 end subroutine average_envelope_energies
 
 ! ---------------------------------------------------------------
-! The surface of an Allard atmosphere at the star's Teff and gravity,
-! and the eos there, meant as the state of the accreted matter. Only the
-! eos seeds (log10 rho, beta) and the inputs evaluate_stahler_surface
-! reuses are used afterwards: no entropy of the accreted matter is
-! formed from this state.
+! The surface the accreted matter joins, and the eos there, meant as the
+! state of the accreted matter. Only the eos seeds (log10 rho, beta) and
+! the inputs evaluate_stahler_surface reuses are used afterwards: no
+! entropy of the accreted matter is formed from this state.
 subroutine find_accreted_surface_state()
-! The Allard tables (atm_choice 4) at log g = log G + log M - 2 log R.
-! The lookup writes s%atm_point (the atmosphere integration's current point);
-! when it fails, atm_point keeps its last values (allard_surface_failed
-! is not checked).
+! log g = log G + log M - 2 log R. The surface: the Allard tables at
+! the star's Teff and log g when atm_init read them (atm_choice 4), else,
+! or when the point is outside them, the photosphere of the last
+! envelope integration (s%atm_point: the point its atmosphere
+! integration ended at, or its table's surface point; O19).
       log10_gravity = cgl+s%log_total_mass-2.0d0*log10_radius
-      call atm_get_surface_pt(4, s%log_Teff, log10_gravity, &
-           s%atm_point%log10_pressure, s%atm_point%log10_temperature, &
-           allard_surface_failed, ierr)
-      if (ierr /= 0) return
       log10_temperature_local = s%atm_point%log10_temperature
       log10_pressure_local = s%atm_point%log10_pressure
+      if (atm_table_is_loaded(atm_allard)) then
+         call atm_get_surface_pt(atm_allard, s%log_Teff, log10_gravity, &
+              allard_log10_pressure, allard_log10_temperature, &
+              allard_lookup_failed, ierr)
+         if (ierr /= 0) return
+         if (.not. allard_lookup_failed) then
+            log10_temperature_local = allard_log10_temperature
+            log10_pressure_local = allard_log10_pressure
+         end if
+      end if
       hydrogen_fraction_local = s%xa(1,nz)
       metal_fraction_local = s%xa(3,nz)
       eos_deriv_flag = .false.

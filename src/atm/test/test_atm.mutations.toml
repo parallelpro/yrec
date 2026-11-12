@@ -15,6 +15,27 @@ old = 'if (.not. tbl%loaded) then'
 new = 'if (.false.) then'
 
 [[mutation]]
+id = 'atm_lib-09'
+check = 'atm_get_surface_pt: a table atm_init did not read returns ierr 1'
+file = 'atm/atm_lib.f90'
+old = 'if (.not. allard_tables%loaded) then'
+new = 'if (.false.) then'
+
+[[mutation]]
+id = 'atm_lib-10'
+check = 'atm_table_is_loaded: the table atm_init read, no other, none before (O19)'
+file = 'atm/atm_lib.f90'
+old = 'atm_table_is_loaded = allard_tables%loaded'
+new = 'atm_table_is_loaded = .true.'
+
+[[mutation]]
+id = 'atm_lib-11'
+check = 'atm_table_is_loaded: the table atm_init read, no other, none before (O19)'
+file = 'atm/atm_lib.f90'
+old = 'atm_table_is_loaded = kurucz_table%loaded'
+new = 'atm_table_is_loaded = allard_tables%loaded'
+
+[[mutation]]
 id = 'atm_lib-02'
 check = 'atm_init: an atm_choice that is none of the choices returns ierr 1 (M236)'
 file = 'atm/atm_lib.f90'
@@ -22,14 +43,31 @@ old = 'if (.not. atm_choice_is_known(settings%atm_choice)) then'
 new = 'if (.false.) then'
 
 [[mutation]]
+id = 'atm_lib-07'
+check = 'atm_init: each starts clean, without the tables an earlier one read (M283)'
+file = 'atm/atm_lib.f90'
+old = '''
+      kurucz_table = surface_pressure_table()
+      castelli_table = surface_pressure_table()'''
+new = '''
+'''
+
+[[mutation]]
+id = 'atm_lib-08'
+check = 'atm_init: each starts clean, without the tables an earlier one read (M283)'
+file = 'atm/atm_lib.f90'
+old = '      allard_tables = allard_table()'
+new = ''
+
+[[mutation]]
 id = 'atm_lib-03'
 check = 'atm_get_surface_pt: a choice that is not a table returns ierr 1'
 file = 'atm/atm_lib.f90'
 old = '''
-         call report_not_a_table()
+         call report_not_a_table(atm_choice)
          ierr = 1'''
 new = '''
-         call report_not_a_table()
+         call report_not_a_table(atm_choice)
          ierr = 0'''
 
 [[mutation]]
@@ -61,6 +99,13 @@ check = 'ttau eddington: T = Teff at tau = 2/3'
 file = 'atm/t_tau_relations.f90'
 old = '+ 0.25d0*log10(tau + cc23)'
 new = '+ 0.25d0*log10(tau + 0.6667d0)'
+
+[[mutation]]
+id = 't_tau-10'
+check = 'ttau eddington: T = Teff at tau = 2/3'
+file = 'atm/t_tau_relations.f90'
+old = 'quarter_log10_three_quarters = 0.25d0*log10(0.75d0)'
+new = 'quarter_log10_three_quarters = -0.031235d0'
 
 [[mutation]]
 id = 't_tau-02'
@@ -253,10 +298,10 @@ check = 'allard: a -999 inside a row is refused'
 file = 'atm/tables/allard_table_reader.f90'
 old = '''
                table_is_bad = .true.
-               call log_allard_bad_entry'''
+               call log_allard_missing_entry'''
 new = '''
                table_is_bad = .false.
-               call log_allard_bad_entry'''
+               call log_allard_missing_entry'''
 
 [[mutation]]
 id = 'allard_reader-05'
@@ -277,15 +322,24 @@ new = '''
          call report_allard_open_failure(path)'''
 
 [[mutation]]
+id = 'allard_reader-08'
+check = 'allard reader: the old NextGen 1 file with tau = 100 asked returns ierr 1 (O19)'
+file = 'atm/tables/allard_table_reader.f90'
+old = '''
+      if (use_tau100) then'''
+new = '''
+      if (.false.) then'''
+
+[[mutation]]
 id = 'allard_reader-07'
 check = 'allard reader: a record whose log P cannot be read returns ierr 1'
 file = 'atm/tables/allard_table_reader.f90'
 old = '''
          if (ios > 0) then
-            call report_allard_read_error('AtTabInit File Read error')'''
+            call report_allard_read_failure(path, 'the second pass')'''
 new = '''
          if (ios > 999999) then
-            call report_allard_read_error('AtTabInit File Read error')'''
+            call report_allard_read_failure(path, 'the second pass')'''
 
 [[mutation]]
 id = 'atm_lib-05'

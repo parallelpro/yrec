@@ -955,8 +955,9 @@ module star_info_lib
             type(atmosphere_structure_state) :: atm_points
 ! the atmosphere integration's current point: log tau, log P, log T,
 ! log rho, the opacity, the ionization fractions [logs base 10];
-! envelope_integration, mass_change. The mass change falls back on its
-! last values when the Allard lookup fails.
+! envelope_integration. After an integration it holds the photosphere
+! (or the table's surface point), which the mass change's accretion
+! surface takes unless the Allard tables give it.
             type(atmosphere_point_state) :: atm_point
 
 ! ==== Newton ===========================================================

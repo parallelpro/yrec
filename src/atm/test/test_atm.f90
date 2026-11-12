@@ -25,9 +25,11 @@
 !   the Allard lookups: exact at the nodes, continuous across the rows,
 !     T(tau = 100) > Teff, the outcome's flags, exact on a polynomial
 !     (a synthetic file), the low-gravity extension (M233), and the
-!     reader's errors (M221, too few rows);
+!     reader's errors (M221, too few rows, tau = 100 asked of the old
+!     NextGen 1 file: O19);
 !   atm_lib's contracts: an unknown atm_choice, a table not read, a
-!     choice that is not a table, and the choice descriptor and its
+!     clean state at each atm_init (M283), which tables are loaded (O19),
+!     a choice that is not a table, and the choice descriptor and its
 !     switch to gray.
 ! Each check fails under a mutation of the code it covers
 ! (test_atm.mutations.toml; python3 src/tools/mutate.py atm); the program
@@ -36,7 +38,7 @@
 program test_atm
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
-      use run_messages, only: run_log_unit, terminal_unit
+      use run_messages, only: run_log_unit
       use physical_constants, only: cc23
       use math_lib
       use atm_lib
@@ -59,6 +61,8 @@ program test_atm
       logical :: failed
       type(atm_settings_t) :: settings
       integer :: failures = 0
+! atm_table_is_loaded before any atm_init: false for every choice
+      logical :: none_loaded_at_start
 
       integer, parameter :: npts = 4
       real(dp), parameter :: grid_teffl(npts) = [3.60d0, 3.70d0, 3.762d0, 3.90d0]
@@ -74,19 +78,24 @@ program test_atm
       allard_path     = trim(yrec_input)//"/atmos/allard/Nextgen2.all"
       allard_old_path = trim(yrec_input)//"/atmos/allard/Nextgen.p00"
 
-! The diagnostics (the table readers' notes, the out-of-table messages)
-! go to the run log and terminal_unit; both point at a scratch file so
-! that stdout stays deterministic.
+! The run log is a scratch file; atm's terminal lines (standard output)
+! are part of the pinned output, with the table paths as YREC_INPUT
+! gives them (test_atm.py makes it a relative path, input).
       open(newunit=run_log_unit, file="test_atm.short", status="replace")
-      terminal_unit = run_log_unit
 
 ! --- before any table is read: a lookup in a table atm_init did not
-! read is an error, not a read of an empty table
+! read is an error, not a read of an empty table (O19: the Allard
+! tables' range check failed instead), and no table is loaded
       write(*,'(a)') "# test_atm: before any table is read"
       call atm_get_surface_pt(atm_kurucz, 3.7d0, 4.4d0, log10_p, log10_t, failed, atm_ierr)
       call atm_get_surface_pt(atm_castelli_kurucz, 3.7d0, 4.4d0, log10_p, log10_t, failed, gerr)
+      call atm_get_surface_pt(atm_allard, 3.7d0, 4.4d0, log10_p, log10_t, failed, ipt)
       call report_true("atm_get_surface_pt: a table atm_init did not read returns ierr 1", &
-           atm_ierr == 1 .and. gerr == 1)
+           atm_ierr == 1 .and. gerr == 1 .and. ipt == 1 .and. .not. failed)
+      none_loaded_at_start = .true.
+      do choice = 0, atm_last_choice
+         none_loaded_at_start = none_loaded_at_start .and. .not. atm_table_is_loaded(choice)
+      end do
 
 ! --- Kurucz (1993), atm_choice=3 ---
       settings%atm_choice = 3
@@ -230,11 +239,13 @@ subroutine ttau_checks()
 
       hsra_offset = hsra_t_tau_offset()
 ! the photosphere: T = Teff where each relation ends its integration
+! (Eddington's to round-off, Krishna-Swamy's to its photospheric log tau's
+! nine decimals)
       call report("ttau eddington: T = Teff at tau = 2/3", &
-           abs(ttau_log10_temperature(cc23, log_teff, atm_eddington_gray, 0.0d0) - log_teff), 1.0d-6)
+           abs(ttau_log10_temperature(cc23, log_teff, atm_eddington_gray, 0.0d0) - log_teff), 1.0d-14)
       tau = exp10(ttau_photosphere_x_limit(atm_krishna_swamy))
       call report("ttau krishna-swamy: T = Teff at its photospheric tau", &
-           abs(ttau_log10_temperature(tau, log_teff, atm_krishna_swamy, 0.0d0) - log_teff), 1.0d-6)
+           abs(ttau_log10_temperature(tau, log_teff, atm_krishna_swamy, 0.0d0) - log_teff), 1.0d-9)
       call report("ttau hsra: T = Teff at tau = 2/3", &
            abs(ttau_log10_temperature(cc23, log_teff, atm_hsra, hsra_offset) - log_teff), 1.0d-14)
       call report("ttau: the photosphere of Eddington and HSRA is log10 tau = log10(2/3)", &
@@ -397,7 +408,7 @@ subroutine allard_checks()
       logical :: holds
 
       allocate(tbl)
-      call read_allard_tables(allard_path, 0.0d0, 0.0d0, tbl, ierr)
+      call read_allard_tables(allard_path, 0.0d0, 0.0d0, .false., tbl, ierr)
       if (ierr /= 0) stop 1
 ! exact at the nodes (4-point Lagrange through them), where the stencil's
 ! rows all hold the node's log g
@@ -448,7 +459,7 @@ subroutine allard_checks()
 ! a synthetic file: log P cubic in log g and quadratic in log Teff, which
 ! 4-point Lagrange reproduces
       call write_synthetic_allard("synthetic_allard.all", 9)
-      call read_allard_tables("synthetic_allard.all", 0.0d0, 0.0d0, tbl, ierr)
+      call read_allard_tables("synthetic_allard.all", 0.0d0, 0.0d0, .false., tbl, ierr)
       if (ierr /= 0) stop 1
       err = 0.0d0
       do k = 0, 20
@@ -477,38 +488,45 @@ subroutine allard_checks()
       holds = holds .and. lookup%gravity_outside
       call report_true("allard synthetic: lookups reach 4 widths below log g 3, 1 above 5.5 (M233)", holds)
 ! M221: a composition the file lacks; a table of 3 rows
-      call read_allard_tables(allard_path, -0.3d0, 0.0d0, tbl, ierr)
+      call read_allard_tables(allard_path, -0.3d0, 0.0d0, .false., tbl, ierr)
       holds = ierr == allard_composition_missing
-      call read_allard_tables(allard_path, 0.0d0, 0.4d0, tbl, ierr)
+      call read_allard_tables(allard_path, 0.0d0, 0.4d0, .false., tbl, ierr)
       call report_true("allard: an [Fe/H] or [alpha/Fe] the file lacks is its own error (M221)", &
            holds .and. ierr == allard_composition_missing)
       call write_synthetic_allard("synthetic_allard_3.all", 3)
-      call read_allard_tables("synthetic_allard_3.all", 0.0d0, 0.0d0, tbl, ierr)
+      call read_allard_tables("synthetic_allard_3.all", 0.0d0, 0.0d0, .false., tbl, ierr)
       call report_true("allard: a table of 3 rows returns ierr 1", ierr == 1)
 ! a hole inside a row (one record missing), and a row of three valid
 ! columns, are refused
       call write_synthetic_allard("synthetic_allard_hole.all", 9, skip_row=5, skip_columns=[3])
-      call read_allard_tables("synthetic_allard_hole.all", 0.0d0, 0.0d0, tbl, ierr)
+      call read_allard_tables("synthetic_allard_hole.all", 0.0d0, 0.0d0, .false., tbl, ierr)
       call report_true("allard: a -999 inside a row is refused", ierr == 1 .and. .not. tbl%loaded)
       call write_synthetic_allard("synthetic_allard_short.all", 9, skip_row=5, &
            skip_columns=[4, 5, 6])
-      call read_allard_tables("synthetic_allard_short.all", 0.0d0, 0.0d0, tbl, ierr)
+      call read_allard_tables("synthetic_allard_short.all", 0.0d0, 0.0d0, .false., tbl, ierr)
       call report_true("allard: a row of three valid columns is refused", ierr == 1 .and. .not. tbl%loaded)
 ! the reader's errors: a missing file, an empty one, one in neither
 ! layout, a record whose log P cannot be read
-      call read_allard_tables("no_such_table.all", 0.0d0, 0.0d0, tbl, ierr)
+      call read_allard_tables("no_such_table.all", 0.0d0, 0.0d0, .false., tbl, ierr)
       holds = ierr == 1
       call write_text_file("empty.all", [character(len=1) ::])
-      call read_allard_tables("empty.all", 0.0d0, 0.0d0, tbl, ierr)
+      call read_allard_tables("empty.all", 0.0d0, 0.0d0, .false., tbl, ierr)
       holds = holds .and. ierr == 1
       call write_text_file("neither.all", [character(len=40) :: 'not an atmosphere table'])
-      call read_allard_tables("neither.all", 0.0d0, 0.0d0, tbl, ierr)
+      call read_allard_tables("neither.all", 0.0d0, 0.0d0, .false., tbl, ierr)
       call report_true("allard reader: a missing file, an empty one, one in neither layout: ierr 1", &
            holds .and. ierr == 1)
       call write_synthetic_allard("synthetic_allard_bad.all", 9, bad_record=.true.)
-      call read_allard_tables("synthetic_allard_bad.all", 0.0d0, 0.0d0, tbl, ierr)
+      call read_allard_tables("synthetic_allard_bad.all", 0.0d0, 0.0d0, .false., tbl, ierr)
       call report_true("allard reader: a record whose log P cannot be read returns ierr 1", &
            ierr == 1 .and. .not. tbl%loaded)
+! O19: the old NextGen 1 file has no tau = 100 columns: asked for them,
+! the reader refuses it (it reads it without)
+      call read_allard_tables(allard_old_path, 0.0d0, 0.0d0, .false., tbl, ierr)
+      holds = ierr == 0 .and. tbl%loaded
+      call read_allard_tables(allard_old_path, 0.0d0, 0.0d0, .true., tbl, ierr)
+      call report_true("allard reader: the old NextGen 1 file with tau = 100 asked returns ierr 1 (O19)", &
+           holds .and. ierr == 1 .and. .not. tbl%loaded)
 end subroutine allard_checks
 
 ! log P of the synthetic Allard file: quadratic in log Teff, cubic in
@@ -581,10 +599,10 @@ subroutine write_truncated_copy(source, path, num_lines)
       close(out)
 end subroutine write_truncated_copy
 
-! atm_lib's contracts: the settings check, lookups it cannot make, and
-! the choice descriptor.
+! atm_lib's contracts: the settings check, a clean state at each
+! atm_init, lookups it cannot make, and the choice descriptor.
 subroutine facade_checks()
-      type(atm_settings_t) :: bad
+      type(atm_settings_t) :: bad, each
       real(dp) :: log_p, log_t
       logical :: failed, holds
       integer :: ierr, choice
@@ -596,6 +614,34 @@ subroutine facade_checks()
       call atm_init(bad, atm_table_paths_t("", ""), ierr)
       call report_true("atm_init: an atm_choice that is none of the choices returns ierr 1 (M236)", &
            holds .and. ierr == 1)
+! M283: each atm_init starts clean, so the table an earlier one read is
+! not loaded after it (Allard, then Kurucz, then Castelli/Kurucz, then
+! Allard again, which the switch checks below use)
+      each%atm_choice = atm_allard
+      call atm_init(each, atm_table_paths_t("", allard_path), ierr)
+      holds = ierr == 0
+      each%atm_choice = atm_kurucz
+      call atm_init(each, atm_table_paths_t(kurucz_atm_path, ""), ierr)
+      holds = holds .and. ierr == 0 .and. atm_allard_teff_max() == 0.0d0
+      each%atm_choice = atm_castelli_kurucz
+      call atm_init(each, atm_table_paths_t(castelli_path, ""), ierr)
+      holds = holds .and. ierr == 0
+      call atm_get_surface_pt(atm_kurucz, 3.7d0, 4.4d0, log_p, log_t, failed, ierr)
+      holds = holds .and. ierr == 1
+      each%atm_choice = atm_allard
+      call atm_init(each, atm_table_paths_t("", allard_path), ierr)
+      holds = holds .and. ierr == 0
+      call atm_get_surface_pt(atm_castelli_kurucz, 3.7d0, 4.4d0, log_p, log_t, failed, ierr)
+      call report_true("atm_init: each starts clean, without the tables an earlier one read (M283)", &
+           holds .and. ierr == 1)
+! O19: atm_table_is_loaded is true for the table atm_init read (here
+! the Allard tables), false for the others and before any atm_init
+      holds = none_loaded_at_start .and. atm_table_is_loaded(atm_allard)
+      do choice = -1, atm_last_choice + 1
+         if (choice == atm_allard) cycle
+         holds = holds .and. .not. atm_table_is_loaded(choice)
+      end do
+      call report_true("atm_table_is_loaded: the table atm_init read, no other, none before (O19)", holds)
       log_p = 7.0d0
       call atm_get_surface_pt(atm_hsra, 3.7d0, 4.4d0, log_p, log_t, failed, ierr)
       call report_true("atm_get_surface_pt: a choice that is not a table returns ierr 1", &
@@ -641,7 +687,7 @@ subroutine allard_facade_checks()
       integer :: ierr, k
 
       allocate(tbl)
-      call read_allard_tables(allard_path, 0.0d0, 0.0d0, tbl, ierr)
+      call read_allard_tables(allard_path, 0.0d0, 0.0d0, .false., tbl, ierr)
       allard_settings%atm_choice = atm_allard
       call atm_init(allard_settings, atm_table_paths_t("", allard_path), ierr)
       if (ierr /= 0) stop 1

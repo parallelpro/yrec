@@ -134,9 +134,9 @@ contains
 ! for the Kurucz table, the Allard tables' last log Teff; MHP 9/01);
 ! switch back to the deck's choice once Teff is below again
 ! (atm_reenters_table), with a new triangle as well. atm writes the
-! terminal's note of each switch. (The switch back used to keep the
-! triangle, whose vertices held gray-atmosphere envelopes, until each
-! was reflected.)
+! note of each switch, to the terminal and the run log. (The switch back
+! used to keep the triangle, whose vertices held gray-atmosphere
+! envelopes, until each was reflected.)
 subroutine switch_atmosphere_choice()
       if (atm_leaves_table(s%atm_choice_in_use, log10_teff)) then
          call atm_note_choice_switch(s%atm_choice_in_use, atm_eddington_gray, log10_teff)

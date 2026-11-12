@@ -22,11 +22,12 @@
 module allard_table_reader
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use atm_tables, only: allard_table, allard_max_teff
-      use atm_messages, only: report_allard_open_failure, log_old_nextgen_file, &
-           log_allard_file_description, report_allard_read_error, report_allard_unmatched, &
-           report_allard_invalid_file, report_allard_reader_stopped, log_allard_bad_entry, &
-           log_allard_few_rows, log_allard_short_row, report_allard_table_bad, &
-           log_allard_tables, report_atm_error
+      use atm_messages, only: report_allard_open_failure, report_allard_read_failure, &
+           report_allard_invalid_file, report_allard_unmatched, &
+           report_allard_composition_missing, report_allard_without_tau100, &
+           log_old_nextgen_file, log_allard_file_description, report_allard_few_rows, &
+           log_allard_missing_entry, log_allard_short_row, report_allard_table_bad, &
+           log_allard_tables
       use math_lib
       implicit none
       private
@@ -60,7 +61,8 @@ module allard_table_reader
       real(dp), parameter :: feh_tolerance = 1.0d-5, grid_tolerance = 1.0d-6
 ! A row's lookups may use log g down to low_gravity_widths of its first
 ! column width below its first valid column, and one width above its
-! last (the F77's; its comments said one width at both ends, M233).
+! last: four widths below, as the F77's code had it (M233; its comments
+! said one at both ends, and the code was kept).
       real(dp), parameter :: low_gravity_widths = 4.0d0
 ! the fewest rows, and valid columns in a row, a 4-point stencil needs
       integer, parameter :: min_rows = 4, min_valid_columns = 4
@@ -72,13 +74,16 @@ contains
 !----------------------------------------------------------------------
 ! Reads the file at path into tbl (target_feh and target_alpha select the
 ! composition of the Allard layout), then finds the lookups' limits and
-! checks the table. A file that cannot be opened or read, a record off
-! the grid, or a table without a 4-point stencil returns ierr = 1 after
-! its message; a composition the file does not hold,
-! allard_composition_missing.
-subroutine read_allard_tables(path, target_feh, target_alpha, tbl, ierr)
+! checks the table. use_tau100: the run's lookups will ask for log P and
+! log T at tau = 100 (allard_use_tau100), which the old NextGen 1 layout
+! does not have. A file that cannot be opened or read, an old NextGen 1
+! file with use_tau100, a record off the grid, or a table without a
+! 4-point stencil returns ierr = 1 after its message; a composition the
+! file does not hold, allard_composition_missing.
+subroutine read_allard_tables(path, target_feh, target_alpha, use_tau100, tbl, ierr)
       character(len=*), intent(in) :: path
       real(dp), intent(in) :: target_feh, target_alpha
+      logical, intent(in) :: use_tau100
       type(allard_table), intent(out) :: tbl
       integer, intent(out) :: ierr
 
@@ -95,22 +100,20 @@ subroutine read_allard_tables(path, target_feh, target_alpha, tbl, ierr)
       open(newunit=allard_unit, file=path, status='OLD', iostat=ios)
       if (ios /= 0) then
          call report_allard_open_failure(path)
-         call report_allard_reader_stopped()
          ierr = 1
          return
       end if
       read(allard_unit, '(a)', iostat=ios) first_record
       rewind(allard_unit)
       if (ios /= 0) then
-         call report_atm_error('cannot read the Allard table ' // trim(path))
+         call report_allard_read_failure(path, 'its first record')
          ierr = 1
       else if (first_record(4:7) == old_nextgen_mark) then
-         call read_old_nextgen(allard_unit, path, tbl, ierr)
+         call read_old_nextgen(allard_unit, path, use_tau100, tbl, ierr)
       else if (first_record(4:9) == allard_mark) then
          call read_allard_layout(allard_unit, path, target_feh, target_alpha, tbl, ierr)
       else
-         call report_allard_invalid_file(first_record)
-         call report_allard_reader_stopped()
+         call report_allard_invalid_file(path, first_record)
          ierr = 1
       end if
       close(allard_unit)
@@ -122,11 +125,13 @@ subroutine read_allard_tables(path, target_feh, target_alpha, tbl, ierr)
 end subroutine read_allard_tables
 
 ! The old NextGen 1 layout: the log g columns, the log Teff rows, then log
-! P a row at a time. (Its tables have no tau = 100 columns; a run that
-! asks for them gets -999 there: O19, retired/allard_tau100_check.f90.txt.)
-subroutine read_old_nextgen(allard_unit, path, tbl, ierr)
+! P a row at a time. It has no tau = 100 columns, so a run whose lookups
+! ask for them (use_tau100) is refused before the read (O19: the F77's
+! check tested a flag nothing set, and never ran).
+subroutine read_old_nextgen(allard_unit, path, use_tau100, tbl, ierr)
       integer, intent(in) :: allard_unit
       character(len=*), intent(in) :: path
+      logical, intent(in) :: use_tau100
       type(allard_table), intent(inout) :: tbl
       integer, intent(inout) :: ierr
 
@@ -135,6 +140,11 @@ subroutine read_old_nextgen(allard_unit, path, tbl, ierr)
 
       tbl%is_old_nextgen = .true.
       call log_old_nextgen_file()
+      if (use_tau100) then
+         call report_allard_without_tau100(path)
+         ierr = 1
+         return
+      end if
       tbl%num_teff = old_nextgen_num_teff
       tbl%num_g = old_nextgen_num_g
       read(allard_unit, old_log_g_format, iostat=ios, iomsg=message) tbl%log_g(1:tbl%num_g)
@@ -143,8 +153,7 @@ subroutine read_old_nextgen(allard_unit, path, tbl, ierr)
       if (ios == 0) read(allard_unit, old_pressure_format, iostat=ios, iomsg=message) &
            (tbl%log10_pressure(row,1:tbl%num_g), row=1,tbl%num_teff)
       if (ios /= 0) then
-         call report_atm_error('cannot read the Allard table ' // trim(path) // ': ' // &
-              trim(message))
+         call report_allard_read_failure(path, 'the old NextGen 1 layout', message)
          ierr = 1
       end if
 end subroutine read_old_nextgen
@@ -165,7 +174,7 @@ subroutine read_allard_layout(allard_unit, path, target_feh, target_alpha, tbl, 
       tbl%is_old_nextgen = .false.
       read(allard_unit, header_format, iostat=ios) num_header_records, description
       if (ios /= 0) then
-         call report_atm_error('cannot read the Allard table ' // trim(path))
+         call report_allard_read_failure(path, 'its header')
          ierr = 1
          return
       end if
@@ -177,7 +186,7 @@ subroutine read_allard_layout(allard_unit, path, target_feh, target_alpha, tbl, 
 
       rewind(allard_unit)
       call skip_records(allard_unit, num_header_records)
-      call fill_table(allard_unit, target_feh, target_alpha, teffs, tbl, ierr)
+      call fill_table(allard_unit, path, target_feh, target_alpha, teffs, tbl, ierr)
 end subroutine read_allard_layout
 
 ! skips n records (none for n < 1)
@@ -216,8 +225,7 @@ subroutine collect_grid(allard_unit, path, target_feh, target_alpha, tbl, teffs,
       do
          read(allard_unit, grid_point_format, iostat=ios) teff, log_g, feh, alpha
          if (ios > 0) then
-            call report_allard_read_error('AtTabInit Pass 1 File Error ')
-            call report_allard_reader_stopped()
+            call report_allard_read_failure(path, 'the first pass')
             ierr = 1
             return
          end if
@@ -229,7 +237,10 @@ subroutine collect_grid(allard_unit, path, target_feh, target_alpha, tbl, teffs,
          call add_distinct(log_g, tbl%log_g, tbl%num_g)
       end do
       if (tbl%num_teff == 0) then
-         call report_missing_composition()
+         call sort_shell(num_file_feh, file_feh)
+         call sort_shell(num_file_alpha, file_alpha)
+         call report_allard_composition_missing(path, target_feh, target_alpha, &
+              file_feh(1:num_file_feh), file_alpha(1:num_file_alpha))
          ierr = allard_composition_missing
          return
       end if
@@ -238,31 +249,6 @@ subroutine collect_grid(allard_unit, path, target_feh, target_alpha, tbl, teffs,
       tbl%num_alpha = 1
       call sort_shell(tbl%num_teff, teffs)
       call sort_shell(tbl%num_g, tbl%log_g)
-
-contains
-
-! the deck's [Fe/H] and [alpha/Fe], and the file's
-subroutine report_missing_composition()
-      character(len=1024) :: text
-      character(len=16) :: item
-      integer :: k
-      call sort_shell(num_file_feh, file_feh)
-      call sort_shell(num_file_alpha, file_alpha)
-      write(text,'(a,f6.2,a,f6.2,3a)') 'allard_target_feh =', target_feh, &
-           ' and allard_target_alpha =', target_alpha, &
-           ': the Allard file ', trim(path), ' has no table there; its [Fe/H]:'
-      do k = 1, num_file_feh
-         write(item,'(f6.2)') file_feh(k)
-         text = trim(text) // ' ' // adjustl(item)
-      end do
-      text = trim(text) // '; its [alpha/Fe]:'
-      do k = 1, num_file_alpha
-         write(item,'(f6.2)') file_alpha(k)
-         text = trim(text) // ' ' // adjustl(item)
-      end do
-      call report_atm_error(trim(text))
-end subroutine report_missing_composition
-
 end subroutine collect_grid
 
 ! value appended to list(1:n) unless within grid_tolerance of an entry
@@ -281,8 +267,9 @@ end subroutine add_distinct
 ! (its Teff in teffs) and column (its log g in tbl%log_g); the rows' log
 ! Teff. A record whose Teff or log g the first pass did not collect is an
 ! error.
-subroutine fill_table(allard_unit, target_feh, target_alpha, teffs, tbl, ierr)
+subroutine fill_table(allard_unit, path, target_feh, target_alpha, teffs, tbl, ierr)
       integer, intent(in) :: allard_unit
+      character(len=*), intent(in) :: path
       real(dp), intent(in) :: target_feh, target_alpha
       real(dp), intent(in) :: teffs(:)
       type(allard_table), intent(inout) :: tbl
@@ -295,8 +282,7 @@ subroutine fill_table(allard_unit, target_feh, target_alpha, teffs, tbl, ierr)
          read(allard_unit, record_format, iostat=ios) teff, log_g, feh, alpha, &
               log_p, log_p_tau100, log_t_tau100
          if (ios > 0) then
-            call report_allard_read_error('AtTabInit File Read error')
-            call report_allard_reader_stopped()
+            call report_allard_read_failure(path, 'the second pass')
             ierr = 1
             return
          end if
@@ -307,9 +293,7 @@ subroutine fill_table(allard_unit, target_feh, target_alpha, teffs, tbl, ierr)
             if (abs(teff - teffs(row)) < grid_tolerance) exit
          end do
          if (row > tbl%num_teff) then
-            call report_allard_unmatched('ALFilein: Impossible failure #1', 'Teff of ', teff, &
-                 ' not in Teff table.')
-            call report_allard_reader_stopped()
+            call report_allard_unmatched(path, 'Teff', teff)
             ierr = 1
             return
          end if
@@ -317,9 +301,7 @@ subroutine fill_table(allard_unit, target_feh, target_alpha, teffs, tbl, ierr)
             if (abs(log_g - tbl%log_g(column)) < grid_tolerance) exit
          end do
          if (column > tbl%num_g) then
-            call report_allard_unmatched('ALFilein: Impossible failure #2', 'GL of ', log_g, &
-                 ' not in GL table.')
-            call report_allard_reader_stopped()
+            call report_allard_unmatched(path, 'log g', log_g)
             ierr = 1
             return
          end if
@@ -358,8 +340,7 @@ subroutine find_table_ranges(tbl, ierr)
 
       n = tbl%num_teff
       if (n < min_rows) then
-         call log_allard_few_rows(n)
-         call report_allard_table_bad()
+         call report_allard_few_rows(n, min_rows)
          ierr = 1
          return
       end if
@@ -405,7 +386,7 @@ subroutine find_table_ranges(tbl, ierr)
          do column = tbl%first_column(row), tbl%last_column(row)
             if (tbl%log10_pressure(row,column) < valid_above) then
                table_is_bad = .true.
-               call log_allard_bad_entry(pow(10.0d0, tbl%log_teff(row)), tbl%log_g(column))
+               call log_allard_missing_entry(pow(10.0d0, tbl%log_teff(row)), tbl%log_g(column))
             end if
          end do
       end do
@@ -414,8 +395,8 @@ subroutine find_table_ranges(tbl, ierr)
          last = tbl%last_column(row)
          if (last - first + 1 < min_valid_columns) then
             table_is_bad = .true.
-            call log_allard_short_row(row, last - first + 1, pow(10.0d0, tbl%log_teff(row)), &
-                 tbl%row_log_g_min(row), tbl%row_log_g_max(row))
+            call log_allard_short_row(pow(10.0d0, tbl%log_teff(row)), last - first + 1, &
+                 min_valid_columns)
          end if
       end do
       if (table_is_bad) then

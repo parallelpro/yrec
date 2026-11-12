@@ -12,7 +12,10 @@ refusals and error contracts, and the choice descriptor (see the
 header of src/atm/test/test_atm.f90 and atm/README.md section 4). The
 binary exits nonzero when a check fails; a check's line is compared by
 its label and status, since its error is round-off that differs
-between platforms. `python3 src/tools/mutate.py atm` confirms that each
+between platforms. atm's messages are pinned too, with the table paths
+they name: the binary runs with YREC_INPUT=input, a link to the
+repository's input/ in its directory, so that the paths do not depend
+on where the repository is. `python3 src/tools/mutate.py atm` confirms that each
 check fails under a mutation of the code it covers. See test_eos.py for
 the conventions.
 """
@@ -34,7 +37,8 @@ def test_atm_standalone(tmp_path):
     if not BINARY.exists():
         pytest.skip("src/test_atm not built (run `make tests` in src/)")
     env = dict(os.environ)
-    env["YREC_INPUT"] = str(REPO / "input")
+    (tmp_path / "input").symlink_to(REPO / "input")
+    env["YREC_INPUT"] = "input"
     result = subprocess.run(
         [str(BINARY)], cwd=tmp_path, env=env, capture_output=True, text=True
     )

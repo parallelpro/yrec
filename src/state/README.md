@@ -352,7 +352,7 @@ How to read the tables:
 | `kinematic_viscosity(json)` | kinematic viscosity (radiative plus ionic), from viscos, for rotational mixing | cm^2/s | `shell_physics` (compute_shell_physics) | `rezoning`, `mid_timestep_model` |  |
 | `env_points` (type `envelope_structure_state`) | the envelope of the latest envelope integration, point by point: log P, log T, log `m`, log rho, log r, X, Z, the gradients, the opacity and its derivatives | cgs, logs base 10 | `envelope_integration` (run_kernel); `envelope_rebuild` (shift_envelope_points); `starting_model` (append_envelope_as_shells) | `stitched_model`, `envelope_integration`, `envelope_rebuild`, `envelope_refit`, `starting_model` | Written by the integration kernel through `atm_get` |
 | `atm_points` (type `atmosphere_structure_state`) | the atmosphere of the latest envelope integration, point by point | cgs, logs base 10 | `envelope_integration` (run_kernel) | `stitched_model` |  |
-| `atm_point` (type `atmosphere_point_state`) | the atmosphere integration's current point: log tau, log P, log T, log rho, the opacity, the ionization fractions | logs base 10 | `envelope_integration` (run_kernel); `mass_change` (find_accreted_surface_state) | `envelope_integration`, `mass_change` | The mass change falls back on its last values when the Allard lookup fails |
+| `atm_point` (type `atmosphere_point_state`) | the atmosphere integration's current point: log tau, log P, log T, log rho, the opacity, the ionization fractions | logs base 10 | `envelope_integration` (run_kernel) | `envelope_integration`, `mass_change` | After an integration it holds the photosphere (or the table's surface point), which the mass change's accretion surface takes unless the Allard tables give it |
 
 ### 3.12 Newton
 

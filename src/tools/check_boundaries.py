@@ -73,11 +73,12 @@ PUBLIC = {
     # steps are private to kap_lib.
     "kap": {"kap_get", "kap_init", "kap_update_surface_tables"},
     # atm_lib's entries: the table loads, the tabulated surface lookup,
-    # the Allard Teff range, what each atm_choice is (atm_choices: known,
+    # the Allard Teff range, whether a choice's table was read, what each
+    # atm_choice is (atm_choices: known,
     # tabulated, its name, the switch to gray and back, and its note),
     # and the analytic T-tau relations the star layer's envelope
     # integrator uses.
-    "atm": {"atm_init", "atm_get_surface_pt", "atm_allard_teff_max",
+    "atm": {"atm_init", "atm_get_surface_pt", "atm_allard_teff_max", "atm_table_is_loaded",
             "atm_choice_is_known", "atm_choice_is_tabulated", "atm_choice_name",
             "atm_leaves_table", "atm_reenters_table", "atm_note_choice_switch",
             "ttau_log10_temperature",
