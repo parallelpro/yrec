@@ -14,6 +14,33 @@ recommendation. core's list comes with round 2.
 - element_diffusion: nothing is done. Its section below stays as a record, and so do its controls'
   descriptions and its open bug_sweep entries.
 
+**Status after round 1B (2026-11-12).** kap, atm, convection and eos were done one package at a time, each item
+its own measured commit, merged into yrec-next in d66dd005, c5dd0ab3, 6fcc96cb and 1395075b (docs/ROADMAP.md,
+round 1B; each bug_sweep entry gives its commit).
+- Done:
+  - kap: 1 O18 (0025d96f), 2 M222 (c797b801), 3 M237's banner (0f6f4978), 4 M227 (c92127bd, the code kept),
+    5 the messages (1220787b), 6 KA-14 (2fec5fed; test_structure re-pinned in c162117f), 7 M277 (758819a0).
+  - atm: 1 O19 (1f2b14fb), 2 M235 (aae0218b), 3 M233 (f037c9bd, the code kept), 4 the messages (12210cb9),
+    5 M283 (67cd7815), 6 the gray constant (c9e6ec4e).
+  - convection: 1 M241 (5a370511), 2 M242 (e6f70a34), 3 M249 (a21950d9), 4 CD-14 with O10's gate and width
+    (4c1c730a, 86b54640, 4cf4e0ac), 6 M254 and the messages (76a19fc7), 7 M285 (f80adb7b).
+  - eos: 1 M206 (95126040; its check, b8ecbef3), 2 M88 (a0039581), 3 M92 (346e1af2), 4 M94 (e6a317cf),
+    5 M128 (b8c4b8cf), 6 M129 (15b8b199, the recommended rule), 7 the messages (e5a03a6f), 9 M290 (46bcab10),
+    10 M291 (03be24fe), 11 M292 (4b9aecff); and, not on the list, the fully ionized iteration's overflow capped
+    (1bd927eb, bug_sweep M305).
+  - The descriptions of use_pure_z_table and laol_extrapolation_tolerance (c92127bd) and atm_table_file
+    (4499f60a). element_diffusion's descriptions are not done.
+- Waiting:
+  - kap item 8, M278, on the owner: researched (bug_sweep M278: Potekhin et al.'s rule; B recommended, A the
+    weights alone, or leave it); its ZAHB trial is to be measured again on today's base.
+  - convection item 5, M96: in round 2, with core's M85.
+  - eos item 8 (the Saha non-convergence), on the owner: counted (2 of the 56 decks, 2,217 times, all in the
+    starting model's envelope refit, whose order is M86, proposed for core's round 2).
+  - Also for the owner: keeping M285's fix, which is not latent (ZAHB_m1p0feh+0p0_TAHB's core helium burning
+    9.8% longer).
+- Two statements below proved wrong: convection item 1's TAHB sample moves the lower edge of an intermediate
+  zone, not below the envelope's base, and item 7's merge is reached by ZAHB_m1p0feh+0p0_TAHB.
+
 ## kap
 1. O18: the opacity ramp's derivatives made the derivatives of the blend. Moves every deck whose models cross the
    ramp, at the solver's level.

@@ -921,7 +921,9 @@ Not yet checked (reported by the audit agents): beta14 defined
 differently on the Yale and OPAL/MHD paths; the opacity ramp's
 derivative blending; max_delta_j_by_iter(16) overflow; the envelope
 overshoot distance gated on envelope_overshoot_active in evolve_step
-but on lovstm in evolve_angular_momentum.
+but on lovstm in evolve_angular_momentum. (All four were since
+recorded in bug_sweep and fixed: beta14 in O18, the overflow in O14,
+and in round 1B the ramp (O18) and the gate (O10).)
 
 ### Phase 1 (network) on yrec-next -- see docs/TARGET_ARCHITECTURE.md
 
@@ -1036,13 +1038,15 @@ left for a decision (physics changes):
   cz_base_fraction, pressure_scale_height and first_zone_above;
   locate_cz_base moved there as locate_surface_mixing_base. Each caller
   keeps its own gradients (plain or rotation-corrected) and its own
-  overshoot switch (envelope_overshoot_active, or lovstm in the rotation
-  sub-steps -- the open gating question above). Byte-identical.
-- **Open: the overshoot edge's zone width mixes two models.**
-  locate_surface_mixing_base finds the end-of-step overshoot edge in the
-  current radii but takes the width of the zone above it from the
-  start-of-step radius (logR_start), so cz_base_frac mixes two models.
-  Likely meant radius(cz_base_zone); preserved for now.
+  overshoot switch (envelope_overshoot_active; since round 1B rotation's
+  sub-steps take convection_lib's envelope_overshoot_depth, O10).
+  Byte-identical.
+- **The overshoot edge's zone width from one model -- DONE (round 1B,
+  bug_sweep O10).** locate_surface_mixing_base found the end-of-step
+  overshoot edge in the current radii but took the width of the zone
+  above it from the start-of-step radius (logR_start), so cz_base_frac
+  mixed two models; it now takes r(k) - r(k-1) from the current model
+  (86b54640).
 - **One trace-element integrator for deuterium and Li/Be -- DONE.**
   net/light_elements.f90: burn_exposure, surviving_fraction and
   accreted_survival (a species destroyed at a rate interpolated over the
@@ -4011,7 +4015,9 @@ changed except two test programs.
   per make (`src/.build_mode`), so devel and release objects no longer
   mix; `make devel_tests` and `src/tools/devel_tests.py` run the unit
   test programs under `-fcheck=all` and the FP traps (32 of 36 cases;
-  test_eos and test_structure's three decks skipped as M92 and O4), and
+  test_eos and test_structure's three decks skipped as M92 and O4;
+  since round 1B test_eos runs too: M92 is fixed and M305 capped the
+  overflow behind it), and
   a CI job does the same. `make check` runs every checker and the
   generators' `--check`.
 - **The README standard** is a checklist in docs/GUIDELINES.md.
@@ -4096,7 +4102,8 @@ package adds its own entries, and the generated deps.mk conflicted.
   (eos_table_source and eos_source_list: SCV, OPAL and MHD one entry
   each, which blend_eos, eos_get and eos_init loop over); OPAL 1995 on
   the shared OPAL code (opal95_eos.f90 deleted; its reads past the
-  table kept by an explicit emulation until M94's measured fix); the
+  table kept by an explicit emulation until M94's measured fix, made in
+  round 1B, e6a317cf); the
   readers apart from the kernels (no NO_IO_ALLOWANCE entries left); the
   test's entries in eos_test_entries, eos_mix protected. Fixed: M87,
   M93, M105-M107, M136, M137, M144, M207-M211, and the texts of M122,
@@ -4191,3 +4198,252 @@ it change only the style table, two text references and docs.
 - docs/TARGET_ARCHITECTURE.md's table of F77 routines still gives the
   homes of eos's and kap's routines before the round (its atm rows are
   corrected).
+
+### Round 1B: measured fixes in kap, atm, convection and eos (yrec-next, 2026-11-11/12)
+
+Round 1 left each package a B list
+(`audit/module-evaluation-7-2026-11-10/B_LISTS.md`): the fixes that
+change results or pinned text, each with what it should move, for the
+owner's approval (PLAN.md section 7). The owner answered on 2026-11-11:
+"agreed on all except don't do anything to element_diffusion". So
+kap's, atm's, convection's and eos's lists went ahead as written, with
+their recommendations. kap's item 8 (M278), which had no recommendation,
+was to be researched and brought back before any code changed;
+convection's item 5 (M96) waits for core's M85 in round 2; the control
+descriptions went with their packages. element_diffusion got no B work:
+its list, its controls' descriptions and its open bug_sweep entries
+stay as they were.
+
+**How it was done.**
+- **Serial, one package at a time**, so that each reseed started from a
+  known base: kap (b1-kap, from c52dcf23), then atm (b1-atm, from the
+  kap merge), convection (b1-convection, from the atm merge) and eos
+  (b1-eos, from the convection merge).
+- **Each agent had its own measuring area** (`bwork_<package>` in the
+  work directory: a copy of the deck baseline and the 35 pins) and its
+  own scratch. It ran the untouched tree against the area first (ALL
+  IDENTICAL, 35 pins OK). Then each item was its own commit: the
+  56-deck set compared with the previous fix's snapshot, what moved
+  written in the commit message and the bug_sweep entry (decks, pins,
+  model counts, final log L and log Teff, the largest change per
+  column), and the moved decks snapshot and their pins re-pinned before
+  the next item. A fix that moved nothing had its compare double as the
+  check of the previous reseed. The messages went in one re-pin commit
+  per package, text only.
+- **The integrator reproduced each package's outputs in the main tree**
+  before the merge counted: the merged tree's 56 decks compared with a
+  copy of the agent's final outputs and pins (`bverify_<package>`: ALL
+  IDENTICAL, 35 pins OK), the old baseline and
+  pins backed up (the work directory's `backups/pre_b1kap`,
+  `pre_b1atm`, `pre_b1convection`, `pre_b1eos`), the new ones installed in
+  `.compare_decks/base` and the `standard/` pins, and the MESA baseline
+  (`test_mesa_baselines`) reseeded where it moved and compared with the
+  agent's reseed. Each merge is `--no-ff`; nothing is pushed.
+
+**What was done.** Each commit, with its fix and its measured change
+(the commit messages and the bug_sweep entries give the full numbers):
+- **kap** (8 commits, merged in d66dd005):
+  - 0025d96f O18: the opacity ramp returns the blend's own derivatives;
+    the Jacobian only: 13 decks and 9 pins, |dlog L| <= 4.3e-9.
+  - c797b801 M222: the conductive opacity below log rho = -6 takes the
+    mixture's sign and extrapolates toward the point; kappa_c in the
+    photosphere 10^19.5 -> 10^8 cm^2/g, kappa by 1e-9 to 1e-7: 48 decks
+    and 17 pins, 21 at round-off (|dlog L| <= 1.4e-10), 27
+    path-sensitive by up to 1.6e-4, as a control moves them.
+  - 2fec5fed KA-14: log10(16 sigma/3) computed from sigma, kappa_c
+    +4.8e-5: all 56 decks and 22 pins, |dlog L| <= 1.5e-8 (ZAHB 1.4e-7,
+    the 3 Msun deck 1.2e-6), the path-sensitive decks up to 1.9e-4.
+  - 758819a0 M277: OPAL95's high-R density shift searches the fixed-Z
+    table it tests; byte-identical, as the shipped tables predict.
+  - 0f6f4978 M237: the banner says "pure C and O"; that line in all 56
+    logs and 35 pins.
+  - 1220787b KA-9: the messages reworded, every error through
+    kap_report to the terminal and the run log, the lookups returning a
+    reason; no deck or pin moves, test_kap's lines re-pinned.
+  - c92127bd M237, M227: the descriptions of use_pure_z_table and
+    laol_z_tolerance (the generated defaults files).
+  - c162117f KA-14: test_structure's three pins, moved at round-off.
+- **atm** (7 commits, merged in c5dd0ab3):
+  - 67cd7815 M283: atm_init starts from a clean state; byte-identical.
+  - aae0218b M235: a successful Allard lookup writes nothing;
+    Test_solarGS98_allard's log loses 1,920 of its 7,383 lines.
+  - f037c9bd M233: the Allard extension's headers say four widths below
+    and one above, the code kept; comments only.
+  - 1f2b14fb O19: the reader's tau = 100 check runs; accretion asks the
+    Allard tables only when they are loaded, else the last envelope
+    integration's photosphere; cm_accretion's log loses 72 of its 96
+    lines, its model byte-identical.
+  - c9e6ec4e The gray T-tau constant (1/4) log10(3/4), computed, for
+    the F77's -0.031235: 53 decks and 31 pins; the fix's own effect on
+    27 decks |dlog L| <= 1.3e-6, |dlog Teff| <= 3.1e-7; the other 26 are
+    path-sensitive and move as a 3e-9 dex control moves them.
+  - 12210cb9 the messages reworded, to the terminal (standard output)
+    and the run log; one line of the Allard deck's log; test_atm
+    re-pinned.
+  - 4499f60a M239: atm_table_file's description says Kurucz
+    (atm_choice 3).
+- **convection** (8 commits, merged in 6fcc96cb):
+  - a21950d9 M249: the overshoot region below the envelope is none
+    without zones, and only the surface zone's; byte-identical.
+  - f80adb7b M285: the overshoot merge is the union of the two regions.
+    Not latent: ZAHB_m1p0feh+0p0_TAHB (no pin) reaches it in 234 of its
+    330 merges; 1517 -> 1917 models, core helium burning 9.8% longer.
+  - 5a370511 M241: semiconvection at the convective core only, and
+    nothing without a mixed region; byte-identical on the set; the
+    shipped 9 Msun TAMS sample, which exited 1 at model 110, runs.
+  - e6f70a34 M242: the starspot Jacobian takes the spotted gradient and
+    dln S/dln T; byte-identical on the set; the spot25 decks move less
+    than a 0.1% Jacobian control moves them.
+  - 4c1c730a CD-14 and O10's gate: one H_P and one envelope overshoot
+    extent, convection_lib's, for core's Li/Be burn and rotation's
+    sub-steps; evolve_step returns on burn_light_elements' ierr (M302);
+    byte-identical.
+  - 86b54640 O10: the overshoot edge's zone width from one model;
+    byte-identical; on a 4.57 Gyr copy of cm_env_overshoot surface Li7
+    +5.5%.
+  - 4cf4e0ac CD-14: the rezone's overshoot base is the envelope
+    overshoot extent in radius; ZAHB 1917 -> 1865 models (a mesh
+    control keeps 1917).
+  - 76a19fc7 M254, CD-11: the messages reworded, formats that hold
+    their values; 28 logs, message lines only; the 12 testsuite pins.
+- **eos** (12 commits, merged in 1395075b):
+  - 4b9aecff M292: an X-interpolated OPAL value beyond 1e20 either way
+    is an error; byte-identical.
+  - 03be24fe M291: readcoeos refuses a table whose X blocks are off the
+    first block's grid; byte-identical.
+  - 95126040 M206: SCV's downward T smoothing only where the row below
+    holds the shifted cell's columns; byte-identical (lookups in the
+    band move by up to 2.2e-3 dex).
+  - e6a317cf M94: OPAL 1995's stencils clamped to its table;
+    byte-identical; test_eos's 1995 line moves 2.4e-6 dex.
+  - 346e1af2 M92: SCV's general path takes the mixing entropy at the
+    zone's X; Test_m0030_feh0_noGS_ZAMS log L +2.2e-8.
+  - 46bcab10 M290: a new record starts the fully ionized iteration from
+    the ideal gas's density; byte-identical.
+  - 1bd927eb M305: the fully ionized iteration's second-order term
+    capped at 10^300; byte-identical; test_eos passes under the devel
+    flags, so its known failure is gone.
+  - b8c4b8cf M128: SCV's H+ fraction counts an H2 molecule as two
+    nuclei: 55 decks and 21 pins, |dlog L| <= 2.4e-7 outside the
+    path-sensitive decks, which move as a 1e-10 control moves them.
+  - a0039581 M88: SCV's table edges a weighted ramp into the Saha
+    result: 31 decks and 13 pins, |dlog L| <= 1.0e-7 outside the
+    path-sensitive decks.
+  - 15b8b199 M129: one 1/mu_ion rule on every path; the structure
+    byte-identical, mu_e_inv by up to 5.9e-5 in a settling run.
+  - e5a03a6f the messages reworded, lines of 400 characters (M306);
+    only the Saha lines of two decks move (one pin); test_eos and
+    test_convection re-pinned; M293's counts.
+  - b8ecbef3 test_eos's M206 check compares SCV's lookup itself (M88's
+    ramp had made it vacuous); test only.
+- **bug_sweep:** each entry closed in its fix's commit; the agents'
+  new finds registered as section 16, M298-M308 (M302, M305 and M306
+  fixed in the round), and their finds about older items in those
+  entries (M86, M241, M278, M285, M293, M295). Section 1: 377 items,
+  257 fixed and 120 open.
+- **Mutations**, all caught at the end: kap 40, atm 45, convection 49,
+  eos 81.
+
+**Measuring against the path-sensitive decks.** Some decks of the
+56-deck set turn any perturbation into a change far larger than a fix's
+own, so a fix that is not byte-identical there is measured with a
+control.
+- **Which decks.** The 12 testsuite solar decks, the 14 `rv_` decks
+  other than rv_basic and o24_rescale_rotating turn a 1e-9 change in
+  the envelope into 1e-6 to 1e-4 in the final log L, with one model and
+  1-3 zones more or fewer: their paths part at a discrete event (a
+  convective boundary's edge zone one shell off), after which rezoning
+  and timesteps differ. o24_rescale_rotating moves by up to 2e-3: its
+  card 2 reaches its 1e8 yr stop one model sooner or later, and card
+  4's five models start from another timestep. rv_sbm2's model count
+  swings by about 20 (902, 903, 916, 910 and 923 models in five runs
+  that differ by 1e-10 relative in one quantity). ZAHB_m1p0feh+0p0_TAHB gains or loses one
+  model at its stop under a 3e-9 dex change (+5.7e-4 in final log L),
+  and reacts far more to its mixed core: M285 added 400 models and the
+  rezone base took away 52, while a 5e-5 change of one zoning tolerance
+  kept its 1917 models and log L within 2e-6.
+- **The control.** The old code with a perturbation of the fix's size
+  in the same quantity and nothing else: kappa x (1 - 3e-9) below log
+  rho = -6 for M222; the old gray constant moved by 3e-9 dex (1/100 of
+  the fix); SCV's old H+ fraction x (1 +- 1e-10) for M128; dln
+  Delta/dln T x 1.001 for M242; the zoning tolerance tol_dp_czbase_max x
+  1.00005 for the rezone base. If the control moves the decks by the
+  same order, the size is the decks' sensitivity, not the fix's effect,
+  which is read from the other decks; a deck the control leaves alone
+  (as ZAHB's mesh control) shows the fix's own effect.
+- **How.** A control tree is a `git archive` of the commit with links to
+  input/ and startmodels/ and the perturbation, compared against the
+  agent's base under its own label (scratch_b_atm/ctl_tree shows it);
+  its logs differ from the base in the version line alone, which
+  compare_decks does not yet set aside outside git (M301). A sparse
+  `git clone --shared` builds on its own, so two compares can run at
+  once (eos's hand-back).
+
+**Verified.** Each merge was checked by the integrator in the main tree
+(the work directory's `notes/b1<package>_verify.log`):
+- kap, at d66dd005: the agent's outputs reproduced and installed; yrec,
+  the tests, other_energy, lib, libs and
+  yrec_libs build; `make check`; `compare_decks --set all`, RESULT ALL
+  IDENTICAL with 35 pins OK against the installed outputs; CI's pytest
+  list 92 passed and 1 skipped, exact and tolerant; `mutate.py kap` 0
+  survived; the devel build 0 failed; the MESA baseline reseeded (2
+  skipped), then 2 passed, equal to the agent's.
+- atm, at c5dd0ab3: the agent's outputs reproduced (ALL IDENTICAL, 35
+  pins OK against the copy), the old ones backed up, the new
+  installed; then the same checks: ALL IDENTICAL with 35 pins OK,
+  pytest 92 passed and 1 skipped in both modes, `mutate.py atm` 0
+  survived, devel 0 failed, the MESA baseline reseeded and 2 passed,
+  equal to the agent's.
+- convection, at 6fcc96cb: the same sequence with the same results
+  (`mutate.py convection` 0 survived).
+- eos, at 1395075b: the same sequence with the same results
+  (`mutate.py eos` 0 survived; the devel run 0 failed, test_eos
+  included now that M305 is fixed).
+
+#### Learned
+
+- Most decks show a fix's own effect; a family of path-sensitive ones
+  shows only the decks' sensitivity, which a control run tells apart.
+  Without the control, M128 would read as rv_sbm2 gaining 21 models.
+- "Latent" from reading the code was wrong again: M285, which round 1
+  thought no deck reached, lengthens a ZAHB deck's core helium burning
+  by about 10%, hidden until then by M254's `***` indices.
+- A configuration-matrix deck can pin none of its configuration:
+  cm_env_overshoot is fully convective for its 12 models (M303), as
+  cm_semiconvection was (M255); the paths it is named for ran only on a
+  longer scratch copy.
+- A unit test can carry a setup gap (test_convection's EOS without a
+  mixture, M308), and a later fix can make an earlier check vacuous
+  (M206's after M88's ramp): the mutation manifest is rerun after every
+  item, not only at the end. CI's pytest list (test_structure's
+  finite-difference pins) belongs to every measured commit's checks.
+- gfortran 15.2 cannot take math_lib's log10 in a parameter's
+  initializer under crmath, and passed an array constructor with a
+  garbage character length (bug_sweep section 16's notes).
+- The same cause can sit behind defects in three packages: the starting
+  model's envelope refit before update_surface_mixture (M86) gives every
+  Saha non-convergence of the set (M293) and, in a unit test, the same
+  failures (M308).
+
+#### Next
+
+- **The owner's decisions:**
+  - M278, the conductive mixing rule: B (recommended), A, or leave it.
+    The ZAHB numbers of the trial were taken before M285's fix and the
+    rezone base, and are to be measured again on today's base (1865
+    models).
+  - M285: keep the union, which lengthens the horizontal-branch decks'
+    core helium burning by about 10%?
+  - M293, the Saha non-convergence: a warning or an error, now that the
+    counts are known (2 of 56 decks, all in the refit, M86).
+- **Round 2's items that came out of 1B**, with core's B list:
+  - the starting model's refit order (M86): the star's envelope mixture
+    installed before rescale_and_refit_envelope, a measured change for
+    the three decks that refit, which should end M293's 2,217
+    non-convergences;
+  - cm_env_overshoot's starting model (M303): one with a radiative core,
+    a re-pin;
+  - M96 with M85 (convection's item 5).
+- **The push**: yrec-next holds rounds 0, 1 and 1B unpushed; a push
+  waits for the owner's word.
+- The smaller open finds (M298-M301, M304, M307, M308) are on no list.
