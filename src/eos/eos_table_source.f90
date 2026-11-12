@@ -14,11 +14,13 @@
 !   lookup       its result at (log T, log P, X, Z) and whether its table
 !                covers the point, from a copy of the result so far
 !   edge_weight  inside its table, whether the point is near its edge and
-!                the weight of its result there (whole_weight_inside: no
-!                edge weight, its result is taken whole where it covers)
+!                the weight of its result there, from log T and its
+!                lookup's result (whole_weight_inside: no edge weight, its
+!                result is taken whole where it covers)
 !   adopt        how its result replaces the result so far inside the
 !                table (adopt_table_result, adopt_whole_result)
-!   blend        how it is weighted in near the edge (blend_table_result)
+!   blend        how it is weighted in near the edge (blend_table_result;
+!                SCV's own, which also blends the ionization fractions)
 ! The stages, in the order blend_eos consults them:
 !   stage_in_place_of_saha  below the Saha cutoff, in place of the Saha
 !                           solution and before the ramp into the fully
@@ -63,10 +65,11 @@ module eos_table_source
             logical, intent(out) :: covers
             integer, intent(out) :: ierr
          end subroutine source_lookup
-         subroutine source_edge_weight(temperature, log10_density, weight, in_table, &
+         subroutine source_edge_weight(log10_temperature, table_r, weight, in_table, &
               near_edge, ierr)
-            import :: dp
-            real(dp), intent(in) :: temperature, log10_density
+            import :: dp, eos_result
+            real(dp), intent(in) :: log10_temperature
+            type(eos_result), intent(in) :: table_r
             real(dp), intent(out) :: weight
             logical, intent(out) :: in_table, near_edge
             integer, intent(out) :: ierr
@@ -106,9 +109,10 @@ logical function always_in_window(log10_temperature, r)
 end function always_in_window
 
 ! edge_weight for a source taken whole wherever its lookup covers the
-! point (no edge ramp: SCV, M88)
-subroutine whole_weight_inside(temperature, log10_density, weight, in_table, near_edge, ierr)
-      real(dp), intent(in) :: temperature, log10_density
+! point (no edge ramp: MHD, whose result is the whole EOS)
+subroutine whole_weight_inside(log10_temperature, table_r, weight, in_table, near_edge, ierr)
+      real(dp), intent(in) :: log10_temperature
+      type(eos_result), intent(in) :: table_r
       real(dp), intent(out) :: weight
       logical, intent(out) :: in_table, near_edge
       integer, intent(out) :: ierr

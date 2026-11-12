@@ -63,9 +63,11 @@ module yale_eos
 ! steps are capped at max_density_step_dex (a factor 10^4, LLP 1/31/07),
 ! it fails after max_density_iterations, and the relative pressure error
 ! its second-order term is computed from is floored at
-! smallest_pressure_error (its log is taken).
+! smallest_pressure_error (its log is taken). The second-order term of a
+! step is taken at most 10^max_second_order_log10, within the double
+! range (the step is clamped to max_density_step_dex either way).
       real(dp), parameter :: density_tolerance_dex = 1.0d-8, max_density_step_dex = 4.0d0, &
-           smallest_pressure_error = 1.0d-15
+           smallest_pressure_error = 1.0d-15, max_second_order_log10 = 300.0d0
       integer, parameter :: max_density_iterations = 20
 
 ! The Saha system of one compute_saha_eos call: its constants, the
@@ -354,10 +356,11 @@ subroutine solve_saha_system(saha_number_fractions, log10_temperature, log10_pre
       end do
       if (isaha > max_saha_iterations) then
          eos_lines = unwritten_line
-         write(eos_lines,99) log10_temperature, log10_pressure, s%mean_electrons_per_ion, &
-              delta_electrons_per_ion
+         write(eos_lines,99) max_saha_iterations, log10_temperature, log10_pressure, &
+              s%mean_electrons_per_ion, delta_electrons_per_ion
          call eos_log(eos_lines)
- 99      format(' -----SAHA FAILURE (TL,PL)=',2F10.6,'  (E,DE)=',2F20.12)
+ 99      format('Saha solver: no convergence in ',I0,' iterations at log T, log P',2F10.6, &
+              '; E, last step',2F20.12,'; the last iterate stands')
       end if
 end subroutine solve_saha_system
 
@@ -684,7 +687,8 @@ end subroutine differentiate_saha_solution_twice
 ! Debye-Hueckel term) add up to P, then sets the density, its first and
 ! second derivatives, cp, grad_ad and their derivatives, and eta (the
 ! second derivatives always: the caller keeps or discards them). The
-! density iteration starts from r's density; when it does not converge
+! density iteration starts from r's density, or from the ideal gas's for
+! a new record (start_fully_ionized_solution); when it does not converge
 ! (iterate_fully_ionized_density) r keeps its other fields and ierr is
 ! 1. extrapolated tells whether the converged point lies outside the
 ! Fermi-Dirac table (log T from fermi_log10t_min to fermi_log10t_max, X
@@ -736,7 +740,13 @@ end subroutine compute_fully_ionized_eos
 !----------------------------------------------------------------------
 ! The pressures that do not depend on density (radiation, and the
 ! Debye-Hueckel mass terms), the log T row of the Fermi table and its
-! interpolation factors, and the starting log density.
+! interpolation factors, and the starting log density: r's, the caller's
+! guess or the previous call's at the zone, except for a new record
+! (log10_density and density both zero, eos_result's defaults), which
+! starts from the ideal gas's density beta P/((R/mu) T) with r's R/mu.
+! From log rho 0, a new record's, the iteration ran away toward the
+! radiation pressure from log T 7.25 up (M290); from the ideal gas's it
+! converges over log T 5.7 to 9.6 and log P 6 to 28 (beta down to 1e-12).
 subroutine start_fully_ionized_solution(log10_temperature, log10_pressure, dh, r, f)
       real(dp), intent(in) :: log10_temperature, log10_pressure
       type(debye_huckel_composition), intent(in) :: dh
@@ -764,7 +774,11 @@ subroutine start_fully_ionized_solution(log10_temperature, log10_pressure, dh, r
       f%ttud = fermi_rows_per_dex*(f%tl8 - (fermi_log10t_origin + fermi_log10t_step*real(f%jt1, dp)))
       f%ttcu = 0.50d0*f%ttud*(f%ttud - 1.0d0)
       f%ttdcu = f%ttud - 0.50d0
-      f%dml = r%log10_density + f%emul
+      if (r%log10_density == 0.0d0 .and. r%density == 0.0d0) then
+         f%dml = log10(r%beta*r%pressure/(r%specific_gas_constant*r%temperature)) + f%emul
+      else
+         f%dml = r%log10_density + f%emul
+      end if
       f%nden = 1
       f%id1p = -100
 ! DBG 7/92 calculate D-H terms: Alpha-mixture, mass-FRAC0, mass-FRAC1
@@ -783,9 +797,11 @@ end subroutine start_fully_ionized_solution
 !----------------------------------------------------------------------
 ! Newton iteration on log rho until the electron (Fermi table), ion and
 ! radiation pressures, plus the Debye-Hueckel term, add up to P; steps
-! are capped at max_density_step_dex, and max_density_iterations steps
+! are capped at max_density_step_dex (the second-order term's log10 at
+! max_second_order_log10 first, so that it does not overflow far from the
+! root), and max_density_iterations steps
 ! without convergence (to density_tolerance_dex) is a failure
-! (converged false, its message in the run log). For details consult
+! (converged false, its message on the terminal and in the run log). For details consult
 ! Prather's thesis. The electron pressure pe is tabulated against
 ! X = log rho - log mu_e - 1.5 log T (3-point Lagrange, unequal spacing)
 ! and Y = log T (3-point Newton, equal spacing); pa is the ion pressure,
@@ -911,6 +927,10 @@ subroutine iterate_fully_ionized_density(log10_temperature, log10_pressure, r, f
       pr8l=log10(factor)
       pr9l=log10(abs(pr9))
       factl=log10(0.5d0)+pr9l+2.d0*pr8l
+! far from the root the second-order term would pass the double range (an
+! overflow); at 10^max_second_order_log10 it already takes the step to
+! the max_density_step_dex clamp below, so it is capped there
+      if (factl > max_second_order_log10) factl = max_second_order_log10
       fact=exp(ln10*factl)
       fact=sign(fact,pr9)
       corr=-pr8-fact
@@ -921,10 +941,10 @@ subroutine iterate_fully_ionized_density(log10_temperature, log10_pressure, r, f
        f%nden = f%nden + 1
        if(f%nden <= max_density_iterations) cycle density_iter
        eos_lines = unwritten_line
-       write(eos_lines,40) log10_temperature,log10_pressure,ptl,f%dml,corr
-       call eos_log(eos_lines)
-   40    format('EQRELV: Did not Converge: T,P,Pcalc,Dcalc,CORR', &
-                4F10.6,F20.12)
+       write(eos_lines,40) max_density_iterations, log10_temperature, log10_pressure, ptl, f%dml, corr
+       call eos_report(eos_lines)
+   40    format('fully ionized gas: the density iteration did not converge in ',I0, &
+              ' steps: log T, log P, log P reached, log rho + log(1/mu_e)',3F10.6,F14.6,'; last step',F20.12)
        converged = .false.
        return
       end if

@@ -63,28 +63,37 @@ subroutine read_scv_rows(units, h_path, he_path, z_path, ierr)
       integer, intent(out) :: ierr
       character(len=message_length) :: eos_lines(4)
       integer :: t_idx, p_idx, col_idx, ios, off_grid
+! the table being read (1 H, 2 He, 3 Z): the one named when a read fails
+      integer :: reading
 ! the He and Z tables' log T and point count of the row
       real(dp) :: copy_log10_t(2:3)
       integer :: copy_npts(2:3)
 
       ierr = 0
       off_grid = 0
+      reading = 1
       do t_idx = 1, scv_nt
+         reading = 1
          read(units(1),1,iostat=ios) tlogx(t_idx),nptsx(t_idx)
+         if (ios == 0 .and. (nptsx(t_idx) < 4 .or. nptsx(t_idx) > size(tablex, 2))) ios = -1
+         if (ios == 0) reading = 2
          if (ios == 0) read(units(2),1,iostat=ios) copy_log10_t(2),copy_npts(2)
+         if (ios == 0) reading = 3
          if (ios == 0) read(units(3),1,iostat=ios) copy_log10_t(3),copy_npts(3)
     1    format(f5.2,i4)
-         if (ios == 0 .and. (nptsx(t_idx) < 4 .or. nptsx(t_idx) > size(tablex, 2))) ios = -1
          if (ios /= 0) exit
          off_grid = first_off_grid(copy_log10_t /= tlogx(t_idx) .or. copy_npts /= nptsx(t_idx))
          if (off_grid /= 0) exit
          do p_idx = 1, nptsx(t_idx)
+            reading = 1
             read(units(1),2,iostat=ios) (tablex(t_idx,p_idx,col_idx),col_idx=1,11)
+            if (ios == 0) reading = 2
             if (ios == 0) read(units(2),2,iostat=ios) (tabley(t_idx,p_idx,col_idx),col_idx=1,11)
     2       format(f6.2,1p2e13.5,0p,8f9.4)
             if (ios /= 0) exit
          end do
          if (ios /= 0) exit
+         reading = 3
          do p_idx = nptsx(t_idx),1,-1
             read(units(3),3,iostat=ios)(tablez(t_idx,p_idx,col_idx),col_idx=1,13)
     3       format(f6.2,12f9.4)
@@ -98,8 +107,8 @@ subroutine read_scv_rows(units, h_path, he_path, z_path, ierr)
       end do
       if (ios /= 0) then
          eos_lines = unwritten_line
-         write(eos_lines,'(a,i0,a,a)') 'eos_init: an SCV table ends early or is corrupt, at T row ', &
-              t_idx, '; the H table: ', trim(h_path)
+         write(eos_lines,'(a,a,a,i0,a,a)') 'eos_init: the SCV ', trim(scv_table_name(reading)), &
+              ' table ends early or is corrupt, at T row ', t_idx, ': ', trim(scv_table_path(reading))
          call eos_report(eos_lines)
          ierr = 1
       else if (off_grid /= 0) then
@@ -116,6 +125,23 @@ subroutine read_scv_rows(units, h_path, he_path, z_path, ierr)
       end if
 
 contains
+
+! the name and the path of table k (1 H, 2 He, 3 Z)
+pure function scv_table_name(k) result(name)
+      integer, intent(in) :: k
+      character(len=2) :: name
+      name = 'H '
+      if (k == 2) name = 'He'
+      if (k == 3) name = 'Z '
+end function scv_table_name
+
+function scv_table_path(k) result(path)
+      integer, intent(in) :: k
+      character(len=max(len(h_path), len(he_path), len(z_path))) :: path
+      path = h_path
+      if (k == 2) path = he_path
+      if (k == 3) path = z_path
+end function scv_table_path
 
 ! 2 or 3 for the He or the Z table (differs(1) or (2)), the first that
 ! differs; 0 for neither

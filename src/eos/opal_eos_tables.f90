@@ -19,9 +19,8 @@
 !
 ! The three vintages share one state type, opal_eos_vintage, dimensioned
 ! by the largest (2006) table; each addresses its first nt rows and nr
-! columns. The 2001 and 2006 interpolation clamps every stencil to the
-! table; the 1995 one does not (M94), and reads past its table what the
-! 1995 code's own storage held there (opal_eos's stencil_entry).
+! columns. The interpolation clamps every vintage's stencil to its table
+! (the 1995 one since 2026-11, M94: it read past its table before).
 !
 ! The 2001 and 2006 x_grid constants are written without the d0 suffix
 ! (0.0, 0.2, ...), as in OPAL's DATA statements: single-precision
@@ -96,8 +95,11 @@ module opal_eos_tables
 ! holds one, a 2 x 2 corner sum below opal_usable_corner_sum holds none
 ! (the stencil can then shift onto it), opal_beyond_stencil stands for
 ! the sum of a cell the stencil lacks (above opal_empty_sum, so that it
-! is not used), and an X-interpolated value above opal_x_interp_overflow,
-! or a T6-rho interpolated one above opal_range_overflow, came from one.
+! is not used), and an X-interpolated value beyond opal_x_interp_overflow
+! either way (a huge entry with a negative Lagrange weight comes back
+! negative, M292), or a T6-rho interpolated one above opal_range_overflow,
+! came from one. The T6-rho check is one-sided: the 2006 tables' dE/dRho
+! reaches -3.7e14, and every node reaching it has passed the X check.
       real(dp), parameter :: opal_empty_entry = 1.0d+35, opal_empty_sum = 1.0d+30, &
            opal_usable_corner_sum = 1.0d+25, opal_beyond_stencil = 2.0d+30, &
            opal_x_interp_overflow = 1.0d+20, opal_range_overflow = 1.0d+15
@@ -175,7 +177,7 @@ module opal_eos_tables
 ! ==================== what tells the vintages apart ====================
 ! One row per vintage (opal_layout(iv_opal95), (iv_opal01),
 ! (iv_opal06)); the code reads its vintage's row instead of branching
-! on the vintage (only the messages keep each vintage's own words).
+! on the vintage (its messages too, which start with its name).
       type, public :: opal_vintage_layout
 ! the table's density columns and T6 rows, and its hydrogen-fraction grid
          integer :: nr, nt
@@ -206,16 +208,13 @@ module opal_eos_tables
 ! O, N, C, He and H, and whether the electrons' mass counts (1995)
          real(dp) :: ionization_energy(6)
          logical :: counts_electron_mass
-! whether the interpolation clamps its stencils to the table (2001,
-! 2006; not 1995, M94)
-         logical :: clamps_stencil
 ! the reader's formats for an X block's header and for a T6 row, and the
 ! columns it skips before the variables (1995 and 2001: log10 R; 2006:
 ! amu and log10 n_e)
          character(len=48) :: header_format, row_format
          integer :: n_skipped_columns
-! the prefix of the interpolator's messages
-         character(len=15) :: routine_id
+! the vintage's name, which its messages start with
+         character(len=13) :: eos_name
 ! compute_opal_eos's T6 range, and whether it checks that the
 ! interpolated pressure reproduces P (1995)
          real(dp) :: t6_min, t6_max
@@ -250,9 +249,9 @@ module opal_eos_tables
                 rad_const_over_c=1.8914785d-3, molar_gas_constant_mbcc=83.1446304d0, &
                 radiation_gammas_direct=.true., energy_unit_ratio=0.9648575d0/0.9652d0, &
                 ionization_energy=[-3388.637d0, -1970.918d0, -1431.717d0, -993.2303d0, &
-                -76.2315d0, -15.29409d0], counts_electron_mass=.true., clamps_stencil=.false., &
+                -76.2315d0, -15.29409d0], counts_electron_mass=.true., &
                 header_format="(3X,F6.4,3X,F6.4,11X,F10.7,17X,F10.7)", &
-                row_format="(F8.4,1X,F6.2,3E13.5,E11.3,6F8.4)", n_skipped_columns=1, routine_id="", &
+                row_format="(F8.4,1X,F6.2,3E13.5,E11.3,6F8.4)", n_skipped_columns=1, eos_name="OPAL 1995 EOS", &
                 t6_min=0.0050d0, t6_max=100.0d0, checks_pressure=.true., &
                 search_density_index_edge=[opal95_density_index_edge, (0, i=n_eos95_nt+1, n_eos_nt_max)], &
                 search_rad_const_over_c=1.8914785d-3, search_subtracts_radiation=.false., &
@@ -267,9 +266,9 @@ module opal_eos_tables
                 rad_const_over_c=real(1.8914785e-3, dp), molar_gas_constant_mbcc=real(83.14510, dp), &
                 radiation_gammas_direct=.false., energy_unit_ratio=1.0d0, &
                 ionization_energy=gmass01_ionization_energy, counts_electron_mass=.false., &
-                clamps_stencil=.true., header_format="(3X,F6.4,3X,F12.9,11X,F10.7,17X,F10.7)", &
+                header_format="(3X,F6.4,3X,F12.9,11X,F10.7,17X,F10.7)", &
                 row_format="(F9.5,1X,F6.2,3E13.5,6F8.4)", n_skipped_columns=1, &
-                routine_id="OPALEOS/ESAC01:", &
+                eos_name="OPAL 2001 EOS", &
                 t6_min=0.0020d0, t6_max=100.0d0, checks_pressure=.false., &
                 search_density_index_edge=[opal01_search_density_index_edge, &
                 (0, i=n_eos01_nt+1, n_eos_nt_max)], &
@@ -284,9 +283,9 @@ module opal_eos_tables
                 rad_const_over_c=1.8914785d-3, molar_gas_constant_mbcc=83.14510d0, &
                 radiation_gammas_direct=.false., energy_unit_ratio=1.0d0, &
                 ionization_energy=gmass01_ionization_energy, counts_electron_mass=.false., &
-                clamps_stencil=.true., header_format="(3X,F6.4,3X,F12.9,11X,F10.7,17X,F10.7)", &
+                header_format="(3X,F6.4,3X,F12.9,11X,F10.7,17X,F10.7)", &
                 row_format="(F11.6,1X,F6.4,E11.4,2E13.6,2E11.3,5F10.6)", n_skipped_columns=2, &
-                routine_id="OPALEOS/ESAC06:", &
+                eos_name="OPAL 2006 EOS", &
                 t6_min=0.001870d0, t6_max=200.0d0, checks_pressure=.false., &
                 search_density_index_edge=opal06_density_index_edge, &
                 search_rad_const_over_c=real(1.8914785e-3, dp), search_subtracts_radiation=.true., &
@@ -506,7 +505,7 @@ subroutine find_opal_ramp(nt, t6_grid, t_row_index, density_edge_at_t, &
          eos_lines = unwritten_line
          write(eos_lines,5) t6, t6_top_of_table, t_row_index
          call eos_report(eos_lines)
-    5    format(' ERROR IN OPAL EOS: OUTSIDE TABLE IN T6',2F10.6,I5)
+    5    format('find_opal_ramp: T6 outside the table: T6, the table''s last, row',2F10.6,I5)
          ierr = 1
          return
          end if

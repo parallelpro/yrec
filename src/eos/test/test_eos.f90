@@ -33,7 +33,7 @@ program test_eos
            eos_table_paths_t, opal_vintage_none, opal_vintage_1995, opal_vintage_2001, &
            opal_vintage_2006, opal_vintage_conflict
       use eos_test_entries
-      use physical_constants, only: gas_constant
+      use physical_constants, only: gas_constant, radiation_constant_over_3
       use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
       type(eos_settings_t) :: settings
@@ -344,7 +344,9 @@ contains
 
 ! SCV's general path reads the three tables, not the envelope table: before
 ! that table is built it covers the point (it is not the Saha result,
-! 9e-4 dex away there) and gives what it gives after the build.
+! 9e-4 dex away there) and gives what it gives after the build, cp and
+! grad_ad too (its mixing entropy is the zone's, M92: before the build it
+! was zero, and cp and grad_ad NaN).
       subroutine check_scv_general_path(before_table)
          type(eos_result), intent(in) :: before_table(2)
          type(eos_result) :: after_table(2)
@@ -352,6 +354,10 @@ contains
          call check("SCV general path: before the envelope table is built, SCV's result, as after", &
               abs(before_table(1)%log10_density - before_table(2)%log10_density) > 1.0d-4 .and. &
               abs(before_table(1)%log10_density - after_table(1)%log10_density) < 1.0d-12)
+         call check("SCV general path: cp and grad_ad before the envelope table is built, as after (M92)", &
+              before_table(1)%specific_heat_cp == after_table(1)%specific_heat_cp .and. &
+              before_table(1)%adiabatic_gradient == after_table(1)%adiabatic_gradient .and. &
+              abs(before_table(1)%adiabatic_gradient - 0.25d0) < 0.2d0)
       end subroutine check_scv_general_path
 
 ! Set one configuration (the controls a deck would set) with eos_init,
@@ -816,8 +822,9 @@ subroutine table_reader_checks()
       type(eos_settings_t) :: s
       type(eos_table_paths_t) :: paths
       type(eos_result) :: r
-      integer :: ierr, ierr_missing, ierr_cut, ierr_card, ierr_wide, it
+      integer :: ierr, ierr_missing, ierr_cut, ierr_card, ierr_wide, ierr_off_density, it, k
       logical :: cut_open, in_table
+      character(len=40) :: from_name, to_name
       s = eos_settings
       s%opal_vintage = opal_vintage_none
       s%use_scv_eos = .false.
@@ -863,13 +870,48 @@ subroutine table_reader_checks()
       call configure_eos("production", opal2006=.true., scv=.true., file="opal06_x_overflow")
       call esac06(opal_tables(iv_opal06), 0.3d0, 0.95d0, 0.09d0, 9, 1, ierr, in_table)
       call check("OPAL 2006: an entry only the second X quadratic reads, past 1e20 there, is named; ierr = 1", &
-           ierr == 1 .and. run_log_contains("OPALEOS/ESAC06: problem it,ir,l3,k3,iq,ip="))
-! the OPAL 1995 table with its first density column's lowest T6 (row 56,
-! at line 14718 in the last X block, whose T6 column the grid keeps) made
-! zero: an error on first use, where the table was read before
-      call copy_editing(trim(yrec_input)//"/eos/legacy/opal/OPALeos.0188", "opal95_zero_t6", 14718, 1, &
+           ierr == 1 .and. run_log_contains("OPAL 2006 EOS: an X-interpolated value beyond 1e20"))
+! a huge entry that enters with a negative weight gives a hugely
+! negative value, which a test of the sign alone let through as a
+! negative pressure (M292): the same entry made +1e21, which the second
+! quadratic weights by -1/8; the entry at T6 = 1, rho = 0.1 of the X = 0
+! table (line 20812) made +1e21, which the first quadratic weights by
+! -1/8 at X = 0.3; and that entry made -1e21 at X = 0, where it is read
+! alone. Each is named and returns ierr = 1.
+      call check("OPAL 2006: a huge entry the second X quadratic weights by -1/8 is named; ierr = 1 (M292)", &
+           opal06_entry_is_refused(94330, " 0.100000E+22", 0.3d0))
+      call check("OPAL 2006: a huge entry the first X quadratic weights by -1/8 is named; ierr = 1 (M292)", &
+           opal06_entry_is_refused(20812, " 0.100000E+22", 0.3d0))
+      call check("OPAL 2006: a huge negative entry read alone (X = 0) is named; ierr = 1 (M292)", &
+           opal06_entry_is_refused(20812, "-0.100000E+22", 0.0d0))
+! the OPAL 2006 table with one T6 of its X = 0.6 block (density column
+! 105, line 94330: 1.0 made 1.0001), and with that column's density
+! (line 94280: 0.1 made 0.10000001), each off the first block's grid:
+! ierr = 1 on first use
+      call copy_editing(opal06_path, "opal06_t6_off_grid", 94330, 1, "   1.000100")
+      call configure_eos("production", opal2006=.true., scv=.true., file="opal06_t6_off_grid")
+      it = 0
+      r = eos_result()
+      call eos_get(5.0d0, 12.8d0, 0.70d0, 0.016492d0, r, .true., .false., it, ierr=ierr)
+      call copy_editing(opal06_path, "opal06_density_off_grid", 94280, 52, "  1.0000001E-01")
+      call configure_eos("production", opal2006=.true., scv=.true., file="opal06_density_off_grid")
+      it = 0
+      r = eos_result()
+      call eos_get(5.0d0, 12.8d0, 0.70d0, 0.016492d0, r, .true., .false., it, ierr=ierr_off_density)
+      call check("OPAL 2006 table: an X block off the first block's T6 or density grid returns ierr = 1 (M291)", &
+           ierr == 1 .and. ierr_off_density == 1)
+! the OPAL 1995 table with its first density column's lowest T6 (row 56)
+! made zero in every X block (lines 62, 3726, 7390, 11054 and 14718; a
+! zero in one block alone is off the first block's grid, M291): an error
+! on first use, where the table was read before
+      call copy_editing(trim(yrec_input)//"/eos/legacy/opal/OPALeos.0188", "opal95_zero_t6_1", 62, 1, &
            "  0.0000")
-      call configure_eos("opal95", opal95=.true., scv=.true., file="opal95_zero_t6")
+      do k = 2, 5
+         write(from_name,'(a,i0)') "opal95_zero_t6_", k - 1
+         write(to_name,'(a,i0)') "opal95_zero_t6_", k
+         call copy_editing(trim(from_name), trim(to_name), 62 + 3664*(k - 1), 1, "  0.0000")
+      end do
+      call configure_eos("opal95", opal95=.true., scv=.true., file="opal95_zero_t6_5")
       it = 0
       r = eos_result()
       call eos_get(5.0d0, 12.8d0, 0.70d0, 0.0188d0, r, .true., .false., it, ierr=ierr)
@@ -880,24 +922,48 @@ subroutine table_reader_checks()
       if (ierr /= 0) write(*,'(a)') "table_reader_checks: the OPAL table did not read back"
 end subroutine table_reader_checks
 
-! whether a line of the run log written so far holds text (the log is
-! closed, read and opened again to append)
+! The OPAL 2006 table with line line_no's P/P0 (columns 30-42) made text,
+! read anew: whether esac06 at (x, T6 = 0.95, rho = 0.09), whose stencil
+! holds that entry, returns ierr = 1 and names the X interpolation's
+! value in one more line of the run log.
+logical function opal06_entry_is_refused(line_no, text, x)
+      integer, intent(in) :: line_no
+      character(len=*), intent(in) :: text
+      real(dp), intent(in) :: x
+      character(len=*), parameter :: named = "OPAL 2006 EOS: an X-interpolated value beyond 1e20"
+      integer :: ierr, named_before
+      logical :: in_table
+      call copy_editing(opal06_path, "opal06_doctored", line_no, 30, text)
+      call configure_eos("production", opal2006=.true., scv=.true., file="opal06_doctored")
+      named_before = run_log_count(named)
+      call esac06(opal_tables(iv_opal06), x, 0.95d0, 0.09d0, 9, 1, ierr, in_table)
+      opal06_entry_is_refused = ierr == 1 .and. run_log_count(named) == named_before + 1
+end function opal06_entry_is_refused
+
+! whether a line of the run log written so far holds text
 logical function run_log_contains(text)
+      character(len=*), intent(in) :: text
+      run_log_contains = run_log_count(text) > 0
+end function run_log_contains
+
+! how many lines of the run log written so far hold text (the log is
+! closed, read and opened again to append)
+integer function run_log_count(text)
       character(len=*), intent(in) :: text
       character(len=400) :: line
       integer :: u, ios
       flush(run_log_unit)
       close(run_log_unit)
-      run_log_contains = .false.
+      run_log_count = 0
       open(newunit=u, file="test_eos.short", status="old", action="read")
       do
          read(u, '(a)', iostat=ios) line
          if (ios /= 0) exit
-         if (index(line, text) > 0) run_log_contains = .true.
+         if (index(line, text) > 0) run_log_count = run_log_count + 1
       end do
       close(u)
       open(run_log_unit, file="test_eos.short", status="old", position="append")
-end function run_log_contains
+end function run_log_count
 
 ! the file src into dst, with line line_no's columns from col on
 ! replaced by text
@@ -1089,6 +1155,19 @@ subroutine diffusion_z_checks()
       end do
       call set_envelope_mixture(envelope_hydrogen_fraction, envelope_metal_fraction)
       call check("diffusion of Z: an envelope without metals takes the default mixture", ok)
+! one 1/mu_ion whichever source gives the density (M129): at Z = 1.1
+! Z_env, inside the OPAL 2006 table (log T 5, log P 12.80, OPAL's own
+! result) and beyond it (13.05, SCV's general path), the scaled mixture's
+! (OPAL's counted the excess metals as carbon, 3.9e-5 higher), and 1/mu_e
+! the gas constant's rest on both sides
+      call configure_eos("diffusion_z", opal2006=.true., scv=.true., diffusion_z=.true., file=opal06_path)
+      call eos_at(5.0d0, 12.80d0, 0.70d0, 1.1d0*envelope_metal_fraction, plain, ierr1)
+      call eos_at(5.0d0, 13.05d0, 0.70d0, 1.1d0*envelope_metal_fraction, diffusion, ierr2)
+      call check("diffusion of Z: at Z = 1.1 Z_env, one 1/mu_ion inside the OPAL table and beyond it (M129)", &
+           ierr1 == 0 .and. ierr2 == 0 .and. &
+           abs(plain%ion_mean_weight_inverse - diffusion%ion_mean_weight_inverse) < 1.0d-14 .and. &
+           abs(plain%electron_mean_weight_inverse - (plain%specific_gas_constant/gas_constant - &
+           plain%ion_mean_weight_inverse)) < 1.0d-12)
 end subroutine diffusion_z_checks
 
 ! an envelope of hydrogen (x) and helium alone, as eos_set_mixture takes it
@@ -1242,7 +1321,61 @@ subroutine scv_mean_weight_checks()
            abs(above%specific_gas_constant/below%specific_gas_constant - 1.0d0) < 1.0d-6 .and. &
            abs(above%electron_mean_weight_inverse - below%electron_mean_weight_inverse) < 1.0d-6)
       call scv_search_checks()
+      call scv_short_row_checks()
+      call scv_hydrogen_ion_checks()
 end subroutine scv_mean_weight_checks
+
+! SCV's H+ fraction is the fraction of the hydrogen nuclei that are
+! ionized: at the H table's node log T 3.86, log P_gas 12.0 (row 23,
+! column 41; H2 is 85% of the particles there), (1 - x_H2 - x_H)/(1 +
+! 3 x_H2 + x_H) from the table's particle fractions, 1.6e-2, where
+! counting each H2 as one nucleus gave 87% more (M128)
+subroutine scv_hydrogen_ion_checks()
+      real(dp), parameter :: x = 0.70d0, z = 0.016492d0
+      integer, parameter :: row = 23, column = 41
+      type(eos_result) :: r
+      real(dp) :: lt, lp, x_h2, x_h, expected
+      integer :: ierr
+      call configure_eos("scv_only", scv=.true.)
+      lt = tlogx(row)
+      lp = log10(10.0d0**tablex(row, column, iscv_log10_p) + &
+           radiation_constant_over_3*(10.0d0**lt)**4)
+      call eos_at(lt, lp, x, z, r, ierr)
+      x_h2 = tablex(row, column, iscv_frac_neutral)
+      x_h = tablex(row, column, iscv_frac_atom_ion1)
+      expected = (1.0d0 - x_h2 - x_h)/(1.0d0 + 3.0d0*x_h2 + x_h)
+      call check("SCV: the H+ fraction counts an H2 molecule as two hydrogen nuclei (M128)", &
+           ierr == 0 .and. abs(r%ion_fraction(1)/expected - 1.0d0) < 1.0d-8)
+end subroutine scv_hydrogen_ion_checks
+
+! SCV's envelope lookup reads only the envelope table's built entries:
+! at log T 3.71, log P 12.1 the cell's first row (log T 3.62) holds 49
+! points, to log P_gas 13.6, the row below it (3.54) 38, to 11.4, and the
+! smoothing toward the cell one row down (within 0.032 of log T 3.70)
+! would read that row's columns 40 to 43, never built (M206). With every
+! never-built entry of the table filled with 1e3 the lookup gives what it
+! gives with them zero. The lookup itself is compared (scv_lookup_alone):
+! the blend takes the Saha result there, beyond SCV's edge ramp (M88).
+subroutine scv_short_row_checks()
+      real(dp), parameter :: x = 0.70d0, z = 0.016492d0, lt = 3.71d0, lp = 12.1d0
+      type(eos_result) :: unbuilt_zero, unbuilt_filled
+      integer :: ierr1, ierr2, t
+      logical :: covers1, covers2
+      call configure_eos("scv_only", scv=.true.)
+      call scv_lookup_alone(lt, lp, x, z, unbuilt_zero, covers1, ierr1)
+      do t = 1, size(nptsx)
+         tablenv(t, nptsx(t)+1:, :) = 1.0d3
+      end do
+      call scv_lookup_alone(lt, lp, x, z, unbuilt_filled, covers2, ierr2)
+      do t = 1, size(nptsx)
+         tablenv(t, nptsx(t)+1:, :) = 0.0d0
+      end do
+      call check("SCV: a lookup above a shorter row below reads only the envelope table's built entries (M206)", &
+           ierr1 == 0 .and. ierr2 == 0 .and. covers1 .and. covers2 .and. &
+           unbuilt_filled%log10_density == unbuilt_zero%log10_density .and. &
+           unbuilt_filled%adiabatic_gradient == unbuilt_zero%adiabatic_gradient .and. &
+           unbuilt_filled%specific_heat_cp == unbuilt_zero%specific_heat_cp)
+end subroutine scv_short_row_checks
 
 ! SCV's cell search starts from the last lookup's cell: off the tables'
 ! nodes its result does not depend on that start, from a far cell, from
@@ -1287,7 +1420,7 @@ subroutine ideal_gas_checks()
 ! weakly degenerate, fully ionized points (eta from -4.9 to -2.6)
       real(dp), parameter :: fi_lt(4) = [6.0d0, 6.3d0, 6.5d0, 7.0d0]
       real(dp), parameter :: fi_lp(4) = [13.0d0, 14.3d0, 15.0d0, 16.5d0]
-      type(eos_result) :: r
+      type(eos_result) :: r, near
       real(dp) :: mu_e_inv, mu_inv, rho_ideal, correction, cp, grad, worst
       integer :: k, ierr, ierr_far, it
       logical :: ok
@@ -1357,6 +1490,18 @@ subroutine ideal_gas_checks()
       call eos_get(7.0d0, 16.0d0, x, z, r, .true., .false., it, ierr=ierr)
       call check("fully ionized gas: a density iteration that does not converge returns ierr = 1", &
            ierr_far == 1 .and. ierr == 0)
+! a new record at log T 9, log P 22, where its log rho 0 as the start ran
+! the iteration away toward the radiation pressure (M290): it starts from
+! the ideal gas's density and converges, to what a start near the answer
+! gives
+      call eos_at(9.0d0, 22.0d0, x, z, r, ierr)
+      near = eos_result()
+      near%log10_density = r%log10_density + 0.1d0
+      near%density = 10.0d0**near%log10_density
+      it = 0
+      call eos_get(9.0d0, 22.0d0, x, z, near, .true., .false., it, ierr=ierr_far)
+      call check("fully ionized gas: a new record converges where log rho 0 as its start did not (M290)", &
+           ierr == 0 .and. ierr_far == 0 .and. abs(r%log10_density - near%log10_density) < 1.0d-8)
 ! the Fermi-Dirac table's range, log T 5.2-9 and log rho - log mu_e -
 ! 1.5 log T from -16 to -3: a run's first point beyond it, in T (log T
 ! 9.2, from a start near its density, log rho 5.59) or in degeneracy
@@ -1462,6 +1607,21 @@ subroutine continuity_checks()
            ramp_end_is_continuous(5.0d0, 12.80d0, 12.94d0, opal2006_alone))
       call check("continuity: at the OPAL 2006 table's edge (the Yale/SCV result beyond)", &
            ramp_end_is_continuous(5.0d0, 13.05d0, 12.94d0, without_opal))
+! SCV's tables' edges in P_gas (M88): its result is blended into the Saha
+! one within one table interval (0.2 dex) of an edge, the ionization
+! fractions too, so every blended field is continuous at both ends of
+! the ramp: above the first column (log P_gas 4.0 to 4.2, at log T 3.5)
+! and below the cells' top (11.2 to 11.4 at log T 3.33, where the tops
+! are 11.4); the Saha result beyond, SCV's own inside
+      call configure_eos("scv_only", scv=.true.)
+      call check("continuity: at SCV's low-pressure edge (log P_gas 4), the Saha result beyond (M88)", &
+           ramp_end_is_continuous(3.5d0, 3.9d0, 4.1d0, without_scv))
+      call check("continuity: where SCV's low-pressure ramp reaches SCV (log P_gas 4.2) (M88)", &
+           ramp_end_is_continuous(3.5d0, 4.3d0, 4.1d0, scv_alone))
+      call check("continuity: at SCV's high-pressure edge (log P_gas 11.4), the Saha result beyond (M88)", &
+           ramp_end_is_continuous(3.33d0, 11.5d0, 11.3d0, without_scv))
+      call check("continuity: where SCV's high-pressure ramp reaches SCV (log P_gas 11.2) (M88)", &
+           ramp_end_is_continuous(3.33d0, 11.1d0, 11.3d0, scv_alone))
 end subroutine continuity_checks
 
 ! A table source's edge ramp at log T = lt, in log P, between lp_equal
@@ -1523,6 +1683,47 @@ subroutine opal2006_alone(lt, lp, x, z, r)
       r = eos_result()
       call compute_opal_eos(iv_opal06, lt, lp, x, z, r, ierr, covers)
 end subroutine opal2006_alone
+
+! the blend without SCV (the Saha result below the Saha ramp)
+subroutine without_scv(lt, lp, x, z, r)
+      real(dp), intent(in) :: lt, lp, x, z
+      type(eos_result), intent(out) :: r
+      type(eos_settings_t) :: s, before
+      integer :: ierr
+      before = eos_settings
+      s = eos_settings
+      s%use_scv_eos = .false.
+      call set_eos_settings(s)
+      call eos_at(lt, lp, x, z, r, ierr)
+      call set_eos_settings(before)
+end subroutine without_scv
+
+! SCV's lookup alone, from the Saha result (what the blend adopts inside
+! its tables, beyond the ramps)
+subroutine scv_alone(lt, lp, x, z, r)
+      real(dp), intent(in) :: lt, lp, x, z
+      type(eos_result), intent(out) :: r
+      integer :: ierr
+      logical :: covers
+      call scv_lookup_alone(lt, lp, x, z, r, covers, ierr)
+end subroutine scv_alone
+
+! the same, with the lookup's ierr and whether SCV's tables cover the point
+subroutine scv_lookup_alone(lt, lp, x, z, r, covers, ierr)
+      real(dp), intent(in) :: lt, lp, x, z
+      type(eos_result), intent(out) :: r
+      logical, intent(out) :: covers
+      integer, intent(out) :: ierr
+      type(eos_table_source_t) :: list(n_table_sources)
+      integer :: k
+      call without_scv(lt, lp, x, z, r)
+      covers = .false.
+      ierr = 0
+      list = table_sources()
+      do k = 1, n_table_sources
+         if (list(k)%name == 'SCV') call list(k)%lookup(lt, lp, x, z, r, covers, ierr)
+      end do
+end subroutine scv_lookup_alone
 
 subroutine without_opal(lt, lp, x, z, r)
       real(dp), intent(in) :: lt, lp, x, z

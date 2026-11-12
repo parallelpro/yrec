@@ -152,14 +152,15 @@ subroutine compute_mhd_eos(log10_temperature, log10_pressure, &
       r%electron_degeneracy_parameter = mhd%mhd_output(i_mhd_eta)
       r%specific_gas_constant = exp10(mhd%mhd_output(i_mhd_log10_pgas))/(r%density*r%temperature)
       call compute_mean_weights(r%temperature, r%pressure, r%density, hydrogen_fraction, &
-           metal_fraction, specific_gas_constant_check, &
+           metal_fraction, eos_settings%use_diffusion_z, specific_gas_constant_check, &
            r%ion_mean_weight_inverse, r%electron_mean_weight_inverse, r%beta)
       if (abs((r%specific_gas_constant-specific_gas_constant_check)/ &
            r%specific_gas_constant) > gas_constant_tolerance) then
          eos_lines = unwritten_line
-         write(eos_lines(1),*) ' ERROR(MHD): IN MEAN WEIGHTS ... '
-         write(eos_lines(2),*) r%specific_gas_constant, specific_gas_constant_check
-         write(eos_lines(3),*) 'ERROR (MHD): CHECK MU'
+         write(eos_lines(1),'(a,2es24.15)') 'MHD EOS: the gas constant of the mean weights ' // &
+              'is not the table''s P_gas/(rho T) (table, mean weights):', r%specific_gas_constant, &
+              specific_gas_constant_check
+         write(eos_lines(2),'(a)') '     check the composition'
          call eos_report(eos_lines)
           ierr = 1
           return
@@ -284,8 +285,8 @@ subroutine mhdpx1(log10_pressure, log10_temperature, hydrogen_fraction, ierr)
          x_grid_spacing  = table_hfrac(2) - table_hfrac(1)
          if (abs(table_hfrac(3)-table_hfrac(2)-x_grid_spacing) > x_spacing_tolerance) then
             eos_lines = unwritten_line
-            write(eos_lines(1),*) 'ERROR (MHD): NON-EQUIDISTANT ZAMS TABLES.'
-            write(eos_lines(2),*) 'XC(1-3)= ',table_hfrac(1),table_hfrac(2),table_hfrac(3)
+            write(eos_lines(1),'(a,3es14.6)') 'MHD EOS: the ZAMS tables'' X are not equidistant: X =', &
+                 table_hfrac(1), table_hfrac(2), table_hfrac(3)
             call eos_report(eos_lines)
             ierr = 1
             return
