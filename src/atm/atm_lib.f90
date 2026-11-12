@@ -40,7 +40,7 @@ module atm_lib
       use atm_messages, only: report_atm_error, report_surface_pressure_outside, &
            log_spline_failure, report_allard_teff_above, report_allard_gravity_outside, &
            report_allard_teff_below, report_allard_gravity_outside_row, &
-           report_polint_failure, log_allard_lookup, note_choice_switch
+           report_polint_failure, note_choice_switch
       implicit none
       private
       public :: atm_init, atm_get_surface_pt, atm_allard_teff_max
@@ -172,7 +172,8 @@ subroutine look_up_surface_pressure(tbl)
 end subroutine look_up_surface_pressure
 
 ! the Allard tables: each reason the point is outside them, in the order
-! the lookup tests them; then the result, noted in the run log (M235)
+! the lookup tests them; then the result (a successful lookup writes
+! nothing: M235)
 subroutine look_up_allard()
       type(allard_lookup_result) :: lookup
       integer :: row
@@ -194,8 +195,6 @@ subroutine look_up_allard()
       if (lookup%teff_below) ierr = 1
       if (lookup%polint_status /= 0) ierr = lookup%polint_status
       if (lookup_failed .or. ierr /= 0) return
-      call log_allard_lookup(installed_settings%allard_use_tau100, log_teff, log_g, &
-           lookup%log10_temperature, lookup%log10_pressure)
       log10_pressure = lookup%log10_pressure
       log10_temperature = lookup%log10_temperature
 end subroutine look_up_allard

@@ -27,7 +27,6 @@
 !     report_allard_teff_below           log Teff below the table, an error: both
 !     report_allard_gravity_outside_row  log g outside a stencil row's range: both
 !     report_polint_failure              a polint failed: terminal
-!     log_allard_lookup                  every lookup's result: run log (M235)
 !   the Allard reader
 !     report_allard_open_failure         the file cannot be opened: terminal
 !     log_old_nextgen_file, log_allard_file_description
@@ -62,7 +61,7 @@ module atm_messages
            log_spline_failure
       public :: report_allard_teff_above, report_allard_gravity_outside, &
            report_allard_teff_below, report_allard_gravity_outside_row, &
-           report_polint_failure, log_allard_lookup
+           report_polint_failure
       public :: report_allard_open_failure, log_old_nextgen_file, &
            log_allard_file_description, report_allard_read_error, report_allard_unmatched, &
            report_allard_invalid_file, report_allard_reader_stopped
@@ -150,23 +149,6 @@ subroutine report_polint_failure(status)
       integer, intent(in) :: status
       write(output_unit,*) 'polint: '//numerics_status_text(status)
 end subroutine report_polint_failure
-
-! the result of a lookup: log P at (log Teff, log g), or at tau = 100
-! with allard_use_tau100, and log T
-subroutine log_allard_lookup(use_tau100, log_teff, log_g, log10_temperature, log10_pressure)
-      logical, intent(in) :: use_tau100
-      real(dp), intent(in) :: log_teff, log_g, log10_temperature, log10_pressure
-      if (use_tau100) then
-         write(run_log_unit,73)
-   73    format('ALSURFP:  PL,TL at Tau=100 INTERPOLATED', ' FROM ALLARD TABULATED VALUES:')
-      else
-         write(run_log_unit,74)
-   74    format('ALSURFP: PL,TL at T=TEFF,GL INTERPOLATED ', 'FROM ALLARD TABULATED VALUES:')
-      end if
-      write(run_log_unit,75) log_teff, log_g, log10_temperature, log10_pressure
-   75 format(' ',10x,'LOG(Teffl) =',f10.5,', LOG(G) =',f10.5, &
-           ', LOG(T) =',f10.5,', Log(P) =',f10.5)
-end subroutine log_allard_lookup
 
 ! ======================================================================
 ! The Allard reader
