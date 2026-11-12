@@ -706,6 +706,11 @@ ok   OPAL 2006: a huge entry the first X quadratic weights by -1/8 is named; ier
 OPALEOS/ESAC06: problem it,ir,l3,k3,iq,ip=   48  105  105   49    3    3
  -0.1000E+22
 ok   OPAL 2006: a huge negative entry read alone (X = 0) is named; ierr = 1 (M292)
+# test_eos: configuration production
+OPALEOS/ESAC06: the OPAL EOS table's X block 4 is not on the first block's grid: the T6 of density column 105, row 48 is   1.000100 against   1.000000
+# test_eos: configuration production
+OPALEOS/ESAC06: the OPAL EOS table's X block 4 is not on the first block's grid: the density of column 105 is  1.0000001E-01 against  1.0000000E-01
+ok   OPAL 2006 table: an X block off the first block's T6 or density grid returns ierr = 1 (M291)
 # test_eos: configuration opal95
 READCO: Error:  56-th T6 value is zero
 ok   OPAL 1995 table: a zero T6 returns ierr = 1 on first use

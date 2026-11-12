@@ -570,3 +570,18 @@ new = '''         call eos_report(eos_lines)
          ierr = 2
       end if
 end subroutine open_opal_eos_table'''
+
+[[mutation]]
+id = 'opal_reader_grid-01'
+check = "OPAL 2006 table: an X block off the first block's T6 or density grid returns ierr = 1 (M291)"
+file = 'eos/opal/opal_table_reader.f90'
+old = '''               if (x_loop_index > 1 .and. t6_read /= v%t6_list(density_row,t6_row)) then'''
+new = '''               if (.false.) then'''
+
+[[mutation]]
+id = 'opal_reader_grid-02'
+check = "OPAL 2006 table: an X block off the first block's T6 or density grid returns ierr = 1 (M291)"
+file = 'eos/opal/opal_table_reader.f90'
+old = '''            if (v%density_grid_table(x_loop_index,density_row) /= &
+                 v%density_grid_table(1,density_row)) then'''
+new = '''            if (.false.) then'''

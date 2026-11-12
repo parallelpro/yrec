@@ -816,8 +816,9 @@ subroutine table_reader_checks()
       type(eos_settings_t) :: s
       type(eos_table_paths_t) :: paths
       type(eos_result) :: r
-      integer :: ierr, ierr_missing, ierr_cut, ierr_card, ierr_wide, it
+      integer :: ierr, ierr_missing, ierr_cut, ierr_card, ierr_wide, ierr_off_density, it, k
       logical :: cut_open, in_table
+      character(len=40) :: from_name, to_name
       s = eos_settings
       s%opal_vintage = opal_vintage_none
       s%use_scv_eos = .false.
@@ -877,12 +878,34 @@ subroutine table_reader_checks()
            opal06_entry_is_refused(20812, " 0.100000E+22", 0.3d0))
       call check("OPAL 2006: a huge negative entry read alone (X = 0) is named; ierr = 1 (M292)", &
            opal06_entry_is_refused(20812, "-0.100000E+22", 0.0d0))
-! the OPAL 1995 table with its first density column's lowest T6 (row 56,
-! at line 14718 in the last X block, whose T6 column the grid keeps) made
-! zero: an error on first use, where the table was read before
-      call copy_editing(trim(yrec_input)//"/eos/legacy/opal/OPALeos.0188", "opal95_zero_t6", 14718, 1, &
+! the OPAL 2006 table with one T6 of its X = 0.6 block (density column
+! 105, line 94330: 1.0 made 1.0001), and with that column's density
+! (line 94280: 0.1 made 0.10000001), each off the first block's grid:
+! ierr = 1 on first use
+      call copy_editing(opal06_path, "opal06_t6_off_grid", 94330, 1, "   1.000100")
+      call configure_eos("production", opal2006=.true., scv=.true., file="opal06_t6_off_grid")
+      it = 0
+      r = eos_result()
+      call eos_get(5.0d0, 12.8d0, 0.70d0, 0.016492d0, r, .true., .false., it, ierr=ierr)
+      call copy_editing(opal06_path, "opal06_density_off_grid", 94280, 52, "  1.0000001E-01")
+      call configure_eos("production", opal2006=.true., scv=.true., file="opal06_density_off_grid")
+      it = 0
+      r = eos_result()
+      call eos_get(5.0d0, 12.8d0, 0.70d0, 0.016492d0, r, .true., .false., it, ierr=ierr_off_density)
+      call check("OPAL 2006 table: an X block off the first block's T6 or density grid returns ierr = 1 (M291)", &
+           ierr == 1 .and. ierr_off_density == 1)
+! the OPAL 1995 table with its first density column's lowest T6 (row 56)
+! made zero in every X block (lines 62, 3726, 7390, 11054 and 14718; a
+! zero in one block alone is off the first block's grid, M291): an error
+! on first use, where the table was read before
+      call copy_editing(trim(yrec_input)//"/eos/legacy/opal/OPALeos.0188", "opal95_zero_t6_1", 62, 1, &
            "  0.0000")
-      call configure_eos("opal95", opal95=.true., scv=.true., file="opal95_zero_t6")
+      do k = 2, 5
+         write(from_name,'(a,i0)') "opal95_zero_t6_", k - 1
+         write(to_name,'(a,i0)') "opal95_zero_t6_", k
+         call copy_editing(trim(from_name), trim(to_name), 62 + 3664*(k - 1), 1, "  0.0000")
+      end do
+      call configure_eos("opal95", opal95=.true., scv=.true., file="opal95_zero_t6_5")
       it = 0
       r = eos_result()
       call eos_get(5.0d0, 12.8d0, 0.70d0, 0.0188d0, r, .true., .false., it, ierr=ierr)
