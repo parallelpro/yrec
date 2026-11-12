@@ -204,6 +204,7 @@ subroutine evolve_step(s, output, model_iteration, step_status, ierr)
 ! Burn Li6, Li7 and Be9 on the converged model (burn_light_elements,
 ! below).
          call burn_light_elements
+         if (ierr /= 0) return
 ! When change_mass accreted (new_atmosphere_fit_needed), move the
 ! fitting point: rebuild the envelope down to target_envelope_mass.
          if (new_atmosphere_fit_needed) then
@@ -392,8 +393,9 @@ subroutine rezone_or_snapshot
             if (s%physics%use_extended_composition) then
                s%cz_base_radius_last_call = 0.0D0
                envelope_cz_zone_prev = s%envelope_cz_bottom_index
-               s%envelope_overshoot_depth_start = envelope_overshoot_depth(s%logP, s%logR, &
-                    s%logRho, s%log_mass, s%envelope_cz_bottom_index)
+               call envelope_overshoot_depth(s%xa, s%logRho, s%logP, s%logR, s%log_mass, &
+                    s%logT, s%envelope_cz_bottom_index, s%envelope_overshoot_depth_start, ierr)
+               if (ierr /= 0) return
 ! The Li/Be burning rates of the start-of-step model.
                call store_start_li_be_rates(s)
             endif
@@ -604,8 +606,9 @@ subroutine burn_light_elements
 ! The end-of-step base zone of the surface convection zone and the
 ! envelope overshoot depth below it (alpha_ov H_P).
                envelope_cz_zone_end = s%envelope_cz_bottom_index
-               s%envelope_overshoot_depth_end = envelope_overshoot_depth(s%logP, s%logR, &
-                    s%logRho, s%log_mass, s%envelope_cz_bottom_index)
+               call envelope_overshoot_depth(s%xa, s%logRho, s%logP, s%logR, s%log_mass, &
+                    s%logT, s%envelope_cz_bottom_index, s%envelope_overshoot_depth_end, ierr)
+               if (ierr /= 0) return
 ! The burning rates at the end of the step, from the converged model;
 ! then the burn.
                call store_end_li_be_rates(s, s%xa,s%logRho,s%logT,s%nz)

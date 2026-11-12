@@ -23,10 +23,12 @@
 ! scalings, the derivatives against centred differences, with spots,
 ! the error contract), the zones (the scan, twelve zones and a
 ! thirteenth), overshoot (H_P, the depth, each kind of region's extent
-! against alpha H_P, the rotating rule, the merge), homogenization (each
+! against alpha H_P, the region below the envelope, the rotating rule,
+! the merge), homogenization (each
 ! species' mass kept, uniform zones, the floors) and semiconvection on a
 ! model with a convective core, with the OPAL95 opacities (an
-! extension, the distance limit, the merge, a stable edge). The program
+! extension, the distance limit, the merge, a stable edge; nothing
+! without a core or a mixed region). The program
 ! exits 1 when a check fails.
 program test_convection
       use star_info_lib, only: json, max_convective_zones, max_radiative_zones
@@ -569,8 +571,8 @@ subroutine gradient_checks()
       call check("derivatives vs centred differences: dln del/dln T", errors(1), 1.0d-6)
       call check("derivatives vs centred differences: dln del/dln P", errors(2), 1.0d-6)
       call check("derivatives vs centred differences: dln del/dln r", errors(3), 1.0d-6)
-! with spots: the r derivative holds; the T and P ones miss the spot
-! factor (M242), so their errors are printed, not checked
+! with spots: del, v_c and the three derivatives (the T and P ones with
+! del_rad/S and dln S/dln T, M242)
       cs%spot_filling_factor = 0.3d0
       cs%spot_temp_contrast = 0.8d0
       do k = 1, 2
@@ -587,16 +589,16 @@ subroutine gradient_checks()
                  1.0d-10)
             call check("spots, constant contrast: dln del/dln r vs centred difference", &
                  errors(3), 1.0d-6)
-            write(*,'(a,2(1pe10.2))') "  known gap (M242), dln del/dln T and dln P:", &
-                 errors(1), errors(2)
+            call check("spots, constant contrast: dln del/dln T, P vs centred differences", &
+                 max(errors(1), errors(2)), 1.0d-6)
          else
             call check("spots, depth-varying contrast: del and v_c as the equations give", &
                  max(abs(grad/expected - 1.0d0), abs(velocity/expected_velocity - 1.0d0)), &
                  1.0d-10)
             call check("spots, depth-varying contrast: dln del/dln r vs centred difference", &
                  errors(3), 1.0d-6)
-            write(*,'(a,2(1pe10.2))') "  known gap (M242), dln del/dln T and dln P:", &
-                 errors(1), errors(2)
+            call check("spots, depth-varying contrast: dln del/dln T, P vs centred differences", &
+                 max(errors(1), errors(2)), 1.0d-6)
          end if
       end do
       call gradient_settings()
@@ -714,6 +716,7 @@ end function moved_down_by
 
 subroutine overshoot_checks()
       double precision :: h_p, expected, d
+      logical :: holds
       write(*,'(a)') "# overshoot: checks"
       cs%core_overshoot = .false.
       cs%envelope_overshoot = .false.
@@ -728,13 +731,14 @@ subroutine overshoot_checks()
       expected = 10.0d0**log_p(31)*(10.0d0**log_r(31))**2/(10.0d0**( &
            cs%log10_gravitational_constant + log_m(31))*10.0d0**log_rho(31))
       call check("pressure_scale_height = P r^2/(G m rho)", abs(h_p/expected - 1.0d0), 1.0d-13)
+      call envelope_overshoot_depth(xa, log_rho, log_p, log_r, log_m, log_t, 31, d, ierr)
       call check_that("envelope_overshoot_depth = 0 with envelope overshoot off", &
-           envelope_overshoot_depth(log_p, log_r, log_rho, log_m, 31) == 0.0d0)
+           ierr == 0 .and. d == 0.0d0)
       cs%envelope_overshoot = .true.
       call set_convection_settings(cs)
-      call check("envelope_overshoot_depth = alpha_env H_P at the base", abs( &
-           envelope_overshoot_depth(log_p, log_r, log_rho, log_m, 31)/(0.7d0*h_p) - 1.0d0), &
-           1.0d-14)
+      call envelope_overshoot_depth(xa, log_rho, log_p, log_r, log_m, log_t, 31, d, ierr)
+      call check("envelope_overshoot_depth = alpha_env H_P (the EOS's rho) at the base", &
+           abs(d/(0.7d0*eos_scale_height(31)) - 1.0d0), 1.0d-13)
 ! the core: up by alpha_core H_P
       cs%envelope_overshoot = .false.
       cs%core_overshoot = .true.
@@ -765,6 +769,14 @@ subroutine overshoot_checks()
            .and. mix_bounds(1,2) == 5)
       call check_that("overshoot, envelope: the region below it, bottom..old edge", &
            ov_bottom == mix_bounds(2,1) .and. ov_top == 31)
+! that region is this model's or none (M249): none without a convection
+! zone and for a fully convective model, whatever it was before (-7
+! here)
+      call find_zones([1, 0])
+      holds = ierr == 0 .and. ov_bottom == -1 .and. ov_top == -1
+      call find_zones([1, 40])
+      call check_that("overshoot region: none without a zone or fully convective (M249)", &
+           holds .and. ierr == 0 .and. ov_bottom == -1 .and. ov_top == -1)
 ! an intermediate zone: both ways by alpha_intermediate H_P
       cs%envelope_overshoot = .false.
       cs%intermediate_overshoot = .true.
@@ -774,6 +786,8 @@ subroutine overshoot_checks()
            .and. mix_bounds(2,1) < 18 .and. mix_bounds(2,2) > 21 .and. &
            moved_down_by(18, mix_bounds(2,1), 3.0d0*eos_scale_height(18)) .and. &
            moved_up_by(21, mix_bounds(2,2), 3.0d0*eos_scale_height(21)))
+      call check_that("overshoot, intermediate: no region below the envelope (M249)", &
+           ov_bottom == -1 .and. ov_top == -1)
 ! the rotating rule: at least one shell
       cs%intermediate_overshoot = .false.
       cs%envelope_overshoot = .true.
@@ -801,6 +815,13 @@ subroutine overshoot_checks()
            ierr == 0 .and. n_mix == 2 .and. n_mix_no_os == 3 .and. mix_bounds(1,1) == 1 &
            .and. mix_bounds(1,2) == 13 .and. mix_bounds(2,1) == 31 .and. &
            regions_tile_the_model())
+! a core whose overshoot reaches past an intermediate zone's top: the
+! merge is the union, to the core's top (M285)
+      cs%intermediate_overshoot = .false.
+      call find_zones([1, 5, 7, 8, 31, 40])
+      call check_that("overshoot merge: the union, the lower region reaching higher (M285)", &
+           ierr == 0 .and. n_mix == 2 .and. mix_bounds(1,1) == 1 .and. &
+           mix_bounds(1,2) == 10 .and. mix_bounds(2,1) == 31 .and. regions_tile_the_model())
       cs%core_overshoot = .false.
       cs%intermediate_overshoot = .false.
       cs%overshoot_alpha_core = 0.6d0
@@ -930,7 +951,8 @@ end subroutine sc_gradients
 ! zone, shells sc_envelope..nz with X = 0.70 above X = 0.45, and the
 ! shells below it have del_rad/del_ad = 0.95, 0.90 and 0.80, then 0.1 less a
 ! shell to 0.3: with the zone's composition (f ~ 1.15) the first two
-! join it.
+! would join it, if semiconvection acted below an envelope (it does not,
+! M241).
 subroutine build_semiconvective_model(scale, envelope)
       double precision, intent(in) :: scale
       logical, intent(in) :: envelope
@@ -1052,26 +1074,30 @@ subroutine semiconvection_checks()
       call semiconvect(bounds, num, 1.0d14)
       call check_that("semiconvection: stable with the core's composition, it stays", &
            ierr == 0 .and. num == 1 .and. bounds(1,2) == sc_core)
-! a surface convection zone: its lower edge moves down
+! no convective core, no semiconvection (M241): a surface convection
+! zone whose lower edge would move with its composition (f ~ 1.15), and
+! the core above made a region off the centre, stay
       call build_semiconvective_model(1.0d0, .true.)
       bounds = 0
       bounds(1,:) = [sc_envelope, nz]
       num = 1
       call semiconvect(bounds, num, 1.0d14)
-      edge = bounds(1,1)
-      call sc_gradients(sc_envelope - 1, sc_envelope, sc_lum(sc_envelope - 1), grad_mix, &
-           grad_ad, log_density)
-      call sc_gradients(sc_envelope - 1, sc_envelope - 1, sc_lum(sc_envelope - 1), &
-           grad_local, grad_ad, log_density)
-      ratio = grad_mix/grad_local
-      holds = ierr == 0 .and. ratio > 1.0d0 .and. edge < sc_envelope - 1 .and. edge > 1
-      do k = sc_envelope - 2, edge - 1, -1
-         call sc_gradients(k, k, sc_lum(k), grad_rad, grad_ad, log_density)
-         if (k >= edge) holds = holds .and. ratio*grad_rad >= grad_ad
-         if (k == edge - 1) holds = holds .and. ratio*grad_rad < grad_ad
-      end do
-      call check_that("semiconvection: an envelope's lower edge moves down while f del_rad", &
-           holds)
+      holds = ierr == 0 .and. num == 1 .and. all(bounds(1,:) == [sc_envelope, nz])
+      call build_semiconvective_model(1.0d0, .false.)
+      bounds = 0
+      bounds(1,:) = [5, sc_core]
+      num = 1
+      call semiconvect(bounds, num, 1.0d14)
+      call check_that("semiconvection: no core, no move: an envelope, a zone off centre (M241)", &
+           holds .and. ierr == 0 .and. num == 1 .and. all(bounds(1,:) == [5, sc_core]))
+! no mixed region: the zone list's first row is an earlier model's, a
+! core, and stays
+      bounds = 0
+      bounds(1,:) = [1, sc_core]
+      num = 0
+      call semiconvect(bounds, num, 1.0d14)
+      call check_that("semiconvection: no mixed region: an old model's row stays (M241)", &
+           ierr == 0 .and. num == 0 .and. all(bounds(1,:) == [1, sc_core]))
 end subroutine semiconvection_checks
 
 end program test_convection

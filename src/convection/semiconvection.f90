@@ -1,10 +1,10 @@
 !----------------------------------------------------------------------
 ! semiconvection
 !----------------------------------------------------------------------
-! Semiconvection at the edge of a mixed region (Castellani et al. 1971;
-! formerly sconvec): extend_by_semiconvection widens the
-! first mixed region where the radiative gradient, with the composition
-! of the region, exceeds the adiabatic one.
+! Semiconvection at the edge of the convective core (Castellani et al.
+! 1971; formerly sconvec): extend_by_semiconvection widens the core where
+! the radiative gradient, with the composition of the core, exceeds the
+! adiabatic one.
 module semiconvection
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use convection_configuration, only: convection_settings
@@ -20,8 +20,6 @@ module semiconvection
       private
       public :: extend_by_semiconvection
 
-! The two edges of a mixed region: the columns of a zone list.
-      integer, parameter :: lower_edge = 1, upper_edge = 2
 ! The 10 of the instability's propagation speed (Castellani et al. 1971,
 ! eq. 5', p. 347): v_p = (1 - del_ad/del_rad) L/(10 4 pi P r^2).
       real(dp), parameter :: propagation_speed_divisor = 10.0d0
@@ -31,13 +29,15 @@ contains
 !----------------------------------------------------------------------
 ! extend_by_semiconvection (formerly sconvec)
 !----------------------------------------------------------------------
-! Semiconvection at the edges of the first mixed region of the zone list
-! mixed_zone_bounds (num_zones_mixed regions, from find_convection_zones):
-! its upper edge when it is the convective core, its lower edge when it
-! is the surface convection zone, both otherwise; nothing for a fully
-! convective model (extend_edge says how an edge moves). Regions that
-! then overlap are merged. Only the first region is examined, the YREC
-! team's core-only switch (a8e60674, 2025), whatever num_zones_mixed is.
+! Semiconvection at the upper edge of the convective core, the first
+! mixed region of the zone list mixed_zone_bounds (num_zones_mixed
+! regions, from find_convection_zones) when it starts at the centre
+! (extend_core_edge says how the edge moves); regions that then overlap
+! are merged. Nothing happens without a mixed region (the rows of
+! mixed_zone_bounds are then another model's), without a convective core
+! (no semiconvection below an envelope or an intermediate zone: the YREC
+! team's core-only switch, a8e60674, 2025) or for a fully convective
+! model.
 !
 ! In: the timestep (s); the composition, log10 rho, P, r, m and T and
 ! L/Lsun (not a log) by shell; log10 Teff (the starspot contrast). The
@@ -56,77 +56,58 @@ subroutine extend_by_semiconvection(timestep, composition, log_density, luminosi
       integer, intent(inout) :: mixed_zone_bounds(:,:), num_zones_mixed
       real(dp), intent(in) :: log_teff
       integer, intent(out) :: ierr
-! The EOS's result, kept from one evaluation to the next (each seeds
-! only the density).
-      type(eos_result) :: eos_res
-      logical :: extend(lower_edge:upper_edge)
-      integer :: edge
 
       ierr = 0
-      if (mixed_zone_bounds(1,1) == 1) then
-         if (mixed_zone_bounds(1,2) == num_zones) return
-         extend = [.false., .true.]
-      else if (mixed_zone_bounds(1,2) == num_zones) then
-         extend = [.true., .false.]
-      else
-         extend = [.true., .true.]
-      end if
-      do edge = lower_edge, upper_edge
-         if (.not. extend(edge)) cycle
-         call extend_edge(edge, timestep, composition, log_density, luminosity_lsun, &
-              log_pressure, log_radius, log_mass, log_temperature, num_zones, log_teff, &
-              mixed_zone_bounds(1,edge), eos_res, ierr)
-         if (ierr /= 0) return
-      end do
+      if (num_zones_mixed < 1) return
+      if (mixed_zone_bounds(1,1) /= 1 .or. mixed_zone_bounds(1,2) == num_zones) return
+      call extend_core_edge(timestep, composition, log_density, luminosity_lsun, &
+           log_pressure, log_radius, log_mass, log_temperature, num_zones, log_teff, &
+           mixed_zone_bounds(1,2), ierr)
+      if (ierr /= 0) return
       call merge_overlapping_zones(mixed_zone_bounds, num_zones_mixed, &
            merge_shared_shell=.false., cause=merged_by_semiconvection)
 end subroutine extend_by_semiconvection
 
 !----------------------------------------------------------------------
-! extend_edge: one edge of a mixed region, edge_shell, moved outward
-! (down for lower_edge, up for upper_edge) and logged.
-! 1. The first shell outside the region, with the region's composition:
-!    if its radiative gradient del_rad,mix is below the adiabatic one,
-!    the edge stays. Otherwise the same shell with its own composition
-!    gives del_rad,local, and f = del_rad,mix/del_rad,local.
-! 2. The edge moves out shell by shell while each shell, with its own
+! extend_core_edge: the convective core's upper edge, edge_shell, moved
+! up and logged.
+! 1. The first shell above the core, with the core's composition: if
+!    its radiative gradient del_rad,mix is below the adiabatic one, the
+!    edge stays. Otherwise the same shell with its own composition gives
+!    del_rad,local, and f = del_rad,mix/del_rad,local.
+! 2. The edge moves up shell by shell while each shell, with its own
 !    composition, has f del_rad > del_ad, and while the distance covered,
 !    weighted by the jump in the inverse mean molecular weight,
 !      sum (1 - mu_mix^-1/mu^-1) dr,
 !    stays within v_p dt, the distance the instability propagates in the
 !    timestep, v_p = (1 - del_ad/del_rad,mix) L/(10 4 pi P r^2) with L,
 !    P and r at the edge (mu^-1 is the last evaluated shell's). Reaching
-!    that distance or the model's end is the limit.
+!    that distance or the surface is the limit.
 ! Every shell of the search is evaluated at the first outside shell's
 ! radius, as in the F77 (the radius enters only the mixing-length cubic,
 ! not del_rad).
-subroutine extend_edge(edge, timestep, composition, log_density, luminosity_lsun, &
+subroutine extend_core_edge(timestep, composition, log_density, luminosity_lsun, &
      log_pressure, log_radius, log_mass, log_temperature, num_zones, log_teff, &
-     edge_shell, eos_res, ierr)
-      integer, intent(in) :: edge, num_zones
+     edge_shell, ierr)
+      integer, intent(in) :: num_zones
       real(dp), intent(in) :: timestep, composition(:,:), luminosity_lsun(:), &
            log_pressure(:), log_radius(:), log_mass(:), log_temperature(:), log_teff
       real(dp), intent(inout) :: log_density(:)
       integer, intent(inout) :: edge_shell
-      type(eos_result), intent(inout) :: eos_res
       integer, intent(out) :: ierr
-      integer :: step, outside, last_shell, shell, new_edge, saha_iterations
+! The EOS's result, kept from one evaluation to the next (each seeds
+! only the density).
+      type(eos_result) :: eos_res
+      integer :: outside, shell, new_edge, saha_iterations
       real(dp) :: log_density_outside, log_density_shell, gradient_zone_mix, &
            gradient_local, gradient, gradient_ratio, inverse_mu_zone_mix, &
            superadiabatic_fraction, max_distance, distance, radius_prev, &
            radius_curr, radius_step
       logical :: reached_limit
 
-      if (edge == lower_edge) then
-         step = -1
-         last_shell = 1
-      else
-         step = 1
-         last_shell = num_zones
-      end if
-      outside = edge_shell + step
+      outside = edge_shell + 1
       saha_iterations = 0
-! 1. The first shell outside, with the region's composition, then its own.
+! 1. The first shell above, with the core's composition, then its own.
       log_density_outside = log_density(outside)
       call radiative_gradient_at(log_temperature(outside), log_pressure(outside), &
            log_radius(outside), log_mass(outside), luminosity_lsun(outside), &
@@ -148,12 +129,12 @@ subroutine extend_edge(edge, timestep, composition, log_density, luminosity_lsun
            convection_settings%solar_luminosity_cgs/(propagation_speed_divisor*c4pi* &
            exp(ln10*log_pressure(edge_shell))))* &
            (timestep/exp(ln10*(log_radius(edge_shell) + log_radius(edge_shell))))
-! 2. Out shell by shell, to the distance limit or a stable shell.
+! 2. Up shell by shell, to the distance limit or a stable shell.
       distance = 0.0d0
       reached_limit = .false.
-      radius_prev = exp(ln10*log_radius(outside - step))
-      do shell = outside + step, last_shell, step
-         radius_curr = exp(ln10*log_radius(shell - step))
+      radius_prev = exp(ln10*log_radius(edge_shell))
+      do shell = outside + 1, num_zones
+         radius_curr = exp(ln10*log_radius(shell - 1))
          radius_step = radius_curr - radius_prev
          distance = distance + (1.0d0 - inverse_mu_zone_mix/ &
               (eos_res%ion_mean_weight_inverse + eos_res%electron_mean_weight_inverse))* &
@@ -172,13 +153,13 @@ subroutine extend_edge(edge, timestep, composition, log_density, luminosity_lsun
          log_density(shell) = log_density_shell
          if (gradient_ratio*gradient < eos_res%adiabatic_gradient) exit
       end do
-! A search that ran off the model's end reached the limit too.
-      if (shell < 1 .or. shell > num_zones) reached_limit = .true.
-      new_edge = shell - step
+! A search that ran off the surface reached the limit too.
+      if (shell > num_zones) reached_limit = .true.
+      new_edge = shell - 1
       call log_semiconvective_edge(edge_shell, new_edge, reached_limit, &
            gradient_zone_mix, gradient_local)
       edge_shell = new_edge
-end subroutine extend_edge
+end subroutine extend_core_edge
 
 !----------------------------------------------------------------------
 ! radiative_gradient_at: del_rad at a shell's log10 T, P, r, m and L/Lsun
@@ -219,6 +200,9 @@ end subroutine radiative_gradient_at
 ! Sources: SCONVEC of the Yale code, after Castellani et al. (1971,
 ! Ap&SS 10, 340). The opacity call is DBG's (12/95) and the
 ! radius's MHP's (10/02); the core-only switch is the YREC team's
-! (a8e60674, 2025-12-17), which removed the loop over every zone.
+! (a8e60674, 2025-12-17), which removed the loop over every zone. Until
+! 2026-11 it took the first mixed region whatever it was, extending an
+! envelope's or an intermediate zone's lower edge, and an earlier
+! model's region when there was none (bug_sweep M241).
 
 end module semiconvection

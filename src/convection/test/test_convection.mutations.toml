@@ -100,8 +100,8 @@ new = 'dexcess_dv = excess*(mlt%a1 + mlt%v)'
 id = 'gradient-14'
 check = 'spots, depth-varying contrast: del and v_c as the equations give'
 file = 'convection/temperature_gradients.f90'
-old = 'contrast = 1.0d0 - (1.0d0 - convection_settings%spot_temp_contrast)'
-new = 'contrast = 1.0d0 - (1.1d0 - convection_settings%spot_temp_contrast)'
+old = 'contrast_drop = (1.0d0 - convection_settings%spot_temp_contrast)'
+new = 'contrast_drop = (1.1d0 - convection_settings%spot_temp_contrast)'
 
 [[mutation]]
 id = 'gradient-15'
@@ -146,6 +146,20 @@ old = 'ierr = convection_too_many_zones'
 new = 'ierr = 0'
 
 [[mutation]]
+id = 'gradient-17'
+check = 'spots, constant contrast: dln del/dln T, P vs centred differences'
+file = 'convection/temperature_gradients.f90'
+old = 'call mlt_derivatives(eos_res, kap_res, spotted_gradient,'
+new = 'call mlt_derivatives(eos_res, kap_res, radiative_gradient,'
+
+[[mutation]]
+id = 'gradient-18'
+check = 'spots, depth-varying contrast: dln del/dln T, P vs centred differences'
+file = 'convection/temperature_gradients.f90'
+old = '(-4.0d0 + dlnkap_dlnt_p - dlns_dlnt)'
+new = '(-4.0d0 + dlnkap_dlnt_p - 0.0d0*dlns_dlnt)'
+
+[[mutation]]
 id = 'overshoot-01'
 check = 'pressure_scale_height = P r^2/(G m rho)'
 file = 'convection/overshoot.f90'
@@ -156,15 +170,15 @@ new = '2.0d0*log_radius + log_density - &'
 id = 'overshoot-02'
 check = 'envelope_overshoot_depth = 0 with envelope overshoot off'
 file = 'convection/overshoot.f90'
-old = 'if (convection_settings%envelope_overshoot) then'
-new = 'if (.true.) then'
+old = 'if (.not. convection_settings%envelope_overshoot) return'
+new = 'if (.false.) return'
 
 [[mutation]]
 id = 'overshoot-03'
-check = 'envelope_overshoot_depth = alpha_env H_P at the base'
+check = "envelope_overshoot_depth = alpha_env H_P (the EOS's rho) at the base"
 file = 'convection/overshoot.f90'
-old = 'envelope_overshoot_depth = convection_settings%overshoot_alpha_envelope*'
-new = 'envelope_overshoot_depth = convection_settings%overshoot_alpha_core*'
+old = 'depth = convection_settings%overshoot_alpha_envelope*scale_height'
+new = 'depth = convection_settings%overshoot_alpha_core*scale_height'
 
 [[mutation]]
 id = 'overshoot-04'
@@ -201,6 +215,21 @@ new = '''            overshoot_top = edge + 1
 '''
 
 [[mutation]]
+id = 'overshoot-12'
+check = 'overshoot region: none without a zone or fully convective (M249)'
+file = 'convection/convection_zones.f90'
+old = '''      overshoot_bottom = -1
+      overshoot_top = -1'''
+new = '''      continue'''
+
+[[mutation]]
+id = 'overshoot-13'
+check = 'overshoot, intermediate: no region below the envelope (M249)'
+file = 'convection/overshoot.f90'
+old = 'distance = scale_height_down*convection_settings%overshoot_alpha_intermediate'
+new = 'overshoot_top = mixed_zone_bounds(k,1); distance = scale_height_down*convection_settings%overshoot_alpha_intermediate'
+
+[[mutation]]
 id = 'overshoot-08'
 check = 'overshoot, intermediate: both edges by alpha_int H_P'
 file = 'convection/overshoot.f90'
@@ -218,8 +247,15 @@ new = 'edge == edge_no_overshoot) edge = edge - 0'
 id = 'overshoot-10'
 check = 'overshoot merge: met regions become one, first to last shell'
 file = 'convection/convection_zones.f90'
-old = 'bounds(k+1,1) = bounds(k,1)'
-new = 'bounds(k+1,1) = bounds(k+1,1)'
+old = 'merged = [bounds(k,1), max('
+new = 'merged = [bounds(k+1,1), max('
+
+[[mutation]]
+id = 'overshoot-14'
+check = 'overshoot merge: the union, the lower region reaching higher (M285)'
+file = 'convection/convection_zones.f90'
+old = 'max(bounds(k,2), bounds(k+1,2))'
+new = 'bounds(k+1,2)'
 
 [[mutation]]
 id = 'homogenize-01'
@@ -309,7 +345,14 @@ new = 'edge == edge_no_overshoot) edge = edge + 0'
 
 [[mutation]]
 id = 'semiconvection-07'
-check = "semiconvection: an envelope's lower edge moves down while f del_rad"
+check = 'semiconvection: no core, no move: an envelope, a zone off centre (M241)'
 file = 'convection/semiconvection.f90'
-old = 'step = -1'
-new = 'step = 1'
+old = 'if (mixed_zone_bounds(1,1) /= 1 .or. mixed_zone_bounds(1,2) == num_zones) return'
+new = 'if (mixed_zone_bounds(1,2) == num_zones) return'
+
+[[mutation]]
+id = 'semiconvection-08'
+check = "semiconvection: no mixed region: an old model's row stays (M241)"
+file = 'convection/semiconvection.f90'
+old = 'if (num_zones_mixed < 1) return'
+new = 'if (num_zones_mixed < 0) return'

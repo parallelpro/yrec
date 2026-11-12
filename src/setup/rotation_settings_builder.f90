@@ -33,11 +33,9 @@ contains
 !     physics%gsf_inhibition_mode, physics%gsf_mixing_scale,
 !     physics%gsf_velocity_scale, physics%helium_diffusion_min,
 !     physics%hydrogen_diffusion_floor,
-!     physics%instability_transport_active,
-!     physics%intermediate_overshoot_active,
-!     physics%max_diffusion_iters, physics%max_domega_global,
-!     physics%mixing_velocity_scale, physics%no_am_transport_in_core,
-!     physics%overshoot_alpha_envelope, physics%pmm_exponent_a,
+!     physics%instability_transport_active, physics%max_diffusion_iters,
+!     physics%max_domega_global, physics%mixing_velocity_scale,
+!     physics%no_am_transport_in_core, physics%pmm_exponent_a,
 !     physics%pmm_exponent_b, physics%pmm_exponent_c,
 !     physics%pmm_exponent_d, physics%pmm_exponent_m,
 !     physics%pmm_norm_jdot, physics%pmm_solar_omega,
@@ -144,8 +142,6 @@ pure function rotation_settings_from_star(s) result(settings)
       settings%helium_diffusion_min = s%physics%helium_diffusion_min
       settings%settling_timestep_fraction = s%physics%settling_timestep_fraction
       settings%use_extended_composition = s%physics%use_extended_composition
-      settings%intermediate_overshoot = s%physics%intermediate_overshoot_active
-      settings%overshoot_alpha_envelope = s%physics%overshoot_alpha_envelope
       settings%solar_luminosity_cgs = s%solar_luminosity_cgs
       settings%log10_solar_luminosity = s%log10_solar_luminosity
       settings%solar_radius_cgs = s%solar_radius_cgs

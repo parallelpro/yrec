@@ -6,14 +6,16 @@
 ! pressure_scale_height and envelope_overshoot_depth):
 !   pressure_scale_height     H_P = P r^2/(G m rho), cm
 !   envelope_overshoot_depth  alpha_env H_P below the surface convection
-!                             zone, cm (core's Li/Be burn)
+!                             zone, cm: the extent extend_by_overshoot
+!                             moves that zone's lower edge by, and the
+!                             one core's Li/Be burn and rezone and
+!                             rotation's sub-steps take
 !   extend_by_overshoot       moves the edges of the mixed regions by
 !                             alpha H_P (find_convection_zones)
-! The switches and the alphas are convection_settings'. Two densities
-! enter H_P today: extend_by_overshoot takes the EOS's for the edge
-! shell's P, T and composition (edge_scale_height), and
-! envelope_overshoot_depth the model's; making them one changes results
-! (the B list). log is log10 throughout.
+! The switches and the alphas are convection_settings'. H_P at an edge
+! takes the density the EOS gives for the edge shell's P, T and
+! composition (edge_scale_height, HSUBP's) wherever it is used. log is
+! log10 throughout.
 module overshoot
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use convection_configuration, only: convection_settings
@@ -42,21 +44,27 @@ end function pressure_scale_height
 !----------------------------------------------------------------------
 ! envelope_overshoot_depth: how far, in cm, envelope overshoot reaches
 ! below the base of the surface convection zone, shell base_zone of the
-! log10 P, r, rho and m profiles: alpha_env H_P there, with the model's
-! density; 0 when envelope overshoot is off.
-pure real(dp) function envelope_overshoot_depth(log_pressure, log_radius, log_density, &
-     log_mass, base_zone)
-      real(dp), intent(in) :: log_pressure(:), log_radius(:), log_density(:), log_mass(:)
+! profiles (the composition and log10 rho, P, r, m and T by shell):
+! depth = alpha_env H_P there, H_P with the EOS's density
+! (edge_scale_height); 0, without an EOS call, when envelope overshoot
+! is off. ierr: the EOS's.
+subroutine envelope_overshoot_depth(composition, log_density, log_pressure, log_radius, &
+     log_mass, log_temperature, base_zone, depth, ierr)
+      real(dp), intent(in) :: composition(:,:), log_density(:), log_pressure(:), &
+           log_radius(:), log_mass(:), log_temperature(:)
       integer, intent(in) :: base_zone
+      real(dp), intent(out) :: depth
+      integer, intent(out) :: ierr
+      real(dp) :: scale_height
 
-      if (convection_settings%envelope_overshoot) then
-         envelope_overshoot_depth = convection_settings%overshoot_alpha_envelope* &
-              pressure_scale_height(log_pressure(base_zone), log_radius(base_zone), &
-              log_density(base_zone), log_mass(base_zone))
-      else
-         envelope_overshoot_depth = 0.0d0
-      end if
-end function envelope_overshoot_depth
+      ierr = 0
+      depth = 0.0d0
+      if (.not. convection_settings%envelope_overshoot) return
+      call edge_scale_height(composition, log_density, log_pressure, log_radius, &
+           log_mass, log_temperature, base_zone, scale_height, ierr)
+      if (ierr /= 0) return
+      depth = convection_settings%overshoot_alpha_envelope*scale_height
+end subroutine envelope_overshoot_depth
 
 !----------------------------------------------------------------------
 ! extend_by_overshoot (formerly oversh)
@@ -73,9 +81,10 @@ end function envelope_overshoot_depth
 !     envelope, overshoot_bottom..overshoot_top (the edge), which takes
 !     the adiabatic gradient with adiabatic_overshoot;
 !   an intermediate zone (intermediate_overshoot): both ways by
-!     alpha_intermediate H_P (its downward region is stored the same way).
+!     alpha_intermediate H_P.
 ! An edge moves to the last shell within the distance (extend_downward,
-! extend_upward). overshoot_bottom and overshoot_top start at -1 (none).
+! extend_upward). overshoot_bottom and overshoot_top are -1 (none)
+! unless the surface convection zone overshoots.
 ! The regions with and without overshoot are logged; find_convection_zones
 ! merges the ones that now meet. ierr: an EOS failure's code.
 subroutine extend_by_overshoot(composition, log_density, log_pressure, log_radius, &
@@ -116,10 +125,9 @@ subroutine extend_by_overshoot(composition, log_density, log_pressure, log_radiu
 ! The surface convection zone.
             if (.not. convection_settings%envelope_overshoot) cycle
             edge = mixed_zone_bounds(k,1)
-            call edge_scale_height(composition, log_density, log_pressure, log_radius, &
-                 log_mass, log_temperature, edge, scale_height_down, ierr)
+            call envelope_overshoot_depth(composition, log_density, log_pressure, log_radius, &
+                 log_mass, log_temperature, edge, distance, ierr)
             if (ierr /= 0) return
-            distance = scale_height_down*convection_settings%overshoot_alpha_envelope
             call extend_downward(log_radius, distance, mixed_zone_bounds_no_overshoot(k,1), &
                  mixed_zone_bounds(k,1))
             overshoot_top = edge
@@ -133,12 +141,9 @@ subroutine extend_by_overshoot(composition, log_density, log_pressure, log_radiu
             call edge_scale_height(composition, log_density, log_pressure, log_radius, &
                  log_mass, log_temperature, mixed_zone_bounds(k,2), scale_height_up, ierr)
             if (ierr /= 0) return
-            edge = mixed_zone_bounds(k,1)
             distance = scale_height_down*convection_settings%overshoot_alpha_intermediate
             call extend_downward(log_radius, distance, mixed_zone_bounds_no_overshoot(k,1), &
                  mixed_zone_bounds(k,1))
-            overshoot_top = edge
-            overshoot_bottom = mixed_zone_bounds(k,1)
             distance = scale_height_up*convection_settings%overshoot_alpha_intermediate
             call extend_upward(log_radius, num_zones, distance, &
                  mixed_zone_bounds_no_overshoot(k,2), mixed_zone_bounds(k,2))
@@ -221,9 +226,14 @@ end subroutine edge_scale_height
 ! Sources: OVERSH and HSUBP of the Yale code (HSUBP: PD, December 1984;
 ! revised for YREC Mark 6, MHP 2/91). The rotating rule is MHP's
 ! (11/91), the store of the region below the envelope for its adiabatic
-! gradient DBG's (8/94), and the limit for small cores JVS's (7/13),
-! after Woo & Demarque (2001). pressure_scale_height and
+! gradient DBG's (8/94; an intermediate zone's downward region was
+! stored too until 2026-11, bug_sweep M249), and the limit for small
+! cores JVS's (7/13), after Woo & Demarque (2001). pressure_scale_height and
 ! envelope_overshoot_depth were core's (convection_geometry, step_driver)
-! until 2026-11.
+! until 2026-11; the Li/Be burn's depth (the F77's PSCAL0 and PSCAL1 in
+! MAIN and GETW) took the model's density, rotation's sub-steps gated it
+! on the intermediate zones' switch (bug_sweep O10) and the rezone's
+! overshoot base took alpha_env as a depth in log P (HPOINT), until
+! 2026-11 (the B list's one H_P and one overshoot extent).
 
 end module overshoot

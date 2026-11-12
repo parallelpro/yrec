@@ -11,13 +11,14 @@
 !      overshoot region below the envelope with adiabatic_overshoot);
 !   2. above log10_t_cut (deep interiors) a convective shell takes
 !      del = del_ad without mixing-length theory (take_adiabatic);
-!   3. starspots (spotted_excess, Somers 2014): with a filling factor
-!      f, the excess Delta = del_rad - del_ad becomes
+!   3. starspots (spot_factor, Somers 2014): with a filling factor f,
+!      the excess Delta = del_rad - del_ad becomes
 !        Delta = del_rad/S - del_ad,  S = f x^4 + 1 - f,
 !      with the spots' temperature contrast x, constant or, with
 !      spot_depth_varies, x(T) = 1 - (1 - x_s) T_eff,u/T: magnetic
 !      equipartition at the surface (P_mag = P/2) and P_mag constant with
-!      depth, T_eff,u the unspotted surface's T_eff (from log_teff);
+!      depth, T_eff,u the unspotted surface's T_eff (from log_teff); then
+!      dln S/dln T = 4 f x^3 (1 - x)/S (0 for a constant contrast);
 !   4. mixing-length theory (Bohm-Vitense 1958; mixing_length_coefficients
 !      and solve_mlt_cubic): with g = G m/r^2, H_P = P/(rho g), the
 !      eddy's optical thickness phi = alpha kappa rho H_P,
@@ -47,14 +48,13 @@
 ! phi = alpha kappa P/g. The opacity's derivatives at constant P and T
 ! are k_T = dln kappa/dln T + (dln kappa/dln rho)(dln rho/dln T) and
 ! k_P = (dln kappa/dln rho)(dln rho/dln P), so dln phi/dln T = k_T,
-! dln phi/dln P = 1 + k_P, dln phi/dln r = 2 (g ~ r^-2), and
-!   dln Delta/dln T = [(k_T - 4) del_rad - ddel_ad/dln T]/Delta,
-!   dln Delta/dln P = [(1 + k_P) del_rad - ddel_ad/dln P]/Delta,
+! dln phi/dln P = 1 + k_P, dln phi/dln r = 2 (g ~ r^-2), and, with the
+! spot factor S (1 without spots),
+!   dln Delta/dln T = [(k_T - 4 - dln S/dln T) del_rad/S - ddel_ad/dln T]/Delta,
+!   dln Delta/dln P = [(1 + k_P) del_rad/S - ddel_ad/dln P]/Delta,
 ! dDelta/dln r = 0 and dln A1/dln r = 2 - 2w.
 ! Above log10_t_cut and after an unconverged cubic the derivatives are
-! del_ad's. The spot factor's own T derivative and the spotted del_rad
-! in dDelta are not in them (M242, the B list); O1 lists the Jacobian's
-! other gaps.
+! del_ad's. O1 lists the Jacobian's gaps.
 !
 ! In: log10 T, P, r and m of the shell (cgs), L/Lsun (not a log: the
 ! callers pass star%luminosity_lsun), the EOS and opacity results for
@@ -122,7 +122,7 @@ subroutine compute_temperature_gradients(log_temperature, log_pressure, &
       logical, intent(in) :: in_overshoot_region
       integer, intent(out) :: ierr
       type(mixing_length_state) :: mlt
-      real(dp) :: excess, gradient_excess
+      real(dp) :: excess, gradient_excess, spotted_gradient, spot_area_factor, dlns_dlnt
       logical :: converged
 
       ierr = 0
@@ -147,10 +147,14 @@ subroutine compute_temperature_gradients(log_temperature, log_pressure, &
               dgrad_dt_component, dgrad_dp_component, dgrad_dr_component)
          return
       end if
-! 3. Starspots.
-      if (convection_settings%spot_filling_factor /= 0.0d0) &
-           excess = spotted_excess(radiative_gradient, eos_res%adiabatic_gradient, &
-           log_teff, log_temperature)
+! 3. Starspots: del_rad/S in the excess and its derivatives.
+      spotted_gradient = radiative_gradient
+      dlns_dlnt = 0.0d0
+      if (convection_settings%spot_filling_factor /= 0.0d0) then
+         call spot_factor(log_teff, log_temperature, spot_area_factor, dlns_dlnt)
+         spotted_gradient = radiative_gradient/spot_area_factor
+         excess = spotted_gradient - eos_res%adiabatic_gradient
+      end if
 ! 4. Mixing-length theory: the coefficients, then the cubic.
       call mixing_length_coefficients(eos_res, kap_res(i_kap), log_radius, log_mass, &
            excess, mlt)
@@ -179,8 +183,8 @@ subroutine compute_temperature_gradients(log_temperature, log_pressure, &
       convective_velocity = mlt%v*sqrt(mlt%gravity*(-eos_res%dlnrho_dlnt)* &
            (convection_settings%mixing_length_alpha**2)*mlt%scale_height*excess/8.0d0)
 ! 6. The derivatives.
-      if (want_derivatives) call mlt_derivatives(eos_res, kap_res, radiative_gradient, &
-           excess, gradient_excess, actual_gradient, mlt, dgrad_dt_component, &
+      if (want_derivatives) call mlt_derivatives(eos_res, kap_res, spotted_gradient, &
+           dlns_dlnt, excess, gradient_excess, actual_gradient, mlt, dgrad_dt_component, &
            dgrad_dp_component, dgrad_dr_component)
 end subroutine compute_temperature_gradients
 
@@ -217,28 +221,31 @@ pure subroutine take_adiabatic(eos_res, want_derivatives, convective_velocity, &
 end subroutine take_adiabatic
 
 !----------------------------------------------------------------------
-! spotted_excess: Delta = del_rad/S - del_ad with S = f x^4 + 1 - f
-! (step 3 above); x is the constant contrast, or, with
-! spot_depth_varies, x(T) = 1 - (1 - x_s) T_eff,u/T with log10 T_eff,u =
-! log10 Teff - (1/4) log10(f x_s^4 + 1 - f).
-pure real(dp) function spotted_excess(radiative_gradient, adiabatic_gradient, log_teff, &
-     log_temperature)
-      real(dp), intent(in) :: radiative_gradient, adiabatic_gradient, log_teff, &
-           log_temperature
-      real(dp) :: filling_factor, contrast, log_teff_unspotted
+! spot_factor: S = f x^4 + 1 - f (step 3 above), by which the spots
+! divide del_rad, and dln S/dln T; x is the constant contrast (dln S/dln
+! T = 0), or, with spot_depth_varies, x(T) = 1 - (1 - x_s) T_eff,u/T with
+! log10 T_eff,u = log10 Teff - (1/4) log10(f x_s^4 + 1 - f), whose
+! dx/dln T = (1 - x_s) T_eff,u/T = 1 - x gives
+! dln S/dln T = 4 f x^3 (1 - x)/S.
+pure subroutine spot_factor(log_teff, log_temperature, area_factor, dlns_dlnt)
+      real(dp), intent(in) :: log_teff, log_temperature
+      real(dp), intent(out) :: area_factor, dlns_dlnt
+      real(dp) :: filling_factor, contrast, contrast_drop, log_teff_unspotted
 
       filling_factor = convection_settings%spot_filling_factor
       if (convection_settings%spot_depth_varies) then
          log_teff_unspotted = log_teff - 0.25d0*log10(filling_factor* &
               pow(convection_settings%spot_temp_contrast, 4.0d0) + 1.0d0 - filling_factor)
-         contrast = 1.0d0 - (1.0d0 - convection_settings%spot_temp_contrast)* &
+         contrast_drop = (1.0d0 - convection_settings%spot_temp_contrast)* &
               (exp10(log_teff_unspotted))/(exp10(log_temperature))
+         contrast = 1.0d0 - contrast_drop
       else
+         contrast_drop = 0.0d0
          contrast = convection_settings%spot_temp_contrast
       end if
-      spotted_excess = radiative_gradient/(filling_factor*pow(contrast, 4.0d0) + &
-           1.0d0 - filling_factor) - adiabatic_gradient
-end function spotted_excess
+      area_factor = filling_factor*pow(contrast, 4.0d0) + 1.0d0 - filling_factor
+      dlns_dlnt = 4.0d0*filling_factor*contrast**3*contrast_drop/area_factor
+end subroutine spot_factor
 
 !----------------------------------------------------------------------
 ! mixing_length_coefficients: g = G m/r^2, H_P = P/(rho g), phi^2 with
@@ -294,16 +301,17 @@ end subroutine solve_mlt_cubic
 
 !----------------------------------------------------------------------
 ! mlt_derivatives: dln del/dln T, dln P and dln r (the header's
-! equations), from the EOS's and the opacity's derivatives, the
-! unspotted del_rad, the excess Delta, del - del_ad (gradient_excess),
-! del and the mixing-length state. In the code: qa1* = dln A1/dX,
-! qa3* = dln A3/dX, qv* = dv/dX, qddel* = dln Delta/dX.
-pure subroutine mlt_derivatives(eos_res, kap_res, radiative_gradient, excess, &
+! equations), from the EOS's and the opacity's derivatives, the spotted
+! del_rad/S (spotted_gradient; del_rad without spots) and dln S/dln T,
+! the excess Delta, del - del_ad (gradient_excess), del and the
+! mixing-length state. In the code: qa1* = dln A1/dX, qa3* = dln A3/dX,
+! qv* = dv/dX, qddel* = dln Delta/dX.
+pure subroutine mlt_derivatives(eos_res, kap_res, spotted_gradient, dlns_dlnt, excess, &
      gradient_excess, actual_gradient, mlt, dgrad_dt_component, dgrad_dp_component, &
      dgrad_dr_component)
       type(eos_result), intent(in) :: eos_res
-      real(dp), intent(in) :: kap_res(:), radiative_gradient, excess, gradient_excess, &
-           actual_gradient
+      real(dp), intent(in) :: kap_res(:), spotted_gradient, dlns_dlnt, excess, &
+           gradient_excess, actual_gradient
       type(mixing_length_state), intent(in) :: mlt
       real(dp), intent(out) :: dgrad_dt_component, dgrad_dp_component, dgrad_dr_component
       real(dp) :: dadiabatic_dlnt, dadiabatic_dlnp, dlnkap_dlnt_p, dlnkap_dlnp_t, &
@@ -314,8 +322,8 @@ pure subroutine mlt_derivatives(eos_res, kap_res, radiative_gradient, excess, &
       dadiabatic_dlnp = eos_res%adiabatic_gradient_dp*eos_res%adiabatic_gradient
       dlnkap_dlnt_p = kap_res(i_dlnkap_dlnrho)*eos_res%dlnrho_dlnt + kap_res(i_dlnkap_dlnt)
       dlnkap_dlnp_t = kap_res(i_dlnkap_dlnrho)*eos_res%dlnrho_dlnp
-      qddelt = ((-4.0d0 + dlnkap_dlnt_p)*radiative_gradient - dadiabatic_dlnt)/excess
-      qddelp = ((+1.0d0 + dlnkap_dlnp_t)*radiative_gradient - dadiabatic_dlnp)/excess
+      qddelt = ((-4.0d0 + dlnkap_dlnt_p - dlns_dlnt)*spotted_gradient - dadiabatic_dlnt)/excess
+      qddelp = ((+1.0d0 + dlnkap_dlnp_t)*spotted_gradient - dadiabatic_dlnp)/excess
       w = 2.0d0*cmixl2*mlt%phi_squared*mlt%phi_factor
       qa1t = dlnkap_dlnt_p*(1d0 - w) - eos_res%specific_heat_cp_dt - 0.5d0* &
            (eos_res%dlnrho_dlnt + qddelt + eos_res%dlnrho_dlnt_dt/eos_res%dlnrho_dlnt) + 3d0
@@ -341,7 +349,9 @@ pure subroutine mlt_derivatives(eos_res, kap_res, radiative_gradient, excess, &
       dgrad_dr_component = (dexcess_dv*qvr + excess_a1_v*qa1r)*inverse_gradient
 end subroutine mlt_derivatives
 
-! Sources: TPGRAD of the Yale code; the starspots are G. Somers's (9/14).
+! Sources: TPGRAD of the Yale code; the starspots are G. Somers's (9/14),
+! whose T and P derivatives took the unspotted del_rad and no dln S/dln
+! T until 2026-11 (bug_sweep M242).
 ! In 2026 its 33 positional arguments became the EOS's and the
 ! opacity's result arrays, its stop on a negative radicand an ierr (the
 ! drivers stop on it), and the overshoot zone's index the logical
