@@ -117,7 +117,7 @@ With `use_numerical_derivatives` the second derivatives are centred differences 
 
 **test_eos** (`make tests` in `src/`, then `pytest test_eos.py` from the repository root) calls eos without a star, through `eos_lib` and `eos_test_entries`: it installs the settings itself and sets the envelope mixture (core's algorithm on the default mixture seed, X = 0.70, Z = 0.016492). Its standard output is byte-compared with `eos/test/expected_test_eos.out`; it writes its run log to `test_eos.short` in its working directory. The pinned values: the production EOS (SCV and OPAL 2006) on a (log T, log P) grid; `gamma1_at_density` on both branches; the error paths; every configuration a deck can choose (OPAL 1995 and 2001, SCV only, Yale only, numerical derivatives, diffusion of Z, Debye-Hückel); each configuration's derivatives and their finite differences; the MHD lookup on a synthetic table. With `YREC_MHD_TABLES` naming the real MHD tables it also evaluates the MHD path (the output then differs from the pin).
 
-Its 62 ok/FAIL checks (a FAIL makes it exit 1):
+Its 65 ok/FAIL checks (a FAIL makes it exit 1):
 - derivatives against centred finite differences where they must agree: the Saha solution's (also with the Debye-Hückel correction on), the fully ionized gas's, OPAL 2006's, 1995's and 2001's first, the numerical second derivatives;
 - MHD: the table lookup's range and lir's status; the reader on eight synthetic tables (an ideal gas, so the interpolation is exact): the density in each family, the tabulated gradients, ierr outside the tables in T and in P, a missing and a truncated file;
 - limits: a neutral ideal gas, a weakly degenerate fully ionized one (with the first Fermi-Dirac correction), grad_ad and cp of the gas plus radiation, grad_ad → 1/4; beta ≤ 0 is ierr; the fully ionized iteration's failure is ierr; a point beyond the Fermi-Dirac table is reported once;
@@ -126,10 +126,10 @@ Its 62 ok/FAIL checks (a FAIL makes it exit 1):
 - the Debye-Hückel correction: it raises rho, by the ratio of its charge-weighted factor between two mixtures, its heavier metals following the zone's Z, a zone's metals adding up to Z;
 - `gamma1_at_density` below the OPAL table; diffusion of Z at the envelope's Z and with a metal-free envelope;
 - `eos_init`'s setting checks (two vintages, the eta range, the cutoff) and the record's defaults; the table-source list;
-- OPAL: the 1995 and 2001 trial calls; a truncated table on first use (after another table was read: M105), a missing one at `eos_init`; an entry only the second X quadratic reads; a 1995 table with a zero T6;
+- OPAL: the 1995 and 2001 trial calls; a truncated table on first use (after another table was read: M105), a missing one at `eos_init`; an entry only the second X quadratic reads; a huge entry that either X quadratic weights negatively, and one read alone at X = 0, each an error (M292); a 1995 table with a zero T6;
 - the readers: SCV (a re-read, a missing, a truncated and an off-grid table), Fermi-Dirac (a missing, a truncated, a misplaced card, abscissae too wide).
 
-Every check has a mutation in `eos/test/test_eos.mutations.toml` that makes it print FAIL, and `python3 src/tools/mutate.py eos` (after `make tests` in src/) reports all 67 caught (2026-11-10). `test_eos.py` also checks `eos_settings_t`'s defaults against the controls' (`test_eos_settings_defaults_are_the_controls`). Regenerate the pin only for a deliberate change: run `src/test_eos` with `YREC_INPUT` set in an empty directory, review the diff, and commit it saying why.
+Every check has a mutation in `eos/test/test_eos.mutations.toml` that makes it print FAIL, and `python3 src/tools/mutate.py eos` (after `make tests` in src/) reports all 70 caught (2026-11-11). `test_eos.py` also checks `eos_settings_t`'s defaults against the controls' (`test_eos_settings_defaults_are_the_controls`). Regenerate the pin only for a deliberate change: run `src/test_eos` with `YREC_INPUT` set in an empty directory, review the diff, and commit it saying why.
 
 Under the development flags (`make devel_tests`, `python3 src/tools/devel_tests.py`) test_eos stops at M92 (SCV's general path takes log10 of a zero mixing entropy before the envelope table is built: a divide-by-zero trap), a measured fix for a later round; its OPAL 1995 reads past the arrays (M94) no longer stop it.
 

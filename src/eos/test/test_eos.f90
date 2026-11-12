@@ -864,6 +864,19 @@ subroutine table_reader_checks()
       call esac06(opal_tables(iv_opal06), 0.3d0, 0.95d0, 0.09d0, 9, 1, ierr, in_table)
       call check("OPAL 2006: an entry only the second X quadratic reads, past 1e20 there, is named; ierr = 1", &
            ierr == 1 .and. run_log_contains("OPALEOS/ESAC06: problem it,ir,l3,k3,iq,ip="))
+! a huge entry that enters with a negative weight gives a hugely
+! negative value, which a test of the sign alone let through as a
+! negative pressure (M292): the same entry made +1e21, which the second
+! quadratic weights by -1/8; the entry at T6 = 1, rho = 0.1 of the X = 0
+! table (line 20812) made +1e21, which the first quadratic weights by
+! -1/8 at X = 0.3; and that entry made -1e21 at X = 0, where it is read
+! alone. Each is named and returns ierr = 1.
+      call check("OPAL 2006: a huge entry the second X quadratic weights by -1/8 is named; ierr = 1 (M292)", &
+           opal06_entry_is_refused(94330, " 0.100000E+22", 0.3d0))
+      call check("OPAL 2006: a huge entry the first X quadratic weights by -1/8 is named; ierr = 1 (M292)", &
+           opal06_entry_is_refused(20812, " 0.100000E+22", 0.3d0))
+      call check("OPAL 2006: a huge negative entry read alone (X = 0) is named; ierr = 1 (M292)", &
+           opal06_entry_is_refused(20812, "-0.100000E+22", 0.0d0))
 ! the OPAL 1995 table with its first density column's lowest T6 (row 56,
 ! at line 14718 in the last X block, whose T6 column the grid keeps) made
 ! zero: an error on first use, where the table was read before
@@ -880,24 +893,48 @@ subroutine table_reader_checks()
       if (ierr /= 0) write(*,'(a)') "table_reader_checks: the OPAL table did not read back"
 end subroutine table_reader_checks
 
-! whether a line of the run log written so far holds text (the log is
-! closed, read and opened again to append)
+! The OPAL 2006 table with line line_no's P/P0 (columns 30-42) made text,
+! read anew: whether esac06 at (x, T6 = 0.95, rho = 0.09), whose stencil
+! holds that entry, returns ierr = 1 and names the X interpolation's
+! value in one more line of the run log.
+logical function opal06_entry_is_refused(line_no, text, x)
+      integer, intent(in) :: line_no
+      character(len=*), intent(in) :: text
+      real(dp), intent(in) :: x
+      character(len=*), parameter :: named = "OPALEOS/ESAC06: problem it,ir,l3,k3,iq,ip="
+      integer :: ierr, named_before
+      logical :: in_table
+      call copy_editing(opal06_path, "opal06_doctored", line_no, 30, text)
+      call configure_eos("production", opal2006=.true., scv=.true., file="opal06_doctored")
+      named_before = run_log_count(named)
+      call esac06(opal_tables(iv_opal06), x, 0.95d0, 0.09d0, 9, 1, ierr, in_table)
+      opal06_entry_is_refused = ierr == 1 .and. run_log_count(named) == named_before + 1
+end function opal06_entry_is_refused
+
+! whether a line of the run log written so far holds text
 logical function run_log_contains(text)
+      character(len=*), intent(in) :: text
+      run_log_contains = run_log_count(text) > 0
+end function run_log_contains
+
+! how many lines of the run log written so far hold text (the log is
+! closed, read and opened again to append)
+integer function run_log_count(text)
       character(len=*), intent(in) :: text
       character(len=400) :: line
       integer :: u, ios
       flush(run_log_unit)
       close(run_log_unit)
-      run_log_contains = .false.
+      run_log_count = 0
       open(newunit=u, file="test_eos.short", status="old", action="read")
       do
          read(u, '(a)', iostat=ios) line
          if (ios /= 0) exit
-         if (index(line, text) > 0) run_log_contains = .true.
+         if (index(line, text) > 0) run_log_count = run_log_count + 1
       end do
       close(u)
       open(run_log_unit, file="test_eos.short", status="old", position="append")
-end function run_log_contains
+end function run_log_count
 
 ! the file src into dst, with line line_no's columns from col on
 ! replaced by text

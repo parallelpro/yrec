@@ -99,8 +99,31 @@ new = '''         idp = min(nptsx(idtt)-3, jj)'''
 id = 'opal_x_quadratic-01'
 check = 'OPAL 2006: an entry only the second X quadratic reads, past 1e20 there, is named; ierr = 1'
 file = 'eos/opal/opal_eos.f90'
-old = '''            if (v%x_interp_result_alt(t6_scan_idx,density_scan_idx) > opal_x_interp_overflow) &'''
-new = '''            if (v%x_interp_result(t6_scan_idx,density_scan_idx) > opal_x_interp_overflow) &'''
+old = '''            if (abs(v%x_interp_result_alt(t6_scan_idx,density_scan_idx)) > opal_x_interp_overflow) then'''
+new = '''            if (abs(v%x_interp_result(t6_scan_idx,density_scan_idx)) > opal_x_interp_overflow) then'''
+
+[[mutation]]
+id = 'opal_x_quadratic-02'
+check = 'OPAL 2006: a huge entry the second X quadratic weights by -1/8 is named; ierr = 1 (M292)'
+file = 'eos/opal/opal_eos.f90'
+old = '''            if (abs(v%x_interp_result_alt(t6_scan_idx,density_scan_idx)) > opal_x_interp_overflow) then'''
+new = '''            if (v%x_interp_result_alt(t6_scan_idx,density_scan_idx) > opal_x_interp_overflow) then'''
+
+[[mutation]]
+id = 'opal_x_quadratic-03'
+check = 'OPAL 2006: a huge entry the first X quadratic weights by -1/8 is named; ierr = 1 (M292)'
+file = 'eos/opal/opal_eos.f90'
+old = '''                 v%x_grid_copy(x_index_3))
+            if (abs(v%x_interp_result(t6_scan_idx,density_scan_idx)) > opal_x_interp_overflow) then'''
+new = '''                 v%x_grid_copy(x_index_3))
+            if (v%x_interp_result(t6_scan_idx,density_scan_idx) > opal_x_interp_overflow) then'''
+
+[[mutation]]
+id = 'opal_x_quadratic-04'
+check = 'OPAL 2006: a huge negative entry read alone (X = 0) is named; ierr = 1 (M292)'
+file = 'eos/opal/opal_eos.f90'
+old = '''               if (abs(v%x_interp_result(t6_scan_idx,density_scan_idx)) > opal_x_interp_overflow) then'''
+new = '''               if (v%x_interp_result(t6_scan_idx,density_scan_idx) > opal_x_interp_overflow) then'''
 
 [[mutation]]
 id = 'debye_huckel-01'

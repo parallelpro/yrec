@@ -691,8 +691,21 @@ ok   OPAL 2006 table: a truncated table returns ierr = 1 on first use, its unit 
  eos_init: cannot open the OPAL EOS table opal06_missing
 ok   OPAL 2006 table: a missing table returns ierr = 1 at eos_init
 # test_eos: configuration production
-T6RINTEOS06: Interpolation indices out of range;please report conditions.
+OPALEOS/ESAC06: problem it,ir,l3,k3,iq,ip=   48  105  105   49    3    3
+  0.8084E+02  0.1012E+03 -0.1000E+22
 ok   OPAL 2006: an entry only the second X quadratic reads, past 1e20 there, is named; ierr = 1
+# test_eos: configuration production
+OPALEOS/ESAC06: problem it,ir,l3,k3,iq,ip=   48  105  105   49    3    3
+  0.8084E+02  0.1012E+03  0.1000E+22
+ok   OPAL 2006: a huge entry the second X quadratic weights by -1/8 is named; ierr = 1 (M292)
+# test_eos: configuration production
+OPALEOS/ESAC06: problem it,ir,l3,k3,iq,ip=   48  105  105   49    3    3
+  0.1000E+22  0.8084E+02  0.1012E+03
+ok   OPAL 2006: a huge entry the first X quadratic weights by -1/8 is named; ierr = 1 (M292)
+# test_eos: configuration production
+OPALEOS/ESAC06: problem it,ir,l3,k3,iq,ip=   48  105  105   49    3    3
+ -0.1000E+22
+ok   OPAL 2006: a huge negative entry read alone (X = 0) is named; ierr = 1 (M292)
 # test_eos: configuration opal95
 READCO: Error:  56-th T6 value is zero
 ok   OPAL 1995 table: a zero T6 returns ierr = 1 on first use

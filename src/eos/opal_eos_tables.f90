@@ -96,8 +96,11 @@ module opal_eos_tables
 ! holds one, a 2 x 2 corner sum below opal_usable_corner_sum holds none
 ! (the stencil can then shift onto it), opal_beyond_stencil stands for
 ! the sum of a cell the stencil lacks (above opal_empty_sum, so that it
-! is not used), and an X-interpolated value above opal_x_interp_overflow,
-! or a T6-rho interpolated one above opal_range_overflow, came from one.
+! is not used), and an X-interpolated value beyond opal_x_interp_overflow
+! either way (a huge entry with a negative Lagrange weight comes back
+! negative, M292), or a T6-rho interpolated one above opal_range_overflow,
+! came from one. The T6-rho check is one-sided: the 2006 tables' dE/dRho
+! reaches -3.7e14, and every node reaching it has passed the X check.
       real(dp), parameter :: opal_empty_entry = 1.0d+35, opal_empty_sum = 1.0d+30, &
            opal_usable_corner_sum = 1.0d+25, opal_beyond_stencil = 2.0d+30, &
            opal_x_interp_overflow = 1.0d+20, opal_range_overflow = 1.0d+15

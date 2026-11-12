@@ -464,7 +464,9 @@ end function opal_density_search
 ! quadratics of a 4 x 4 stencil. Where the stencil would take an empty
 ! entry (the reader's fill, opal_empty_entry) its coverage sums say so,
 ! and it shrinks or shifts; a region with no usable stencil is outside
-! the table. What the vintages differ in (the table's size, the slots,
+! the table. An X-interpolated value beyond 1e20 either way is an error
+! (ierr = 1, named): an entry no real table has. What the vintages
+! differ in (the table's size, the slots,
 ! the radiation correction and constants, whether the stencil is
 ! clamped to the table: not in 1995, M94, stencil_entry) is their row
 ! of opal_layout, and their messages are written by the report_*
@@ -704,6 +706,11 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
          return
       end if
       if (opal_shared%table_metal_fraction(vintage) /= v%z_table(v%x_index_lo)) exit
+! The X-interpolated value at each node of the stencil. A value beyond
+! opal_x_interp_overflow either way came from an empty or corrupt entry
+! (a huge entry with a negative Lagrange weight comes back hugely
+! negative, M292): it is named and the call returns ierr = 1. The check
+! is on the magnitude, not the sign: dE/dRho is negative in most entries.
       recompute_flag = 0
       cache_slot = 1
       do density_scan_idx = v%density_index_1, v%density_index_1+v%density_interp_order
@@ -711,6 +718,12 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
             if (x_index_hi == 1) then
                v%x_interp_result(t6_scan_idx,density_scan_idx) = &
                     v%x_interp_workspace(v%x_index_lo,t6_scan_idx,density_scan_idx)
+               if (abs(v%x_interp_result(t6_scan_idx,density_scan_idx)) > opal_x_interp_overflow) then
+                  call report_x_interpolation(vintage, v, t6_scan_idx, density_scan_idx, &
+                       v%x_index_lo, v%x_index_lo)
+                  ierr = 1
+                  return
+               end if
                cycle
             end if
             v%x_interp_result(t6_scan_idx,density_scan_idx) = &
@@ -720,9 +733,12 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
                  v%x_interp_workspace(x_index_3,t6_scan_idx,density_scan_idx), &
                  v%x_grid_copy(v%x_index_lo), v%x_grid_copy(x_index_2), &
                  v%x_grid_copy(x_index_3))
-            if (v%x_interp_result(t6_scan_idx,density_scan_idx) > opal_x_interp_overflow) &
-                 call report_x_interpolation(vintage, v, t6_scan_idx, density_scan_idx, &
-                 v%x_index_lo)
+            if (abs(v%x_interp_result(t6_scan_idx,density_scan_idx)) > opal_x_interp_overflow) then
+               call report_x_interpolation(vintage, v, t6_scan_idx, density_scan_idx, &
+                    v%x_index_lo, x_index_3)
+               ierr = 1
+               return
+            end if
             recompute_flag = 1
          end do
       end do
@@ -741,9 +757,12 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
                  v%x_interp_workspace(x_index_4,t6_scan_idx,density_scan_idx), &
                  v%x_grid_copy(x_index_2), v%x_grid_copy(x_index_3), &
                  v%x_grid_copy(x_index_4))
-            if (v%x_interp_result_alt(t6_scan_idx,density_scan_idx) > opal_x_interp_overflow) &
-                 call report_x_interpolation(vintage, v, t6_scan_idx, density_scan_idx, &
-                 x_index_2)
+            if (abs(v%x_interp_result_alt(t6_scan_idx,density_scan_idx)) > opal_x_interp_overflow) then
+               call report_x_interpolation(vintage, v, t6_scan_idx, density_scan_idx, &
+                    x_index_2, x_index_4)
+               ierr = 1
+               return
+            end if
             v%x_interp_result(t6_scan_idx,density_scan_idx) = &
                  v%x_interp_result(t6_scan_idx,density_scan_idx)*x_interp_weight + &
                  v%x_interp_result_alt(t6_scan_idx,density_scan_idx)* &
@@ -1457,10 +1476,11 @@ subroutine report_tables_z(vintage)
       end if
 end subroutine report_tables_z
 
-! an X-interpolated value above 1e20 (an empty entry in the stencil):
-! the stencil and the three table values from x_first
-subroutine report_x_interpolation(vintage, v, t6_idx, density_idx, x_first)
-      integer, intent(in) :: vintage, t6_idx, density_idx, x_first
+! an X-interpolated value beyond 1e20 either way (an empty or corrupt
+! entry in the stencil, an error): the stencil and the table values the
+! interpolation read, X tables x_first to x_last
+subroutine report_x_interpolation(vintage, v, t6_idx, density_idx, x_first, x_last)
+      integer, intent(in) :: vintage, t6_idx, density_idx, x_first, x_last
       type(opal_eos_vintage), intent(in) :: v
       character(len=message_length) :: eos_lines(4)
       integer :: k
@@ -1468,23 +1488,23 @@ subroutine report_x_interpolation(vintage, v, t6_idx, density_idx, x_first)
          eos_lines = unwritten_line
          write(eos_lines,'(" PROBLEM IT IR,L3,K3,IQ,IP=", 6I5)') t6_idx, density_idx, &
               v%density_index_3, v%t6_index_3, v%density_interp_order, v%t6_interp_order
-         call eos_log(eos_lines)
+         call eos_report(eos_lines)
       else if (vintage == iv_opal01) then
          eos_lines = unwritten_line
          write(eos_lines,'(A," problem it ir,l3,k3,iq,ip=", 6I5)') opal_layout(vintage)%routine_id, &
               t6_idx, density_idx, v%density_index_3, v%t6_index_3, v%density_interp_order, &
               v%t6_interp_order
-         call eos_log(eos_lines)
+         call eos_report(eos_lines)
       else
          eos_lines = unwritten_line
          write(eos_lines,'(A," problem it,ir,l3,k3,iq,ip=", 6I5)') opal_layout(vintage)%routine_id, &
               t6_idx, density_idx, v%density_index_3, v%t6_index_3, v%density_interp_order, &
               v%t6_interp_order
-         call eos_log(eos_lines)
+         call eos_report(eos_lines)
       end if
       eos_lines = unwritten_line
-      write(eos_lines,'(3E12.4)') (v%x_interp_workspace(k,t6_idx,density_idx), k=x_first,x_first+2)
-      call eos_log(eos_lines)
+      write(eos_lines,'(3E12.4)') (v%x_interp_workspace(k,t6_idx,density_idx), k=x_first,x_last)
+      call eos_report(eos_lines)
 end subroutine report_x_interpolation
 
 ! the run's Z differs from the table's
