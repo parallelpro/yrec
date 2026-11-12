@@ -15,8 +15,8 @@
 ! per vintage), and the edge ramps find_table_edge_ramp (1995, 2001) and
 ! find_ragged_edge_ramp (2006). This code is written once: what the
 ! vintages differ in (the table's size and grids, the slots, the
-! radiation constants and correction, the mass per particle, whether the
-! stencils are clamped, the reader's formats, how the density search
+! radiation constants and correction, the mass per particle, the
+! reader's formats, how the density search
 ! treats radiation, which edge the table has) is their row of
 ! opal_layout (opal_eos_tables). The report_* procedures keep each
 ! vintage's messages in its own words. The 1995 code follows Rogers,
@@ -467,9 +467,7 @@ end function opal_density_search
 ! the table. An X-interpolated value beyond 1e20 either way is an error
 ! (ierr = 1, named): an entry no real table has. What the vintages
 ! differ in (the table's size, the slots,
-! the radiation correction and constants, whether the stencil is
-! clamped to the table: not in 1995, M94, stencil_entry) is their row
-! of opal_layout, and their messages are written by the report_*
+! the radiation correction and constants) is their row of opal_layout, and their messages are written by the report_*
 ! procedures below. The 1995 table carries 10 variables, the others 9.
 !
 ! With the radiation correction (rad_flag = 1) a full call (deriv_order
@@ -650,13 +648,8 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
 
 !     check to determine if interpolation indices fall within
 !     table boundaries.  choose largest allowed size.
-      if (lay%clamps_stencil) then
-         call clamped_coverage(v, x_index_hi, t6_order_hi, density_order_hi, table_sum_2x2, &
-              table_sum_3x3, table_sum_3x4, table_sum_4x4)
-      else
-         call unclamped_coverage(v, lay, table_sum_2x2, table_sum_3x3, table_sum_3x4, &
-              table_sum_4x4)
-      end if
+      call clamped_coverage(v, x_index_hi, t6_order_hi, density_order_hi, table_sum_2x2, &
+           table_sum_3x3, table_sum_3x4, table_sum_4x4)
       v%density_interp_order = 2
       v%t6_interp_order = 2
       if (table_sum_3x3 > opal_empty_sum) then
@@ -679,13 +672,9 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
       if (t6_temperature >= v%t6_list(1,2)+1.0d-7) v%t6_interp_order = 2
       if (density_value <= v%density_grid(2)+1.0d-15) v%density_interp_order = 2
 
-      if (lay%clamps_stencil) then
-         if ((v%density_index_3 == nr) .or. (v%t6_index_3 == nt)) then
-            v%density_interp_order = 2
-            v%t6_interp_order = 2
-         end if
-      else if (v%density_index_3 == nr) then
+      if ((v%density_index_3 == nr) .or. (v%t6_index_3 == nt)) then
          v%density_interp_order = 2
+         v%t6_interp_order = 2
       end if
 
       end if
@@ -695,7 +684,7 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
       do density_scan_idx = v%density_index_1, v%density_index_1+v%density_interp_order
          do t6_scan_idx = v%t6_index_1, v%t6_index_1+v%t6_interp_order
             v%x_interp_workspace(x_loop_index,t6_scan_idx,density_scan_idx) = &
-                 stencil_entry(v, lay, x_loop_index, eos_var_idx, t6_scan_idx, density_scan_idx)
+                 v%eos_table(x_loop_index,eos_var_idx,t6_scan_idx,density_scan_idx)
          end do
       end do
       end do
@@ -779,10 +768,6 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
 ! ..... completed X interpolation. Now interpolate T6 and rho on a
 !       4x4 grid. (t6a(i),i=i1,i1+3),rho(j),j=j1,j1+3)).Procedure
 !       mixes overlapping quadratics to obtain smoothed derivatives.
-! A 1995 stencil in the table's lowest T6 interval also takes the T6
-! node of row nt + 1, which the 1995 code read from its storage after
-! t6_grid, x_interp_result(1, 1) (M94; stencil_entry says more).
-      if (.not. lay%clamps_stencil) v%t6_grid(nt + 1) = v%x_interp_result(1, 1)
       call t6rinteos(v, vintage, density_value, t6_value, ierr)
       if (ierr /= 0) return
       v%eos_output(eos_var_idx) = v%esact
@@ -824,8 +809,8 @@ subroutine interpolate_opal_eos(v, vintage, hydrogen_fraction, t6_temperature, &
 
 end subroutine interpolate_opal_eos
 
-! The coverage sums of a 2001 or 2006 stencil, which stay inside the
-! table: the pressure entries of the X tables x_index_lo..x_index_hi over
+! The coverage sums of a stencil, which stay inside the table (the 1995
+! ones too since 2026-11, M94): the pressure entries of the X tables x_index_lo..x_index_hi over
 ! the 2 x 2 and 3 x 3 cells from the stencil's corner, the 3 x 4 (T6 by
 ! density) one where the stencil has a fourth T6 row (else 2e30, past
 ! the empty-entry threshold) and the 4 x 4 one where it has a fourth
@@ -871,83 +856,6 @@ pure subroutine clamped_coverage(v, x_index_hi, t6_order_hi, density_order_hi, s
          end if
       end do
 end subroutine clamped_coverage
-
-! The coverage sums of a 1995 stencil, which is not clamped to the table
-! (M94): the pressure entries of four X tables from x_index_lo, over the
-! 2 x 2, 3 x 3, 3 x 4 and 4 x 4 cells from the stencil's corner, whatever
-! the table's extent (stencil_entry gives the entries past it).
-pure subroutine unclamped_coverage(v, lay, sum_2x2, sum_3x3, sum_3x4, sum_4x4)
-      type(opal_eos_vintage), intent(in) :: v
-      type(opal_vintage_layout), intent(in) :: lay
-      real(dp), intent(out) :: sum_2x2, sum_3x3, sum_3x4, sum_4x4
-      integer :: x_loop_index, density_scan_idx, t6_scan_idx
-      sum_2x2 = 0.0d0
-      sum_3x3 = 0.0d0
-      sum_3x4 = 0.0d0
-      sum_4x4 = 0.0d0
-      do x_loop_index = v%x_index_lo, v%x_index_lo+3
-         do density_scan_idx = v%density_index_1, v%density_index_1+1
-            do t6_scan_idx = v%t6_index_1, v%t6_index_1+1
-               sum_2x2 = sum_2x2 + stencil_entry(v, lay, x_loop_index, 1, t6_scan_idx, density_scan_idx)
-            end do
-         end do
-         do density_scan_idx = v%density_index_1, v%density_index_1+2
-            do t6_scan_idx = v%t6_index_1, v%t6_index_1+2
-               sum_3x3 = sum_3x3 + stencil_entry(v, lay, x_loop_index, 1, t6_scan_idx, density_scan_idx)
-            end do
-         end do
-         do density_scan_idx = v%density_index_1, v%density_index_1+2
-            do t6_scan_idx = v%t6_index_1, v%t6_index_1+3
-               sum_3x4 = sum_3x4 + stencil_entry(v, lay, x_loop_index, 1, t6_scan_idx, density_scan_idx)
-            end do
-         end do
-         do density_scan_idx = v%density_index_1, v%density_index_1+3
-            do t6_scan_idx = v%t6_index_1, v%t6_index_1+3
-               sum_4x4 = sum_4x4 + stencil_entry(v, lay, x_loop_index, 1, t6_scan_idx, density_scan_idx)
-            end do
-         end do
-      end do
-end subroutine unclamped_coverage
-
-! The table's entry (X table, variable, T6 row, density column) that a
-! stencil reads. A 2001 or 2006 stencil stays inside the table
-! (lay%clamps_stencil). A 1995 stencil does not (M94, whose measured fix
-! will clamp it as the others are): in the table's lowest T6 interval it
-! runs to T6 row nt + 1, and its coverage sums to X table x_index_lo + 3,
-! which is 6 for X above 0.6. Until that fix the 1995 numbers stay those
-! of its own code, so an entry past the table is what the 1995 storage
-! (5 x 10 x 56 x 77, the X table varying fastest) held at that place: X
-! table 6 is the next variable's X table 1, and T6 row nt + 1 the next
-! density column's first (hottest) row. Past the last density column,
-! which only the 4 x 4 coverage sum at the top column reaches (the top
-! column forces that order to 2 whatever the sum), it is zero.
-pure real(dp) function stencil_entry(v, lay, x_table, variable, t6_row, density_column)
-      type(opal_eos_vintage), intent(in) :: v
-      type(opal_vintage_layout), intent(in) :: lay
-      integer, intent(in) :: x_table, variable, t6_row, density_column
-      integer :: ix, iv, it, ir
-      ix = x_table
-      iv = variable
-      it = t6_row
-      ir = density_column
-      if (.not. lay%clamps_stencil) then
-         if (ix > n_eos_mx) then
-            ix = ix - n_eos_mx
-            iv = iv + 1
-         end if
-         if (it > lay%nt) then
-            it = it - lay%nt
-            ir = ir + 1
-         end if
-         if (ir > lay%nr) then
-            stencil_entry = 0.0d0
-            return
-         end if
-      end if
-      stencil_entry = v%eos_table(ix,iv,it,ir)
-end function stencil_entry
-
-
 
 !----------------------------------------------------------------------
 ! t6rinteos (formerly t6rinteos01 and t6rinteos06)

@@ -19,9 +19,8 @@
 !
 ! The three vintages share one state type, opal_eos_vintage, dimensioned
 ! by the largest (2006) table; each addresses its first nt rows and nr
-! columns. The 2001 and 2006 interpolation clamps every stencil to the
-! table; the 1995 one does not (M94), and reads past its table what the
-! 1995 code's own storage held there (opal_eos's stencil_entry).
+! columns. The interpolation clamps every vintage's stencil to its table
+! (the 1995 one since 2026-11, M94: it read past its table before).
 !
 ! The 2001 and 2006 x_grid constants are written without the d0 suffix
 ! (0.0, 0.2, ...), as in OPAL's DATA statements: single-precision
@@ -209,9 +208,6 @@ module opal_eos_tables
 ! O, N, C, He and H, and whether the electrons' mass counts (1995)
          real(dp) :: ionization_energy(6)
          logical :: counts_electron_mass
-! whether the interpolation clamps its stencils to the table (2001,
-! 2006; not 1995, M94)
-         logical :: clamps_stencil
 ! the reader's formats for an X block's header and for a T6 row, and the
 ! columns it skips before the variables (1995 and 2001: log10 R; 2006:
 ! amu and log10 n_e)
@@ -253,7 +249,7 @@ module opal_eos_tables
                 rad_const_over_c=1.8914785d-3, molar_gas_constant_mbcc=83.1446304d0, &
                 radiation_gammas_direct=.true., energy_unit_ratio=0.9648575d0/0.9652d0, &
                 ionization_energy=[-3388.637d0, -1970.918d0, -1431.717d0, -993.2303d0, &
-                -76.2315d0, -15.29409d0], counts_electron_mass=.true., clamps_stencil=.false., &
+                -76.2315d0, -15.29409d0], counts_electron_mass=.true., &
                 header_format="(3X,F6.4,3X,F6.4,11X,F10.7,17X,F10.7)", &
                 row_format="(F8.4,1X,F6.2,3E13.5,E11.3,6F8.4)", n_skipped_columns=1, routine_id="", &
                 t6_min=0.0050d0, t6_max=100.0d0, checks_pressure=.true., &
@@ -270,7 +266,7 @@ module opal_eos_tables
                 rad_const_over_c=real(1.8914785e-3, dp), molar_gas_constant_mbcc=real(83.14510, dp), &
                 radiation_gammas_direct=.false., energy_unit_ratio=1.0d0, &
                 ionization_energy=gmass01_ionization_energy, counts_electron_mass=.false., &
-                clamps_stencil=.true., header_format="(3X,F6.4,3X,F12.9,11X,F10.7,17X,F10.7)", &
+                header_format="(3X,F6.4,3X,F12.9,11X,F10.7,17X,F10.7)", &
                 row_format="(F9.5,1X,F6.2,3E13.5,6F8.4)", n_skipped_columns=1, &
                 routine_id="OPALEOS/ESAC01:", &
                 t6_min=0.0020d0, t6_max=100.0d0, checks_pressure=.false., &
@@ -287,7 +283,7 @@ module opal_eos_tables
                 rad_const_over_c=1.8914785d-3, molar_gas_constant_mbcc=83.14510d0, &
                 radiation_gammas_direct=.false., energy_unit_ratio=1.0d0, &
                 ionization_energy=gmass01_ionization_energy, counts_electron_mass=.false., &
-                clamps_stencil=.true., header_format="(3X,F6.4,3X,F12.9,11X,F10.7,17X,F10.7)", &
+                header_format="(3X,F6.4,3X,F12.9,11X,F10.7,17X,F10.7)", &
                 row_format="(F11.6,1X,F6.4,E11.4,2E13.6,2E11.3,5F10.6)", n_skipped_columns=2, &
                 routine_id="OPALEOS/ESAC06:", &
                 t6_min=0.001870d0, t6_max=200.0d0, checks_pressure=.false., &
