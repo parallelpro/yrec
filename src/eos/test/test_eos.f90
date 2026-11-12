@@ -344,7 +344,9 @@ contains
 
 ! SCV's general path reads the three tables, not the envelope table: before
 ! that table is built it covers the point (it is not the Saha result,
-! 9e-4 dex away there) and gives what it gives after the build.
+! 9e-4 dex away there) and gives what it gives after the build, cp and
+! grad_ad too (its mixing entropy is the zone's, M92: before the build it
+! was zero, and cp and grad_ad NaN).
       subroutine check_scv_general_path(before_table)
          type(eos_result), intent(in) :: before_table(2)
          type(eos_result) :: after_table(2)
@@ -352,6 +354,10 @@ contains
          call check("SCV general path: before the envelope table is built, SCV's result, as after", &
               abs(before_table(1)%log10_density - before_table(2)%log10_density) > 1.0d-4 .and. &
               abs(before_table(1)%log10_density - after_table(1)%log10_density) < 1.0d-12)
+         call check("SCV general path: cp and grad_ad before the envelope table is built, as after (M92)", &
+              before_table(1)%specific_heat_cp == after_table(1)%specific_heat_cp .and. &
+              before_table(1)%adiabatic_gradient == after_table(1)%adiabatic_gradient .and. &
+              abs(before_table(1)%adiabatic_gradient - 0.25d0) < 0.2d0)
       end subroutine check_scv_general_path
 
 ! Set one configuration (the controls a deck would set) with eos_init,

@@ -592,3 +592,10 @@ check = "SCV: a lookup above a shorter row below reads only the envelope table's
 file = 'eos/scv/scv_eos.f90'
 old = '''         if (shifted_last_column > nptsx(idtt-1)) temp_needs_smoothing = .false.'''
 new = '''         if (shifted_last_column > nptsx(idtt)) temp_needs_smoothing = .false.'''
+
+[[mutation]]
+id = 'scv_mixing_entropy-01'
+check = "SCV general path: cp and grad_ad before the envelope table is built, as after (M92)"
+file = 'eos/scv/scv_eos.f90'
+old = '''            zone_mixing_entropy(k) = scv_mixing_entropy(ii, idp+k-1, hydrogen_fraction)'''
+new = '''            zone_mixing_entropy(k) = smix(ii, idp+k-1)'''

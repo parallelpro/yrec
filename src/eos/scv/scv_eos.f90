@@ -422,7 +422,8 @@ end subroutine compute_scv_envelope_eos
 ! metal tables: at the cell around (log T, log P_gas) (find_scv_cell;
 ! covers false outside the tables, r untouched), 4-point Lagrange
 ! interpolation of each table in log P_gas and then log T, combined by
-! the additive-volume rule (with the entropy of mixing) into the
+! the additive-volume rule (with the entropy of mixing of H and He at the
+! zone's X, scv_mixing_entropy at the stencil's nodes) into the
 ! density, the mean weights it implies, dln rho/dln T and dln rho/dln P
 ! with radiation, cp and grad_ad; and the ionization fractions
 ! (scv_ionization_fractions).
@@ -453,6 +454,8 @@ subroutine compute_scv_eos(log10_temperature, hydrogen_fraction, &
            dlnsmix_dlnt
       real(dp) :: dlns_dlnt_pure_h, dlns_dlnt_pure_he, &
            log10_du_dt_pure_z, du_dt_pure_z
+! the mixing entropy at the zone's X at one row's four stencil nodes
+      real(dp) :: zone_mixing_entropy(4)
       logical :: t_centred, p_centred
       integer :: i, ii, k
 ! the cell's first T row and first P_gas column (find_scv_cell)
@@ -553,7 +556,10 @@ subroutine compute_scv_eos(log10_temperature, hydrogen_fraction, &
          ii = idtt+i-1
          temp_work(i,1) = lagrange4(press_interp_weights, tablex(ii,idp:idp+3,iscv_log10_s))
          temp_work(i,2) = lagrange4(press_interp_weights, tabley(ii,idp:idp+3,iscv_log10_s))
-         temp_work(i,3) = lagrange4(press_interp_weights, smix(ii,idp:idp+3))
+         do k = 1,4
+            zone_mixing_entropy(k) = scv_mixing_entropy(ii, idp+k-1, hydrogen_fraction)
+         end do
+         temp_work(i,3) = lagrange4(press_interp_weights, zone_mixing_entropy)
       end do
 ! interpolate in temperature
       log10_entropy_pure_h = lagrange4(temp_interp_weights, temp_work(1:4,1))
@@ -561,10 +567,16 @@ subroutine compute_scv_eos(log10_temperature, hydrogen_fraction, &
       log10_entropy_pure_he = lagrange4(temp_interp_weights, temp_work(1:4,2))
       entropy_pure_he = exp(ln10*log10_entropy_pure_he)
       entropy_of_mixing = lagrange4(temp_interp_weights, temp_work(1:4,3))
-      dlnsmix_dlnt = temp_interp_weight_derivs(1)*log10(temp_work(1,3)) + &
-           temp_interp_weight_derivs(2)*log10(temp_work(2,3)) &
-           + temp_interp_weight_derivs(3)*log10(temp_work(3,3)) &
-           + temp_interp_weight_derivs(4)*log10(temp_work(4,3))
+! d ln S_mix/d ln T from the four rows' values; a pure gas (X = 0 or 1)
+! has no mixing entropy, and none to differentiate
+      if (all(temp_work(1:4,3) > 0.0d0)) then
+         dlnsmix_dlnt = temp_interp_weight_derivs(1)*log10(temp_work(1,3)) + &
+              temp_interp_weight_derivs(2)*log10(temp_work(2,3)) &
+              + temp_interp_weight_derivs(3)*log10(temp_work(3,3)) &
+              + temp_interp_weight_derivs(4)*log10(temp_work(4,3))
+      else
+         dlnsmix_dlnt = 0.0d0
+      end if
 ! d ln s/ d ln t (x and y) and du/dt (z)
 ! interpolate in pressure at 4 different temperature points.
       do i = 1,4
@@ -734,7 +746,8 @@ end subroutine scv_ionization_fractions
 ! Builds the envelope-mixture (X/Y/Z) SCVH-style equation-of-state
 ! table tablenv from the separately tabulated pure-hydrogen (tablex),
 ! pure-helium (tabley), and pure-metal (tablez) tables: first the
-! entropy of mixing (smix) on the native H/He table grid, then the
+! entropy of mixing (smix, scv_mixing_entropy at the envelope's X) on
+! the native H/He table grid, then the
 ! three species combined by the additive-volume rule at the envelope
 ! composition (X = envelope_hydrogen_fraction, Z =
 ! envelope_metal_fraction) into tablenv's six columns, which
@@ -757,18 +770,10 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
       integer :: t_idx, p_idx, k_idx, t_row
 ! log10 T and log10 P of the table point, ln T, and T
       real(dp) :: log_t_work, log_p_work, ln_t_work, temp_value
-! helium_fraction_hhe: Y = 1 - X of the pure H/He mixture used for the
-! entropy of mixing; helium_fraction_local: Y = 1 - X - Z of the
-! envelope mixture.
-      real(dp) :: helium_fraction_hhe, one_minus_y_local
+! helium_fraction_local: Y = 1 - X - Z of the envelope mixture.
       real(dp) :: helium_fraction_local, &
            hydrogen_fraction_local, metal_fraction_local
-      real(dp) :: density_h, density_he, density_z, density_mix
-      real(dp) :: hydrogen_number_density, helium_number_density, &
-           hydrogen_electron_density, helium_electron_density, &
-           total_electron_density
-      real(dp) :: mixing_beta, mixing_gamma, hydrogen_xd, &
-           helium_yd, mix_de, mix_dei, total_number_density
+      real(dp) :: density_h, density_he, density_z
       real(dp) :: pressure_value, radiation_pressure, gas_pressure, &
            rho_mix, log_rho_mix
       real(dp) :: dlnrho_dlnp_gas, dlnrho_dlnt_gas
@@ -778,67 +783,10 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
       if (.not. scv_tables_loaded) return
       if (envelope_hydrogen_fraction == tablenv_hydrogen_fraction .and. &
            envelope_metal_fraction == tablenv_metal_fraction) return
-!  Read in equation of state tables for hydrogen and helium
+! the entropy of mixing at the envelope's X
       do t_idx = 1, nts
          do p_idx = 1, nptsx(t_idx)
-! Compute the entropy of mixing.
-! Number density of hydrogen and helium
-            helium_fraction_hhe = 1.0d0-envelope_hydrogen_fraction
-            one_minus_y_local = 1.0d0 - helium_fraction_hhe
-            density_h = exp(ln10*tablex(t_idx,p_idx,iscv_log10_rho))
-            density_he = exp(ln10*tabley(t_idx,p_idx,iscv_log10_rho))
-            density_mix = 1.0d0/(one_minus_y_local/density_h + &
-                 helium_fraction_hhe/density_he)
-            hydrogen_number_density = 2.0d0*one_minus_y_local*density_mix/ &
-                 hydrogen_atom_mass_cgs/(1.0d0+3.0d0*tablex(t_idx,p_idx,iscv_frac_neutral)+ &
-                 tablex(t_idx,p_idx,iscv_frac_atom_ion1))
-            helium_number_density = 3.0d0*helium_fraction_hhe*density_mix/ &
-                 helium_atom_mass_cgs/(1.0d0 + 2.0d0*tabley(t_idx,p_idx,iscv_frac_neutral) + &
-                 tabley(t_idx,p_idx,iscv_frac_atom_ion1))
-! Hydrogen and helium electron number densities
-            hydrogen_electron_density = 0.5d0*hydrogen_number_density* &
-                 (1.0d0 - tablex(t_idx,p_idx,iscv_frac_neutral) - tablex(t_idx,p_idx,iscv_frac_atom_ion1))
-            helium_electron_density = cc13*helium_number_density* &
-                 (2.0d0 - 2.0d0*tabley(t_idx,p_idx,iscv_frac_neutral) - tabley(t_idx,p_idx,iscv_frac_atom_ion1))
-            total_electron_density = hydrogen_electron_density + &
-                 helium_electron_density
-            hydrogen_electron_density = max(hydrogen_electron_density,1.0d0)
-            helium_electron_density = max(helium_electron_density,1.0d0)
-            total_electron_density = max(total_electron_density,1.0d0)
-            if (hydrogen_number_density == 0.0d0 .or. &
-                 helium_number_density == 0.0d0) then
-               smix(t_idx,p_idx) = 0.0d0
-            else
-               mixing_beta = (hydrogen_atom_mass_cgs/helium_atom_mass_cgs)* &
-                    (helium_fraction_hhe/one_minus_y_local)
-               mixing_gamma = 1.5d0*(1.0d0 + tablex(t_idx,p_idx,iscv_frac_atom_ion1)+ 3.0d0* &
-                    tablex(t_idx,p_idx,iscv_frac_neutral))/(1.0d0+2.0d0*tabley(t_idx,p_idx,iscv_frac_neutral)+ &
-                    tabley(t_idx,p_idx,iscv_frac_atom_ion1))
-               hydrogen_xd = 1.0d0 - tablex(t_idx,p_idx,iscv_frac_neutral) - tablex(t_idx,p_idx,iscv_frac_atom_ion1)
-               helium_yd = 2.0d0 - 2.0d0*tabley(t_idx,p_idx,iscv_frac_neutral) - &
-                    tabley(t_idx,p_idx,iscv_frac_atom_ion1)
-               if (hydrogen_xd > 0.0d0) then
-                 mix_de = 1.5d0*helium_yd*mixing_beta*mixing_gamma/hydrogen_xd
-               else
-                 mix_de = 0.0d0
-               end if
-               if (helium_yd > 0.0d0) then
-                  mix_dei = hydrogen_xd/(1.5d0*helium_yd*mixing_beta*mixing_gamma)
-               else
-                  mix_dei = 0.0d0
-               end if
-               total_number_density = hydrogen_number_density + &
-                    helium_number_density
-               smix(t_idx,p_idx) = one_minus_y_local/hydrogen_atom_mass_cgs*2.0d0/ &
-                    (1.0d0+tablex(t_idx,p_idx,iscv_frac_atom_ion1)+3.0d0*tablex(t_idx,p_idx,iscv_frac_neutral))* &
-                    (log(1.0d0+mixing_beta*mixing_gamma)- &
-                    hydrogen_electron_density/total_number_density* &
-                    log(1.0d0 + mix_de)+mixing_beta*mixing_gamma* &
-                    log(1.0d0+1.0d0/mixing_beta/mixing_gamma)- &
-                    helium_electron_density/total_number_density* &
-                    log(1.0d0+mix_dei))
-               smix(t_idx,p_idx) = boltzmann_constant_cgs*smix(t_idx,p_idx)
-            end if
+            smix(t_idx,p_idx) = scv_mixing_entropy(t_idx, p_idx, envelope_hydrogen_fraction)
          end do
       end do
 !  Now compute equation of state variables for the surface mixture.
@@ -933,6 +881,83 @@ subroutine build_scv_envelope_table(envelope_hydrogen_fraction, &
       tablenv_metal_fraction = envelope_metal_fraction
 
 end subroutine build_scv_envelope_table
+
+!----------------------------------------------------------------------
+! scv_mixing_entropy
+!----------------------------------------------------------------------
+! The entropy of mixing (erg/(g K)) of a pure H/He gas of hydrogen
+! fraction x (helium 1 - x: the metals are not mixed in) at node (t_idx,
+! p_idx) of the H and He tables, from their particle fractions of H2, H,
+! He and He+ (SETSCV's formula): zero where either species is absent (x
+! = 0 or 1), positive at every node of the shipped tables otherwise.
+! build_scv_envelope_table fills smix with it at the envelope's X, and
+! compute_scv_eos takes it at the zone's X (M92: it read smix, zero
+! before the table's first build and the envelope's X after).
+pure real(dp) function scv_mixing_entropy(t_idx, p_idx, x) result(entropy)
+      integer, intent(in) :: t_idx, p_idx
+      real(dp), intent(in) :: x
+! helium_fraction_hhe: Y = 1 - X of the pure H/He mixture
+      real(dp) :: helium_fraction_hhe, one_minus_y_local
+      real(dp) :: density_h, density_he, density_mix
+      real(dp) :: hydrogen_number_density, helium_number_density, &
+           hydrogen_electron_density, helium_electron_density
+      real(dp) :: mixing_beta, mixing_gamma, hydrogen_xd, &
+           helium_yd, mix_de, mix_dei, total_number_density
+! Number density of hydrogen and helium
+      helium_fraction_hhe = 1.0d0-x
+      one_minus_y_local = 1.0d0 - helium_fraction_hhe
+      density_h = exp(ln10*tablex(t_idx,p_idx,iscv_log10_rho))
+      density_he = exp(ln10*tabley(t_idx,p_idx,iscv_log10_rho))
+      density_mix = 1.0d0/(one_minus_y_local/density_h + &
+           helium_fraction_hhe/density_he)
+      hydrogen_number_density = 2.0d0*one_minus_y_local*density_mix/ &
+           hydrogen_atom_mass_cgs/(1.0d0+3.0d0*tablex(t_idx,p_idx,iscv_frac_neutral)+ &
+           tablex(t_idx,p_idx,iscv_frac_atom_ion1))
+      helium_number_density = 3.0d0*helium_fraction_hhe*density_mix/ &
+           helium_atom_mass_cgs/(1.0d0 + 2.0d0*tabley(t_idx,p_idx,iscv_frac_neutral) + &
+           tabley(t_idx,p_idx,iscv_frac_atom_ion1))
+! Hydrogen and helium electron number densities
+      hydrogen_electron_density = 0.5d0*hydrogen_number_density* &
+           (1.0d0 - tablex(t_idx,p_idx,iscv_frac_neutral) - tablex(t_idx,p_idx,iscv_frac_atom_ion1))
+      helium_electron_density = cc13*helium_number_density* &
+           (2.0d0 - 2.0d0*tabley(t_idx,p_idx,iscv_frac_neutral) - tabley(t_idx,p_idx,iscv_frac_atom_ion1))
+      hydrogen_electron_density = max(hydrogen_electron_density,1.0d0)
+      helium_electron_density = max(helium_electron_density,1.0d0)
+      if (hydrogen_number_density == 0.0d0 .or. &
+           helium_number_density == 0.0d0) then
+         entropy = 0.0d0
+      else
+         mixing_beta = (hydrogen_atom_mass_cgs/helium_atom_mass_cgs)* &
+              (helium_fraction_hhe/one_minus_y_local)
+         mixing_gamma = 1.5d0*(1.0d0 + tablex(t_idx,p_idx,iscv_frac_atom_ion1)+ 3.0d0* &
+              tablex(t_idx,p_idx,iscv_frac_neutral))/(1.0d0+2.0d0*tabley(t_idx,p_idx,iscv_frac_neutral)+ &
+              tabley(t_idx,p_idx,iscv_frac_atom_ion1))
+         hydrogen_xd = 1.0d0 - tablex(t_idx,p_idx,iscv_frac_neutral) - tablex(t_idx,p_idx,iscv_frac_atom_ion1)
+         helium_yd = 2.0d0 - 2.0d0*tabley(t_idx,p_idx,iscv_frac_neutral) - &
+              tabley(t_idx,p_idx,iscv_frac_atom_ion1)
+         if (hydrogen_xd > 0.0d0) then
+            mix_de = 1.5d0*helium_yd*mixing_beta*mixing_gamma/hydrogen_xd
+         else
+            mix_de = 0.0d0
+         end if
+         if (helium_yd > 0.0d0) then
+            mix_dei = hydrogen_xd/(1.5d0*helium_yd*mixing_beta*mixing_gamma)
+         else
+            mix_dei = 0.0d0
+         end if
+         total_number_density = hydrogen_number_density + &
+              helium_number_density
+         entropy = one_minus_y_local/hydrogen_atom_mass_cgs*2.0d0/ &
+              (1.0d0+tablex(t_idx,p_idx,iscv_frac_atom_ion1)+3.0d0*tablex(t_idx,p_idx,iscv_frac_neutral))* &
+              (log(1.0d0+mixing_beta*mixing_gamma)- &
+              hydrogen_electron_density/total_number_density* &
+              log(1.0d0 + mix_de)+mixing_beta*mixing_gamma* &
+              log(1.0d0+1.0d0/mixing_beta/mixing_gamma)- &
+              helium_electron_density/total_number_density* &
+              log(1.0d0+mix_dei))
+         entropy = boltzmann_constant_cgs*entropy
+      end if
+end function scv_mixing_entropy
 
 !======================================================================
 ! Sources: Saumon, Chabrier & Van Horn (1995) for the H and He tables;
