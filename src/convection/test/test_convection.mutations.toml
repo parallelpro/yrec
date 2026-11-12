@@ -331,7 +331,14 @@ new = 'edge == edge_no_overshoot) edge = edge + 0'
 
 [[mutation]]
 id = 'semiconvection-07'
-check = "semiconvection: an envelope's lower edge moves down while f del_rad"
+check = 'semiconvection: no core, no move: an envelope, a zone off centre (M241)'
 file = 'convection/semiconvection.f90'
-old = 'step = -1'
-new = 'step = 1'
+old = 'if (mixed_zone_bounds(1,1) /= 1 .or. mixed_zone_bounds(1,2) == num_zones) return'
+new = 'if (mixed_zone_bounds(1,2) == num_zones) return'
+
+[[mutation]]
+id = 'semiconvection-08'
+check = "semiconvection: no mixed region: an old model's row stays (M241)"
+file = 'convection/semiconvection.f90'
+old = 'if (num_zones_mixed < 1) return'
+new = 'if (num_zones_mixed < 0) return'

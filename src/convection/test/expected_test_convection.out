@@ -230,6 +230,6 @@ semiconvection merge: an overlapped region joins the core                  0.00E
  CZ OLD EDGE  10 EXTENDED TO- 12 LIMIT=F RAD.GRADS-IN/OUT  0.4450  0.4767
 semiconvection merge: a region sharing the edge shell stays                0.00E+00  ok
 semiconvection: stable with the core's composition, it stays               0.00E+00  ok
- CZ OLD EDGE  30 EXTENDED TO- 28 LIMIT=F RAD.GRADS-IN/OUT  0.3742  0.3366
-semiconvection: an envelope's lower edge moves down while f del_rad        0.00E+00  ok
+semiconvection: no core, no move: an envelope, a zone off centre (M241)    0.00E+00  ok
+semiconvection: no mixed region: an old model's row stays (M241)           0.00E+00  ok
 test_convection: done

@@ -27,7 +27,8 @@
 ! the merge), homogenization (each
 ! species' mass kept, uniform zones, the floors) and semiconvection on a
 ! model with a convective core, with the OPAL95 opacities (an
-! extension, the distance limit, the merge, a stable edge). The program
+! extension, the distance limit, the merge, a stable edge; nothing
+! without a core or a mixed region). The program
 ! exits 1 when a check fails.
 program test_convection
       use star_info_lib, only: json, max_convective_zones, max_radiative_zones
@@ -949,7 +950,8 @@ end subroutine sc_gradients
 ! zone, shells sc_envelope..nz with X = 0.70 above X = 0.45, and the
 ! shells below it have del_rad/del_ad = 0.95, 0.90 and 0.80, then 0.1 less a
 ! shell to 0.3: with the zone's composition (f ~ 1.15) the first two
-! join it.
+! would join it, if semiconvection acted below an envelope (it does not,
+! M241).
 subroutine build_semiconvective_model(scale, envelope)
       double precision, intent(in) :: scale
       logical, intent(in) :: envelope
@@ -1071,26 +1073,30 @@ subroutine semiconvection_checks()
       call semiconvect(bounds, num, 1.0d14)
       call check_that("semiconvection: stable with the core's composition, it stays", &
            ierr == 0 .and. num == 1 .and. bounds(1,2) == sc_core)
-! a surface convection zone: its lower edge moves down
+! no convective core, no semiconvection (M241): a surface convection
+! zone whose lower edge would move with its composition (f ~ 1.15), and
+! the core above made a region off the centre, stay
       call build_semiconvective_model(1.0d0, .true.)
       bounds = 0
       bounds(1,:) = [sc_envelope, nz]
       num = 1
       call semiconvect(bounds, num, 1.0d14)
-      edge = bounds(1,1)
-      call sc_gradients(sc_envelope - 1, sc_envelope, sc_lum(sc_envelope - 1), grad_mix, &
-           grad_ad, log_density)
-      call sc_gradients(sc_envelope - 1, sc_envelope - 1, sc_lum(sc_envelope - 1), &
-           grad_local, grad_ad, log_density)
-      ratio = grad_mix/grad_local
-      holds = ierr == 0 .and. ratio > 1.0d0 .and. edge < sc_envelope - 1 .and. edge > 1
-      do k = sc_envelope - 2, edge - 1, -1
-         call sc_gradients(k, k, sc_lum(k), grad_rad, grad_ad, log_density)
-         if (k >= edge) holds = holds .and. ratio*grad_rad >= grad_ad
-         if (k == edge - 1) holds = holds .and. ratio*grad_rad < grad_ad
-      end do
-      call check_that("semiconvection: an envelope's lower edge moves down while f del_rad", &
-           holds)
+      holds = ierr == 0 .and. num == 1 .and. all(bounds(1,:) == [sc_envelope, nz])
+      call build_semiconvective_model(1.0d0, .false.)
+      bounds = 0
+      bounds(1,:) = [5, sc_core]
+      num = 1
+      call semiconvect(bounds, num, 1.0d14)
+      call check_that("semiconvection: no core, no move: an envelope, a zone off centre (M241)", &
+           holds .and. ierr == 0 .and. num == 1 .and. all(bounds(1,:) == [5, sc_core]))
+! no mixed region: the zone list's first row is an earlier model's, a
+! core, and stays
+      bounds = 0
+      bounds(1,:) = [1, sc_core]
+      num = 0
+      call semiconvect(bounds, num, 1.0d14)
+      call check_that("semiconvection: no mixed region: an old model's row stays (M241)", &
+           ierr == 0 .and. num == 0 .and. all(bounds(1,:) == [1, sc_core]))
 end subroutine semiconvection_checks
 
 end program test_convection
