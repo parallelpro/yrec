@@ -38,7 +38,7 @@
 program test_atm
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use, intrinsic :: ieee_arithmetic, only: ieee_is_nan
-      use run_messages, only: run_log_unit, terminal_unit
+      use run_messages, only: run_log_unit
       use physical_constants, only: cc23
       use math_lib
       use atm_lib
@@ -78,11 +78,10 @@ program test_atm
       allard_path     = trim(yrec_input)//"/atmos/allard/Nextgen2.all"
       allard_old_path = trim(yrec_input)//"/atmos/allard/Nextgen.p00"
 
-! The diagnostics (the table readers' notes, the out-of-table messages)
-! go to the run log and terminal_unit; both point at a scratch file so
-! that stdout stays deterministic.
+! The run log is a scratch file; atm's terminal lines (standard output)
+! are part of the pinned output, with the table paths as YREC_INPUT
+! gives them (test_atm.py makes it a relative path, input).
       open(newunit=run_log_unit, file="test_atm.short", status="replace")
-      terminal_unit = run_log_unit
 
 ! --- before any table is read: a lookup in a table atm_init did not
 ! read is an error, not a read of an empty table (O19: the Allard

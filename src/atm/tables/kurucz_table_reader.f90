@@ -14,7 +14,7 @@ module kurucz_table_reader
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use atm_tables, only: surface_pressure_table, surface_pressure_num_g, &
            kurucz_num_teff
-      use atm_messages, only: report_table_open_failure, report_atm_error
+      use atm_messages, only: report_table_open_failure, report_table_read_failure
       implicit none
       private
       public :: read_surface_pressure_table
@@ -78,8 +78,7 @@ subroutine read_surface_pressure_table(table_path, num_teff, tbl, ierr)
       end do
       close(table_unit)
       if (ios /= 0) then
-         call report_atm_error('cannot read the atmosphere table ' // trim(table_path) // &
-              ': ' // trim(message))
+         call report_table_read_failure(table_path, message)
          ierr = 1
          return
       end if
