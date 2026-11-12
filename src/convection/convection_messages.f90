@@ -64,18 +64,18 @@ end subroutine log_mixed_regions
 
 ! The two regions before the merge (first and last shell of each, from
 ! the centre out) and the merged one.
-subroutine log_zones_merged(cause, lower, upper)
-      integer, intent(in) :: cause, lower(:), upper(:)
+subroutine log_zones_merged(cause, lower, upper, merged)
+      integer, intent(in) :: cause, lower(:), upper(:), merged(:)
       character(len=message_length) :: lines(2)
       lines = unwritten_line
       if (cause == merged_by_overshoot) then
          write(lines, '(2x,"CONVECTION ZONES MERGED DUE TO OVERSHOOT"/2x, &
               &"OLD",2("[",i3,"-",i3,"]")," NEW","[",i3,"-",i3,"]")') &
-              lower, upper, lower(1), upper(2)
+              lower, upper, merged
       else
          write(lines, '(2x,"MIXED ZONES MERGED DUE TO SEMICONVECTION"/2x, &
               &"OLD",2("[",i3,"-",i3,"]")," NEW","[",i3,"-",i3,"]")') &
-              lower, upper, lower(1), upper(2)
+              lower, upper, merged
       end if
       call write_convection_lines(run_log_unit, lines)
 end subroutine log_zones_merged

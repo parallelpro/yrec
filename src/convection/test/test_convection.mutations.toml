@@ -233,8 +233,15 @@ new = 'edge == edge_no_overshoot) edge = edge - 0'
 id = 'overshoot-10'
 check = 'overshoot merge: met regions become one, first to last shell'
 file = 'convection/convection_zones.f90'
-old = 'bounds(k+1,1) = bounds(k,1)'
-new = 'bounds(k+1,1) = bounds(k+1,1)'
+old = 'merged = [bounds(k,1), max('
+new = 'merged = [bounds(k+1,1), max('
+
+[[mutation]]
+id = 'overshoot-14'
+check = 'overshoot merge: the union, the lower region reaching higher (M285)'
+file = 'convection/convection_zones.f90'
+old = 'max(bounds(k,2), bounds(k+1,2))'
+new = 'bounds(k+1,2)'
 
 [[mutation]]
 id = 'homogenize-01'

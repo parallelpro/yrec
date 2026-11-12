@@ -209,15 +209,16 @@ end subroutine list_convection_zones
 ! overlap become one. Regions k and k+1 overlap when region k+1 starts
 ! below the top of region k, or at it when merge_shared_shell is set
 ! (overshoot sets it; semiconvection does not, as in the F77, so its
-! regions may share an edge shell). The merged region runs from region
-! k's first shell to region k+1's last; the regions above move down a
-! row, and each merge is logged with its cause (merged_by_overshoot or
-! merged_by_semiconvection).
+! regions may share an edge shell). The merged region is their union,
+! from region k's first shell to the higher of the two last shells (a
+! core's overshoot can reach past an intermediate zone's top); the
+! regions above move down a row, and each merge is logged with its
+! cause (merged_by_overshoot or merged_by_semiconvection).
 subroutine merge_overlapping_zones(bounds, num_regions, merge_shared_shell, cause)
       integer, intent(inout) :: bounds(:,:), num_regions
       logical, intent(in) :: merge_shared_shell
       integer, intent(in) :: cause
-      integer :: k, j
+      integer :: k, j, merged(2)
       logical :: overlap
 
       if (num_regions <= 1) return
@@ -229,8 +230,9 @@ subroutine merge_overlapping_zones(bounds, num_regions, merge_shared_shell, caus
             overlap = bounds(k,2) > bounds(k+1,1)
          end if
          if (overlap) then
-            call log_zones_merged(cause, bounds(k,:), bounds(k+1,:))
-            bounds(k+1,1) = bounds(k,1)
+            merged = [bounds(k,1), max(bounds(k,2), bounds(k+1,2))]
+            call log_zones_merged(cause, bounds(k,:), bounds(k+1,:), merged)
+            bounds(k+1,:) = merged
             do j = k, num_regions - 1
                bounds(j,:) = bounds(j+1,:)
             end do
@@ -355,6 +357,8 @@ end subroutine apply_composition_floors
 ! which the 2026 audit fixed; MIXCZ's convective turnover time moved to
 ! rotation (KC, 2025-05-31). The scans' limits, 11 zones in CONVEC and
 ! 12 in MIXCZ, became the bounds array's rows (an error beyond them) and
-! none in 2026-11 (bug_sweep M248).
+! none in 2026-11 (bug_sweep M248). CONVEC's merge kept the upper
+! region's top, which could shrink a region, until 2026-11 (bug_sweep
+! M285).
 
 end module convection_zones

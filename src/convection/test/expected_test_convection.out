@@ -206,6 +206,11 @@ overshoot, rotating: at least one shell above the core                     0.00E
   CONVECTION ZONES MERGED DUE TO OVERSHOOT
   OLD[  1- 10][  7- 13] NEW[  1- 13]
 overshoot merge: met regions become one, first to last shell               0.00E+00  ok
+ MIXED REGIONS WITHOUT OVERSHOOT[   1-   5 ][   7-   8 ][  31-  40 ][
+ MIXED REGIONS WITH OVERSHOOT   [   1-  10 ][   7-   8 ][  31-  40 ][
+  CONVECTION ZONES MERGED DUE TO OVERSHOOT
+  OLD[  1- 10][  7-  8] NEW[  1- 10]
+overshoot merge: the union, the lower region reaching higher (M285)        0.00E+00  ok
 # homogenize_convection_zones: checks
 homogenize: each species' mass in each zone is kept                        2.22E-16  ok
 homogenize: each zone is uniform                                           0.00E+00  ok

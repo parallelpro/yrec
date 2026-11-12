@@ -813,6 +813,13 @@ subroutine overshoot_checks()
            ierr == 0 .and. n_mix == 2 .and. n_mix_no_os == 3 .and. mix_bounds(1,1) == 1 &
            .and. mix_bounds(1,2) == 13 .and. mix_bounds(2,1) == 31 .and. &
            regions_tile_the_model())
+! a core whose overshoot reaches past an intermediate zone's top: the
+! merge is the union, to the core's top (M285)
+      cs%intermediate_overshoot = .false.
+      call find_zones([1, 5, 7, 8, 31, 40])
+      call check_that("overshoot merge: the union, the lower region reaching higher (M285)", &
+           ierr == 0 .and. n_mix == 2 .and. mix_bounds(1,1) == 1 .and. &
+           mix_bounds(1,2) == 10 .and. mix_bounds(2,1) == 31 .and. regions_tile_the_model())
       cs%core_overshoot = .false.
       cs%intermediate_overshoot = .false.
       cs%overshoot_alpha_core = 0.6d0
