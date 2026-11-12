@@ -15,6 +15,27 @@ old = 'if (.not. tbl%loaded) then'
 new = 'if (.false.) then'
 
 [[mutation]]
+id = 'atm_lib-09'
+check = 'atm_get_surface_pt: a table atm_init did not read returns ierr 1'
+file = 'atm/atm_lib.f90'
+old = 'if (.not. allard_tables%loaded) then'
+new = 'if (.false.) then'
+
+[[mutation]]
+id = 'atm_lib-10'
+check = 'atm_table_is_loaded: the table atm_init read, no other, none before (O19)'
+file = 'atm/atm_lib.f90'
+old = 'atm_table_is_loaded = allard_tables%loaded'
+new = 'atm_table_is_loaded = .true.'
+
+[[mutation]]
+id = 'atm_lib-11'
+check = 'atm_table_is_loaded: the table atm_init read, no other, none before (O19)'
+file = 'atm/atm_lib.f90'
+old = 'atm_table_is_loaded = kurucz_table%loaded'
+new = 'atm_table_is_loaded = allard_tables%loaded'
+
+[[mutation]]
 id = 'atm_lib-02'
 check = 'atm_init: an atm_choice that is none of the choices returns ierr 1 (M236)'
 file = 'atm/atm_lib.f90'
@@ -292,6 +313,15 @@ old = '''
 new = '''
       if (.false.) then
          call report_allard_open_failure(path)'''
+
+[[mutation]]
+id = 'allard_reader-08'
+check = 'allard reader: the old NextGen 1 file with tau = 100 asked returns ierr 1 (O19)'
+file = 'atm/tables/allard_table_reader.f90'
+old = '''
+      if (use_tau100) then'''
+new = '''
+      if (.false.) then'''
 
 [[mutation]]
 id = 'allard_reader-07'

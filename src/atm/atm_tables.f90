@@ -63,9 +63,7 @@ module atm_tables
 ! an entry the file does not give. Each row's first and last valid log g
 ! column and the log g range a lookup may use (the valid range extended
 ! below and above), and the table's ranges. Everything is 0 until the
-! reader runs, so that a lookup in tables never read fails the range
-! check (lookup_failed): the accretion surface of a deck whose
-! atm_choice is not 4 (O19).
+! reader runs (atm_lib refuses a lookup in tables it did not read).
       type :: allard_table
          logical :: loaded = .false.
 ! the old NextGen 1 layout (one composition, no tau = 100 columns)

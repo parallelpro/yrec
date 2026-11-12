@@ -122,8 +122,10 @@ allard reader: a missing file, an empty one, one in neither layout: ierr 1      
 
 
 allard reader: a record whose log P cannot be read returns ierr 1                    0.00E+00  ok
+allard reader: the old NextGen 1 file with tau = 100 asked returns ierr 1 (O19)      0.00E+00  ok
 atm_init: an atm_choice that is none of the choices returns ierr 1 (M236)            0.00E+00  ok
 atm_init: each starts clean, without the tables an earlier one read (M283)           0.00E+00  ok
+atm_table_is_loaded: the table atm_init read, no other, none before (O19)            0.00E+00  ok
 atm_get_surface_pt: a choice that is not a table returns ierr 1                      0.00E+00  ok
 atm_choices: the known choices, the tables (3-5), a name for each known one          0.00E+00  ok
 atm_choices: Kurucz and Allard switch to gray at their limit, the rest never         0.00E+00  ok

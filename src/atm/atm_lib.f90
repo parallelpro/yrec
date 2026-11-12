@@ -10,6 +10,7 @@
 !     atm_get_surface_pt   log P and log T at (log Teff, log g) from the
 !                          Kurucz, Allard or Castelli/Kurucz table
 !     atm_allard_teff_max  the Allard tables' highest log Teff
+!     atm_table_is_loaded  whether atm_init read the table of a choice
 !     atm_eddington_gray ... atm_castelli_kurucz, atm_last_choice, atm_choice_is_known,
 !     atm_choice_is_tabulated, atm_choice_name
 !                          what each atm_choice is (atm_choices)
@@ -43,7 +44,7 @@ module atm_lib
            report_polint_failure, note_choice_switch
       implicit none
       private
-      public :: atm_init, atm_get_surface_pt, atm_allard_teff_max
+      public :: atm_init, atm_get_surface_pt, atm_allard_teff_max, atm_table_is_loaded
       public :: atm_settings_t, atm_table_paths_t
       public :: atm_eddington_gray, atm_krishna_swamy, atm_hsra, atm_kurucz, atm_allard, &
            atm_castelli_kurucz, atm_last_choice, atm_choice_is_known, atm_choice_is_tabulated, &
@@ -94,7 +95,7 @@ subroutine atm_init(settings, paths, ierr)
               kurucz_table, ierr)
       case (atm_allard)
          call read_allard_tables(paths%allard, settings%allard_target_feh, &
-              settings%allard_target_alpha, allard_tables, ierr)
+              settings%allard_target_alpha, settings%allard_use_tau100, allard_tables, ierr)
       case (atm_castelli_kurucz)
          call read_surface_pressure_table(paths%surface_pressure, castelli_num_teff, &
               castelli_table, ierr)
@@ -119,11 +120,10 @@ end subroutine report_unknown_choice
 ! log T (log Teff, or T at tau = 100 from the Allard tables with
 ! allard_use_tau100). Both are set only when the lookup succeeds.
 ! lookup_failed: the point is outside the Allard tables (the caller
-! falls back to a gray atmosphere), as is every point when atm_init did
-! not read them (their limits are 0; O19). ierr /= 0: the point is
-! outside a Kurucz table or below the Allard tables (1), an interpolation
-! failed (its numerics_status), the Kurucz or Castelli/Kurucz table was
-! not read, or atm_choice is not a table (1). The messages go through
+! falls back to a gray atmosphere). ierr /= 0: the point is outside a
+! Kurucz table or below the Allard tables (1), an interpolation failed
+! (its numerics_status), the choice's table was not read (1; O19), or
+! atm_choice is not a table (1). The messages go through
 ! atm_messages. atm_choice is the caller's current choice, which the
 ! star layer switches between tabulated and gray as Teff changes.
 subroutine atm_get_surface_pt(atm_choice, log_teff, log_g, log10_pressure, &
@@ -178,6 +178,11 @@ subroutine look_up_allard()
       type(allard_lookup_result) :: lookup
       integer :: row
 
+      if (.not. allard_tables%loaded) then
+         call report_not_loaded()
+         ierr = 1
+         return
+      end if
       call interpolate_allard_surface(allard_tables, installed_settings%allard_use_tau100, &
            log_teff, log_g, lookup)
       if (lookup%teff_above) call report_allard_teff_above(allard_tables%log_teff_min, &
@@ -224,6 +229,26 @@ pure function atm_allard_teff_max() result(log_teff_max)
       real(dp) :: log_teff_max
       log_teff_max = allard_tables%log_teff_last
 end function atm_allard_teff_max
+
+!----------------------------------------------------------------------
+! atm_table_is_loaded
+!----------------------------------------------------------------------
+! Whether atm_init read the table of atm_choice (3 Kurucz, 4 Allard, 5
+! Castelli/Kurucz) for this run; false for any other choice. The
+! accretion surface asks it before it looks up the Allard tables (O19).
+pure logical function atm_table_is_loaded(atm_choice)
+      integer, intent(in) :: atm_choice
+      select case (atm_choice)
+      case (atm_kurucz)
+         atm_table_is_loaded = kurucz_table%loaded
+      case (atm_allard)
+         atm_table_is_loaded = allard_tables%loaded
+      case (atm_castelli_kurucz)
+         atm_table_is_loaded = castelli_table%loaded
+      case default
+         atm_table_is_loaded = .false.
+      end select
+end function atm_table_is_loaded
 
 !----------------------------------------------------------------------
 ! atm_leaves_table, atm_reenters_table, atm_note_choice_switch

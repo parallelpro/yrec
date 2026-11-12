@@ -73,13 +73,16 @@ contains
 !----------------------------------------------------------------------
 ! Reads the file at path into tbl (target_feh and target_alpha select the
 ! composition of the Allard layout), then finds the lookups' limits and
-! checks the table. A file that cannot be opened or read, a record off
-! the grid, or a table without a 4-point stencil returns ierr = 1 after
-! its message; a composition the file does not hold,
-! allard_composition_missing.
-subroutine read_allard_tables(path, target_feh, target_alpha, tbl, ierr)
+! checks the table. use_tau100: the run's lookups will ask for log P and
+! log T at tau = 100 (allard_use_tau100), which the old NextGen 1 layout
+! does not have. A file that cannot be opened or read, an old NextGen 1
+! file with use_tau100, a record off the grid, or a table without a
+! 4-point stencil returns ierr = 1 after its message; a composition the
+! file does not hold, allard_composition_missing.
+subroutine read_allard_tables(path, target_feh, target_alpha, use_tau100, tbl, ierr)
       character(len=*), intent(in) :: path
       real(dp), intent(in) :: target_feh, target_alpha
+      logical, intent(in) :: use_tau100
       type(allard_table), intent(out) :: tbl
       integer, intent(out) :: ierr
 
@@ -106,7 +109,7 @@ subroutine read_allard_tables(path, target_feh, target_alpha, tbl, ierr)
          call report_atm_error('cannot read the Allard table ' // trim(path))
          ierr = 1
       else if (first_record(4:7) == old_nextgen_mark) then
-         call read_old_nextgen(allard_unit, path, tbl, ierr)
+         call read_old_nextgen(allard_unit, path, use_tau100, tbl, ierr)
       else if (first_record(4:9) == allard_mark) then
          call read_allard_layout(allard_unit, path, target_feh, target_alpha, tbl, ierr)
       else
@@ -123,11 +126,13 @@ subroutine read_allard_tables(path, target_feh, target_alpha, tbl, ierr)
 end subroutine read_allard_tables
 
 ! The old NextGen 1 layout: the log g columns, the log Teff rows, then log
-! P a row at a time. (Its tables have no tau = 100 columns; a run that
-! asks for them gets -999 there: O19, retired/allard_tau100_check.f90.txt.)
-subroutine read_old_nextgen(allard_unit, path, tbl, ierr)
+! P a row at a time. It has no tau = 100 columns, so a run whose lookups
+! ask for them (use_tau100) is refused before the read (O19: the F77's
+! check tested a flag nothing set, and never ran).
+subroutine read_old_nextgen(allard_unit, path, use_tau100, tbl, ierr)
       integer, intent(in) :: allard_unit
       character(len=*), intent(in) :: path
+      logical, intent(in) :: use_tau100
       type(allard_table), intent(inout) :: tbl
       integer, intent(inout) :: ierr
 
@@ -136,6 +141,12 @@ subroutine read_old_nextgen(allard_unit, path, tbl, ierr)
 
       tbl%is_old_nextgen = .true.
       call log_old_nextgen_file()
+      if (use_tau100) then
+         call report_atm_error('allard_use_tau100 asks for log P and log T at tau = 100, ' // &
+              'which the old NextGen 1 file ' // trim(path) // ' does not have')
+         ierr = 1
+         return
+      end if
       tbl%num_teff = old_nextgen_num_teff
       tbl%num_g = old_nextgen_num_g
       read(allard_unit, old_log_g_format, iostat=ios, iomsg=message) tbl%log_g(1:tbl%num_g)
