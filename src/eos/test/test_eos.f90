@@ -1302,7 +1302,35 @@ subroutine scv_mean_weight_checks()
            abs(above%specific_gas_constant/below%specific_gas_constant - 1.0d0) < 1.0d-6 .and. &
            abs(above%electron_mean_weight_inverse - below%electron_mean_weight_inverse) < 1.0d-6)
       call scv_search_checks()
+      call scv_short_row_checks()
 end subroutine scv_mean_weight_checks
+
+! SCV's envelope lookup reads only the envelope table's built entries:
+! at log T 3.71, log P 12.1 the cell's first row (log T 3.62) holds 49
+! points, to log P_gas 13.6, the row below it (3.54) 38, to 11.4, and the
+! smoothing toward the cell one row down (within 0.032 of log T 3.70)
+! would read that row's columns 40 to 43, never built (M206). With every
+! never-built entry of the table filled with 1e3 the lookup gives what it
+! gives with them zero.
+subroutine scv_short_row_checks()
+      real(dp), parameter :: x = 0.70d0, z = 0.016492d0, lt = 3.71d0, lp = 12.1d0
+      type(eos_result) :: unbuilt_zero, unbuilt_filled
+      integer :: ierr1, ierr2, t
+      call configure_eos("scv_only", scv=.true.)
+      call eos_at(lt, lp, x, z, unbuilt_zero, ierr1)
+      do t = 1, size(nptsx)
+         tablenv(t, nptsx(t)+1:, :) = 1.0d3
+      end do
+      call eos_at(lt, lp, x, z, unbuilt_filled, ierr2)
+      do t = 1, size(nptsx)
+         tablenv(t, nptsx(t)+1:, :) = 0.0d0
+      end do
+      call check("SCV: a lookup above a shorter row below reads only the envelope table's built entries (M206)", &
+           ierr1 == 0 .and. ierr2 == 0 .and. &
+           unbuilt_filled%log10_density == unbuilt_zero%log10_density .and. &
+           unbuilt_filled%adiabatic_gradient == unbuilt_zero%adiabatic_gradient .and. &
+           unbuilt_filled%specific_heat_cp == unbuilt_zero%specific_heat_cp)
+end subroutine scv_short_row_checks
 
 ! SCV's cell search starts from the last lookup's cell: off the tables'
 ! nodes its result does not depend on that start, from a far cell, from

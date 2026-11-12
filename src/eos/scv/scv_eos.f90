@@ -102,8 +102,11 @@ end subroutine scv_lookup
 ! within tol_temp_smooth / tol_pressure_smooth of a node; from them the
 ! density, the mean weights it implies, dln rho/dln T and dln rho/dln P
 ! with radiation, cp and grad_ad; and the ionization fractions from the
-! pure H and He tables (scv_ionization_fractions). A spline failure is
-! ierr (with a message).
+! pure H and He tables (scv_ionization_fractions). The smoothing toward
+! the cell one row down reads that row, which holds fewer points than the
+! cell's first row where the rows' counts grow with T: where it lacks the
+! shifted cell's columns the cell keeps its own result, as at the
+! table's first row (M206). A spline failure is ierr (with a message).
 subroutine compute_scv_envelope_eos(log10_temperature, hydrogen_fraction, &
      metal_fraction, r, covers, ierr)
       real(dp), intent(in) :: log10_temperature
@@ -139,6 +142,8 @@ subroutine compute_scv_envelope_eos(log10_temperature, hydrogen_fraction, &
            radiation_energy_density_term
       logical :: temp_needs_smoothing, press_needs_smoothing, t_centred, p_centred
       integer :: temp_smooth_direction, press_smooth_direction
+! the last column the cell shifted one row down reads (M206)
+      integer :: shifted_last_column
       integer :: i, ii, j, k
 ! the cell's first T row and first P_gas column (find_scv_cell)
       integer :: idtt, idp
@@ -202,6 +207,14 @@ subroutine compute_scv_envelope_eos(log10_temperature, hydrogen_fraction, &
                press_smooth_weight = 0.5d0*(1.0d0 - press_dist_below/tol_pressure_smooth)
             end if
          end if
+      end if
+! the cell one row down reads that row's columns idp to idp + 3, and one
+! more with the upward shift in P; a row without them keeps the cell's
+! own result
+      if (temp_needs_smoothing .and. temp_smooth_direction == -1) then
+         shifted_last_column = idp + 3
+         if (press_needs_smoothing) shifted_last_column = idp + 3 + max(press_smooth_direction, 0)
+         if (shifted_last_column > nptsx(idtt-1)) temp_needs_smoothing = .false.
       end if
 ! include radiation pressure in the equation of state.
       radiation_pressure = beta_complement*r%pressure

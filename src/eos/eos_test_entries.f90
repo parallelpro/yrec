@@ -10,8 +10,9 @@
 !                            OPAL's names
 ! and, re-exported from the modules that hold them, the internals the
 ! checks call or inspect: the settings' installer, the OPAL lookup and
-! its tables' instances, the MHD table lookup, SCV's search start, the
-! warnings' flags, the table sources' list and the Debye-Hueckel record.
+! its tables' instances, the MHD table lookup, SCV's search start and its
+! envelope table (whose never-built entries a check fills), the warnings'
+! flags, the table sources' list and the Debye-Hueckel record.
 module eos_test_entries
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use eos_results, only: eos_result
@@ -23,7 +24,7 @@ module eos_test_entries
            iv_opal01, iv_opal06, i_opal_cv, i_opal01_cv, i_opal_p, i_opal01_p, i_opal_gamma1, &
            i_opal_gamma2_ratio
       use mhd_eos, only: interpolate_mhd_table
-      use scv_eos_tables, only: scv_cell, last_scv_cell
+      use scv_eos_tables, only: scv_cell, last_scv_cell, tablenv, nptsx
       use eos_messages, only: eos_warned, once_fermi_extrapolation
       use eos_table_source, only: eos_table_source_t, stage_in_place_of_saha, stage_over_the_gas, &
            stage_whole_eos
@@ -37,7 +38,8 @@ module eos_test_entries
       public :: gamma1_at_density, esac95, esac01, esac06
       public :: eos_settings, set_eos_settings, compute_opal_eos, opal_tables, &
            iv_opal95, iv_opal01, iv_opal06, i_opal_cv, i_opal01_cv, i_opal_p, i_opal01_p, &
-           interpolate_mhd_table, scv_cell, last_scv_cell, eos_warned, once_fermi_extrapolation, &
+           interpolate_mhd_table, scv_cell, last_scv_cell, tablenv, nptsx, eos_warned, &
+           once_fermi_extrapolation, &
            eos_table_source_t, stage_in_place_of_saha, stage_over_the_gas, stage_whole_eos, &
            table_sources, n_table_sources, debye_huckel_composition_of, debye_huckel_composition, &
            idh_c, idh_n, idh_o, idh_ne, idh_na, idh_mg, idh_al, idh_si, idh_ar, idh_fe

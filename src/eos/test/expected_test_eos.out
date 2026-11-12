@@ -647,6 +647,8 @@ ok   gamma1_at_density: below the OPAL table, the Yale/SCV value
 ok   SCV: R/mu = beta P/(rho T) and 1/mu_e from it, on both SCV paths
 ok   SCV: R/mu and 1/mu_e continuous at the Saha ramp's foot
 ok   SCV: a lookup's cell does not depend on where its search starts
+# test_eos: configuration scv_only
+ok   SCV: a lookup above a shorter row below reads only the envelope table's built entries (M206)
 # test_eos: configuration yale_only
 # test_eos: configuration yale_diffusion_z
 # test_eos: configuration yale_only

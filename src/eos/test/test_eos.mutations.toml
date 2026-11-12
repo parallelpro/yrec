@@ -585,3 +585,10 @@ file = 'eos/opal/opal_table_reader.f90'
 old = '''            if (v%density_grid_table(x_loop_index,density_row) /= &
                  v%density_grid_table(1,density_row)) then'''
 new = '''            if (.false.) then'''
+
+[[mutation]]
+id = 'scv_short_row-01'
+check = "SCV: a lookup above a shorter row below reads only the envelope table's built entries (M206)"
+file = 'eos/scv/scv_eos.f90'
+old = '''         if (shifted_last_column > nptsx(idtt-1)) temp_needs_smoothing = .false.'''
+new = '''         if (shifted_last_column > nptsx(idtt)) temp_needs_smoothing = .false.'''
