@@ -131,7 +131,7 @@ Its 69 ok/FAIL checks (a FAIL makes it exit 1):
 
 Every check has a mutation in `eos/test/test_eos.mutations.toml` that makes it print FAIL, and `python3 src/tools/mutate.py eos` (after `make tests` in src/) reports all 75 caught (2026-11-11). `test_eos.py` also checks `eos_settings_t`'s defaults against the controls' (`test_eos_settings_defaults_are_the_controls`). Regenerate the pin only for a deliberate change: run `src/test_eos` with `YREC_INPUT` set in an empty directory, review the diff, and commit it saying why.
 
-Under the development flags (`make devel_tests`, `python3 src/tools/devel_tests.py`) test_eos stops at its check of a fully ionized iteration started 100 dex off (M93's), where the iteration's second-order step overflows far from its root (`exp` of more than 308 dex; Inf in the release build, where the step is then clamped to 4 dex); M92's trap before it is fixed.
+Under the development flags (`make devel_tests`, `python3 src/tools/devel_tests.py`) test_eos runs to its end (2026-11-11). Far from its root the fully ionized iteration's second-order term is capped at 10^300 (`max_second_order_log10`), where it already takes the step to its 4 dex clamp, so that it does not overflow; its check of a start 100 dex off (M93's) reached `exp` of more than 308 dex before (Inf in the release build, clamped the same way).
 
 **The decks** pin the EOS in use: 304 of the 310 decks of testsuite/ and examples/ use OPAL 2006, SCV and the Debye-Hückel correction, two SCV and the correction without OPAL, four the Yale EOS with the correction alone; none uses MHD or OPAL 1995 or 2001, which test_eos alone covers.
 

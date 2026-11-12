@@ -63,9 +63,11 @@ module yale_eos
 ! steps are capped at max_density_step_dex (a factor 10^4, LLP 1/31/07),
 ! it fails after max_density_iterations, and the relative pressure error
 ! its second-order term is computed from is floored at
-! smallest_pressure_error (its log is taken).
+! smallest_pressure_error (its log is taken). The second-order term of a
+! step is taken at most 10^max_second_order_log10, within the double
+! range (the step is clamped to max_density_step_dex either way).
       real(dp), parameter :: density_tolerance_dex = 1.0d-8, max_density_step_dex = 4.0d0, &
-           smallest_pressure_error = 1.0d-15
+           smallest_pressure_error = 1.0d-15, max_second_order_log10 = 300.0d0
       integer, parameter :: max_density_iterations = 20
 
 ! The Saha system of one compute_saha_eos call: its constants, the
@@ -794,7 +796,9 @@ end subroutine start_fully_ionized_solution
 !----------------------------------------------------------------------
 ! Newton iteration on log rho until the electron (Fermi table), ion and
 ! radiation pressures, plus the Debye-Hueckel term, add up to P; steps
-! are capped at max_density_step_dex, and max_density_iterations steps
+! are capped at max_density_step_dex (the second-order term's log10 at
+! max_second_order_log10 first, so that it does not overflow far from the
+! root), and max_density_iterations steps
 ! without convergence (to density_tolerance_dex) is a failure
 ! (converged false, its message in the run log). For details consult
 ! Prather's thesis. The electron pressure pe is tabulated against
@@ -922,6 +926,10 @@ subroutine iterate_fully_ionized_density(log10_temperature, log10_pressure, r, f
       pr8l=log10(factor)
       pr9l=log10(abs(pr9))
       factl=log10(0.5d0)+pr9l+2.d0*pr8l
+! far from the root the second-order term would pass the double range (an
+! overflow); at 10^max_second_order_log10 it already takes the step to
+! the max_density_step_dex clamp below, so it is capped there
+      if (factl > max_second_order_log10) factl = max_second_order_log10
       fact=exp(ln10*factl)
       fact=sign(fact,pr9)
       corr=-pr8-fact
