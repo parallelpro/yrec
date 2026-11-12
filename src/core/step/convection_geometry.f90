@@ -147,12 +147,12 @@ subroutine locate_surface_mixing_base(s, radius, grada, gradr, env_cz_zone, &
             cz_base_zone = first_zone_above(radius, env_cz_zone-1, search_radius)
 ! The overshoot edge's offset within its zone k = cz_base_zone, in the
 ! same convention: cz_base_frac = 0.5 - (r_edge - r(k-1))/(r(k) - r(k-1)),
-! clipped to [-0.5, 0.5]. The zone width takes r(k) from the start-of-step
-! model (logR_start) and r(k-1) from the current one, as the legacy code
-! did (docs/ROADMAP.md section 13).
+! clipped to [-0.5, 0.5], both radii the current model's (the legacy
+! code took r(k) from the start-of-step model until 2026-11, bug_sweep
+! O10).
             if (cz_base_zone.gt.1) then
                shell_radius = exp(ln10*radius(cz_base_zone-1))
-               delta_radius = exp(ln10*s%logR_start(cz_base_zone))-shell_radius
+               delta_radius = exp(ln10*radius(cz_base_zone))-shell_radius
                cz_base_frac = 0.5d0-((search_radius-shell_radius)/delta_radius)
                cz_base_frac = max(-0.5d0,cz_base_frac)
                cz_base_frac = min(0.5d0,cz_base_frac)
