@@ -108,7 +108,7 @@
       ! (legacy name: fiso)
       isochrone_file = ''
 
-      ! Kurucz (atm_choice 3 and 4) or Castelli/Kurucz (5) surface-pressure table
+      ! Kurucz (atm_choice 3) or Castelli/Kurucz (5) surface-pressure table
       ! (legacy name: fatm)
       atm_table_file = ''
 

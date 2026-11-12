@@ -62,7 +62,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `mhd_table_file_7` | `fmhd7` | `centre4_table_path` | control | - | `eos_table_paths%mhd_centre` | run | path | `''` | live | MHD EOS table 7 of 8: the fourth centre-type composition |
 | `mhd_table_file_8` | `fmhd8` | `centre5_table_path` | control | - | `eos_table_paths%mhd_centre` | run | path | `''` | live | MHD EOS table 8 of 8: the fifth centre-type composition |
 | `isochrone_file` | `fiso` | `isochrone_file` | control | - | - | run | path | `''` | live | Isochrone output file |
-| `atm_table_file` | `fatm` | `atm_table_path` | control | - | `atm_table_paths%surface_pressure` | run | path | `''` | live | Kurucz (atm_choice 3 and 4) or Castelli/Kurucz (5) surface-pressure table |
+| `atm_table_file` | `fatm` | `atm_table_path` | control | - | `atm_table_paths%surface_pressure` | run | path | `''` | live | Kurucz (atm_choice 3) or Castelli/Kurucz (5) surface-pressure table |
 | `kurucz_opacity_table2_file` (`kurucz_castelli_atm_table_file`) | `fkur2` | `kurucz_table2_path` | control | - | `kap_table_paths%kurucz_z2` | run | path | `''` | live | Kurucz 1990 low-temperature opacity table, second Z |
 | `allard_atm_table_file` | `fallard` | `allard_table_path` | control | - | `atm_table_paths%allard` | run | path | `''` | live | Allard NextGen model-atmosphere table |
 | `scv_h_table_file` | `fscvh` | `scv_h_table_path` | control | - | `eos_table_paths%scv_h` | run | path | `''` | live | Saumon-Chabrier-Van Horn EOS: hydrogen table |
