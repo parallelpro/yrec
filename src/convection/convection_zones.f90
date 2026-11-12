@@ -194,7 +194,7 @@ subroutine list_convection_zones(convective_flag, num_zones, bounds, num_found, 
          from = last + 1
          if (last == first) cycle
          if (num_found == size(bounds, 1)) then
-            call log_too_many_zones()
+            call log_too_many_zones(size(bounds, 1))
             ierr = convection_too_many_zones
             return
          end if

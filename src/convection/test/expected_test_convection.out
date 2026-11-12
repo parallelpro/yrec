@@ -27,10 +27,14 @@ spots, contrast varying with depth: convective ierr T  0
    2.500776417549994E-01   7.359634450190175E+03
   velocity   2.977153777847110E+05
   derivatives  -2.945658771053478E-02   9.812437562909343E-03  -4.139607937270451E-04
-***WARNING***
-TPGRAD TRIED TO TAKE SQUARE ROOT OF NEGATIVE NUMBER - ASSUMED ADIABATIC CONVECTION
- DELDEL    7.359E+03 QDT    5.000E-01 DISC.   -1.072E-02
-   5.000E+03   1.000E+00   9.500E+00   3.330E+01   4.800E+00   9.900E-01   1.020E+00   7.360E+03   2.500E-01   1.082E+01
+compute_temperature_gradients: the mixing-length square root of a negative number; ierr returned
+  del_rad - del_ad   7.359E+03, dln rho/dln T   5.000E-01, radicand  -1.072E-02
+  kappa   5.000E+03, L/Lsun   1.000E+00, log P   9.500E+00, log m   3.330E+01, log T   4.800E+00
+  f_T   9.900E-01, f_P   1.020E+00, del_rad   7.360E+03, del_ad   2.500E-01, log r   1.082E+01
+compute_temperature_gradients: the mixing-length square root of a negative number; ierr returned
+  del_rad - del_ad   7.359E+03, dln rho/dln T   5.000E-01, radicand  -1.072E-02
+  kappa   5.000E+03, L/Lsun   1.000E+00, log P   9.500E+00, log m   3.330E+01, log T   4.800E+00
+  f_T   9.900E-01, f_P   1.020E+00, del_rad   7.360E+03, del_ad   2.500E-01, log r   1.082E+01
 unstable square root: convective ierr T  1
    2.500000000000000E-01   7.359634450190175E+03
 # find_convection_zones
@@ -62,8 +66,8 @@ fully convective: core_edge env_edge n_rad n_mix n_mix_no_os ierr   1   1   0   
 # find_convection_zones with overshoot (Yale EOS scale heights)
  -----SAHA FAILURE (TL,PL)=  5.951389 11.780960  (E,DE)=      0.651428866251      0.694651594534
  -----SAHA FAILURE (TL,PL)=  4.906156  8.322135  (E,DE)=      0.651709326372      0.694466572492
- MIXED REGIONS WITHOUT OVERSHOOT[   1-   5 ][  18-  21 ][  31-  40 ][
- MIXED REGIONS WITH OVERSHOOT   [   1-   6 ][  18-  21 ][  31-  40 ][
+find_convection_zones: mixed regions without overshoot [    1-    5] [   18-   21] [   31-   40]
+find_convection_zones: mixed regions with overshoot    [    1-    6] [   18-   21] [   31-   40]
 core, intermediate, envelope: core_edge env_edge n_rad n_mix n_mix_no_os ierr   5  31   2   3   3   0
   mixed   1   6  18  21  31  40
   mixed without overshoot   1   5  18  21  31  40
@@ -75,26 +79,25 @@ fully convective: core_edge env_edge n_rad n_mix n_mix_no_os ierr   1   1   0   
   radiative   0   0
   iov1 iov2  -1  -1
  -----SAHA FAILURE (TL,PL)=  4.906156  8.322135  (E,DE)=      0.651709326372      0.694466572492
- MIXED REGIONS WITHOUT OVERSHOOT[   1-   5 ][  31-  40 ][
- MIXED REGIONS WITH OVERSHOOT   [   1-   5 ][  31-  40 ][
+find_convection_zones: mixed regions without overshoot [    1-    5] [   31-   40]
+find_convection_zones: mixed regions with overshoot    [    1-    5] [   31-   40]
 core, lovmax limit: core_edge env_edge n_rad n_mix n_mix_no_os ierr   5  31   1   2   2   0
   mixed   1   5  31  40
   mixed without overshoot   1   5  31  40
   radiative   6  30
   iov1 iov2  31  31
  -----SAHA FAILURE (TL,PL)=  4.906156  8.322135  (E,DE)=      0.651709326372      0.694466572492
- MIXED REGIONS WITHOUT OVERSHOOT[   1-   5 ][   9-  12 ][  31-  40 ][
- MIXED REGIONS WITH OVERSHOOT   [   1-  10 ][   7-  13 ][  31-  40 ][
-  CONVECTION ZONES MERGED DUE TO OVERSHOOT
-  OLD[  1- 10][  7- 13] NEW[  1- 13]
+find_convection_zones: mixed regions without overshoot [    1-    5] [    9-   12] [   31-   40]
+find_convection_zones: mixed regions with overshoot    [    1-   10] [    7-   13] [   31-   40]
+find_convection_zones: mixed regions [    1-   10] [    7-   13] merged by overshoot into [    1-   13]
 core and intermediate merging: core_edge env_edge n_rad n_mix n_mix_no_os ierr   5  31   1   2   3   0
   mixed   1  13  31  40
   mixed without overshoot   1   5   9  12  31  40
   radiative  14  30
   iov1 iov2  31  31
  -----SAHA FAILURE (TL,PL)=  4.906156  8.322135  (E,DE)=      0.651709326372      0.694466572492
- MIXED REGIONS WITHOUT OVERSHOOT[   1-   5 ][  31-  40 ][
- MIXED REGIONS WITH OVERSHOOT   [   1-   6 ][  30-  40 ][
+find_convection_zones: mixed regions without overshoot [    1-    5] [   31-   40]
+find_convection_zones: mixed regions with overshoot    [    1-    6] [   30-   40]
 tiny envelope overshoot, rotating: core_edge env_edge n_rad n_mix n_mix_no_os ierr   5  31   1   2   2   0
   mixed   1   6  30  40
   mixed without overshoot   1   5  31  40
@@ -162,16 +165,20 @@ spots, constant contrast: dln del/dln T, P vs centred differences          5.56E
 spots, depth-varying contrast: del and v_c as the equations give           6.00E-15  ok
 spots, depth-varying contrast: dln del/dln r vs centred difference         1.33E-10  ok
 spots, depth-varying contrast: dln del/dln T, P vs centred differences     3.71E-08  ok
-***WARNING***
-TPGRAD TRIED TO TAKE SQUARE ROOT OF NEGATIVE NUMBER - ASSUMED ADIABATIC CONVECTION
- DELDEL    7.582E+03 QDT    5.000E-01 DISC.   -1.105E-02
-   5.000E+03   1.000E+00   9.500E+00   3.330E+01   4.800E+00   1.000E+00   1.000E+00   7.583E+03   2.500E-01   1.082E+01
+compute_temperature_gradients: the mixing-length square root of a negative number; ierr returned
+  del_rad - del_ad   7.582E+03, dln rho/dln T   5.000E-01, radicand  -1.105E-02
+  kappa   5.000E+03, L/Lsun   1.000E+00, log P   9.500E+00, log m   3.330E+01, log T   4.800E+00
+  f_T   1.000E+00, f_P   1.000E+00, del_rad   7.583E+03, del_ad   2.500E-01, log r   1.082E+01
+compute_temperature_gradients: the mixing-length square root of a negative number; ierr returned
+  del_rad - del_ad   7.582E+03, dln rho/dln T   5.000E-01, radicand  -1.105E-02
+  kappa   5.000E+03, L/Lsun   1.000E+00, log P   9.500E+00, log m   3.330E+01, log T   4.800E+00
+  f_T   1.000E+00, f_P   1.000E+00, del_rad   7.583E+03, del_ad   2.500E-01, log r   1.082E+01
 a negative radicand returns convection_unstable_radicand                   0.00E+00  ok
 # find_convection_zones: checks
 zones: runs of more than one shell; a single shell is not one              0.00E+00  ok
 zones: the mixed and radiative regions tile the model                      0.00E+00  ok
 zones: twelve zones fill the bounds' twelve rows                           0.00E+00  ok
- -----TOO MANY MIX ZONES
+find_convection_zones: more convection zones than the zone list's 12 rows
 zones: a thirteenth zone returns convection_too_many_zones                 0.00E+00  ok
 # overshoot: checks
 pressure_scale_height = P r^2/(G m rho)                                    1.33E-15  ok
@@ -179,39 +186,37 @@ envelope_overshoot_depth = 0 with envelope overshoot off                   0.00E
  -----SAHA FAILURE (TL,PL)=  4.906156  8.322135  (E,DE)=      0.651709326372      0.694466572492
  -----SAHA FAILURE (TL,PL)=  4.906156  8.322135  (E,DE)=      0.651709326372      0.694466572492
 envelope_overshoot_depth = alpha_env H_P (the EOS's rho) at the base       2.66E-15  ok
- MIXED REGIONS WITHOUT OVERSHOOT[   1-   5 ][  31-  40 ][
- MIXED REGIONS WITH OVERSHOOT   [   1-  10 ][  31-  40 ][
+find_convection_zones: mixed regions without overshoot [    1-    5] [   31-   40]
+find_convection_zones: mixed regions with overshoot    [    1-   10] [   31-   40]
 overshoot, core: the last shell within alpha_core H_P above                0.00E+00  ok
- MIXED REGIONS WITHOUT OVERSHOOT[   1-   5 ][  31-  40 ][
- MIXED REGIONS WITH OVERSHOOT   [   1-   7 ][  31-  40 ][
+find_convection_zones: mixed regions without overshoot [    1-    5] [   31-   40]
+find_convection_zones: mixed regions with overshoot    [    1-    7] [   31-   40]
 overshoot, core: limited to beta r (Woo & Demarque)                        0.00E+00  ok
  -----SAHA FAILURE (TL,PL)=  4.906156  8.322135  (E,DE)=      0.651709326372      0.694466572492
- MIXED REGIONS WITHOUT OVERSHOOT[   1-   5 ][  31-  40 ][
- MIXED REGIONS WITH OVERSHOOT   [   1-   5 ][  30-  40 ][
+find_convection_zones: mixed regions without overshoot [    1-    5] [   31-   40]
+find_convection_zones: mixed regions with overshoot    [    1-    5] [   30-   40]
  -----SAHA FAILURE (TL,PL)=  4.906156  8.322135  (E,DE)=      0.651709326372      0.694466572492
 overshoot, envelope: the deepest shell within alpha_env H_P                0.00E+00  ok
 overshoot, envelope: the region below it, bottom..old edge                 0.00E+00  ok
 overshoot region: none without a zone or fully convective (M249)           0.00E+00  ok
  -----SAHA FAILURE (TL,PL)=  5.951389 11.780960  (E,DE)=      0.651428866251      0.694651594534
- MIXED REGIONS WITHOUT OVERSHOOT[   1-   5 ][  18-  21 ][  31-  40 ][
- MIXED REGIONS WITH OVERSHOOT   [   1-   5 ][  16-  22 ][  31-  40 ][
+find_convection_zones: mixed regions without overshoot [    1-    5] [   18-   21] [   31-   40]
+find_convection_zones: mixed regions with overshoot    [    1-    5] [   16-   22] [   31-   40]
  -----SAHA FAILURE (TL,PL)=  5.951389 11.780960  (E,DE)=      0.651428866251      0.694651594534
 overshoot, intermediate: both edges by alpha_int H_P                       0.00E+00  ok
 overshoot, intermediate: no region below the envelope (M249)               0.00E+00  ok
  -----SAHA FAILURE (TL,PL)=  4.906156  8.322135  (E,DE)=      0.651709326372      0.694466572492
- MIXED REGIONS WITHOUT OVERSHOOT[   1-   5 ][  31-  40 ][
- MIXED REGIONS WITH OVERSHOOT   [   1-   6 ][  30-  40 ][
+find_convection_zones: mixed regions without overshoot [    1-    5] [   31-   40]
+find_convection_zones: mixed regions with overshoot    [    1-    6] [   30-   40]
 overshoot, rotating: at least one shell below the envelope                 0.00E+00  ok
 overshoot, rotating: at least one shell above the core                     0.00E+00  ok
- MIXED REGIONS WITHOUT OVERSHOOT[   1-   5 ][   9-  12 ][  31-  40 ][
- MIXED REGIONS WITH OVERSHOOT   [   1-  10 ][   7-  13 ][  31-  40 ][
-  CONVECTION ZONES MERGED DUE TO OVERSHOOT
-  OLD[  1- 10][  7- 13] NEW[  1- 13]
+find_convection_zones: mixed regions without overshoot [    1-    5] [    9-   12] [   31-   40]
+find_convection_zones: mixed regions with overshoot    [    1-   10] [    7-   13] [   31-   40]
+find_convection_zones: mixed regions [    1-   10] [    7-   13] merged by overshoot into [    1-   13]
 overshoot merge: met regions become one, first to last shell               0.00E+00  ok
- MIXED REGIONS WITHOUT OVERSHOOT[   1-   5 ][   7-   8 ][  31-  40 ][
- MIXED REGIONS WITH OVERSHOOT   [   1-  10 ][   7-   8 ][  31-  40 ][
-  CONVECTION ZONES MERGED DUE TO OVERSHOOT
-  OLD[  1- 10][  7-  8] NEW[  1- 10]
+find_convection_zones: mixed regions without overshoot [    1-    5] [    7-    8] [   31-   40]
+find_convection_zones: mixed regions with overshoot    [    1-   10] [    7-    8] [   31-   40]
+find_convection_zones: mixed regions [    1-   10] [    7-    8] merged by overshoot into [    1-   10]
 overshoot merge: the union, the lower region reaching higher (M285)        0.00E+00  ok
 # homogenize_convection_zones: checks
 homogenize: each species' mass in each zone is kept                        2.22E-16  ok
@@ -220,16 +225,15 @@ homogenize: the radiative shells are untouched                             0.00E
 homogenize: a uniform composition stays (relative)                         2.22E-16  ok
 homogenize's floors: X >= 0, Z <= 1 - X, O16 >= 0.99e-3 CNO                0.00E+00  ok
 # extend_by_semiconvection: checks (OPAL95 opacities)
- CZ OLD EDGE  10 EXTENDED TO- 12 LIMIT=F RAD.GRADS-IN/OUT  0.4450  0.4767
+extend_by_semiconvection: the core's edge moved from shell   10 to   12; del_rad above the old edge with the core's composition  0.4450, with its own  0.4767
 semiconvection: the core's upper edge moves out                            0.00E+00  ok
 semiconvection: f del_rad >= del_ad in the shells added, not next          0.00E+00  ok
- CZ OLD EDGE  10 EXTENDED TO- 11 LIMIT=T RAD.GRADS-IN/OUT  0.4450  0.4767
+extend_by_semiconvection: the core's edge moved from shell   10 to   11, at its limit; del_rad above the old edge with the core's composition  0.4450, with its own  0.4767
 semiconvection: a short timestep adds only the first shell                 0.00E+00  ok
- CZ OLD EDGE  10 EXTENDED TO- 12 LIMIT=F RAD.GRADS-IN/OUT  0.4450  0.4767
-  MIXED ZONES MERGED DUE TO SEMICONVECTION
-  OLD[  1- 12][ 11- 17] NEW[  1- 17]
+extend_by_semiconvection: the core's edge moved from shell   10 to   12; del_rad above the old edge with the core's composition  0.4450, with its own  0.4767
+extend_by_semiconvection: mixed regions [    1-   12] [   11-   17] merged by semiconvection into [    1-   17]
 semiconvection merge: an overlapped region joins the core                  0.00E+00  ok
- CZ OLD EDGE  10 EXTENDED TO- 12 LIMIT=F RAD.GRADS-IN/OUT  0.4450  0.4767
+extend_by_semiconvection: the core's edge moved from shell   10 to   12; del_rad above the old edge with the core's composition  0.4450, with its own  0.4767
 semiconvection merge: a region sharing the edge shell stays                0.00E+00  ok
 semiconvection: stable with the core's composition, it stays               0.00E+00  ok
 semiconvection: no core, no move: an envelope, a zone off centre (M241)    0.00E+00  ok
