@@ -48,9 +48,12 @@ contains
 ! interpolate_allard_surface
 !----------------------------------------------------------------------
 ! The tables at (log_teff, log_g), in four steps:
-!   1. the tables' range: log Teff below log_teff_max and above
-!      log_teff_min, log g strictly inside (log_g_min, log_g_max), each
-!      one row or column beyond the tables (find_table_ranges);
+!   1. the tables' range (find_table_ranges): log Teff below
+!      log_teff_max and above log_teff_min, one row beyond the first and
+!      the last row; log g strictly inside (log_g_min, log_g_max), the
+!      widest of the rows' ranges, each of which reaches four column
+!      widths below its row's first valid log g and one above its last
+!      (M233);
 !   2. the stencil: the four log Teff rows about log Teff (clamped to the
 !      table) and, in each, the four valid log g columns about log g
 !      (clamped to the row's valid ones); log g must lie in each row's

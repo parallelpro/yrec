@@ -60,7 +60,8 @@ module allard_table_reader
       real(dp), parameter :: feh_tolerance = 1.0d-5, grid_tolerance = 1.0d-6
 ! A row's lookups may use log g down to low_gravity_widths of its first
 ! column width below its first valid column, and one width above its
-! last (the F77's; its comments said one width at both ends, M233).
+! last: four widths below, as the F77's code had it (M233; its comments
+! said one at both ends, and the code was kept).
       real(dp), parameter :: low_gravity_widths = 4.0d0
 ! the fewest rows, and valid columns in a row, a 4-point stencil needs
       integer, parameter :: min_rows = 4, min_valid_columns = 4
