@@ -1354,22 +1354,24 @@ end subroutine scv_hydrogen_ion_checks
 ! smoothing toward the cell one row down (within 0.032 of log T 3.70)
 ! would read that row's columns 40 to 43, never built (M206). With every
 ! never-built entry of the table filled with 1e3 the lookup gives what it
-! gives with them zero.
+! gives with them zero. The lookup itself is compared (scv_lookup_alone):
+! the blend takes the Saha result there, beyond SCV's edge ramp (M88).
 subroutine scv_short_row_checks()
       real(dp), parameter :: x = 0.70d0, z = 0.016492d0, lt = 3.71d0, lp = 12.1d0
       type(eos_result) :: unbuilt_zero, unbuilt_filled
       integer :: ierr1, ierr2, t
+      logical :: covers1, covers2
       call configure_eos("scv_only", scv=.true.)
-      call eos_at(lt, lp, x, z, unbuilt_zero, ierr1)
+      call scv_lookup_alone(lt, lp, x, z, unbuilt_zero, covers1, ierr1)
       do t = 1, size(nptsx)
          tablenv(t, nptsx(t)+1:, :) = 1.0d3
       end do
-      call eos_at(lt, lp, x, z, unbuilt_filled, ierr2)
+      call scv_lookup_alone(lt, lp, x, z, unbuilt_filled, covers2, ierr2)
       do t = 1, size(nptsx)
          tablenv(t, nptsx(t)+1:, :) = 0.0d0
       end do
       call check("SCV: a lookup above a shorter row below reads only the envelope table's built entries (M206)", &
-           ierr1 == 0 .and. ierr2 == 0 .and. &
+           ierr1 == 0 .and. ierr2 == 0 .and. covers1 .and. covers2 .and. &
            unbuilt_filled%log10_density == unbuilt_zero%log10_density .and. &
            unbuilt_filled%adiabatic_gradient == unbuilt_zero%adiabatic_gradient .and. &
            unbuilt_filled%specific_heat_cp == unbuilt_zero%specific_heat_cp)
@@ -1701,15 +1703,27 @@ end subroutine without_scv
 subroutine scv_alone(lt, lp, x, z, r)
       real(dp), intent(in) :: lt, lp, x, z
       type(eos_result), intent(out) :: r
-      type(eos_table_source_t) :: list(n_table_sources)
-      integer :: k, ierr
+      integer :: ierr
       logical :: covers
+      call scv_lookup_alone(lt, lp, x, z, r, covers, ierr)
+end subroutine scv_alone
+
+! the same, with the lookup's ierr and whether SCV's tables cover the point
+subroutine scv_lookup_alone(lt, lp, x, z, r, covers, ierr)
+      real(dp), intent(in) :: lt, lp, x, z
+      type(eos_result), intent(out) :: r
+      logical, intent(out) :: covers
+      integer, intent(out) :: ierr
+      type(eos_table_source_t) :: list(n_table_sources)
+      integer :: k
       call without_scv(lt, lp, x, z, r)
+      covers = .false.
+      ierr = 0
       list = table_sources()
       do k = 1, n_table_sources
          if (list(k)%name == 'SCV') call list(k)%lookup(lt, lp, x, z, r, covers, ierr)
       end do
-end subroutine scv_alone
+end subroutine scv_lookup_alone
 
 subroutine without_opal(lt, lp, x, z, r)
       real(dp), intent(in) :: lt, lp, x, z
