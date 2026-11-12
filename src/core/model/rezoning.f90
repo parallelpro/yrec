@@ -49,8 +49,7 @@ contains
 !     eps_channels, eps_total, fit_point_logP, fit_point_logR, grada,
 !     gradr, gradT, kinematic_viscosity, log_Teff, log_total_mass, mu,
 !     opacity_zone, physics%chi_grid_scale,
-!     physics%envelope_overshoot_active,
-!     physics%overshoot_alpha_envelope, physics%rezone_env_logt0,
+!     physics%envelope_overshoot_active, physics%rezone_env_logt0,
 !     physics%rezone_env_logt1, physics%rotation_active,
 !     physics%use_extended_composition, stored_envelope_state,
 !     thermal_diffusivity
@@ -257,6 +256,9 @@ end subroutine check_envelope_temperature_range
 ! sorted and free of duplicates.
 subroutine flag_fixed_points
       use math_lib
+      use, intrinsic :: iso_fortran_env, only: dp => real64
+      use convection_lib, only: envelope_overshoot_depth
+      real(dp) :: overshoot_depth, overshoot_base_radius
       flag_count = 1
       flag_overflow_warned = .false.
 ! The edges of the central and surface convection zones.
@@ -307,15 +309,18 @@ subroutine flag_fixed_points
        fine_zone_base = 1
       else
 ! The overshoot base: the convection-zone base without envelope
-! overshoot; with it, the deepest point with
-! log P - log P(czb) <= overshoot_alpha_envelope (alpha used here as a
-! depth in log P).
+! overshoot; with it, the deepest point less than the envelope overshoot
+! depth alpha_env H_P (convection_lib's envelope_overshoot_depth) below
+! the base, as the overshoot moves the zone's lower edge.
        if (.not.s%physics%envelope_overshoot_active) then
           overshoot_base_zone = s%envelope_cz_bottom_index
        else
+          call envelope_overshoot_depth(s%xa, s%logRho, s%logP, s%logR, s%log_mass, &
+               s%logT, s%envelope_cz_bottom_index, overshoot_depth, ierr)
+          if (ierr /= 0) return
+          overshoot_base_radius = exp(ln10*s%logR(s%envelope_cz_bottom_index)) - overshoot_depth
           do overshoot_base_zone = s%envelope_cz_bottom_index-1,1,-1
-             if (s%logP(overshoot_base_zone)- &
-                  s%logP(s%envelope_cz_bottom_index).gt.s%physics%overshoot_alpha_envelope) exit
+             if (exp(ln10*s%logR(overshoot_base_zone)).lt.overshoot_base_radius) exit
           end do
             overshoot_base_zone = overshoot_base_zone + 1
             if (overshoot_base_zone.gt.1) then

@@ -423,7 +423,7 @@ core/envelope/envelope_refit.o: star_info_lib.mod
 core/main.o: run_driver.mod
 core/model/model_rescaling.o: control_slots.mod math_lib.mod physical_constants.mod run_messages.mod settings_install.mod shell_boundaries.mod star_info_lib.mod
 core/model/regridding.o: math_lib.mod numerics_lib.mod physical_constants.mod
-core/model/rezoning.o: am_regions.mod control_slots.mod math_lib.mod moments_of_inertia.mod numerics_lib.mod omega_profile.mod physical_constants.mod regridding.mod rotating_shape.mod run_messages.mod settings_install.mod shell_physics.mod star_info_lib.mod
+core/model/rezoning.o: am_regions.mod control_slots.mod convection_lib.mod math_lib.mod moments_of_inertia.mod numerics_lib.mod omega_profile.mod physical_constants.mod regridding.mod rotating_shape.mod run_messages.mod settings_install.mod shell_physics.mod star_info_lib.mod
 core/model/shell_boundaries.o: control_slots.mod star_info_lib.mod
 core/model/starting_model.o: am_regions.mod control_slots.mod convection_lib.mod envelope_integration.mod envelope_refit.mod eos_lib.mod kap_lib.mod math_lib.mod model_files.mod model_rescaling.mod moments_of_inertia.mod observables.mod physical_constants.mod rotating_shape.mod run_files.mod run_messages.mod settings_install.mod shell_physics.mod star_info_lib.mod stitched_model.mod turnover_timescale.mod
 core/run/calibration.o: control_slots.mod math_lib.mod physical_constants.mod run_messages.mod star_info_lib.mod

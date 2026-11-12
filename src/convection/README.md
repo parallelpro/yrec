@@ -4,7 +4,7 @@ This directory decides where the star convects and what its temperature gradient
 - the gradient from mixing-length theory, with starspots;
 - the convection zones from the shells' convective flags, extended by step overshoot and by semiconvection;
 - the homogenization of the zones' composition;
-- the pressure scale height and the envelope overshoot depth that core's light-element burn and rotation's sub-steps use.
+- the pressure scale height and the envelope overshoot depth that core's light-element burn and rezone and rotation's sub-steps use.
 
 Code outside convection/ uses it only through `convection_lib` (`tools/check_boundaries.py`, `FACADE_ONLY_DOMAINS`). convection/ reads nothing from the star (`STAR_FREE_DIRS`): its state comes in as arguments and its configuration as one settings record, `convection_settings`, which the star layer builds in setup/ and installs at the start of every run card. Its kernels print nothing: `temperature_gradients`, `convection_zones`, `overshoot` and `semiconvection` are in `STAR_BLIND_FILES` and `KERNEL_FILES`, and every message goes through `convection_messages` (§3).
 
@@ -89,10 +89,9 @@ Traced on 2026-11-10 on a throwaway branch (a least distance for core overshoot,
 
 **Add an overshoot prescription** (a different extent, or a cap):
 1. Its setting(s), as above.
-2. The extent in `overshoot.f90`: the region's branch in `extend_by_overshoot` (the distance, or the moved shell in `extend_upward`/`extend_downward`); for the surface convection zone, `envelope_overshoot_depth`, which that branch, core's Li/Be burn and rotation's sub-steps take.
-3. For an envelope rule, the caller that applies its own envelope overshoot: the rezone's overshoot base (`core/model/rezoning.f90`, α taken as a depth in log P).
-4. A check in `test_convection`'s `overshoot_checks` (the moved edge against the new extent, as the α H_P checks do), its mutation in `convection/test/test_convection.mutations.toml` (`python3 src/tools/mutate.py convection --only <id>`), and `convection/test/expected_test_convection.out` regenerated for the lines it adds.
-5. With the new setting at its default nothing moves; a deck that sets it moves (a measured commit for a changed default, `docs/GUIDELINES.md` "Changes that move results").
+2. The extent in `overshoot.f90`: the region's branch in `extend_by_overshoot` (the distance, or the moved shell in `extend_upward`/`extend_downward`); for the surface convection zone, `envelope_overshoot_depth`, which that branch, core's Li/Be burn and rezone (the overshoot base it keeps) and rotation's sub-steps take.
+3. A check in `test_convection`'s `overshoot_checks` (the moved edge against the new extent, as the α H_P checks do), its mutation in `convection/test/test_convection.mutations.toml` (`python3 src/tools/mutate.py convection --only <id>`), and `convection/test/expected_test_convection.out` regenerated for the lines it adds.
+4. With the new setting at its default nothing moves; a deck that sets it moves (a measured commit for a changed default, `docs/GUIDELINES.md` "Changes that move results").
 
 **Add a kernel** (a new step of the gradient, a zone rule): keep it star-free (arguments in, results out, settings from `convection_settings`) and `pure` where it can be; put its messages in `convection_messages`; a new file goes in `check_boundaries.py`'s `STAR_BLIND_FILES` and `KERNEL_FILES`, and `python3 tools/gen_makefile_deps.py` in `src/` rewrites `deps.mk`; export from `convection_lib` what core or rotation call; give it an ok/FAIL check with a mutation.
 

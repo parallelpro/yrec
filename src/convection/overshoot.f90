@@ -8,8 +8,8 @@
 !   envelope_overshoot_depth  alpha_env H_P below the surface convection
 !                             zone, cm: the extent extend_by_overshoot
 !                             moves that zone's lower edge by, and the
-!                             one core's Li/Be burn and rotation's
-!                             sub-steps take
+!                             one core's Li/Be burn and rezone and
+!                             rotation's sub-steps take
 !   extend_by_overshoot       moves the edges of the mixed regions by
 !                             alpha H_P (find_convection_zones)
 ! The switches and the alphas are convection_settings'. H_P at an edge
