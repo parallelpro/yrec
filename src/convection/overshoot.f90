@@ -73,9 +73,10 @@ end function envelope_overshoot_depth
 !     envelope, overshoot_bottom..overshoot_top (the edge), which takes
 !     the adiabatic gradient with adiabatic_overshoot;
 !   an intermediate zone (intermediate_overshoot): both ways by
-!     alpha_intermediate H_P (its downward region is stored the same way).
+!     alpha_intermediate H_P.
 ! An edge moves to the last shell within the distance (extend_downward,
-! extend_upward). overshoot_bottom and overshoot_top start at -1 (none).
+! extend_upward). overshoot_bottom and overshoot_top are -1 (none)
+! unless the surface convection zone overshoots.
 ! The regions with and without overshoot are logged; find_convection_zones
 ! merges the ones that now meet. ierr: an EOS failure's code.
 subroutine extend_by_overshoot(composition, log_density, log_pressure, log_radius, &
@@ -133,12 +134,9 @@ subroutine extend_by_overshoot(composition, log_density, log_pressure, log_radiu
             call edge_scale_height(composition, log_density, log_pressure, log_radius, &
                  log_mass, log_temperature, mixed_zone_bounds(k,2), scale_height_up, ierr)
             if (ierr /= 0) return
-            edge = mixed_zone_bounds(k,1)
             distance = scale_height_down*convection_settings%overshoot_alpha_intermediate
             call extend_downward(log_radius, distance, mixed_zone_bounds_no_overshoot(k,1), &
                  mixed_zone_bounds(k,1))
-            overshoot_top = edge
-            overshoot_bottom = mixed_zone_bounds(k,1)
             distance = scale_height_up*convection_settings%overshoot_alpha_intermediate
             call extend_upward(log_radius, num_zones, distance, &
                  mixed_zone_bounds_no_overshoot(k,2), mixed_zone_bounds(k,2))
@@ -221,8 +219,9 @@ end subroutine edge_scale_height
 ! Sources: OVERSH and HSUBP of the Yale code (HSUBP: PD, December 1984;
 ! revised for YREC Mark 6, MHP 2/91). The rotating rule is MHP's
 ! (11/91), the store of the region below the envelope for its adiabatic
-! gradient DBG's (8/94), and the limit for small cores JVS's (7/13),
-! after Woo & Demarque (2001). pressure_scale_height and
+! gradient DBG's (8/94; an intermediate zone's downward region was
+! stored too until 2026-11, bug_sweep M249), and the limit for small
+! cores JVS's (7/13), after Woo & Demarque (2001). pressure_scale_height and
 ! envelope_overshoot_depth were core's (convection_geometry, step_driver)
 ! until 2026-11.
 

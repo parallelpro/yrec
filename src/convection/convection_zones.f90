@@ -57,8 +57,10 @@ contains
 !       model, which has no overshoot;
 !   radiative_zone_bounds, num_radiative_zones  the radiative regions;
 !   overshoot_bottom, overshoot_top  the overshoot region below the
-!       envelope (extend_by_overshoot), which the caller keeps; left as
-!       they were when no overshoot is computed;
+!       surface convection zone (extend_by_overshoot), which the caller
+!       keeps; -1 (none) without envelope overshoot, without a surface
+!       convection zone, for a fully convective model and without a
+!       convection zone;
 !   ierr  convection_too_many_zones (logged) when the model has more
 !       convection zones than mixed_zone_bounds has rows; an EOS
 !       failure's code from the scale heights.
@@ -81,10 +83,13 @@ subroutine find_convection_zones(composition, log_density, log_pressure, log_rad
       integer, intent(out) :: core_cz_edge, envelope_cz_edge
       integer, intent(out) :: num_radiative_zones, num_mixed_zones, &
            num_mixed_zones_no_overshoot
-      integer, intent(inout) :: overshoot_bottom, overshoot_top
+      integer, intent(out) :: overshoot_bottom, overshoot_top
       integer, intent(out) :: ierr
 
       ierr = 0
+! No overshoot region until extend_by_overshoot finds one.
+      overshoot_bottom = -1
+      overshoot_top = -1
       convective_flag(num_zones+1) = .false.
       call list_convection_zones(convective_flag, num_zones, mixed_zone_bounds, &
            num_mixed_zones, ierr)

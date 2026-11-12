@@ -201,6 +201,21 @@ new = '''            overshoot_top = edge + 1
 '''
 
 [[mutation]]
+id = 'overshoot-12'
+check = 'overshoot region: none without a zone or fully convective (M249)'
+file = 'convection/convection_zones.f90'
+old = '''      overshoot_bottom = -1
+      overshoot_top = -1'''
+new = '''      continue'''
+
+[[mutation]]
+id = 'overshoot-13'
+check = 'overshoot, intermediate: no region below the envelope (M249)'
+file = 'convection/overshoot.f90'
+old = 'distance = scale_height_down*convection_settings%overshoot_alpha_intermediate'
+new = 'overshoot_top = mixed_zone_bounds(k,1); distance = scale_height_down*convection_settings%overshoot_alpha_intermediate'
+
+[[mutation]]
 id = 'overshoot-08'
 check = 'overshoot, intermediate: both edges by alpha_int H_P'
 file = 'convection/overshoot.f90'

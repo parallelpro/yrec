@@ -23,7 +23,8 @@
 ! scalings, the derivatives against centred differences, with spots,
 ! the error contract), the zones (the scan, twelve zones and a
 ! thirteenth), overshoot (H_P, the depth, each kind of region's extent
-! against alpha H_P, the rotating rule, the merge), homogenization (each
+! against alpha H_P, the region below the envelope, the rotating rule,
+! the merge), homogenization (each
 ! species' mass kept, uniform zones, the floors) and semiconvection on a
 ! model with a convective core, with the OPAL95 opacities (an
 ! extension, the distance limit, the merge, a stable edge). The program
@@ -714,6 +715,7 @@ end function moved_down_by
 
 subroutine overshoot_checks()
       double precision :: h_p, expected, d
+      logical :: holds
       write(*,'(a)') "# overshoot: checks"
       cs%core_overshoot = .false.
       cs%envelope_overshoot = .false.
@@ -765,6 +767,14 @@ subroutine overshoot_checks()
            .and. mix_bounds(1,2) == 5)
       call check_that("overshoot, envelope: the region below it, bottom..old edge", &
            ov_bottom == mix_bounds(2,1) .and. ov_top == 31)
+! that region is this model's or none (M249): none without a convection
+! zone and for a fully convective model, whatever it was before (-7
+! here)
+      call find_zones([1, 0])
+      holds = ierr == 0 .and. ov_bottom == -1 .and. ov_top == -1
+      call find_zones([1, 40])
+      call check_that("overshoot region: none without a zone or fully convective (M249)", &
+           holds .and. ierr == 0 .and. ov_bottom == -1 .and. ov_top == -1)
 ! an intermediate zone: both ways by alpha_intermediate H_P
       cs%envelope_overshoot = .false.
       cs%intermediate_overshoot = .true.
@@ -774,6 +784,8 @@ subroutine overshoot_checks()
            .and. mix_bounds(2,1) < 18 .and. mix_bounds(2,2) > 21 .and. &
            moved_down_by(18, mix_bounds(2,1), 3.0d0*eos_scale_height(18)) .and. &
            moved_up_by(21, mix_bounds(2,2), 3.0d0*eos_scale_height(21)))
+      call check_that("overshoot, intermediate: no region below the envelope (M249)", &
+           ov_bottom == -1 .and. ov_top == -1)
 ! the rotating rule: at least one shell
       cs%intermediate_overshoot = .false.
       cs%envelope_overshoot = .true.
