@@ -83,7 +83,8 @@ contains
 subroutine advance_composition(s, timestep, opts, core_cz_edge, &
      envelope_cz_edge, mixed_zone_bounds_no_overshoot, ierr)
       use star_info_lib, only: i_h1, i_he3, i_he4, i_metals, json, &
-           max_convective_zones, max_radiative_zones
+           max_convective_zones, max_radiative_zones, n_species_basic, &
+           n_species_extended
       use run_messages, only: solver_diagnostics
       use core_messages, only: core_log, log_mixed_zone_bounds, &
            message_length, unwritten_line
@@ -117,9 +118,9 @@ subroutine advance_composition(s, timestep, opts, core_cz_edge, &
       ierr = 0
 
       if (s%physics%use_extended_composition) then
-         num_species = 15
+         num_species = n_species_extended
       else
-         num_species = 11
+         num_species = n_species_basic
       end if
 
 ! 1. The mixed regions: the convection zones with and without overshoot,
@@ -217,7 +218,7 @@ end subroutine set_deep_mix_flags
 ! and last shell). A one-shell region is skipped unless it starts at the
 ! centre.
 subroutine homogenize_mixed_regions
-      real(dp) :: species_sum(15), weight_sum
+      real(dp) :: species_sum(n_species_extended), weight_sum
       integer :: mixed_zone_idx, mix_start, mix_end, shell_idx, species_idx
       do mixed_zone_idx = 1, num_mixed_zones
          mix_start = s%mixed_zone_bounds(mixed_zone_idx,1)
