@@ -41,14 +41,13 @@ contains
 ! envelope_termination (the historical "solution diverged" stop, which
 ! exits 0).
 !
-!   star reads: age_gyr, card_from_starting_model, card_initial_x,
+!   star reads: card_from_starting_model, card_initial_x,
 !     card_initial_z, card_log_fit_point_mass_fraction,
 !     card_mixing_length_alpha, card_moves_fit_point, card_num_models,
 !     control%calibrate_solar_model, control%calibrate_star_flag,
 !     control%set_initial_model_number, convective_flag,
 !     log10_solar_luminosity, log10_solar_radius, log_L_lsun, log_Teff,
-!     logP, logR, logRho, logT, luminosity_breakdown_lsun,
-!     luminosity_lsun, m, num_cards, nz, omega, physics%atm_choice,
+!     luminosity_lsun, num_cards, nz, physics%atm_choice,
 !     physics%compute_neutrino_fluxes, physics%diffuse_helium_active,
 !     physics%helium_flash_active, physics%use_structure_dt_limits,
 !     solar_calibration_converged, star_found_flag, star_mass, xa
@@ -58,10 +57,9 @@ contains
 !     dlog_radius_dt, dlog_temperature_dt, dt, dt_saved,
 !     envelope_cz_bottom_index, envelope_cz_bottom_index_start,
 !     fit_point_move_requested, h_shell_bot_index, h_shell_mid_index,
-!     h_shell_top_index, has_h_shell, max_domega_frac,
-!     mixing_length_alpha, model_diverged_flag, model_number,
-!     pulsation_mass_msun, punch_pending_flag,
-!     recompute_envelope_triangle,
+!     h_shell_top_index, has_h_shell, mixing_length_alpha,
+!     model_diverged_flag, model_number, pulsation_mass_msun,
+!     punch_pending_flag, recompute_envelope_triangle,
 !     requested_log_fit_point_mass_fraction, reset_triangle,
 !     settling_active, stored_vertex_index, structure_dt_limits_active,
 !     termination_reason, timestep_yr, total_angular_momentum,
@@ -414,13 +412,7 @@ subroutine begin_kind_card
               s%core_cz_top_index,s%envelope_cz_bottom_index,s%h_shell_bot_index, &
               s%h_shell_top_index,s%h_shell_mid_index,s%has_h_shell)
 ! Estimate the first timestep of the card.
-       disable_structure_dt_limits = .false.
-       call compute_timestep(s, s%dt,chosen_dt,s%nz,s%logRho,s%luminosity_lsun, &
-            s%m,s%logT,s%xa,s%core_cz_top_index, &
-            s%h_shell_mid_index,s%luminosity_breakdown_lsun,s%age_gyr,s%timestep_yr,s%current_card, &
-            s%logP,s%logR,s%omega,s%max_domega_frac,s%h_shell_bot_index, &
-            s%log_Teff, disable_structure_dt_limits)
-       if (disable_structure_dt_limits) s%structure_dt_limits_active = .false.
+       call compute_timestep(s)
 
        s%dt_saved = s%dt
 ! Zero the entropy terms.

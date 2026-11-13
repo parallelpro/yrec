@@ -11,7 +11,7 @@ module step_driver
       use rezoning, only: rezone
       use starting_model, only: read_starting_model
       use envelope_rebuild, only: rebuild_envelope
-      use star_info_lib, only: star_info, json
+      use star_info_lib, only: star_info
       implicit none
       private
       public :: evolve_step
@@ -47,8 +47,8 @@ contains
 ! local is assigned in the call before it is read, and what outlives
 ! the step is in the star.
 !   star reads: card_kind, card_max_age_yr, card_stops_active,
-!     control%rewind_short_file, current_card, grada, gradr, log_L_lsun,
-!     log_Teff, log_total_mass, luminosity_breakdown_lsun, omega,
+!     control%rewind_short_file, current_card, dm, grada, gradr,
+!     kinetic_energy_rot, log_mass, log_Teff, logRho, m, nz, omega,
 !     physics%helium_flash_active, physics%improved_first_guess_flag,
 !     physics%instability_transport_active, physics%max_iter_level1,
 !     physics%max_iter_level2, physics%max_iter_level3,
@@ -58,24 +58,23 @@ contains
 !     physics%use_wind_torque
 !   star writes: age_gyr, convective_flag, core_cz_top_index,
 !     cz_base_radius_last_call, disk_gate_age_gyr, dln_luminosity_dt,
-!     dlog_pressure_dt, dlog_radius_dt, dlog_temperature_dt, dm, dt,
+!     dlog_pressure_dt, dlog_radius_dt, dlog_temperature_dt, dt,
 !     dt_saved, envelope_cz_bottom_index,
 !     envelope_cz_bottom_index_start, envelope_overshoot_bottom_index,
 !     envelope_overshoot_depth_end, envelope_overshoot_depth_start,
 !     envelope_overshoot_top_index, eps_grav, eta_squared, fp_rot,
 !     ft_rot, h_shell_bot_index, h_shell_mid_index, h_shell_top_index,
-!     has_h_shell, i_rot, j_rot, j_rot_iteration_start,
-!     kinetic_energy_rot, kinetic_energy_rot_start, log_mass,
-!     log_pressure_delta, log_Teff_start, log_temperature_delta, logP,
-!     logP_start, logR, logR_start, logRho, logRho_start, logT,
-!     logT_start, luminosity_lsun, luminosity_lsun_start, m,
-!     max_domega_frac, mean_gravity, mean_radius, mixed_zone_bounds,
-!     model_diverged_flag, model_number, newton_correction_factor,
-!     num_rotation_structure_passes, nz, punch_pending_flag,
-!     recompute_envelope_triangle, reset_triangle, stored_vertex_index,
-!     structure_dt_limits_active, surface_luminosity_lsun_start,
-!     timestep_yr, total_angular_momentum, total_rotational_ke,
-!     triangle_orientation, xa, xa_iteration_start, xa_start
+!     has_h_shell, j_rot, j_rot_iteration_start,
+!     kinetic_energy_rot_start, log_pressure_delta, log_Teff_start,
+!     log_temperature_delta, logP, logP_start, logR, logR_start,
+!     logRho_start, logT, logT_start, luminosity_lsun,
+!     luminosity_lsun_start, max_domega_frac, mean_gravity, mean_radius,
+!     mixed_zone_bounds, model_diverged_flag, model_number,
+!     newton_correction_factor, num_rotation_structure_passes,
+!     punch_pending_flag, recompute_envelope_triangle, reset_triangle,
+!     stored_vertex_index, surface_luminosity_lsun_start, timestep_yr,
+!     total_angular_momentum, total_rotational_ke, triangle_orientation,
+!     xa, xa_iteration_start, xa_start
 subroutine evolve_step(s, output, model_iteration, step_status, ierr)
       use timestep_control, only: compute_timestep
       use evolve_rotation, only: evolve_angular_momentum
@@ -98,13 +97,11 @@ subroutine evolve_step(s, output, model_iteration, step_status, ierr)
            envelope_overshoot_depth
       use stop_conditions
       implicit none
-! outputs of the calls below that the step does not use: the timestep
-! compute_timestep chose, the model read's ikut flag and convective
-! velocity, the rotation's di_domega, the convection zones without
-! overshoot and the radiative zones
+! outputs of the calls below that the step does not use: the model
+! read's chosen timestep, ikut flag and convective velocity, the
+! convection zones without overshoot and the radiative zones
       double precision :: chosen_dt, convective_velocity
       integer :: ikut_flag
-      double precision :: qiw(json)
       integer :: mixed_zone_bounds_no_overshoot(max_convective_zones,2), &
            radiative_zone_bounds(max_radiative_zones,2)
       type(star_info), intent(inout) :: s
@@ -126,10 +123,6 @@ subroutine evolve_step(s, output, model_iteration, step_status, ierr)
       logical :: converged, evolve_model_flag, &
            new_atmosphere_fit_needed, recompute_surface_bc, &
            wind_loss_active
-! Set by compute_timestep when it switches the structure-based timestep
-! limits off (log Tc > 7.1 with L_grav < 0); the driver then clears
-! star%structure_dt_limits_active.
-      logical :: disable_structure_dt_limits
       step_status = step_continue
       ierr = 0
 
@@ -176,9 +169,7 @@ subroutine evolve_step(s, output, model_iteration, step_status, ierr)
 ! When change_mass accreted (new_atmosphere_fit_needed), move the
 ! fitting point: rebuild the envelope down to target_envelope_mass.
          if (new_atmosphere_fit_needed) then
-            call rebuild_envelope(s, target_envelope_mass,s%xa,s%logRho,s%luminosity_lsun,s%logP,s%logR,s%log_mass,s%m,s%dm, &
-                            s%log_total_mass,s%logT,s%convective_flag,s%eta_squared,s%i_rot,s%j_rot,qiw,s%mean_radius, &
-                            s%kinetic_energy_rot,s%log_L_lsun,s%total_angular_momentum,s%total_rotational_ke,s%log_Teff,s%nz,s%recompute_envelope_triangle,ierr)
+            call rebuild_envelope(s, target_envelope_mass, ierr)
             if (ierr /= 0) return
 ! The rotational shape factors f_P and f_T (fp_rot, ft_rot) for the
 ! current omega on the new points.
@@ -190,11 +181,7 @@ subroutine evolve_step(s, output, model_iteration, step_status, ierr)
 ! timestep is taken).
        s%dt = dabs(s%dt)
        s%dt_saved = s%dt
-       disable_structure_dt_limits = .false.
-       call compute_timestep(s, s%dt,chosen_dt,s%nz,s%logRho,s%luminosity_lsun,s%m,s%logT,s%xa,s%core_cz_top_index, &
-              s%h_shell_mid_index,s%luminosity_breakdown_lsun,s%age_gyr,s%timestep_yr,s%current_card,s%logP,s%logR,s%omega, &
-              s%max_domega_frac,s%h_shell_bot_index,s%log_Teff, disable_structure_dt_limits)
-       if (disable_structure_dt_limits) s%structure_dt_limits_active = .false.
+       call compute_timestep(s)
 ! With a fixed end age (card_max_age_yr > 0) that this model reached,
 ! compute_timestep has clipped the next timestep to (nearly) zero. Write
 ! the timestep just taken (dt_saved, floored at 1e-3 of the age, dage
@@ -617,9 +604,8 @@ subroutine solve_level(level, level_max_iterations, check_surface_bc)
       recompute_surface_bc = check_surface_bc
       if (max_iterations.le.0) return
 
-      call refresh_surface_bc(s, iteration_level, s%recompute_envelope_triangle, &
-           s%reset_triangle, recompute_surface_bc, s%triangle_orientation, &
-           s%stored_vertex_index, saha_iterations, envelope_recomputed_flag, ierr)
+      call refresh_surface_bc(s, iteration_level, recompute_surface_bc, &
+           saha_iterations, envelope_recomputed_flag, ierr)
       if (ierr /= 0) return
 
 ! envelope_zone_index gates the accretion correction to the entropy term
@@ -648,7 +634,7 @@ subroutine solve_level(level, level_max_iterations, check_surface_bc)
 ! The pass gets the step only for a model being aged (a zero step: no
 ! time derivatives).
       call henyey_iterate(s, merge(s%dt, 0.0d0, evolve_model_flag), max_iterations, converged, &
-           s%model_diverged_flag, recompute_surface_bc, &
+           recompute_surface_bc, &
            envelope_recomputed_flag, saha_iterations, envelope_zone_index, &
            iterations_done, ierr)
 end subroutine solve_level

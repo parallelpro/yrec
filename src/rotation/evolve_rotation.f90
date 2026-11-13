@@ -37,10 +37,9 @@ contains
 ! it, whether secular_transport (the rotation-diffusion instability
 ! solver) is called is gated by instability_transport_active (LINSTB).
 !   star reads: convective_turnover_timescale,
-!     convective_turnover_timescale_prev, disk_gate_age_gyr, dm, fp_rot,
-!     ft_rot, grada, gradr, log_L_lsun, log_mass, log_Teff,
-!     log_total_mass, logP, logR, logRho, logT, luminosity_lsun, m, mu,
-!     mu_start, nz, omega_start, photosphere_logP,
+!     convective_turnover_timescale_prev, disk_gate_age_gyr, dm, grada,
+!     gradr, log_L_lsun, log_mass, log_Teff, log_total_mass, logP, logR,
+!     logRho, logT, m, mu, mu_start, nz, omega_start, photosphere_logP,
 !     photosphere_logP_prev, rate_be9, rate_li6, rate_li7, star_mass
 !   star writes: convective_flag, envelope_overshoot_bottom_index,
 !     envelope_overshoot_depth_end, envelope_overshoot_depth_start,
@@ -155,8 +154,7 @@ subroutine evolve_angular_momentum(s, full_timestep, max_domega_step, wind_loss_
 ! The quantities both kinds of instability need: the temperature
 ! gradients, opacities, viscosities, thermal diffusivity and heat
 ! capacity.
-      call compute_shell_physics(s, s%fp_rot,s%ft_rot,s%xa,s%logRho,s%luminosity_lsun,s%logP, &
-           s%logR,s%log_mass,s%logT,s%convective_flag,s%nz,s%log_Teff, ierr)
+      call compute_shell_physics(s, ierr)
       if (ierr /= 0) return
       allocate(sub_model, sub_physics, stab, chi_grid, circ_scr)
 ! The sub-steps: the structure is interpolated between the start and the

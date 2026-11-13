@@ -36,66 +36,40 @@ contains
 ! replaces all of these; caveat user. When evolving to a fixed age
 ! (card_stops_active with card_max_age_yr > 0), the timestep is cut so
 ! that the model does not pass that age.
-! A negative previous_timestep marks a model being relaxed rather than
-! evolved: the limits are skipped and only its magnitude is kept.
-! On return previous_timestep holds the new timestep (s), also in
-! chosen_dt and, in years, timestep_years.
-!   star reads: card_fixed_timestep_active, card_fixed_timestep_yr,
-!     card_max_age_yr, card_stops_active, physics%rotation_active,
-!     physics%timestep_factors, physics%use_envelope_triangle_dt,
-!     structure_dt_limits_active
-!   star writes: none
-subroutine compute_timestep(s, previous_timestep, chosen_dt, num_points, log_density, &
-     luminosity, enclosed_mass, log_temperature, composition, &
-     convective_core_edge_zone, h_shell_mid_index, &
-     luminosity_components, age_gyr, timestep_years, kind_card_index, &
-     log_pressure, log_radius, omega, max_domega_frac, h_shell_bot_index, &
-     log_teff, disable_structure_dt_limits)
-      use star_info_lib, only: json
+! It reads the model from the star and sets star%dt to the new timestep
+! (s) and star%timestep_yr to it in years. A negative star%dt (a stored
+! model's) skips the limits, and only its magnitude is kept. When this
+! call switches the structure-based limits off it clears
+! star%structure_dt_limits_active.
+!   star reads: age_gyr, card_fixed_timestep_active,
+!     card_fixed_timestep_yr, card_max_age_yr, card_stops_active,
+!     core_cz_top_index, current_card, h_shell_bot_index,
+!     h_shell_mid_index, log_Teff, logP, logR, logRho, logT,
+!     luminosity_breakdown_lsun, luminosity_lsun, m, nz, omega,
+!     physics%rotation_active, physics%timestep_factors,
+!     physics%use_envelope_triangle_dt, xa
+!   star writes: dt, max_domega_frac, structure_dt_limits_active,
+!     timestep_yr
+subroutine compute_timestep(s)
       use control_slots, only: itime_max_dt_frac
       use physical_constants
       implicit none
       type(star_info), intent(inout) :: s
 
-      double precision, intent(inout) :: previous_timestep
-! chosen_dt: the timestep actually adopted (seconds); the caller stores
-! it in star%chosen_dt.
-      double precision, intent(out) :: chosen_dt
-      integer, intent(in) :: num_points
-      double precision, intent(in) :: log_density(json), luminosity(json), &
-           enclosed_mass(json), log_temperature(json)
-      double precision, intent(in) :: composition(15,json)
-      integer, intent(in) :: convective_core_edge_zone, &
-           h_shell_mid_index
-      double precision, intent(in) :: luminosity_components(8)
-      double precision, intent(in) :: age_gyr
-      double precision, intent(out) :: timestep_years
-      integer, intent(in) :: kind_card_index
-      double precision, intent(in) :: log_pressure(json), log_radius(json), &
-           omega(json)
-      double precision, intent(out) :: max_domega_frac
-      integer, intent(in) :: h_shell_bot_index
-      double precision, intent(in) :: log_teff
-! disable_structure_dt_limits: set when this call switches the
-! structure-based limits off; the driver then clears
-! star%structure_dt_limits_active.
-      logical, intent(out) :: disable_structure_dt_limits
       double precision :: structure_dt, rotation_dt, hydrogen_dt, helium_dt, &
            hydrogen_luminosity, envelope_dt, time_left_years
 ! structure_limits_active: whether the structure-based limits apply to
 ! this step: star%structure_dt_limits_active, unless
 ! decide_structure_limits switches them off (log Tc > 7.1 with
-! L_grav < 0). The job flag itself is left to the driver.
+! L_grav < 0), which then clears the star's flag too.
       logical :: structure_limits_active
 ! dt_unlimited: "no limit from this criterion" sentinel (seconds).
       double precision, parameter :: dt_unlimited = 1.0d20
 
-      disable_structure_dt_limits = .false.
-      if (previous_timestep.ge.0.0d0) then
+      if (s%dt.ge.0.0d0) then
 ! A fixed timestep for this kind card overrides the limits.
-      if(s%card_fixed_timestep_active(kind_card_index)) then
-       chosen_dt = s%card_fixed_timestep_yr(kind_card_index)*seconds_per_year
-       previous_timestep = chosen_dt
+      if(s%card_fixed_timestep_active(s%current_card)) then
+       s%dt = s%card_fixed_timestep_yr(s%current_card)*seconds_per_year
       else
        call decide_structure_limits()
        call limit_by_structure_change()
@@ -106,8 +80,8 @@ subroutine compute_timestep(s, previous_timestep, chosen_dt, num_points, log_den
        call take_tightest_limit()
       end if
       end if
-      previous_timestep = abs(previous_timestep)
-      timestep_years = previous_timestep/seconds_per_year
+      s%dt = abs(s%dt)
+      s%timestep_yr = s%dt/seconds_per_year
       call clip_to_end_age()
       return
 
@@ -122,14 +96,14 @@ subroutine decide_structure_limits()
       character(len=message_length) :: lines(1)
       structure_limits_active = s%structure_dt_limits_active
       if(structure_limits_active) then
-         if(log_temperature(1).gt.7.1d0 .and. luminosity_components(7).lt. 0.0d0) then
+         if(s%logT(1).gt.7.1d0 .and. s%luminosity_breakdown_lsun(7).lt. 0.0d0) then
             lines = unwritten_line
-            write(lines, 100) log_temperature(1), luminosity_components(7)
+            write(lines, 100) s%logT(1), s%luminosity_breakdown_lsun(7)
  100        format(1x,'timestep control: structure-based limits', &
                  ' disabled (log Tc =',f7.4,', L_grav =',es10.2,' Lsun)')
             call core_stdout(lines)
             structure_limits_active = .false.
-            disable_structure_dt_limits = .true.
+            s%structure_dt_limits_active = .false.
          endif
       endif
 end subroutine decide_structure_limits
@@ -142,7 +116,7 @@ end subroutine decide_structure_limits
 ! in the model.
 subroutine limit_by_structure_change()
       if(structure_limits_active) then
-       call timestep_limit_structure(s, previous_timestep,luminosity,log_pressure,log_radius,log_temperature,num_points,structure_dt)
+       call timestep_limit_structure(s, s%dt,s%luminosity_lsun,s%logP,s%logR,s%logT,s%nz,structure_dt)
       else
        structure_dt = dt_unlimited
       endif
@@ -159,7 +133,7 @@ end subroutine limit_by_structure_change
 ! transport sub-steps (evolve_angular_momentum).
 subroutine limit_by_omega_change()
       if(s%physics%rotation_active) then
-       call timestep_limit_omega(s, previous_timestep,num_points,omega,rotation_dt,max_domega_frac)
+       call timestep_limit_omega(s, s%dt,s%nz,s%omega,rotation_dt,s%max_domega_frac)
       else
        rotation_dt = dt_unlimited
       endif
@@ -173,12 +147,12 @@ end subroutine limit_by_omega_change
 subroutine limit_by_hydrogen_burning()
 ! The hydrogen-burning luminosity, L_H = L_pp1 + L_pp2 + L_pp3 + L_CNO
 ! (Lsun); no limit when it is below 1e-34.
-      hydrogen_luminosity = luminosity_components(1) + luminosity_components(2) + &
-           luminosity_components(3) + luminosity_components(4)
+      hydrogen_luminosity = s%luminosity_breakdown_lsun(1) + s%luminosity_breakdown_lsun(2) + &
+           s%luminosity_breakdown_lsun(3) + s%luminosity_breakdown_lsun(4)
       if(hydrogen_luminosity.gt.1.0d-34) then
-       call timestep_limit_hburn(s, log_density,composition,luminosity,enclosed_mass, &
-            log_temperature,hydrogen_luminosity,convective_core_edge_zone, &
-            h_shell_mid_index,num_points,hydrogen_dt)
+       call timestep_limit_hburn(s, s%logRho,s%xa,s%luminosity_lsun,s%m, &
+            s%logT,hydrogen_luminosity,s%core_cz_top_index, &
+            s%h_shell_mid_index,s%nz,hydrogen_dt)
       else
        hydrogen_dt = dt_unlimited
       endif
@@ -189,10 +163,10 @@ end subroutine limit_by_hydrogen_burning
 ! for stars that burn helium (triple-alpha luminosity
 ! luminosity_components(5) above 1e-34 Lsun).
 subroutine limit_by_helium_burning()
-      if(luminosity_components(5).gt.1.0d-34) then
-       call timestep_limit_heburn(s, composition,log_density,luminosity, &
-            enclosed_mass,log_temperature,convective_core_edge_zone, &
-            num_points,helium_dt,h_shell_bot_index)
+      if(s%luminosity_breakdown_lsun(5).gt.1.0d-34) then
+       call timestep_limit_heburn(s, s%xa,s%logRho,s%luminosity_lsun, &
+            s%m,s%logT,s%core_cz_top_index, &
+            s%nz,helium_dt,s%h_shell_bot_index)
       else
        helium_dt = dt_unlimited
       endif
@@ -206,7 +180,7 @@ end subroutine limit_by_helium_burning
 ! structure-based limits are off.
 subroutine limit_by_hr_motion()
       if(s%physics%use_envelope_triangle_dt .and. .not. structure_limits_active) then
-       call timestep_limit_hr(s, previous_timestep,luminosity,log_teff,num_points,envelope_dt)
+       call timestep_limit_hr(s, s%dt,s%luminosity_lsun,s%log_Teff,s%nz,envelope_dt)
       else
        envelope_dt = dt_unlimited
       endif
@@ -218,14 +192,13 @@ end subroutine limit_by_hr_motion
 !   dt = min(atime(itime_max_dt_frac) dt_prev, hydrogen_dt, helium_dt,
 !            rotation_dt, structure_dt, envelope_dt).
 subroutine take_tightest_limit()
-      if(previous_timestep.gt.1.0d0) then
-         previous_timestep = s%physics%timestep_factors(itime_max_dt_frac)*previous_timestep
-         previous_timestep = min(previous_timestep,hydrogen_dt,helium_dt,rotation_dt,structure_dt,envelope_dt)
+      if(s%dt.gt.1.0d0) then
+         s%dt = s%physics%timestep_factors(itime_max_dt_frac)*s%dt
+         s%dt = min(s%dt,hydrogen_dt,helium_dt,rotation_dt,structure_dt,envelope_dt)
       else
 ! A zero (or sub-second) previous timestep: the smallest limit alone.
-         previous_timestep = min(hydrogen_dt,helium_dt,rotation_dt,structure_dt,envelope_dt)
+         s%dt = min(hydrogen_dt,helium_dt,rotation_dt,structure_dt,envelope_dt)
       endif
-      chosen_dt = previous_timestep
 end subroutine take_tightest_limit
 
 ! ---------------------------------------------------------------
@@ -234,12 +207,11 @@ end subroutine take_tightest_limit
 ! stop age (card_max_age_yr > 0), since card_stops_active also covers
 ! other stop conditions (MHP 10/24).
 subroutine clip_to_end_age()
-      if(s%card_stops_active(kind_card_index) .and. s%card_max_age_yr(kind_card_index).gt.0.0d0) then
-       time_left_years = s%card_max_age_yr(kind_card_index) - age_gyr*1.0d9
-       if(time_left_years.lt. timestep_years) then
-         timestep_years = time_left_years
-         chosen_dt = timestep_years*seconds_per_year
-         previous_timestep = chosen_dt
+      if(s%card_stops_active(s%current_card) .and. s%card_max_age_yr(s%current_card).gt.0.0d0) then
+       time_left_years = s%card_max_age_yr(s%current_card) - s%age_gyr*1.0d9
+       if(time_left_years.lt. s%timestep_yr) then
+         s%timestep_yr = time_left_years
+         s%dt = s%timestep_yr*seconds_per_year
        endif
       endif
 end subroutine clip_to_end_age

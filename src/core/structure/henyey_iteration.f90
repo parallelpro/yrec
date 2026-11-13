@@ -50,16 +50,12 @@ contains
 ! (forced on for a new triangle, or for a reset one at level 2), it
 ! rebuilds the envelope fit with compute_surface_boundary.
 !----------------------------------------------------------------------
-!   star reads: convective_flag, fp_rot, ft_rot, log_mass, log_Teff,
-!     log_total_mass, logP, luminosity_lsun, nz,
-!     physics%rotation_active, surface_hydrogen_fraction,
-!     surface_metal_fraction
-!   star writes: envelope_fit_coeffs, fit_point_logP, fit_point_logR,
-!     fit_point_logT, log_fit_point_mass_fraction, log_L_lsun,
-!     stored_envelope_state, triangle_log_l_lsun, triangle_log_teff
-subroutine refresh_surface_bc(s, iteration_level, start_new_triangle, &
-     reset_triangle, recompute_surface_bc, tri_orientation, &
-     stored_vertex_index, saha_iterations, envelope_recomputed_flag, ierr)
+!   star reads: fp_rot, ft_rot, log_mass, log_total_mass,
+!     luminosity_lsun, nz, physics%rotation_active,
+!     recompute_envelope_triangle, reset_triangle
+!   star writes: log_fit_point_mass_fraction, log_L_lsun
+subroutine refresh_surface_bc(s, iteration_level, recompute_surface_bc, &
+     saha_iterations, envelope_recomputed_flag, ierr)
       use math_lib
       use star_info_lib, only: i_c12, i_c13, i_h1, i_he3, i_he4, i_metals, &
            i_n14, i_n15, i_o16, i_o17, i_o18
@@ -67,16 +63,11 @@ subroutine refresh_surface_bc(s, iteration_level, start_new_triangle, &
       type(star_info), intent(inout) :: s
 
       integer, intent(in) :: iteration_level
-      logical, intent(inout) :: start_new_triangle, reset_triangle
       logical, intent(inout) :: recompute_surface_bc
-      double precision, intent(inout) :: tri_orientation
-      integer, intent(inout) :: stored_vertex_index
       integer, intent(out) :: saha_iterations
       logical, intent(out) :: envelope_recomputed_flag
       integer, intent(out) :: ierr
 
-      double precision :: hydrogen_fraction, metal_fraction, &
-           log10_pressure_limit
       double precision :: surface_pressure_rotation_factor, &
            surface_temperature_rotation_factor
       integer :: jerr
@@ -87,7 +78,7 @@ subroutine refresh_surface_bc(s, iteration_level, start_new_triangle, &
       s%log_L_lsun = log10(s%luminosity_lsun(s%nz))
       saha_iterations = 0
       s%log_fit_point_mass_fraction = s%log_mass(s%nz) - s%log_total_mass
-      if (start_new_triangle .or. (reset_triangle .and. iteration_level.eq.2)) &
+      if (s%recompute_envelope_triangle .or. (s%reset_triangle .and. iteration_level.eq.2)) &
            recompute_surface_bc = .true.
 ! The surface rotation factors fp and ft for the envelope integrations
 ! (1 without rotation).
@@ -101,21 +92,12 @@ subroutine refresh_surface_bc(s, iteration_level, start_new_triangle, &
       endif
 ! The envelope integrations use the surface composition (X, Z and the
 ! Debye-Hueckel species of the outermost shell) and take log P(nz) as
-! their guess at the fitting-point pressure.
+! their guess at the fitting-point pressure (compute_surface_boundary
+! reads them from the star).
       if (recompute_surface_bc) then
-       hydrogen_fraction = s%surface_hydrogen_fraction
-       metal_fraction = s%surface_metal_fraction
-       log10_pressure_limit = s%logP(s%nz)
-       call compute_surface_boundary(s, s%triangle_log_teff,s%triangle_log_l_lsun, &
-            s%envelope_fit_coeffs,s%fit_point_logP,s%fit_point_logT, &
-            s%fit_point_logR,tri_orientation,stored_vertex_index, &
-            s%stored_envelope_state, &
-            start_new_triangle,reset_triangle,saha_iterations, &
-            s%log_total_mass,s%log_L_lsun, &
-            s%log_Teff,hydrogen_fraction,metal_fraction, &
-            surface_pressure_rotation_factor, &
-            surface_temperature_rotation_factor,envelope_recomputed_flag, &
-            log10_pressure_limit,s%convective_flag,s%nz,jerr)
+       call compute_surface_boundary(s, surface_pressure_rotation_factor, &
+            surface_temperature_rotation_factor, saha_iterations, &
+            envelope_recomputed_flag, jerr)
 ! An envelope or atmosphere integration failure (including
 ! envelope_termination, a negative code) comes back in jerr and goes up
 ! to the driver.
@@ -136,9 +118,9 @@ end subroutine refresh_surface_bc
 !   zone up the entropy term of compute_henyey_coefficients adds the
 !   accretion shifts of T and P (see solve_level for its value).
 ! Outputs: converged, true once the model has converged (on entry, the
-!   previous level's result); corrections_too_large, true if a correction
-!   exceeded its limit; iterations_done, increased by one for each
-!   applied correction.
+!   previous level's result); star%model_diverged_flag, true if a
+!   correction exceeded its limit (false on every other return);
+!   iterations_done, increased by one for each applied correction.
 !----------------------------------------------------------------------
 !   star reads: am_transport_convective_flag, disk_gate_age_gyr, dm,
 !     elim_coeff, envelope_fit_coeffs, log_mass, logRho, nz,
@@ -149,10 +131,10 @@ end subroutine refresh_surface_bc
 !     kinetic_energy_rot, log_L_lsun, log_pressure_delta, log_Teff,
 !     log_temperature_delta, logP, logR, logT,
 !     luminosity_breakdown_lsun, luminosity_lsun, max_correction_index,
-!     max_residual, mean_gravity, mean_radius, newton_correction_factor,
-!     newton_iterations, omega, surface_bc
+!     max_residual, mean_gravity, mean_radius, model_diverged_flag,
+!     newton_correction_factor, newton_iterations, omega, surface_bc
 subroutine henyey_iterate(s, delta_time, max_iterations, converged, &
-     corrections_too_large, recompute_surface_bc, envelope_recomputed_flag, &
+     recompute_surface_bc, envelope_recomputed_flag, &
      saha_iterations, envelope_zone_index, iterations_done, ierr)
       use star_info_lib, only: i_lum_3alpha, i_lum_cno, i_lum_he_c, &
            i_lum_pp1, i_lum_pp2, i_lum_pp3, n_lum_channels
@@ -167,7 +149,6 @@ subroutine henyey_iterate(s, delta_time, max_iterations, converged, &
       double precision, intent(in) :: delta_time
       integer, intent(in) :: max_iterations
       logical, intent(inout) :: converged
-      logical, intent(out) :: corrections_too_large
       logical, intent(in) :: recompute_surface_bc, envelope_recomputed_flag
       integer, intent(inout) :: saha_iterations
       integer, intent(in) :: envelope_zone_index
@@ -187,9 +168,10 @@ subroutine henyey_iterate(s, delta_time, max_iterations, converged, &
       character(len=message_length) :: lines(2)
 
       ierr = 0
-! Set on every path: the early return below and an error return leave
-! it false, as do the passes until test_henyey_convergence sets it.
-      corrections_too_large = .false.
+! The divergence flag is set on every path: the early return below and
+! an error return leave it false, as do the passes until
+! test_henyey_convergence sets it.
+      s%model_diverged_flag = .false.
       underrelax_ramp_active = s%physics%solver_underrelax_start.gt.0.0d0
 ! If the model converged at the previous level and the envelope triangle
 ! was checked without any new envelope, there is nothing to correct.
@@ -215,7 +197,7 @@ subroutine henyey_iterate(s, delta_time, max_iterations, converged, &
        call test_henyey_convergence()
        call set_henyey_correction_factor()
        call log_henyey_corrections()
-       if (corrections_too_large) return
+       if (s%model_diverged_flag) return
        call apply_henyey_corrections()
        call update_rotation_after_corrections()
        if (ierr /= 0) return
@@ -368,7 +350,7 @@ subroutine test_henyey_convergence()
             s%max_residual(2).lt.s%physics%solver_tolerances(2,1) &
          .and. s%max_residual(3).lt.s%physics%solver_tolerances(3,1) .and. &
          s%max_residual(4).lt.s%physics%solver_tolerances(4,1)
-       corrections_too_large = s%max_residual(1).gt.s%physics%solver_tolerances(1,2) .or. &
+       s%model_diverged_flag = s%max_residual(1).gt.s%physics%solver_tolerances(1,2) .or. &
             s%max_residual(2).gt.s%physics%solver_tolerances(2,2) &
          .or. s%max_residual(3).gt.s%physics%solver_tolerances(3,2) .or. &
          s%max_residual(4).gt.s%physics%solver_tolerances(4,2)
@@ -421,7 +403,7 @@ subroutine log_henyey_corrections()
              call core_log(lines)
           endif
        endif
-       if (corrections_too_large) then
+       if (s%model_diverged_flag) then
           lines = unwritten_line
           write(lines(1),80)
    80       format(1X,'-----CORRECTIONS EXCEEDED TOLERANCES')

@@ -58,53 +58,42 @@ end function on_gray_fallback
 ! integrated. (log10_teff, the model's, used to come back as the last
 ! integrated vertex's log Teff, which the first Newton pass then read;
 ! each vertex now has its own, vertex_log10_teff.)
-! hydrogen_fraction, metal_fraction and the two rotation factors are
-! intent(inout) only because atm_get's dummies are (they pass through to
-! the Bulirsch-Stoer integrator's callbacks); the caller passes locals.
-!   star reads: nz, physics%atm_choice, physics%spot_filling_factor,
+! It works on the star's triangle and fit (triangle_log_teff,
+! triangle_log_l_lsun, envelope_fit_coeffs, fit_point_logP/T/R,
+! triangle_orientation, stored_vertex_index, stored_envelope_state, the
+! flags recompute_envelope_triangle and reset_triangle), about the
+! model's log Teff and log L, with the surface X and Z and log P(nz) as
+! the guess at the fitting-point pressure. The two rotation factors are
+! the caller's (1 without rotation); they are intent(inout) only because
+! atm_get's dummies are.
+!   star reads: convective_flag, log_L_lsun, log_Teff, log_total_mass,
+!     logP, nz, physics%atm_choice, physics%spot_filling_factor,
 !     physics%spot_temp_contrast, physics%tri_delta_logl,
-!     physics%tri_delta_teffl, xa
-!   star writes: atm_choice_in_use
-subroutine compute_surface_boundary(s, tri_teffl, tri_logl, envelope_coeffs, &
-     vtx_logp, vtx_logt, &
-     vtx_logr, tri_orientation, stored_vertex_index, &
-     stored_envelope_state, &
-     start_new_triangle, reset_triangle, saha_iterations, &
-     log10_star_mass, log_luminosity, &
-     log10_teff, hydrogen_fraction, metal_fraction, &
-     pressure_rotation_factor, temperature_rotation_factor, &
-     envelope_recomputed_flag, log10_pressure_limit, convective_flag, &
-     zone_index, ierr)
+!     physics%tri_delta_teffl, surface_hydrogen_fraction,
+!     surface_metal_fraction, xa
+!   star writes: atm_choice_in_use, envelope_fit_coeffs, fit_point_logP,
+!     fit_point_logR, fit_point_logT, recompute_envelope_triangle,
+!     reset_triangle, stored_envelope_state, stored_vertex_index,
+!     triangle_log_l_lsun, triangle_log_teff, triangle_orientation
+subroutine compute_surface_boundary(s, pressure_rotation_factor, &
+     temperature_rotation_factor, saha_iterations, envelope_recomputed_flag, &
+     ierr)
 
       use envelope_integration, only: atm_get, surface_log10_radius_cm, ambient_log10_teff
       use triangle_fit, only: start_triangle, reflect_until_inside, &
            fit_triangle_coefficients, max_reflections
       use atm_lib, only: atm_leaves_table, atm_reenters_table, atm_note_choice_switch, &
            atm_eddington_gray
-      use star_info_lib, only: json
       use run_messages, only: solver_diagnostics
       use core_messages, only: core_report, core_log, message_length, unwritten_line
       use physical_constants
       use math_lib
       implicit none
       type(star_info), intent(inout) :: s
-      double precision, intent(inout) :: tri_teffl(3), tri_logl(3), &
-           envelope_coeffs(9)
-      double precision, intent(inout) :: vtx_logp(3), &
-           vtx_logt(3), vtx_logr(3)
-      double precision, intent(inout) :: tri_orientation
-      integer, intent(inout) :: stored_vertex_index
-      double precision, intent(inout) :: stored_envelope_state(4)
-      logical, intent(inout) :: start_new_triangle, reset_triangle
+      double precision, intent(inout) :: pressure_rotation_factor, &
+           temperature_rotation_factor
       integer, intent(inout) :: saha_iterations
-      double precision, intent(in) :: log10_star_mass, log_luminosity
-      double precision, intent(in) :: log10_teff
-      double precision, intent(inout) :: hydrogen_fraction, metal_fraction, &
-           pressure_rotation_factor, temperature_rotation_factor
       logical, intent(out) :: envelope_recomputed_flag
-      double precision, intent(in) :: log10_pressure_limit
-      logical, intent(in) :: convective_flag(json)
-      integer, intent(in) :: zone_index
 
       logical :: tri_vertex_valid(3)
 
@@ -116,9 +105,14 @@ subroutine compute_surface_boundary(s, tri_teffl, tri_logl, envelope_coeffs, &
       logical :: envelope_needs_recompute, print_envelope_flag, &
            save_boundary_flag
       double precision :: b, gl, rl, adjusted_teffl, vertex_log10_teff
+! the surface X and Z, and log P(nz), for atm_get
+      double precision :: hydrogen_fraction, metal_fraction, log10_pressure_limit
       character(len=message_length) :: lines(4)
 
       ierr = 0
+      hydrogen_fraction = s%surface_hydrogen_fraction
+      metal_fraction = s%surface_metal_fraction
+      log10_pressure_limit = s%logP(s%nz)
       call switch_atmosphere_choice()
       call mark_triangle_vertices()
       call locate_point_in_triangle()
@@ -140,16 +134,16 @@ contains
 ! used to keep the triangle, whose vertices held gray-atmosphere
 ! envelopes, until each was reflected.)
 subroutine switch_atmosphere_choice()
-      if (atm_leaves_table(s%atm_choice_in_use, log10_teff)) then
-         call atm_note_choice_switch(s%atm_choice_in_use, atm_eddington_gray, log10_teff)
+      if (atm_leaves_table(s%atm_choice_in_use, s%log_Teff)) then
+         call atm_note_choice_switch(s%atm_choice_in_use, atm_eddington_gray, s%log_Teff)
          s%atm_choice_in_use = atm_eddington_gray
-         start_new_triangle = .true.
+         s%recompute_envelope_triangle = .true.
       end if
       if (on_gray_fallback(s)) then
-         if (atm_reenters_table(s%physics%atm_choice, log10_teff)) then
+         if (atm_reenters_table(s%physics%atm_choice, s%log_Teff)) then
             s%atm_choice_in_use = s%physics%atm_choice
-            start_new_triangle = .true.
-            call atm_note_choice_switch(atm_eddington_gray, s%physics%atm_choice, log10_teff)
+            s%recompute_envelope_triangle = .true.
+            call atm_note_choice_switch(atm_eddington_gray, s%physics%atm_choice, s%log_Teff)
          end if
       end if
 end subroutine switch_atmosphere_choice
@@ -160,13 +154,13 @@ end subroutine switch_atmosphere_choice
 ! tri_err, the tolerance of the inside test, is always zero.
 subroutine mark_triangle_vertices()
       envelope_recomputed_flag = .false.
-      if (start_new_triangle.or.reset_triangle) then
+      if (s%recompute_envelope_triangle.or.s%reset_triangle) then
        tri_vertex_valid(1) = .false.
        tri_vertex_valid(2) = .false.
        tri_vertex_valid(3) = .false.
-       stored_vertex_index = 0
+       s%stored_vertex_index = 0
        tri_err = 0.0d0
-       reset_triangle = .false.
+       s%reset_triangle = .false.
       else
        tri_vertex_valid(1) = .true.
        tri_vertex_valid(2) = .true.
@@ -183,17 +177,17 @@ end subroutine mark_triangle_vertices
 subroutine locate_point_in_triangle()
       logical :: reflected(3)
       integer :: n_reflections
-      if (start_new_triangle) then
-       call start_triangle(log10_teff, log_luminosity, &
+      if (s%recompute_envelope_triangle) then
+       call start_triangle(s%log_Teff, s%log_L_lsun, &
             s%physics%tri_delta_teffl, s%physics%tri_delta_logl, &
-            tri_teffl, tri_logl, tri_orientation)
-       start_new_triangle = .false.
+            s%triangle_log_teff, s%triangle_log_l_lsun, s%triangle_orientation)
+       s%recompute_envelope_triangle = .false.
       else
-       call reflect_until_inside(tri_teffl, tri_logl, tri_orientation, &
-            log10_teff, log_luminosity, tri_err, reflected, n_reflections, ierr)
+       call reflect_until_inside(s%triangle_log_teff, s%triangle_log_l_lsun, s%triangle_orientation, &
+            s%log_Teff, s%log_L_lsun, tri_err, reflected, n_reflections, ierr)
        if (ierr /= 0) then
           lines = unwritten_line
-          write(lines,10) log10_teff, log_luminosity, max_reflections
+          write(lines,10) s%log_Teff, s%log_L_lsun, max_reflections
           call core_report(lines)
  10       format(' ERROR: the envelope triangle did not reach log Teff =',f8.5, &
                &  ', log L =',f9.5,' in',i5,' reflections' &
@@ -217,30 +211,30 @@ subroutine integrate_vertex_envelopes()
 ! The vertex's L (Lsun), its radius from L = 4 pi R^2 sigma Teff^4, and
 ! its surface gravity, log g = log G + log M - 2 log R.
           envelope_recomputed_flag = .true.
-          vertex_log10_teff = tri_teffl(i)
-          b = exp(ln10*tri_logl(i))
-          rl = surface_log10_radius_cm(s, tri_logl(i), vertex_log10_teff)
-          gl = cgl + log10_star_mass - rl - rl
+          vertex_log10_teff = s%triangle_log_teff(i)
+          b = exp(ln10*s%triangle_log_l_lsun(i))
+          rl = surface_log10_radius_cm(s, s%triangle_log_l_lsun(i), vertex_log10_teff)
+          gl = cgl + s%log_total_mass - rl - rl
           print_envelope_flag = .false.
           vertex_being_computed=i
           save_boundary_flag = .true.
 ! Spotted runs (G. Somers): when the outermost shell is convective and
 ! spots are on, the atmosphere starts from the Teff of the unspotted
 ! (ambient) surface.
-          if (convective_flag(zone_index).and.s%physics%spot_filling_factor.ne.0.0.and.s%physics%spot_temp_contrast.ne.1.0) then
+          if (s%convective_flag(s%nz).and.s%physics%spot_filling_factor.ne.0.0.and.s%physics%spot_temp_contrast.ne.1.0) then
                adjusted_teffl = ambient_log10_teff(s, vertex_log10_teff)
           else
              adjusted_teffl = vertex_log10_teff
           endif
           call atm_get(s, b,pressure_rotation_factor,temperature_rotation_factor,gl, &
-                 log10_star_mass,print_envelope_flag, &
+                 s%log_total_mass,print_envelope_flag, &
                  save_boundary_flag,log10_pressure_limit,rl, &
                  adjusted_teffl,hydrogen_fraction,metal_fraction, &
                  s%xa(:,s%nz),saha_iterations,ierr=jerr_atm, &
                  vertex_index=vertex_being_computed, &
-                 stored_envelope_state=stored_envelope_state, &
-                 stored_vertex_index=stored_vertex_index, &
-                 vtx_logp=vtx_logp,vtx_logr=vtx_logr,vtx_logt=vtx_logt)
+                 stored_envelope_state=s%stored_envelope_state, &
+                 stored_vertex_index=s%stored_vertex_index, &
+                 vtx_logp=s%fit_point_logP,vtx_logr=s%fit_point_logR,vtx_logt=s%fit_point_logT)
 ! An integration failure (envelope_termination) or a table error comes
 ! back in jerr_atm; the caller (refresh_surface_bc) propagates it.
           if (jerr_atm /= 0) then
@@ -258,8 +252,8 @@ end subroutine integrate_vertex_envelopes
 ! three vertices.
 subroutine refit_coefficients()
       if (envelope_needs_recompute) then
-       call fit_triangle_coefficients(vtx_logp, vtx_logt, vtx_logr, &
-            tri_logl, tri_teffl, envelope_coeffs, ierr)
+       call fit_triangle_coefficients(s%fit_point_logP, s%fit_point_logT, s%fit_point_logR, &
+            s%triangle_log_l_lsun, s%triangle_log_teff, s%envelope_fit_coeffs, ierr)
        if (ierr /= 0) then
           lines = unwritten_line
           write(lines,20)
@@ -270,8 +264,8 @@ subroutine refit_coefficients()
        end if
        if (solver_diagnostics()) then
         lines = unwritten_line
-        write(lines,50)(i,tri_vertex_valid(i),tri_teffl(i),tri_logl(i),vtx_logp(i),vtx_logt(i),vtx_logr(i), &
-              (envelope_coeffs(3*(i-1)+j),j=1,3), i=1,3)
+        write(lines,50)(i,tri_vertex_valid(i),s%triangle_log_teff(i),s%triangle_log_l_lsun(i),s%fit_point_logP(i),s%fit_point_logT(i),s%fit_point_logR(i), &
+              (s%envelope_fit_coeffs(3*(i-1)+j),j=1,3), i=1,3)
         call core_log(lines)
        end if
  50      format(' ENVELOPE TRIANGLE  LOG(TE)  LOG(L)   LOG(P)   LOG(T)', &

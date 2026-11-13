@@ -1020,9 +1020,7 @@ end subroutine retally_angular_momentum
 subroutine rerun_physics_on_new_grid
       if (s%physics%rotation_active .or. (s%physics%use_extended_composition .and. &
            s%physics%envelope_overshoot_active)) then
-       call compute_shell_physics(s, s%fp_rot,s%ft_rot,s%xa,s%logRho,s%luminosity_lsun, &
-            s%logP,s%logR,s%log_mass,s%logT, &
-            s%convective_flag,s%nz,s%log_Teff, jerr)
+       call compute_shell_physics(s, jerr)
        if (jerr /= 0) then
           ierr = jerr
           return
