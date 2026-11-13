@@ -73,15 +73,15 @@ new = 'side = -orientation*((vtx_log_l(i2)-vtx_log_l(i3))'
 id = 'triangle-10'
 check = '  ccw, on edge 1-2 -> 0'
 file = 'core/structure/triangle_fit.f90'
-old = 'log_teff, log_l).lt.-tolerance) then'
-new = 'log_teff, log_l).le.-tolerance) then'
+old = 'log_teff, log_l) < -tolerance) then'
+new = 'log_teff, log_l) <= -tolerance) then'
 
 [[mutation]]
 id = 'triangle-11'
 check = '  ccw, (same, tolerance 2^-45) -> 0'
 file = 'core/structure/triangle_fit.f90'
-old = 'log_teff, log_l).lt.-tolerance) then'
-new = 'log_teff, log_l).lt.tolerance) then'
+old = 'log_teff, log_l) < -tolerance) then'
+new = 'log_teff, log_l) < tolerance) then'
 
 [[mutation]]
 id = 'triangle-12'
@@ -101,8 +101,8 @@ new = 'orientation = orientation'
 id = 'triangle-14'
 check = '  orientation against the vertices: reflections tried'
 file = 'core/structure/triangle_fit.f90'
-old = 'log_teff, log_l).lt.-tolerance) then'
-new = 'log_teff, log_l).lt.-1.0d99) then'
+old = 'log_teff, log_l) < -tolerance) then'
+new = 'log_teff, log_l) < -1.0d99) then'
 
 [[mutation]]
 id = 'triangle-15'

@@ -112,8 +112,8 @@ pure subroutine henyey_eliminate(zone_index, log_mass, log_pressure, &
       real(dp), intent(inout) :: elim_coeff(:,:,:), elim_rhs(:,:), max_residual(:)
       integer, intent(out) :: ierr
 
-      double precision :: q(4,4)
-      double precision :: half_delta_log_mass, pivot, pivotb, div, denominator
+      real(dp) :: q(4,4)
+      real(dp) :: half_delta_log_mass, pivot, pivotb, div, denominator
       integer :: j
 
       ierr = 0
@@ -124,16 +124,16 @@ pure subroutine henyey_eliminate(zone_index, log_mass, log_pressure, &
       half_delta_log_mass = 0.5D0*(log_mass(zone_index)-log_mass(zone_index-1))
       elim_rhs(1,zone_index) = half_delta_log_mass*(prev%qp + cur%qp) - &
            (log_pressure(zone_index) - log_pressure(zone_index-1))
-      max_residual(1) = dmax1(max_residual(1),dabs(elim_rhs(1,zone_index)))
+      max_residual(1) = max(max_residual(1),abs(elim_rhs(1,zone_index)))
       elim_rhs(2,zone_index) = half_delta_log_mass*(prev%qt + cur%qt) - &
            (log_temperature(zone_index) - log_temperature(zone_index-1))
-      max_residual(2) = dmax1(max_residual(2),dabs(elim_rhs(2,zone_index)))
+      max_residual(2) = max(max_residual(2),abs(elim_rhs(2,zone_index)))
       elim_rhs(3,zone_index) = half_delta_log_mass*(prev%qr + cur%qr) - &
            (log_radius(zone_index) - log_radius(zone_index-1))
-      max_residual(3) = dmax1(max_residual(3),dabs(elim_rhs(3,zone_index)))
+      max_residual(3) = max(max_residual(3),abs(elim_rhs(3,zone_index)))
       elim_rhs(4,zone_index) = half_delta_log_mass*(prev%ql + cur%ql) - &
            (luminosity(zone_index) - luminosity(zone_index-1))
-      max_residual(4) = dmax1(max_residual(4),dabs(elim_rhs(4,zone_index)))
+      max_residual(4) = max(max_residual(4),abs(elim_rhs(4,zone_index)))
 ! From here half_delta_log_mass is h = 0.5 Delta log m ln10, which turns
 ! the dln partials into dlog10 ones.
       half_delta_log_mass = half_delta_log_mass*ln10
@@ -224,7 +224,7 @@ pure subroutine henyey_eliminate(zone_index, log_mass, log_pressure, &
       elim_coeff(2,1,zone_index) = elim_coeff(2,1,zone_index)*div
       elim_coeff(2,2,zone_index) = elim_coeff(2,2,zone_index)*div
       do j=1,4
-      if (j.eq.2) cycle
+      if (j == 2) cycle
       q(j,1) = q(j,1) - q(j,2)*q(2,1)
       elim_rhs(j,zone_index) = elim_rhs(j,zone_index) - q(j,2)*elim_rhs(2,zone_index)
       elim_coeff(j,1,zone_index) = elim_coeff(j,1,zone_index) - &
@@ -294,9 +294,9 @@ pure subroutine henyey_solve(num_shells, elim_coeff, elim_rhs, surface_bc, ierr)
       real(dp), intent(inout) :: elim_rhs(:,:)
       real(dp), intent(in) :: surface_bc(:)
       integer, intent(out) :: ierr
-      double precision :: pivot_divisor, pivot_ratio, t_coupling_term, denominator
-      double precision :: correction_p, correction_t
-      double precision :: p_store, t_store
+      real(dp) :: pivot_divisor, pivot_ratio, t_coupling_term, denominator
+      real(dp) :: correction_p, correction_t
+      real(dp) :: p_store, t_store
       integer :: shell_idx, im
 
 ! The surface system, with c = elim_coeff and e = elim_rhs:

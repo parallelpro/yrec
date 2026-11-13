@@ -1,0 +1,26 @@
+! Retired from core/structure/structure_equations.f90
+! (compute_henyey_coefficients' store_zone_thermodynamics, at its end),
+! round 2 (2026-11-12); commented out there since 2026-10-12, with
+! rotation's advection-diffusion transport, their only reader.
+!
+! The copies of dln kappa/dln T, d eps/dln T and
+! (eps - eps_nu - eps_grav)/eps per zone for rotation_stability_setup.
+!
+! To revive them with that transport (rotation/retired holds its code):
+! give rotation's scratch record (rot_scr) the three arrays, put the block
+! back at the end of store_zone_thermodynamics with star -> s, use
+! i_eps_neu and i_eps_grav from star_info_lib, and update the star
+! contract (tools/check_star_contracts.py --fix).
+
+         if (star%physics%rotation_active) then
+            rot_scr%dlnkappa_dlnt(im) = diag%kap_res(i_dlnkap_dlnt)
+            if (star%eps_total(im).gt.0.0d0) then
+               total_energy_sum = star%eps_total(im)
+               neutrino_and_grav_sum = star%eps_channels(i_eps_neu,im)+star%eps_channels(i_eps_grav,im)
+               rot_scr%neutrino_loss_fraction(im) = (total_energy_sum - &
+                    neutrino_and_grav_sum)/total_energy_sum
+            else
+               rot_scr%neutrino_loss_fraction(im) = 0.0d0
+            end if
+            rot_scr%deps_dlnt(im) = diag%deps_dlnt
+         end if

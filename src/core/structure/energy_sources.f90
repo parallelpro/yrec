@@ -38,6 +38,7 @@
 ! second run in the same process uses the same sources) until
 ! clear_energy_sources is called.
 module energy_sources
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use composition_layout, only: n_species_extended
       use core_messages, only: core_stdout, message_length, unwritten_line
       implicit none
@@ -48,12 +49,12 @@ module energy_sources
 
 ! What a source sees at one shell (see the header).
       type :: energy_point
-         double precision :: mass = 0.0d0, shell_mass = 0.0d0
-         double precision :: log_temperature = 0.0d0, log_pressure = 0.0d0, &
+         real(dp) :: mass = 0.0d0, shell_mass = 0.0d0
+         real(dp) :: log_temperature = 0.0d0, log_pressure = 0.0d0, &
               log_density = 0.0d0, log_radius = 0.0d0
-         double precision :: luminosity_lsun = 0.0d0
-         double precision :: xa(n_species_extended) = 0.0d0
-         double precision :: dt = 0.0d0
+         real(dp) :: luminosity_lsun = 0.0d0
+         real(dp) :: xa(n_species_extended) = 0.0d0
+         real(dp) :: dt = 0.0d0
       end type energy_point
 
       abstract interface
@@ -61,9 +62,9 @@ module energy_sources
 ! constant T and ln T at constant rho, and ierr (nonzero stops the
 ! iteration with an error).
          subroutine energy_source_eval(pt, eps, deps_dlnrho, deps_dlnt, ierr)
-            import :: energy_point
+            import :: energy_point, dp
             type(energy_point), intent(in) :: pt
-            double precision, intent(out) :: eps, deps_dlnrho, deps_dlnt
+            real(dp), intent(out) :: eps, deps_dlnrho, deps_dlnt
             integer, intent(out) :: ierr
          end subroutine energy_source_eval
       end interface
@@ -143,9 +144,9 @@ end function energy_source_name
 ! The sum of the registered sources at pt and of their partials.
 subroutine evaluate_energy_sources(pt, eps, deps_dlnrho, deps_dlnt, ierr)
       type(energy_point), intent(in) :: pt
-      double precision, intent(out) :: eps, deps_dlnrho, deps_dlnt
+      real(dp), intent(out) :: eps, deps_dlnrho, deps_dlnt
       integer, intent(out) :: ierr
-      double precision :: e, de_drho, de_dt
+      real(dp) :: e, de_drho, de_dt
       integer :: i
       character(len=message_length) :: lines(1)
 

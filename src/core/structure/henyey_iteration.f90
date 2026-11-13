@@ -69,7 +69,7 @@ subroutine refresh_surface_bc(s, iteration_level, recompute_surface_bc, &
       logical, intent(out) :: envelope_recomputed_flag
       integer, intent(out) :: ierr
 
-      double precision :: surface_pressure_rotation_factor, &
+      real(dp) :: surface_pressure_rotation_factor, &
            surface_temperature_rotation_factor
       integer :: jerr
 
@@ -79,7 +79,7 @@ subroutine refresh_surface_bc(s, iteration_level, recompute_surface_bc, &
       s%log_L_lsun = log10(s%luminosity_lsun(s%nz))
       saha_iterations = 0
       s%log_fit_point_mass_fraction = s%log_mass(s%nz) - s%log_total_mass
-      if (s%recompute_envelope_triangle .or. (s%reset_triangle .and. iteration_level.eq.2)) &
+      if (s%recompute_envelope_triangle .or. (s%reset_triangle .and. iteration_level == 2)) &
            recompute_surface_bc = .true.
 ! The surface rotation factors fp and ft for the envelope integrations
 ! (1 without rotation).
@@ -90,7 +90,7 @@ subroutine refresh_surface_bc(s, iteration_level, recompute_surface_bc, &
       else
        surface_pressure_rotation_factor = 1.0d0
        surface_temperature_rotation_factor = 1.0d0
-      endif
+      end if
 ! The envelope integrations use the surface composition (X, Z and the
 ! Debye-Hueckel species of the outermost shell) and take log P(nz) as
 ! their guess at the fitting-point pressure (compute_surface_boundary
@@ -106,7 +106,7 @@ subroutine refresh_surface_bc(s, iteration_level, recompute_surface_bc, &
           ierr = jerr
           return
        end if
-      endif
+      end if
 end subroutine refresh_surface_bc
 
 !----------------------------------------------------------------------
@@ -131,7 +131,7 @@ subroutine henyey_iterate(s, delta_time, max_iterations, converged, &
       implicit none
       type(star_info), intent(inout) :: s
 
-      double precision, intent(in) :: delta_time
+      real(dp), intent(in) :: delta_time
       integer, intent(in) :: max_iterations
       logical, intent(inout) :: converged
       logical, intent(in) :: recompute_surface_bc, envelope_recomputed_flag
@@ -245,13 +245,13 @@ subroutine renormalize_luminosity_channels(s)
       integer :: j
        total_luminosity_terms = luminosity_channel_sum(s%luminosity_breakdown_lsun, &
             num_energy_sources() > 0)
-       if (.not.s%physics%helium_flash_active .and. total_luminosity_terms.gt.0.0d0) &
+       if (.not.s%physics%helium_flash_active .and. total_luminosity_terms > 0.0d0) &
             then
           temp = s%luminosity_lsun(s%nz)/total_luminosity_terms
           do j = 1,n_lum_channels
              s%luminosity_breakdown_lsun(j) = s%luminosity_breakdown_lsun(j)*temp
           end do
-       endif
+       end if
 end subroutine renormalize_luminosity_channels
 
 ! ---------------------------------------------------------------
@@ -270,11 +270,11 @@ subroutine accept_small_residuals(s, iter, iterations_done, converged)
       logical, intent(inout) :: converged
       character(len=message_length) :: lines(2)
       integer :: j
-       if (iter.gt.1) then
-          if (s%max_residual(1).le.s%physics%solver_tolerances(5,1) .and. &
-               s%max_residual(2).le.s%physics%solver_tolerances(5,2) .and. &
-               s%max_residual(3).le.s%physics%solver_tolerances(5,1) .and. &
-               s%max_residual(4).le. s%physics%solver_tolerances(5,2)) then
+       if (iter > 1) then
+          if (s%max_residual(1) <= s%physics%solver_tolerances(5,1) .and. &
+               s%max_residual(2) <= s%physics%solver_tolerances(5,2) .and. &
+               s%max_residual(3) <= s%physics%solver_tolerances(5,1) .and. &
+               s%max_residual(4) <= s%physics%solver_tolerances(5,2)) then
              s%newton_iterations = iterations_done + 1
              if (solver_diagnostics()) then
                 lines = unwritten_line
@@ -286,8 +286,8 @@ subroutine accept_small_residuals(s, iter, iterations_done, converged)
              end if
              converged = .true.
              return
-          endif
-       endif
+          end if
+       end if
 ! A copy of log_henyey_corrections' format 75, since a statement label
 ! belongs to one procedure.
    75 format(10X,'MODEL CONVERGED AFTER ',I4,'  ITERATIONS')
@@ -335,30 +335,30 @@ subroutine find_largest_corrections(s)
       real(dp) :: test
       integer :: i, j
        do j = 1,4
-          s%max_residual(j) = dabs(s%elim_rhs(j,1))
+          s%max_residual(j) = abs(s%elim_rhs(j,1))
           s%max_correction_index(j) = 1
        end do
        do i = 2,s%nz
-          test = dabs(s%elim_rhs(1,i))
-          if (s%max_residual(1).le.test) then
+          test = abs(s%elim_rhs(1,i))
+          if (s%max_residual(1) <= test) then
              s%max_residual(1) = test
              s%max_correction_index(1) = i
-          endif
-          test = dabs(s%elim_rhs(2,i))
-          if (s%max_residual(2).le.test) then
+          end if
+          test = abs(s%elim_rhs(2,i))
+          if (s%max_residual(2) <= test) then
              s%max_residual(2) = test
              s%max_correction_index(2) = i
-          endif
-          test = dabs(s%elim_rhs(3,i))
-          if (s%max_residual(3).le.test) then
+          end if
+          test = abs(s%elim_rhs(3,i))
+          if (s%max_residual(3) <= test) then
              s%max_residual(3) = test
              s%max_correction_index(3) = i
-          endif
-          test = dmin1(dabs(s%elim_rhs(4,i)),dabs(s%elim_rhs(4,i)/s%luminosity_lsun(i)))
-          if (s%max_residual(4).le.test) then
+          end if
+          test = min(abs(s%elim_rhs(4,i)),abs(s%elim_rhs(4,i)/s%luminosity_lsun(i)))
+          if (s%max_residual(4) <= test) then
              s%max_residual(4) = test
              s%max_correction_index(4) = i
-          endif
+          end if
        end do
 end subroutine find_largest_corrections
 
@@ -377,14 +377,14 @@ subroutine test_henyey_convergence(s, converged, luminosity_correction_max)
       integer :: j, max_correction_pos
 ! The largest L correction, for the helium flash's correction factor.
        luminosity_correction_max = s%max_residual(4)
-       converged = s%max_residual(1).lt.s%physics%solver_tolerances(1,1) .and. &
-            s%max_residual(2).lt.s%physics%solver_tolerances(2,1) &
-         .and. s%max_residual(3).lt.s%physics%solver_tolerances(3,1) .and. &
-         s%max_residual(4).lt.s%physics%solver_tolerances(4,1)
-       s%model_diverged_flag = s%max_residual(1).gt.s%physics%solver_tolerances(1,2) .or. &
-            s%max_residual(2).gt.s%physics%solver_tolerances(2,2) &
-         .or. s%max_residual(3).gt.s%physics%solver_tolerances(3,2) .or. &
-         s%max_residual(4).gt.s%physics%solver_tolerances(4,2)
+       converged = s%max_residual(1) < s%physics%solver_tolerances(1,1) .and. &
+            s%max_residual(2) < s%physics%solver_tolerances(2,1) &
+         .and. s%max_residual(3) < s%physics%solver_tolerances(3,1) .and. &
+         s%max_residual(4) < s%physics%solver_tolerances(4,1)
+       s%model_diverged_flag = s%max_residual(1) > s%physics%solver_tolerances(1,2) .or. &
+            s%max_residual(2) > s%physics%solver_tolerances(2,2) &
+         .or. s%max_residual(3) > s%physics%solver_tolerances(3,2) .or. &
+         s%max_residual(4) > s%physics%solver_tolerances(4,2)
        do j = 1,4
           max_correction_pos = s%max_correction_index(j)
           s%max_residual(j) = s%elim_rhs(j,max_correction_pos)
@@ -404,14 +404,14 @@ subroutine set_henyey_correction_factor(s, luminosity_correction_max, converged,
       logical, intent(in) :: converged
       integer, intent(in) :: iterations_done
       real(dp), intent(out) :: correction_factor
-       if (s%physics%solver_underrelax_start.gt.0.0d0) s%newton_correction_factor = dmin1(1.d0,s%newton_correction_factor+s%physics%solver_underrelax_increment)
+       if (s%physics%solver_underrelax_start > 0.0d0) s%newton_correction_factor = min(1.d0,s%newton_correction_factor+s%physics%solver_underrelax_increment)
 ! During the helium flash, apply 0.8 of the correction once the largest
 ! L correction is at most 0.5, and all of it once it is at most 5e-3.
        correction_factor = s%newton_correction_factor
        if (s%physics%helium_flash_active) then
-          if (luminosity_correction_max.le.5.0d-1) correction_factor=8.0d-1
-          if (luminosity_correction_max.le.5.0d-3) correction_factor=1.0d0
-       endif
+          if (luminosity_correction_max <= 5.0d-1) correction_factor=8.0d-1
+          if (luminosity_correction_max <= 5.0d-3) correction_factor=1.0d0
+       end if
        if (converged) s%newton_iterations = iterations_done + 1
 end subroutine set_henyey_correction_factor
 
@@ -455,15 +455,15 @@ subroutine log_henyey_corrections(s, converged, iterations_done, correction_fact
              write(lines(1),75) iterations_done+1
    75          format(10X,'MODEL CONVERGED AFTER ',I4,'  ITERATIONS')
              call core_log(lines)
-          endif
-       endif
+          end if
+       end if
        if (s%model_diverged_flag) then
           lines = unwritten_line
           write(lines(1),80)
    80       format(1X,'-----CORRECTIONS EXCEEDED TOLERANCES')
           call core_report(lines)
             return
-         endif
+         end if
 end subroutine log_henyey_corrections
 
 ! ---------------------------------------------------------------
@@ -513,7 +513,7 @@ subroutine update_rotation_after_corrections(s, ierr)
       real(dp) :: shell_angular_momentum
       integer :: i
 ! di_domega of omega_from_j, which this caller does not use
-      double precision :: qiw(json)
+      real(dp) :: qiw(json)
       ierr = 0
          if (s%physics%rotation_active) then
             call omega_from_j(s%logRho,s%j_rot,s%logR, &
@@ -528,7 +528,7 @@ subroutine update_rotation_after_corrections(s, ierr)
                shell_angular_momentum = s%j_rot(i)*s%dm(i)
                s%kinetic_energy_rot(i) = 0.5d0*s%omega(i)*shell_angular_momentum
             end do
-         endif
+         end if
 end subroutine update_rotation_after_corrections
 
 end module henyey_iteration

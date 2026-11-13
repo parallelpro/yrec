@@ -77,8 +77,8 @@ new = '(luminosity(zone_index) - 0.5d0*luminosity(zone_index-1))'
 id = 'henyey-10'
 check = 'N = 40: residual maxima = max |F_k|'
 file = 'core/structure/henyey_elimination.f90'
-old = 'max_residual(1) = dmax1(max_residual(1),dabs(elim_rhs(1,zone_index)))'
-new = 'max_residual(1) = dmax1(max_residual(1),dabs(elim_rhs(2,zone_index)))'
+old = 'max_residual(1) = max(max_residual(1),abs(elim_rhs(1,zone_index)))'
+new = 'max_residual(1) = max(max_residual(1),abs(elim_rhs(2,zone_index)))'
 
 [[mutation]]
 id = 'henyey-11'

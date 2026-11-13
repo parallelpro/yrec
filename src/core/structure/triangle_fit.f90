@@ -55,7 +55,7 @@ contains
 pure subroutine start_triangle(log_teff, log_l, delta_log_teff, &
      delta_log_l, vtx_log_teff, vtx_log_l, orientation)
       real(dp), intent(in) :: log_teff, log_l, delta_log_teff, delta_log_l
-      real(dp), intent(out) :: vtx_log_teff(3), vtx_log_l(3)
+      real(dp), intent(out) :: vtx_log_teff(:), vtx_log_l(:)
       real(dp), intent(out) :: orientation
 
       orientation = +1.0d0
@@ -80,7 +80,7 @@ end subroutine start_triangle
 ! triangle of zero area one of them is negative unless all are zero.
 pure function edge_side(vtx_log_teff, vtx_log_l, orientation, i1, &
      log_teff, log_l) result(side)
-      real(dp), intent(in) :: vtx_log_teff(3), vtx_log_l(3), orientation
+      real(dp), intent(in) :: vtx_log_teff(:), vtx_log_l(:), orientation
       integer, intent(in) :: i1
       real(dp), intent(in) :: log_teff, log_l
       real(dp) :: side
@@ -101,7 +101,7 @@ end function edge_side
 ! edge or at a vertex (or within tolerance of one).
 pure function vertex_to_reflect(vtx_log_teff, vtx_log_l, orientation, &
      log_teff, log_l, tolerance) result(i1)
-      real(dp), intent(in) :: vtx_log_teff(3), vtx_log_l(3), orientation
+      real(dp), intent(in) :: vtx_log_teff(:), vtx_log_l(:), orientation
       real(dp), intent(in) :: log_teff, log_l, tolerance
       integer :: i1
       integer :: i
@@ -109,10 +109,10 @@ pure function vertex_to_reflect(vtx_log_teff, vtx_log_l, orientation, &
       i1 = 0
       do i = 1,3
          if (edge_side(vtx_log_teff, vtx_log_l, orientation, i, &
-              log_teff, log_l).lt.-tolerance) then
+              log_teff, log_l) < -tolerance) then
             i1 = i
             return
-         endif
+         end if
       end do
 end function vertex_to_reflect
 
@@ -126,7 +126,7 @@ end function vertex_to_reflect
 ! reverses. (It is the mirror image across the edge only when x_i1
 ! projects onto the edge's midpoint.)
 pure subroutine reflect_vertex(vtx_log_teff, vtx_log_l, orientation, i1)
-      real(dp), intent(inout) :: vtx_log_teff(3), vtx_log_l(3)
+      real(dp), intent(inout) :: vtx_log_teff(:), vtx_log_l(:)
       real(dp), intent(inout) :: orientation
       integer, intent(in) :: i1
       integer :: i2, i3
@@ -149,14 +149,14 @@ end subroutine reflect_vertex
 ! nonzero area whose orientation matches its vertices the walk ends in
 ! the copy that contains the point. For a triangle of zero area, or one
 ! whose orientation is the opposite of its vertices', it would never
-! end (see edge_side): after max_reflections the walk stops with
-! ierr = 1.
+! end (see edge_side): after max_reflections the walk stops and returns
+! ierr 1.
 pure subroutine reflect_until_inside(vtx_log_teff, vtx_log_l, &
      orientation, log_teff, log_l, tolerance, reflected, n_reflections, ierr)
-      real(dp), intent(inout) :: vtx_log_teff(3), vtx_log_l(3)
+      real(dp), intent(inout) :: vtx_log_teff(:), vtx_log_l(:)
       real(dp), intent(inout) :: orientation
       real(dp), intent(in) :: log_teff, log_l, tolerance
-      logical, intent(out) :: reflected(3)
+      logical, intent(out) :: reflected(:)
       integer, intent(out) :: n_reflections
       integer, intent(out) :: ierr
       integer :: i1
@@ -189,7 +189,7 @@ end subroutine reflect_until_inside
 ! vtx_log_t, vtx_log_r) and log L, log Teff the vertex's own. For each
 ! f, the plane f = a log P + b log T + c through the three vertices
 ! (P_k, T_k: vertex k's fitting-point log P and log T):
-!   temp1 = (T_3 - T_1)/(T_2 - T_1)
+!   temp1 being the ratio (T_3 - T_1)/(T_2 - T_1),
 !   a = [(f_3 - f_1) - temp1 (f_2 - f_1)]/[(P_3 - P_1) - temp1 (P_2 - P_1)]
 !   b = [(f_2 - f_1) - a (P_2 - P_1)]/(T_2 - T_1)
 !   c = f_1 - a P_1 - b T_1
@@ -200,9 +200,9 @@ end subroutine reflect_until_inside
 ! it once returned infinite or NaN ones.
 pure subroutine fit_triangle_coefficients(vtx_log_p, vtx_log_t, &
      vtx_log_r, vtx_log_l, vtx_log_teff, coeffs, ierr)
-      real(dp), intent(in) :: vtx_log_p(3), vtx_log_t(3), vtx_log_r(3)
-      real(dp), intent(in) :: vtx_log_l(3), vtx_log_teff(3)
-      real(dp), intent(out) :: coeffs(9)
+      real(dp), intent(in) :: vtx_log_p(:), vtx_log_t(:), vtx_log_r(:)
+      real(dp), intent(in) :: vtx_log_l(:), vtx_log_teff(:)
+      real(dp), intent(out) :: coeffs(:)
       integer, intent(out) :: ierr
       real(dp) :: temp, temp1, temp2, pivot2
 

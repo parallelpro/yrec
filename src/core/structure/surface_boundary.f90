@@ -10,6 +10,7 @@
 ! surface rows of the Henyey system. The triangle's geometry and the fit
 ! are the star-blind kernels of triangle_fit.f90.
 module surface_boundary
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use star_info_lib, only: star_info
       implicit none
       private
@@ -86,11 +87,11 @@ subroutine compute_surface_boundary(s, pressure_rotation_factor, &
            atm_eddington_gray
       use run_messages, only: solver_diagnostics
       use core_messages, only: core_report, core_log, message_length, unwritten_line
-      use physical_constants
+      use physical_constants, only: cgl, ln10
       use math_lib
       implicit none
       type(star_info), intent(inout) :: s
-      double precision, intent(inout) :: pressure_rotation_factor, &
+      real(dp), intent(inout) :: pressure_rotation_factor, &
            temperature_rotation_factor
       integer, intent(inout) :: saha_iterations
       logical, intent(out) :: envelope_recomputed_flag
@@ -101,12 +102,12 @@ subroutine compute_surface_boundary(s, pressure_rotation_factor, &
       integer :: jerr_atm
 ! --- locals ---
       integer :: i, vertex_being_computed, j
-      double precision :: tri_err
+      real(dp) :: tri_err
       logical :: envelope_needs_recompute, print_envelope_flag, &
            save_boundary_flag
-      double precision :: b, gl, rl, adjusted_teffl, vertex_log10_teff
+      real(dp) :: b, gl, rl, adjusted_teffl, vertex_log10_teff
 ! the surface X and Z, and log P(nz), for atm_get
-      double precision :: hydrogen_fraction, metal_fraction, log10_pressure_limit
+      real(dp) :: hydrogen_fraction, metal_fraction, log10_pressure_limit
       character(len=message_length) :: lines(4)
 
       ierr = 0
@@ -166,7 +167,7 @@ subroutine mark_triangle_vertices()
        tri_vertex_valid(2) = .true.
        tri_vertex_valid(3) = .true.
        tri_err = 0.0d0
-      endif
+      end if
 end subroutine mark_triangle_vertices
 
 ! ---------------------------------------------------------------
@@ -198,7 +199,7 @@ subroutine locate_point_in_triangle()
        do i = 1,3
           if (reflected(i)) tri_vertex_valid(i) = .false.
        end do
-      endif
+      end if
 end subroutine locate_point_in_triangle
 
 ! ---------------------------------------------------------------
@@ -221,11 +222,11 @@ subroutine integrate_vertex_envelopes()
 ! Spotted runs (G. Somers): when the outermost shell is convective and
 ! spots are on, the atmosphere starts from the Teff of the unspotted
 ! (ambient) surface.
-          if (s%convective_flag(s%nz).and.s%physics%spot_filling_factor.ne.0.0.and.s%physics%spot_temp_contrast.ne.1.0) then
+          if (s%convective_flag(s%nz).and.s%physics%spot_filling_factor /= 0.0.and.s%physics%spot_temp_contrast /= 1.0) then
                adjusted_teffl = ambient_log10_teff(s, vertex_log10_teff)
           else
              adjusted_teffl = vertex_log10_teff
-          endif
+          end if
           call atm_get(s, b,pressure_rotation_factor,temperature_rotation_factor,gl, &
                  s%log_total_mass,print_envelope_flag, &
                  save_boundary_flag,log10_pressure_limit,rl, &
@@ -242,7 +243,7 @@ subroutine integrate_vertex_envelopes()
              return
           end if
           envelope_needs_recompute = .true.
-       endif
+       end if
       end do
 end subroutine integrate_vertex_envelopes
 
@@ -279,7 +280,7 @@ subroutine refit_coefficients()
           call core_log(lines)
        end if
  70      format(' ENVELOPE TRIANGLE NOT CHANGED')
-      endif
+      end if
 end subroutine refit_coefficients
 
 end subroutine compute_surface_boundary
