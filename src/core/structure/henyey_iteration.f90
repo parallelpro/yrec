@@ -29,6 +29,7 @@
 ! Nonzero ierr propagates a callee failure to evolve_step.
 ! Assumes log Teff in star%log_Teff and log L/Lsun in star%log_L_lsun.
 module henyey_iteration
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use henyey_elimination, only: henyey_solve
       use surface_boundary, only: compute_surface_boundary
       use structure_equations, only: compute_henyey_coefficients, &
@@ -122,27 +123,11 @@ end subroutine refresh_surface_bc
 !   correction exceeded its limit (false on every other return);
 !   iterations_done, increased by one for each applied correction.
 !----------------------------------------------------------------------
-!   star reads: am_transport_convective_flag, disk_gate_age_gyr, dm,
-!     elim_coeff, envelope_fit_coeffs, log_mass, logRho, nz,
-!     physics%helium_flash_active, physics%rotation_active,
-!     physics%solver_tolerances, physics%solver_underrelax_increment,
-!     physics%solver_underrelax_start
-!   star writes: elim_rhs, eta_squared, fp_rot, ft_rot, i_rot, j_rot,
-!     kinetic_energy_rot, log_L_lsun, log_pressure_delta, log_Teff,
-!     log_temperature_delta, logP, logR, logT,
-!     luminosity_breakdown_lsun, luminosity_lsun, max_correction_index,
-!     max_residual, mean_gravity, mean_radius, model_diverged_flag,
-!     newton_correction_factor, newton_iterations, omega, surface_bc
+!   star reads: none
+!   star writes: model_diverged_flag
 subroutine henyey_iterate(s, delta_time, max_iterations, converged, &
      recompute_surface_bc, envelope_recomputed_flag, &
      saha_iterations, envelope_zone_index, iterations_done, ierr)
-      use star_info_lib, only: i_lum_3alpha, i_lum_cno, i_lum_he_c, &
-           i_lum_pp1, i_lum_pp2, i_lum_pp3, n_lum_channels
-      use energy_sources, only: num_energy_sources
-      use run_messages, only: solver_diagnostics
-      use core_messages, only: core_report, core_log, message_length, unwritten_line
-      use physical_constants
-      use math_lib
       implicit none
       type(star_info), intent(inout) :: s
 
@@ -155,65 +140,77 @@ subroutine henyey_iterate(s, delta_time, max_iterations, converged, &
       integer, intent(inout) :: iterations_done
       integer, intent(out) :: ierr
 
-      integer :: i, j, iter, max_correction_pos
-! The sign of the fcorr0 control: > 0 means the under-relaxation factor
-! star%newton_correction_factor (started at |fcorr0| - fcorri by evolve_step) is ramped
-! up by fcorri each iteration; <= 0 holds it fixed.
-      logical :: underrelax_ramp_active
-      double precision :: temp, test, total_luminosity_terms, &
-           luminosity_correction_max, correction_factor
-      double precision :: hydrogen_burn_luminosity, helium_burn_luminosity
-      double precision :: shell_angular_momentum
-      integer :: jerr
-      character(len=message_length) :: lines(2)
+      integer :: iter
+! The largest L correction (for the helium flash's correction factor) and
+! the factor applied to the corrections.
+      real(dp) :: luminosity_correction_max, correction_factor
 
       ierr = 0
 ! The divergence flag is set on every path: the early return below and
 ! an error return leave it false, as do the passes until
 ! test_henyey_convergence sets it.
       s%model_diverged_flag = .false.
-      underrelax_ramp_active = s%physics%solver_underrelax_start.gt.0.0d0
 ! If the model converged at the previous level and the envelope triangle
 ! was checked without any new envelope, there is nothing to correct.
       if (recompute_surface_bc .and. .not.envelope_recomputed_flag .and. &
            converged) return
       converged = .false.
       do iter = 1,max_iterations
-       call linearize_structure_equations()
-       if (ierr /= 0) return
-       call renormalize_luminosity_channels()
-       call accept_small_residuals()
-       if (converged) return
-       call form_surface_bc_rows()
-! Solve for the corrections; they replace the residuals in elim_rhs.
-       call henyey_solve(s%nz,s%elim_coeff,s%elim_rhs,s%surface_bc,ierr)
-       if (ierr /= 0) then
-          lines = unwritten_line
-          lines(1) = ' henyey_solve: a zero pivot in the surface boundary system; run stopped'
-          call core_report(lines)
-          return
-       end if
-       call find_largest_corrections()
-       call test_henyey_convergence()
-       call set_henyey_correction_factor()
-       call log_henyey_corrections()
-       if (s%model_diverged_flag) return
-       call apply_henyey_corrections()
-       call update_rotation_after_corrections()
-       if (ierr /= 0) return
-       iterations_done = iterations_done + 1
-       if (converged) return
+         call linearize_structure_equations(s, delta_time, saha_iterations, &
+              envelope_zone_index, ierr)
+         if (ierr /= 0) return
+         call renormalize_luminosity_channels(s)
+         call accept_small_residuals(s, iter, iterations_done, converged)
+         if (converged) return
+         call form_surface_bc_rows(s)
+         call solve_henyey_corrections(s, ierr)
+         if (ierr /= 0) return
+         call find_largest_corrections(s)
+         call test_henyey_convergence(s, converged, luminosity_correction_max)
+         call set_henyey_correction_factor(s, luminosity_correction_max, converged, &
+              iterations_done, correction_factor)
+         call log_henyey_corrections(s, converged, iterations_done, correction_factor)
+         if (s%model_diverged_flag) return
+         call apply_henyey_corrections(s, correction_factor)
+         call update_rotation_after_corrections(s, ierr)
+         if (ierr /= 0) return
+         iterations_done = iterations_done + 1
+         if (converged) return
       end do
+end subroutine henyey_iterate
 
-      return
-
-contains
+! ---------------------------------------------------------------
+! Solve for the corrections (henyey_solve); they replace the residuals
+! in elim_rhs. A zero pivot of the surface system stops the run.
+!   star reads: elim_coeff, nz, surface_bc
+!   star writes: elim_rhs
+subroutine solve_henyey_corrections(s, ierr)
+      use core_messages, only: core_report, message_length, unwritten_line
+      type(star_info), intent(inout) :: s
+      integer, intent(out) :: ierr
+      character(len=message_length) :: lines(1)
+      call henyey_solve(s%nz,s%elim_coeff,s%elim_rhs,s%surface_bc,ierr)
+      if (ierr /= 0) then
+         lines = unwritten_line
+         lines(1) = ' henyey_solve: a zero pivot in the surface boundary system; run stopped'
+         call core_report(lines)
+      end if
+end subroutine solve_henyey_corrections
 
 ! ---------------------------------------------------------------
 ! Zero the residual maxima and linearize the structure equations at
 ! every shell, with the forward elimination (compute_henyey_coefficients);
 ! a failure leaves ierr nonzero.
-subroutine linearize_structure_equations()
+!   star reads: none
+!   star writes: max_residual
+subroutine linearize_structure_equations(s, delta_time, saha_iterations, envelope_zone_index, ierr)
+      type(star_info), intent(inout) :: s
+      real(dp), intent(in) :: delta_time
+      integer, intent(inout) :: saha_iterations
+      integer, intent(in) :: envelope_zone_index
+      integer, intent(out) :: ierr
+      integer :: jerr
+      ierr = 0
        s%max_residual(1) = 0.0d0
        s%max_residual(2) = 0.0d0
        s%max_residual(3) = 0.0d0
@@ -238,7 +235,14 @@ end subroutine linearize_structure_equations
 ! of observables' renormalize_luminosity_breakdown; it also guards a
 ! nonpositive sum, and is kept separate on purpose
 ! (reports/henyey-wave2.md item 6).
-subroutine renormalize_luminosity_channels()
+!   star reads: luminosity_lsun, nz, physics%helium_flash_active
+!   star writes: luminosity_breakdown_lsun
+subroutine renormalize_luminosity_channels(s)
+      use energy_sources, only: num_energy_sources
+      use star_info_lib, only: n_lum_channels
+      type(star_info), intent(inout) :: s
+      real(dp) :: total_luminosity_terms, temp
+      integer :: j
        total_luminosity_terms = luminosity_channel_sum(s%luminosity_breakdown_lsun, &
             num_energy_sources() > 0)
        if (.not.s%physics%helium_flash_active .and. total_luminosity_terms.gt.0.0d0) &
@@ -256,7 +260,16 @@ end subroutine renormalize_luminosity_channels
 ! tolerance: P and R against htoler(5,1), T and L against htoler(5,2)
 ! (the L residual is absolute, in Lsun). The boundary conditions'
 ! residuals are not checked.
-subroutine accept_small_residuals()
+!   star reads: max_residual, physics%solver_tolerances
+!   star writes: newton_iterations
+subroutine accept_small_residuals(s, iter, iterations_done, converged)
+      use run_messages, only: solver_diagnostics
+      use core_messages, only: core_log, message_length, unwritten_line
+      type(star_info), intent(inout) :: s
+      integer, intent(in) :: iter, iterations_done
+      logical, intent(inout) :: converged
+      character(len=message_length) :: lines(2)
+      integer :: j
        if (iter.gt.1) then
           if (s%max_residual(1).le.s%physics%solver_tolerances(5,1) .and. &
                s%max_residual(2).le.s%physics%solver_tolerances(5,2) .and. &
@@ -291,7 +304,13 @@ end subroutine accept_small_residuals
 !   dL     = s(6) - s(4) dlog P - s(5) dlog T
 ! s(3) and s(6) carry the fits' residuals, and the L row is multiplied
 ! by dL/dlog L = ln10 L.
-subroutine form_surface_bc_rows()
+!   star reads: envelope_fit_coeffs, log_L_lsun, logP, logR, logT,
+!     luminosity_lsun, nz
+!   star writes: surface_bc
+subroutine form_surface_bc_rows(s)
+      use physical_constants, only: ln10
+      type(star_info), intent(inout) :: s
+      real(dp) :: temp
        s%surface_bc(1) = -s%envelope_fit_coeffs(1)
        s%surface_bc(2) = -s%envelope_fit_coeffs(2)
        s%surface_bc(3) = s%envelope_fit_coeffs(1)*s%logP(s%nz) + &
@@ -309,7 +328,12 @@ end subroutine form_surface_bc_rows
 ! The largest |correction| of each variable and the shell where it
 ! occurs (ties go to the outer shell). For L it is the smaller of |dL|
 ! and |dL/L|, except at shell 1, which enters with |dL|.
-subroutine find_largest_corrections()
+!   star reads: elim_rhs, luminosity_lsun, nz
+!   star writes: max_correction_index, max_residual
+subroutine find_largest_corrections(s)
+      type(star_info), intent(inout) :: s
+      real(dp) :: test
+      integer :: i, j
        do j = 1,4
           s%max_residual(j) = dabs(s%elim_rhs(j,1))
           s%max_correction_index(j) = 1
@@ -343,7 +367,14 @@ end subroutine find_largest_corrections
 ! htoler(k,1); too large if any exceeds its limit htoler(k,2). The same
 ! test holds during the helium flash. Then keep the signed correction at
 ! each maximum, for the log line.
-subroutine test_henyey_convergence()
+!   star reads: elim_rhs, max_correction_index,
+!     physics%solver_tolerances
+!   star writes: max_residual, model_diverged_flag
+subroutine test_henyey_convergence(s, converged, luminosity_correction_max)
+      type(star_info), intent(inout) :: s
+      logical, intent(out) :: converged
+      real(dp), intent(out) :: luminosity_correction_max
+      integer :: j, max_correction_pos
 ! The largest L correction, for the helium flash's correction factor.
        luminosity_correction_max = s%max_residual(4)
        converged = s%max_residual(1).lt.s%physics%solver_tolerances(1,1) .and. &
@@ -363,8 +394,17 @@ end subroutine test_henyey_convergence
 ! ---------------------------------------------------------------
 ! Ramp the under-relaxation factor and pick the correction factor (eased
 ! in during the helium flash); count the iterations if converged.
-subroutine set_henyey_correction_factor()
-       if (underrelax_ramp_active) s%newton_correction_factor = dmin1(1.d0,s%newton_correction_factor+s%physics%solver_underrelax_increment)
+!   star reads: physics%helium_flash_active,
+!     physics%solver_underrelax_increment,
+!     physics%solver_underrelax_start
+!   star writes: newton_correction_factor, newton_iterations
+subroutine set_henyey_correction_factor(s, luminosity_correction_max, converged, iterations_done, correction_factor)
+      type(star_info), intent(inout) :: s
+      real(dp), intent(in) :: luminosity_correction_max
+      logical, intent(in) :: converged
+      integer, intent(in) :: iterations_done
+      real(dp), intent(out) :: correction_factor
+       if (s%physics%solver_underrelax_start.gt.0.0d0) s%newton_correction_factor = dmin1(1.d0,s%newton_correction_factor+s%physics%solver_underrelax_increment)
 ! During the helium flash, apply 0.8 of the correction once the largest
 ! L correction is at most 0.5, and all of it once it is at most 5e-3.
        correction_factor = s%newton_correction_factor
@@ -372,17 +412,31 @@ subroutine set_henyey_correction_factor()
           if (luminosity_correction_max.le.5.0d-1) correction_factor=8.0d-1
           if (luminosity_correction_max.le.5.0d-3) correction_factor=1.0d0
        endif
-! The hydrogen- and helium-burning luminosities, for the log line.
-       hydrogen_burn_luminosity = s%luminosity_breakdown_lsun(i_lum_pp1) + s%luminosity_breakdown_lsun(i_lum_pp2) &
-            + s%luminosity_breakdown_lsun(i_lum_pp3) + s%luminosity_breakdown_lsun(i_lum_cno)
-       helium_burn_luminosity= s%luminosity_breakdown_lsun(i_lum_3alpha) + s%luminosity_breakdown_lsun(i_lum_he_c)
        if (converged) s%newton_iterations = iterations_done + 1
 end subroutine set_henyey_correction_factor
 
 ! ---------------------------------------------------------------
 ! Log the corrections (solver diagnostics), and report corrections too
 ! large to apply.
-subroutine log_henyey_corrections()
+!   star reads: luminosity_breakdown_lsun, max_correction_index,
+!     max_residual, model_diverged_flag, physics%solver_tolerances
+!   star writes: none
+subroutine log_henyey_corrections(s, converged, iterations_done, correction_factor)
+      use run_messages, only: solver_diagnostics
+      use core_messages, only: core_report, core_log, message_length, unwritten_line
+      use star_info_lib, only: i_lum_3alpha, i_lum_cno, i_lum_he_c, i_lum_pp1, &
+           i_lum_pp2, i_lum_pp3
+      type(star_info), intent(inout) :: s
+      logical, intent(in) :: converged
+      integer, intent(in) :: iterations_done
+      real(dp), intent(in) :: correction_factor
+      real(dp) :: hydrogen_burn_luminosity, helium_burn_luminosity
+      character(len=message_length) :: lines(2)
+      integer :: j
+! The hydrogen- and helium-burning luminosities, for the log line.
+       hydrogen_burn_luminosity = s%luminosity_breakdown_lsun(i_lum_pp1) + s%luminosity_breakdown_lsun(i_lum_pp2) &
+            + s%luminosity_breakdown_lsun(i_lum_pp3) + s%luminosity_breakdown_lsun(i_lum_cno)
+       helium_burn_luminosity= s%luminosity_breakdown_lsun(i_lum_3alpha) + s%luminosity_breakdown_lsun(i_lum_he_c)
 ! The correction trace is written only with solver diagnostics on.
        if (solver_diagnostics()) then
           lines = unwritten_line
@@ -419,7 +473,15 @@ end subroutine log_henyey_corrections
 ! which the entropy term reads), log R += f dlog R, L += f dL. Then the
 ! new log L, and log Teff from the envelope fit,
 !   log Teff = cf(7) log P(nz) + cf(8) log T(nz) + cf(9).
-subroutine apply_henyey_corrections()
+!   star reads: elim_rhs, envelope_fit_coeffs, nz
+!   star writes: log_L_lsun, log_pressure_delta, log_Teff,
+!     log_temperature_delta, logP, logR, logT, luminosity_lsun
+subroutine apply_henyey_corrections(s, correction_factor)
+      use math_lib
+      type(star_info), intent(inout) :: s
+      real(dp), intent(in) :: correction_factor
+      real(dp) :: temp
+      integer :: i
        do i = 1,s%nz
           temp = correction_factor*s%elim_rhs(1,i)
           s%logP(i) = s%logP(i) + temp
@@ -441,9 +503,18 @@ end subroutine apply_henyey_corrections
 ! With rotation, the rotation curve, the P and T shape factors and the
 ! rotational kinetic energy of the corrected structure,
 ! E_rot = 0.5 omega j dm per shell.
-subroutine update_rotation_after_corrections()
+!   star reads: am_transport_convective_flag, disk_gate_age_gyr, dm,
+!     log_mass, logR, logRho, nz, physics%rotation_active
+!   star writes: eta_squared, fp_rot, ft_rot, i_rot, j_rot,
+!     kinetic_energy_rot, mean_gravity, mean_radius, omega
+subroutine update_rotation_after_corrections(s, ierr)
+      type(star_info), intent(inout) :: s
+      integer, intent(out) :: ierr
+      real(dp) :: shell_angular_momentum
+      integer :: i
 ! di_domega of omega_from_j, which this caller does not use
       double precision :: qiw(json)
+      ierr = 0
          if (s%physics%rotation_active) then
             call omega_from_j(s%logRho,s%j_rot,s%logR, &
                  s%log_mass,s%dm,s%am_transport_convective_flag, &
@@ -459,7 +530,5 @@ subroutine update_rotation_after_corrections()
             end do
          endif
 end subroutine update_rotation_after_corrections
-
-end subroutine henyey_iterate
 
 end module henyey_iteration
