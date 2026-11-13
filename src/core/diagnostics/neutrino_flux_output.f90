@@ -5,6 +5,7 @@
 ! starting model (write_neutrino_flux_table, switched on by the
 ! compute_neutrino_fluxes control).
 module neutrino_flux_output
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use star_info_lib, only: star_info
       implicit none
       private
@@ -46,7 +47,7 @@ subroutine write_neutrino_flux_table(s)
            i_c13, i_n14, i_o16, i_o18, i_nu_pp, i_nu_pep, i_nu_hep, &
            i_nu_be7, i_nu_b8, i_nu_n13, i_nu_o15, i_nu_f17, n_nu_fluxes
       use core_messages, only: core_log, message_length, unwritten_line
-      use physical_constants
+      use physical_constants, only: ln10
       use net_lib, only: nuclear_energy_result
       use burn_step, only: compute_zone_energy
       use math_lib
@@ -54,16 +55,16 @@ subroutine write_neutrino_flux_table(s)
       implicit none
       type(star_info), intent(inout) :: s
 
-      double precision :: shell_center_mass(json), shell_mass(json)
+      real(dp) :: shell_center_mass(json), shell_mass(json)
 ! each shell's X(Be7), and its contributions to the fluxes, then their
 ! normalized profile (10^10 cm^-2 s^-1, then a fraction of the total);
 ! zero where the table computes none
-      double precision, allocatable :: be7_mass_fraction(:), flux_zone(:,:)
-      double precision :: shell_log_density, shell_log_temperature
+      real(dp), allocatable :: be7_mass_fraction(:), flux_zone(:,:)
+      real(dp) :: shell_log_density, shell_log_temperature
 ! burn: the shell's energy record; only its solar-neutrino fluxes and
 ! Be7 abundance are used here.
       type(nuclear_energy_result) :: burn
-      double precision :: t6_million_k, log_electron_density, &
+      real(dp) :: t6_million_k, log_electron_density, &
            zone_mass_fraction, zone_radius_fraction
       integer :: i, j
 ! one line of the table, as its format writes it
@@ -88,8 +89,8 @@ subroutine write_neutrino_flux_table(s)
          shell_log_temperature = s%logT(i)
 ! Stop at the first shell cooler than log T = 6, or at or below the
 ! nuclear cutoff, where nothing burns.
-         if (shell_log_temperature.lt.6.0d0 .or. &
-              shell_log_temperature.le.s%physics%nuclear_logT_cutoffs(1)) exit
+         if (shell_log_temperature < 6.0d0 .or. &
+              shell_log_temperature <= s%physics%nuclear_logT_cutoffs(1)) exit
          call compute_zone_energy(s, shell_log_density, &
               shell_log_temperature, s%xa(:,i), i, burn)
 ! The Be7 mass fraction (zero where X <= 1e-6, where none is computed).
@@ -115,7 +116,7 @@ subroutine write_neutrino_flux_table(s)
 
 ! Normalize each shell's flux to the total of its slot.
       do j = 1,n_nu_fluxes
-         if (s%neutrino_flux_total_e10_per_cm2_s(j) .ne. 0.0d0) then
+         if (s%neutrino_flux_total_e10_per_cm2_s(j) /= 0.0d0) then
             do i = 1,s%nz
                flux_zone(j,i) = flux_zone(j,i) &
                     /s%neutrino_flux_total_e10_per_cm2_s(j)
@@ -125,7 +126,7 @@ subroutine write_neutrino_flux_table(s)
       do i = 1,s%nz
 ! T6 = T/1e6 K; stop below 5e6 K.
          t6_million_k = exp(ln10*(s%logT(i)-6.0d0))
-         if (t6_million_k.lt.5.0d0) exit
+         if (t6_million_k < 5.0d0) exit
 ! The electron density for full ionization,
 ! log(n_e/N_A) = log[rho (1+X)/2].
          log_electron_density = s%logRho(i)+log10((1.0d0+s%xa(i_h1,i))/2.0d0)

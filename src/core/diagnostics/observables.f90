@@ -25,12 +25,14 @@
 ! fraction through an FX/FX2 typo and was never used, is not carried
 ! over.)
 module observables
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use turnover_timescale, only: compute_turnover_timescale
       use star_info_lib, only: i_h1, i_metals, n_lum_channels, star_info
       use energy_sources, only: num_energy_sources
       use structure_equations, only: luminosity_channel_sum
-      use eos_lib
-      use physical_constants
+      use eos_lib, only: eos_get, eos_result
+      use physical_constants, only: c4pi, c4pi3l, cc13, cc23, cgl, cpi, ln10, &
+           log10_radius_from_l_teff
       implicit none
       private
       public :: compute_observables
@@ -40,9 +42,9 @@ module observables
 ! pep, hep, 7Be, 8B, 13N, 15O, 17F, the order of neutrino_flux_layout)
 ! for the gallium (71Ga) and chlorine (37Cl) detectors: the detector's
 ! rate in SNU is sum_i c_i phi_i.
-      double precision, parameter :: gasnuf_diag(8) = [1.18D1,2.15D2, &
+      real(dp), parameter :: gasnuf_diag(8) = [1.18D1,2.15D2, &
            7.14D4,7.17D1,2.40D4,6.04D1,1.137D2,1.139D2]
-      double precision, parameter :: clsnuf_diag(8) = [0.0D0,1.6D1, &
+      real(dp), parameter :: clsnuf_diag(8) = [0.0D0,1.6D1, &
            4.26D4,2.4D0,1.14D4,1.7D0,6.8D0,6.9D0]
 
 contains
@@ -90,10 +92,10 @@ end subroutine compute_observables
 ! write_neutrino_flux_table (its local copies).
 subroutine shell_masses_from_log_mass(log_mass, log_total_mass, nz, m, dm)
       use math_lib
-      double precision, intent(in) :: log_mass(:), log_total_mass
+      real(dp), intent(in) :: log_mass(:), log_total_mass
       integer, intent(in) :: nz
-      double precision, intent(inout) :: m(:), dm(:)
-      double precision :: prev_mass, curr_mass, next_mass
+      real(dp), intent(inout) :: m(:), dm(:)
+      real(dp) :: prev_mass, curr_mass, next_mass
       integer :: i
 
       next_mass = exp(ln10*log_mass(1))
@@ -120,7 +122,7 @@ end subroutine shell_masses_from_log_mass
 !   star writes: luminosity_breakdown_lsun
 subroutine renormalize_luminosity_breakdown(s)
       type(star_info), intent(inout) :: s
-      double precision :: total_luminosity_sum, temp_value
+      real(dp) :: total_luminosity_sum, temp_value
       integer :: i
 
 ! The post-convergence twin of henyey_iterate's per-iteration
@@ -134,7 +136,7 @@ subroutine renormalize_luminosity_breakdown(s)
        do i = 1,n_lum_channels
           s%luminosity_breakdown_lsun(i) = s%luminosity_breakdown_lsun(i)*temp_value
        end do
-      endif
+      end if
 end subroutine renormalize_luminosity_breakdown
 
 ! ---------------------------------------------------------------
@@ -144,11 +146,11 @@ end subroutine renormalize_luminosity_breakdown
 !   star writes: core_cz_mass_msun
 subroutine locate_core_cz(s)
       type(star_info), intent(inout) :: s
-      if(s%core_cz_top_index.gt.1) then
+      if(s%core_cz_top_index > 1) then
        s%core_cz_mass_msun = s%m(s%core_cz_top_index)/s%solar_mass_cgs
       else
        s%core_cz_mass_msun = 0.0D0
-      endif
+      end if
 end subroutine locate_core_cz
 
 ! ---------------------------------------------------------------
@@ -164,8 +166,8 @@ subroutine compute_central_conditions(s, ierr)
       type(star_info), intent(inout) :: s
       integer, intent(out) :: ierr
 
-      double precision :: temp_value
-      double precision :: pressure_linear, log_pressure_center, &
+      real(dp) :: temp_value
+      real(dp) :: pressure_linear, log_pressure_center, &
            log_temperature_center, hydrogen_fraction_center, &
            metal_fraction_center
       logical :: is_atmosphere_point, compute_derivatives
@@ -221,13 +223,13 @@ subroutine locate_surface_cz_base(s)
       use math_lib
       use convection_geometry, only: cz_base_fraction
       type(star_info), intent(inout) :: s
-      double precision :: dd1, dd2, cz_base_mass, envelope_boundary_fx
-      double precision :: envelope_cz_log_temperature, &
+      real(dp) :: dd1, dd2, cz_base_mass, envelope_boundary_fx
+      real(dp) :: envelope_cz_log_temperature, &
            envelope_cz_log_density, envelope_cz_log_pressure, &
            envelope_cz_log_radius
 
-      if(s%envelope_cz_bottom_index.lt.s%nz) then
-       if(s%envelope_cz_bottom_index.gt.1) then
+      if(s%envelope_cz_bottom_index < s%nz) then
+       if(s%envelope_cz_bottom_index > 1) then
 ! The fraction f of the way from zone b-1 to the base zone b where
 ! gradr - grada crosses zero (cz_base_fraction), and the mass there.
 ! Linear in f: m, log r, the opacity, log T, log rho and log P.
@@ -259,7 +261,7 @@ subroutine locate_surface_cz_base(s)
             s%envelope_cz_density = exp10(s%central_log10_density)
             s%envelope_cz_pressure = exp10(s%central_log10_pressure)
             s%envelope_cz_opacity = s%opacity_zone(1)
-       endif
+       end if
       else
        s%envelope_mass_msun = 0.0D0
        s%envelope_radius_rsun = 0.0D0
@@ -267,7 +269,7 @@ subroutine locate_surface_cz_base(s)
          s%envelope_cz_density = 0.0D0
          s%envelope_cz_pressure = 0.0D0
          s%envelope_cz_opacity = 0.0D0
-      endif
+      end if
 end subroutine locate_surface_cz_base
 
 ! ---------------------------------------------------------------
@@ -320,8 +322,8 @@ subroutine compute_seismic_observables(s)
       use stitched_model, only: ip_logR, &
            ip_brunt_N2, ip_csound
       type(star_info), intent(inout) :: s
-      double precision :: log_g_solar
-      double precision :: acoustic_radius, buoyancy_radius, n2, dr, &
+      real(dp) :: log_g_solar
+      real(dp) :: acoustic_radius, buoyancy_radius, n2, dr, &
            r_inner, r_here, r_outer
       logical :: entered_g_mode_cavity
       integer :: k
@@ -457,7 +459,7 @@ subroutine compute_rotation_observables(s)
               0.5d0*c4pi/s%omega(s%nz)/8.64d4)
          s%surf_velocity_kms = s%omega(s%nz)* &
               exp(ln10*(s%log_R_surface_rsun+s%log10_solar_radius))*1.0d-5
-         if (s%envelope_cz_bottom_index .lt. s%nz) then
+         if (s%envelope_cz_bottom_index < s%nz) then
             do i = s%envelope_cz_bottom_index, s%nz
                s%cz_moment_of_inertia = &
                     s%cz_moment_of_inertia + s%i_rot(i)
@@ -466,7 +468,7 @@ subroutine compute_rotation_observables(s)
       else
          s%rotation_period_days = 0.0d0
          s%surf_velocity_kms = 0.0d0
-         if (s%envelope_cz_bottom_index .lt. s%nz) then
+         if (s%envelope_cz_bottom_index < s%nz) then
             do i = s%envelope_cz_bottom_index, s%nz
                s%cz_moment_of_inertia = &
                     s%cz_moment_of_inertia + &

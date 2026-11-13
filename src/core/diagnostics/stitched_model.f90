@@ -21,7 +21,7 @@
 ! reads them too (the turnover time, the seismic observables).
 module stitched_model
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use physical_constants
+      use physical_constants, only: cgl, gas_constant, ln10
       use math_lib
       use star_info_lib, only: json, star_info
       use output_columns, only: output_column, real_column, integer_column
