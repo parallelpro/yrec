@@ -1,0 +1,76 @@
+# Mutations of test_model_kernels: each check must print FAIL under a
+# mutation of the kernel it covers (find_shell_boundaries). Run, after
+# `make tests` in src/: python3 src/tools/mutate.py core --program
+# test_model_kernels (src/tools/mutate.py describes this format and the
+# verdicts).
+program = "test_model_kernels"
+timeout = 60
+
+[[mutation]]
+id = 'shell_boundaries-01'
+check = 'find_shell_boundaries: radiative model: core_edge 1, envelope_edge n'
+file = 'core/model/shell_boundaries.f90'
+old = '''
+      else
+         envelope_edge = num_points
+'''
+new = '''
+      else
+         envelope_edge = num_points - 1
+'''
+
+[[mutation]]
+id = 'shell_boundaries-02'
+check = 'find_shell_boundaries: convective core of 10 points: core_edge 10'
+file = 'core/model/shell_boundaries.f90'
+old = 'core_edge = i - 1'
+new = 'core_edge = i'
+
+[[mutation]]
+id = 'shell_boundaries-03'
+check = 'find_shell_boundaries: surface convection zone from 31: envelope_edge 31'
+file = 'core/model/shell_boundaries.f90'
+old = 'envelope_edge = i + 1'
+new = 'envelope_edge = i'
+
+[[mutation]]
+id = 'shell_boundaries-04'
+check = 'find_shell_boundaries: fully convective: envelope_edge 1, core_edge 1'
+file = 'core/model/shell_boundaries.f90'
+old = 'if (envelope_edge == 1) core_edge = 1'
+new = 'if (envelope_edge == 0) core_edge = 1'
+
+[[mutation]]
+id = 'shell_boundaries-05'
+check = 'find_shell_boundaries: central X above x_core_min: no H shell'
+file = 'core/model/shell_boundaries.f90'
+old = 'if (h1(1) <= x_core_min) then'
+new = 'if (h1(1) <= 10.0_dp*x_core_min) then'
+
+[[mutation]]
+id = 'shell_boundaries-06'
+check = 'find_shell_boundaries: H shell begins past the last X <= x_core_min (11)'
+file = 'core/model/shell_boundaries.f90'
+old = 'shell_begin = shell_begin + 1'
+new = 'shell_begin = shell_begin + 2'
+
+[[mutation]]
+id = 'shell_boundaries-07'
+check = 'find_shell_boundaries: H shell middle past the last X <= X_surf/2 (17)'
+file = 'core/model/shell_boundaries.f90'
+old = 'half_surface_x = 0.5_dp*h1(num_points)'
+new = 'half_surface_x = 0.4_dp*h1(num_points)'
+
+[[mutation]]
+id = 'shell_boundaries-08'
+check = 'find_shell_boundaries: H shell ends where the L step < 1e-5 L(n) (21)'
+file = 'core/model/shell_boundaries.f90'
+old = 'luminosity_change_tol = 1.0e-5_dp'
+new = 'luminosity_change_tol = 1.0e-1_dp'
+
+[[mutation]]
+id = 'shell_boundaries-09'
+check = 'find_shell_boundaries: H shell ends where X is within 1e-5 of X_surf (30)'
+file = 'core/model/shell_boundaries.f90'
+old = 'hydrogen_surface_tol = 1.0e-5_dp'
+new = 'hydrogen_surface_tol = 1.0e-3_dp'

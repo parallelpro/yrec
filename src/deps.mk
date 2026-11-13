@@ -451,6 +451,7 @@ core/structure/shell_equations.o: composition_layout.mod convection_lib.mod ener
 core/structure/structure_equations.o: eos_lib.mod henyey_elimination.mod kap_lib.mod math_lib.mod net_lib.mod physical_constants.mod shell_equations.mod star_info_lib.mod
 core/structure/surface_boundary.o: atm_lib.mod envelope_integration.mod math_lib.mod physical_constants.mod run_messages.mod star_info_lib.mod triangle_fit.mod
 core/test/test_mass_change.o: composition_layout.mod mass_change_kernel.mod
+core/test/test_model_kernels.o: shell_boundaries.mod
 core/test/test_reentry.o: run_driver.mod star_info_lib.mod
 core/test/test_regrid.o: math_lib.mod numerics_lib.mod physical_constants.mod regridding.mod
 core/test/test_run_contracts.o: calibration.mod control_slots.mod physical_constants.mod run_files.mod run_messages.mod star_info_lib.mod yrec_capi.mod

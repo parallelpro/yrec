@@ -146,7 +146,7 @@ jobs:
           test_other_energy.py test_error_exit.py test_reentry.py
           test_physics.py test_stop_conditions.py test_inlist_convert.py
           test_mesa_output.py test_pyyrec.py test_monte_carlo.py
-          test_run_contracts.py
+          test_run_contracts.py test_model_kernels.py
 
   # The unit test programs under the development flags (the header above).
   devel-tests:
