@@ -4617,6 +4617,17 @@ the measure; no deck asks for the neutrino table.
   comment fixes had not happened, one of agent E's "not in the F77" was
   in it (M309), a recipe named a procedure that does not exist, and the
   coverage tool, not the deck, made cm_monte_carlo fail.
+- test_element_diffusion's byte comparison failed twice in round 2, each
+  time in the first full pytest run of a tree (agent E's branch, and
+  MAIN after agent M's merge) while another agent was running decks, and
+  passed in the tolerant run that followed. It did not recur in 260 runs
+  of the program alone (with environments of varying size), 15 pytest
+  runs of the file, three runs of the files before it in CI's order and
+  two more full runs that saved any differing output. element_diffusion
+  was not touched, the program has no timing, threads or randomness,
+  and no root test rebuilds a binary. Open: if it recurs, keep the
+  output (a pytest plugin that wraps conftest's compare_output) and
+  diff it against the pin.
 
 #### Next
 
