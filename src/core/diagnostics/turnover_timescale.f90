@@ -28,7 +28,8 @@ contains
 ! star%photosphere_logP belongs to the stitched build (its atm_get). The
 ! mid-step consumers (the wind saturation, the deuterium limiter) read
 ! the values stored at the end of the previous step (the _prev copies).
-! Called by read_starting_model and compute_observables.
+! Called by read_starting_model and by evolve_step's
+! refresh_turnover_timescale (core/step/step_driver.f90).
 !   star reads: convective_flag, logP, nz, solar_mass_cgs, stitched
 !   star writes: convective_turnover_timescale, envelope_radius_rsun
 subroutine compute_turnover_timescale(s, ierr)

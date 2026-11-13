@@ -417,7 +417,7 @@ convection/temperature_gradients.o: convection_configuration.mod convection_mess
 convection/test/test_convection.o: convection_lib.mod eos_lib.mod kap_lib.mod physical_constants.mod run_messages.mod star_info_lib.mod
 core/core_messages.o: run_messages.mod
 core/diagnostics/neutrino_flux_output.o: burn_step.mod core_messages.mod math_lib.mod net_lib.mod observables.mod physical_constants.mod star_info_lib.mod
-core/diagnostics/observables.o: convection_geometry.mod energy_sources.mod eos_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod structure_equations.mod turnover_timescale.mod
+core/diagnostics/observables.o: convection_geometry.mod energy_sources.mod eos_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod structure_equations.mod
 core/diagnostics/stitched_model.o: core_messages.mod envelope_integration.mod math_lib.mod output_columns.mod physical_constants.mod star_info_lib.mod
 core/diagnostics/turnover_timescale.o: convection_geometry.mod core_messages.mod math_lib.mod numerics_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod
 core/envelope/envelope_integrands.o: atm_lib.mod convection_lib.mod envelope_points.mod eos_lib.mod kap_lib.mod math_lib.mod physical_constants.mod
@@ -444,7 +444,7 @@ core/step/convection_geometry.o: math_lib.mod physical_constants.mod star_info_l
 core/step/mass_change.o: atm_lib.mod core_messages.mod eos_lib.mod mass_change_kernel.mod math_lib.mod physical_constants.mod run_messages.mod star_info_lib.mod
 core/step/mass_change_kernel.o: composition_layout.mod math_lib.mod
 core/step/shell_physics.o: convection_lib.mod eos_lib.mod kap_lib.mod math_lib.mod star_info_lib.mod viscosity.mod
-core/step/step_driver.o: burn_step.mod composition_step.mod convection_lib.mod core_messages.mod envelope_rebuild.mod evolve_rotation.mod henyey_iteration.mod mass_change.mod math_lib.mod observables.mod physical_constants.mod rezoning.mod rotating_shape.mod shell_boundaries.mod star_info_lib.mod starting_model.mod stitched_model.mod stop_conditions.mod timestep_control.mod yrec_output.mod
+core/step/step_driver.o: burn_step.mod composition_step.mod convection_lib.mod core_messages.mod envelope_rebuild.mod evolve_rotation.mod henyey_iteration.mod mass_change.mod math_lib.mod observables.mod physical_constants.mod rezoning.mod rotating_shape.mod shell_boundaries.mod star_info_lib.mod starting_model.mod stitched_model.mod stop_conditions.mod timestep_control.mod turnover_timescale.mod yrec_output.mod
 core/step/timestep_control.o: burn_step.mod core_messages.mod net_lib.mod physical_constants.mod star_info_lib.mod timestep_limits.mod
 core/step/timestep_limits.o: composition_layout.mod control_slots.mod math_lib.mod net_lib.mod
 core/structure/energy_sources.o: composition_layout.mod core_messages.mod

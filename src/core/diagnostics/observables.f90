@@ -7,10 +7,11 @@
 ! from evolve_step once per model, after the stitched model is built
 ! and before the output writer. Every quantity it computes is stored on
 ! star% (the observables members and the renormalized
-! star%luminosity_breakdown_lsun), so the writer only reads; its one physics
-! feedback is the turnover timescale (see compute_observables). The
-! module also holds shell_masses_from_log_mass, the m and dm of a
-! log-mass grid.
+! star%luminosity_breakdown_lsun), so the writer only reads. Nothing it
+! computes feeds the physics: the turnover time, which the wind and the
+! deuterium cap read, is refreshed by the step (step_driver's
+! refresh_turnover_timescale, after compute_observables). The module
+! also holds shell_masses_from_log_mass, the m and dm of a log-mass grid.
 !
 ! The order of the themes matters: the central conditions precede the
 ! base of the surface convection zone (whose fully convective branch
@@ -26,7 +27,6 @@
 ! over.)
 module observables
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use turnover_timescale, only: compute_turnover_timescale
       use star_info_lib, only: i_h1, i_metals, n_lum_channels, star_info
       use energy_sources, only: num_energy_sources
       use structure_equations, only: luminosity_channel_sum
@@ -65,11 +65,6 @@ subroutine compute_observables(s, ierr)
       call compute_central_conditions(s, ierr)
       if (ierr /= 0) return
       call locate_surface_cz_base(s)
-! The turnover timescale (and the _prev copies of it and of photosphere_logP)
-! is physics state, read by the wind saturation and the deuterium limiter,
-! and is refreshed here for every model.
-      call refresh_turnover_timescale(s, ierr)
-      if (ierr /= 0) return
 
 ! The per-model history columns (star% members read by write_history),
 ! by the formulas of the legacy .track output. The surface radius also
@@ -211,7 +206,10 @@ end subroutine compute_central_conditions
 ! mass), envelope_radius_rsun, and
 ! envelope_cz_temperature, _density, _pressure and _opacity. A fully
 ! convective star takes the central values (so compute_central_conditions
-! runs first); without a surface convection zone all are zero.
+! runs first); without a surface convection zone all are zero. The
+! step's turnover refresh, after compute_observables, replaces
+! envelope_radius_rsun with the turnover walk's own base radius, the one
+! the output writes.
 !   star reads: central_log10_density, central_log10_pressure,
 !     central_log10_temperature, envelope_cz_bottom_index, grada, gradr,
 !     log10_solar_radius, log_total_mass, logP, logR, logRho, logT, m,
@@ -271,23 +269,6 @@ subroutine locate_surface_cz_base(s)
          s%envelope_cz_opacity = 0.0D0
       end if
 end subroutine locate_surface_cz_base
-
-! ---------------------------------------------------------------
-! Refreshes the turnover timescale and copies it and photosphere_logP
-! to their _prev versions, which the mid-step consumers (the wind, the
-! deuterium limiter) read during the next step. compute_turnover_timescale
-! also overwrites star%envelope_radius_rsun with its own base radius.
-!   star reads: convective_turnover_timescale, photosphere_logP
-!   star writes: convective_turnover_timescale_prev,
-!     photosphere_logP_prev
-subroutine refresh_turnover_timescale(s, ierr)
-      type(star_info), intent(inout) :: s
-      integer, intent(out) :: ierr
-      call compute_turnover_timescale(s, ierr)
-      s%convective_turnover_timescale_prev = &
-           s%convective_turnover_timescale
-      s%photosphere_logP_prev = s%photosphere_logP
-end subroutine refresh_turnover_timescale
 
 ! ---------------------------------------------------------------
 ! The surface radius from L = 4 pi R^2 sigma Teff^4, log g = log G +

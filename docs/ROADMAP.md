@@ -4447,3 +4447,208 @@ control.
 - **The push**: yrec-next holds rounds 0, 1 and 1B unpushed; a push
   waits for the owner's word.
 - The smaller open finds (M298-M301, M304, M307, M308) are on no list.
+
+### Round 2 (core): the star layer to the standard (yrec-next, 2026-11-12/13)
+
+The plan's round 2 (`audit/module-evaluation-7-2026-11-10/PLAN.md`
+section 6) takes core, the star layer, to the standard round 1's
+packages reached, after round 1's merges, because atm's and
+convection's changes reach core's call sites. core's report
+(`core.md`) scored it 6.7; its findings 1-12 are the plan's C-1 to
+C-12 and bug_sweep's M268-M274. As in round 1 every commit had to be
+byte-identical, and what would change results or message text went on
+a B list instead.
+
+**How it was done.**
+- **The groundwork** (8c1822ad): `core/core_messages.f90`, the one module
+  core's messages go through, added before the agents started so that
+  neither created it: `core_report` (terminal and run log),
+  `core_terminal`, `core_log`, and `core_stdout` and
+  `core_stdout_and_log` for what core's `write(*)` meant (standard output
+  before io assigns its units). The caller formats into an array of
+  lines; the routes keep the text and the destinations unchanged.
+- **Two agents in parallel on disjoint directories**, each in its own
+  worktree from 8c1822ad with its own measuring area (a copy of the deck
+  baseline and the 35 pins): agent E took envelope/, structure/ and
+  step/, agent M model/, run/ and diagnostics/. Each ran its untouched
+  tree first, `compare_decks --set all` after every item that touched
+  Fortran, and its tests, mutations, devel build and CI's pytest list at
+  the end. A signature change in one agent's directories carried its call
+  statements in the other's files, and only those; each hand-back lists
+  them. Each measured its B list in scratch: agent M one sparse clone per
+  fix with `--set all`, agent E its two cheap trials on the decks they
+  reach.
+- **The merges**: E in d7b05934, with 64ba1bc9 (devel_tests runs E's
+  three new programs) and aadd59aa (E's fix of a test under trapping
+  builds); M in 08181d11, whose conflicts with E's were the two blocks'
+  public lines in core_messages, the Makefile's test lists, the star
+  contracts (rewritten by `check_star_contracts --fix`),
+  `append_envelope_points`' and `reached_end_age`'s calls, and state's
+  member writer lists; then 8d7feee2, the leftovers both merges showed
+  (below) and the style counts lowered.
+- **The closing agent** (r2-docs, from 8d7feee2): the turnover time's
+  refresh into the step, core/README.md, core's B list, and the records.
+
+**What was done.**
+- **core E** (r2-core-e, 13 commits): C-2, `henyey_iterate` sets its
+  divergence flag on every path, and C-7, `evolve_step`'s vestigial save
+  removed (846f34d8); envelope/, structure/ and step/ write through
+  core_messages, and the envelope kernel returns events that `atm_get`
+  reports, the integrands' dead prints gone (a5b4a03b); henyey_elimination,
+  envelope_integration and its kernel private by default (b26051f2);
+  `henyey_eliminate`/`henyey_solve` star-free kernels with a zero-pivot
+  ierr, tested against a dense solve (test_henyey_elimination), and the
+  envelope kernel tested against RK4 and its error contracts
+  (test_envelope_integration), with mutation manifests for E's six tests
+  (72beba4f); C-8, the drivers read the star's members themselves
+  (d37d7499); `henyey_iterate`'s steps take explicit arguments (3d606983);
+  the timestep limits are star-blind kernels behind a settings record,
+  tested by test_timestep_limits (136d1a74); the F77 shapes converted in
+  the three directories, commented-out code in retired/, named values
+  (e9451567, 08e90df4, ec561a74); the species counts by state's names
+  (c041710e); two stale paths (ff4d0dcb); a test's retried start within
+  the tables (42b4ad69); and after the merge the step-underflow case
+  under trapping builds (72153f63).
+- **core M** (r2-core-m, 9 commits): C-1, the star calibration's last
+  card and its verdict, and C-4, the C entry's path limit and the units
+  it closes, with test_run_contracts (350c9186); model/, run/ and
+  diagnostics/ write through core_messages, text and destinations
+  unchanged, list-directed lines through `*_values` routes that keep
+  their trailing blanks (1c679141); C-8 in the three directories,
+  `locate_shell_boundaries` over a new star-free kernel,
+  `find_shell_boundaries` (08da8edf); `rezone`'s and
+  `read_starting_model`'s steps are module procedures with explicit
+  arguments and state records, and each mesh criterion is a step
+  (6983b71f); the F77 shapes converted, named thresholds and card kinds,
+  history headers as Sources, the theta block to retired/ (8a9e3805,
+  0c7f4a51, 6de1b9c7); the species slots and counts by name (dc4b3991);
+  test_model_kernels and test_regrid's manifest (80d07e6c).
+- **The leftovers** (8d7feee2): `run_driver`'s `disable_structure_dt_limits`
+  and the read outputs `step_driver` and `test_structure` no longer used
+  (C-8), `evolve_step_reset_pending` and its arming (C-7); devel_tests
+  runs test_model_kernels and test_run_contracts, the latter a known
+  failure until O4 is fixed; style_counts.tsv lowered (core's six
+  directories at 0 but for the file handling in model/ and run/).
+- **The closing commits** (r2-docs): the turnover time's refresh moved
+  from `compute_observables` into the step (e7551d23), right after it,
+  where it keeps every member's writes in their order, so that the
+  diagnostics feed no physics; core/README.md to the standard, both
+  agents' text merged and checked against the code; core's B list
+  (`B_LIST_CORE.md`); bug_sweep (M268, M269, M271 and M272 fixed, each B
+  item's measurement, section 17's M309-M314); this section;
+  TARGET_ARCHITECTURE's Phase 2 status and its eos and kap rows; and a
+  last Kind A commit for M314 and M274's last two comments
+  (begin_kind_card's unused local, the headers of yrec_reset and
+  check_stop_conditions, test_reentry.py's docstring), after which
+  bug_sweep holds 383 items, 264 fixed and 119 open.
+
+**Verified.**
+- Each agent: `compare_decks --set all` RESULT ALL IDENTICAL with 35
+  pins after each Fortran item and on its final tree; agent E also
+  compared every deck's standard output with the previous run's (56
+  decks, identical) and checked C-7 with a poison build (every
+  `evolve_step` local NaN, -999999 or `.true.` at each entry: identical).
+  `make check` passed on both branches.
+- CI's pytest list, plain and with `YREC_TEST_TOLERANT=1`: E 93 passed
+  and 2 skipped plain (one failure of test_element_diffusion's byte
+  comparison, once, which passed in the tolerant run and four reruns;
+  nothing on the branch touches element_diffusion), 94 passed tolerant;
+  M 93 passed and 2 skipped in both modes; test_mesa_baselines 2 passed
+  (E).
+- Mutations: E's six programs 114 of 114 caught, M's three 45 of 45.
+- Devel builds: `devel_tests.py` 0 cases failed on each branch, with O4's
+  known failures (test_structure's three cases, test_run_contracts).
+- The closing agent: the untouched merged tree `--set quick` ALL
+  IDENTICAL (17 pins); `--set all` on e7551d23, whose Fortran is the
+  final tree's, ALL IDENTICAL with 35 pins (twice, before and after its
+  last comment edits); `make check`; CI's pytest list 97
+  passed and 1 skipped (test_mesa_output's HDF5 case), plain and with
+  `YREC_TEST_TOLERANT=1`; test_mesa_baselines 2 passed; `mutate.py core`
+  159 of 159 caught (the nine manifests together, 2026-11-13).
+
+**Measuring against the path-sensitive decks.** Two notes from the B
+lists, after round 1B's:
+- **The first visible change.** On a path-sensitive deck (the 12
+  testsuite solar decks, the `rv_` decks, o24_rescale_rotating) agent M
+  read a fix's own size from the first progress line of the run log
+  (printed every 50 models) that differs from the base, not from the
+  end state, which is the deck's amplification: O6's part B moves 18
+  decks, but by 1e-9 where it first shows.
+- **The family is wider, and not everything in it is noise.** The solar
+  calibration (Test_solarcal_noGS_norot) is path-sensitive too: O6's
+  part B moves its log L by 7e-6 and M31's broad form by 3e-6, where
+  M85's own effect is 5e-11. And a path-sensitive deck's end state can
+  be the fix's: M176's part B takes rv_iter1 and rv_nocore onto other
+  paths (8e-3 in log L, first visible at model 200 at 1.6e-6 and
+  3.2e-6), and M31's broad form shortens o24's steps (its age at its
+  model stop -14%), real changes of the timestep control.
+
+**Coverage, and its limits.** At e7551d23, under the seven argument-free core
+test programs and 30 decks (the configuration matrix, the 12 pinned
+testsuite solar decks, cm_accretion and o24_rescale_rotating), 75.5% of
+core's 5865 executable lines run: step/ 88.4%, envelope/ 86.7%,
+structure/ 84.3%, diagnostics/ 82.1%, model/ 65.3%, run/ 37.8%
+(core/README.md section 5). Agent M's run with all 41 testsuite inlists
+reached model/ 77.2% and diagnostics/ 88.5%: the horizontal-branch and
+ZAMS decks run the rescales, the refits and the turnover walk's
+multi-cell branch. `coverage.py` takes
+argument-free test programs and single-inlist decks only, so
+test_structure, test_run_contracts (which covers calibration's star half
+and yrec_capi), test_reentry and the solar calibration decks (.nml1/.nml2
+pairs) are outside it; cm_monte_carlo exits 1 in its run because the
+deck's parameter file is not copied beside it (M313); energy_sources
+runs under test_other_energy and test_structure's extra case, outside
+the measure; no deck asks for the neutrino table.
+
+#### Learned
+
+- Two agents on disjoint directories of one package work when the
+  groundwork comes first: with core_messages in place before they
+  started, the merges conflicted only in lists and generated text.
+- A signature change crosses the line between the two directories; the
+  rule that its owner edits only the call statements in the other's
+  files, and lists them, kept the merges mechanical, and each left
+  unused locals behind in the other's files for the merge to remove.
+- Where a move is byte-identical depends on what the moved code
+  overwrites: the turnover refresh is identical after
+  `compute_observables` and not before it, because the walk writes
+  `envelope_radius_rsun` over `locate_surface_cz_base`'s value.
+- A hand-back's claims are checked like the code: one of agent M's
+  comment fixes had not happened, one of agent E's "not in the F77" was
+  in it (M309), a recipe named a procedure that does not exist, and the
+  coverage tool, not the deck, made cm_monte_carlo fail.
+
+#### Next
+
+- **The owner's decisions** on core's B list: M132 (an error, or the
+  clean stop), M176 (A only, or also B), M31 (narrow or broad), M303 (the
+  deck change); and round 1B's M278, M285 and M293.
+- **Round 2B**, core's measured fixes, one item per commit, then the
+  message re-pin commit (B_LIST_CORE.md).
+- **What is left of core.md's list** (the hand-backs' section 9):
+  - readability: the long hosts besides the four done
+    (`compute_surface_boundary`, `rebuild_envelope`,
+    `compute_henyey_coefficients`, `apply_mass_change`,
+    `advance_composition`, `burn_light_elements`' callers) still share
+    their host's locals, and `rezone`'s and `read_starting_model`'s step
+    bodies keep their F77-era names and layout;
+  - organization: `atm_get`'s `log10_star_mass`, which every caller
+    passes as `s%log_total_mass`, could be read inside; the file
+    handling left in run/ (the Monte-Carlo files, the units' closing)
+    and model/ (the model file's rewind) belongs in io, and so does
+    closing the run's `newunit` files after a C call (M312);
+    turnover_timescale.f90, which writes physics state, sits in
+    diagnostics/;
+  - maintainability: the B items; test_structure's radiative-only
+    partials have no mutation (mutate.py takes one argument list per
+    program, and the manifest runs the Yale case); the rezone's mesh
+    criteria have no unit test (they read the star; the recipe checks
+    them through FLAG-POINTS and the pins); the deck-level tests
+    (test_reentry, test_stop_conditions, test_monte_carlo, test_pyyrec)
+    have no manifests;
+  - extensibility: TARGET_ARCHITECTURE §4.5a's energy-source items (the
+    built-in terms as entries, a warning for a source above the fitting
+    point).
+- **The eighth evaluation** (PLAN.md section 9), after 2B.
+- **The push**: yrec-next holds rounds 0 to 2 unpushed; a push waits for
+  the owner's word.

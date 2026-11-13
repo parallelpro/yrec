@@ -12,6 +12,7 @@ module step_driver
       use rezoning, only: rezone
       use starting_model, only: read_starting_model
       use envelope_rebuild, only: rebuild_envelope
+      use turnover_timescale, only: compute_turnover_timescale
       use star_info_lib, only: star_info
       implicit none
       private
@@ -32,7 +33,8 @@ contains
 !                                iteration (evolve_angular_momentum)
 ! and then, on the converged model: the shell boundaries, the Li/Be burn,
 ! the envelope rebuild, the next timestep (compute_timestep), the
-! stitched model, the observables, the output and the stop conditions.
+! stitched model, the observables, the turnover time
+! (refresh_turnover_timescale), the output and the stop conditions.
 ! output is the job's output state (run_yrec's). model_iteration is the
 ! model's count within the run card (the star calibration's check
 ! starts at the second). Exits:
@@ -196,9 +198,10 @@ subroutine evolve_step(s, output, model_iteration, step_status, ierr)
 ! A rescale-only card (card_kind = 2) does not count models.
        if (s%card_kind(s%current_card) /= 2) s%model_number = s%model_number+1
 ! Assemble the whole converged star (interior, envelope and atmosphere)
-! into the stitched arrays before the observables: the turnover-time
-! observable walks them, star%photosphere_logP comes from this build, and the output
-! writers below only copy; nothing downstream integrates anything.
+! into the stitched arrays before the observables: the observables and
+! the turnover time walk them, star%photosphere_logP comes from this
+! build, and the output writers below only copy; nothing downstream
+! integrates anything.
        call build_stitched_model(s, ierr)
        if (ierr /= 0) return
 ! The per-model observables, computed in the star layer (one procedure
@@ -206,6 +209,11 @@ subroutine evolve_step(s, output, model_iteration, step_status, ierr)
 ! the renormalized luminosity_breakdown_lsun; the output below only reads
 ! them.
        call compute_observables(s, ierr)
+       if (ierr /= 0) return
+! The turnover time, physics state that the next step's deuterium cap
+! and wind read, and its step-start copies (refresh_turnover_timescale,
+! below).
+       call refresh_turnover_timescale(s, ierr)
        if (ierr /= 0) return
 ! Write the model's output (formerly wrtout).
        call output_write_model(s, output, ierr)
@@ -629,5 +637,26 @@ subroutine solve_level(level, level_max_iterations, check_surface_bc)
 end subroutine solve_level
 
 end subroutine evolve_step
+
+! ---------------------------------------------------------------
+! The convective turnover time of the converged model, from the stitched
+! model (compute_turnover_timescale), and the copies of it and of
+! photosphere_logP in their _prev members: the next step's start values,
+! from which the wind interpolates to the step's end values
+! (evolve_rotation, secular_transport). compute_turnover_timescale also
+! writes star%envelope_radius_rsun, the base radius it finds, over the
+! value compute_observables gave it. read_starting_model does the same
+! for a model it reads.
+!   star reads: convective_turnover_timescale, photosphere_logP
+!   star writes: convective_turnover_timescale_prev,
+!     photosphere_logP_prev
+subroutine refresh_turnover_timescale(s, ierr)
+      type(star_info), intent(inout) :: s
+      integer, intent(out) :: ierr
+      call compute_turnover_timescale(s, ierr)
+      s%convective_turnover_timescale_prev = &
+           s%convective_turnover_timescale
+      s%photosphere_logP_prev = s%photosphere_logP
+end subroutine refresh_turnover_timescale
 
 end module step_driver

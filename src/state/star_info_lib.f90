@@ -841,13 +841,13 @@ module star_info_lib
 ! envelope-overshoot depth alpha_ov H_P below the surface convection zone
 ! at the start of the step [cm]; step_driver, evolve_rotation
             real(dp) :: envelope_overshoot_depth_start
-! convective_turnover_timescale of the previous model [s]; observables,
+! convective_turnover_timescale of the previous model [s]; step_driver,
 ! starting_model. Copied after each converged model (and at a model
 ! read); the wind interpolates between it and the current value at
 ! substep_time_fraction.
             real(dp) :: convective_turnover_timescale_prev
 ! photosphere_logP of the previous model, copied with
-! convective_turnover_timescale_prev [log10 dyn/cm^2]; observables,
+! convective_turnover_timescale_prev [log10 dyn/cm^2]; step_driver,
 ! starting_model
             real(dp) :: photosphere_logP_prev
 ! j_rot at the start of the structure-rotation iteration [cm^2/s];
@@ -1160,7 +1160,8 @@ module star_info_lib
             real(dp) :: envelope_mass_msun
 ! radius of the base of the surface convection zone [Rsun]; observables,
 ! turnover_timescale. Written twice per model: by locate_surface_cz_base,
-! then by the turnover-time walk.
+! then by the turnover-time walk (the step's refresh, after the
+! observables).
             real(dp) :: envelope_radius_rsun
 ! mass of the convective core [Msun]; observables. 0 without one.
             real(dp) :: core_cz_mass_msun

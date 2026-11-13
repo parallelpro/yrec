@@ -122,12 +122,12 @@ end function converged_model_is_nan
 ! ---------------------------------------------------------------
 ! Per-model stop check, called by evolve_step after the converged
 ! model has been written. In order: the end-age stop, the configured
-! central-abundance stops (both end the kind card), then -- when a
-! star calibration is running -- the target-radius check, whose hit
-! leaves the model loop so run_yrec can rescale and retry (the
-! check_star_calibration protocol: iteration 1 only primes
-! previous-model state, so the calibration comparison starts at
-! iteration 2).
+! central-abundance stops and the structure limits (each ends the kind
+! card; the limits are not checked on a rescale card), then -- when a
+! star calibration is running -- the target-radius check, on an even
+! card from its second model on (check_star_calibration), whose hit
+! leaves the model loop so run_yrec goes on to the next card, a
+! rescale.
 !   star reads: card_kind, card_max_age_yr, control%calibrate_star_flag,
 !     current_card, just_passed_target_radius_flag, star_found_flag,
 !     termination_reason
