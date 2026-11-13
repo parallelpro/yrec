@@ -27,7 +27,8 @@ module monte_carlo
       use star_info_lib, only: json, i_h1, i_he4, i_metals, i_lum_grav, &
            max_mc_runs, star_info
       use control_slots, only: i_target_x, i_target_z
-      use run_messages, only: run_log_unit, terminal_unit
+      use run_messages, only: run_log_unit
+      use core_messages, only: core_terminal_values
       use run_files, only: last_model_unit, starting_model_unit, &
            dynamics_unit, mc_summary_unit, mc_model_unit
       use model_files, only: write_mod_model
@@ -78,10 +79,10 @@ subroutine setup_monte_carlo_runs(s)
                  s%mc_samples%settling_z_factor(i),s%mc_samples%luminosity_factor(i), &
                  s%mc_samples%age_factor(i)
  1511       format(7X,1P7E10.3/E9.3)
-            write(terminal_unit,*)i,s%mc_samples%s11_factor(i),s%mc_samples%s33_factor(i), &
+            call core_terminal_values([s%mc_samples%s11_factor(i),s%mc_samples%s33_factor(i), &
                  s%mc_samples%s34_factor(i),s%mc_samples%s17_factor(i),s%mc_samples%metal_to_h_ratio(i), &
                  s%mc_samples%settling_z_factor(i),s%mc_samples%luminosity_factor(i), &
-                 s%mc_samples%age_factor(i)
+                 s%mc_samples%age_factor(i)], int_value=i)
          end do
       endif
 end subroutine setup_monte_carlo_runs

@@ -100,7 +100,8 @@ subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
       use envelope_integration, only: atm_get, envint_step_config, fixed_envint_step, &
            ambient_log10_teff
       use envelope_refit, only: append_envelope_points
-      use run_messages, only: run_log_unit, terminal_unit
+      use core_messages, only: core_log, core_report, core_stdout, core_stdout_and_log, &
+           message_length, unwritten_line
       use run_files, only: starting_model_unit
       use model_files, only: model_file_header, read_model_format_tag, read_mod_model, &
            read_yrec7, read_model2
@@ -109,6 +110,7 @@ subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
       use kap_lib
       use stitched_model, only: build_stitched_model
       implicit none
+      character(len=message_length) :: lines(4)
       type(star_info), intent(inout) :: s
       integer :: jerr_atm
 
@@ -199,10 +201,14 @@ subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
 ! model_failed_flag (legacy LARGE) means the last model failed to
 ! converge: stop the run.
       if (model_failed_flag) then
-          write(run_log_unit,1000)
+          lines = unwritten_line
+          write(lines,1000)
+          call core_log(lines)
  1000       format(1x,39('>'),40('<')/, &
                   "STARIN:        ***** RUN STOPPED *****")
-          write(run_log_unit,1010)
+          lines = unwritten_line
+          write(lines,1010)
+          call core_log(lines)
  1010       format("STARIN: ***** MODEL FAILED TO CONVERGE *****")
             ! run_yrec returns the error; the command-line wrapper
             ! (main) stops.
@@ -315,27 +321,36 @@ end subroutine acquire_starting_model
 ! and asks for a fresh envelope.) Sets ierr on an unknown layout or a
 ! failed read (an empty file among them).
 subroutine read_starting_model_file
+      character(len=message_length) :: lines(4)
 
       call read_model_format_tag(iread, format_tag, ierr)
       if (ierr /= 0) return
 
       if (format_tag .eq. 'YMOD') then
-         write(run_log_unit,11)
+         lines = unwritten_line
+         write(lines,11)
+         call core_log(lines)
  11      format(1x,'loading starting model (YREC .mod format)')
          call read_mod_model(s, iread, header, ierr)
          if (ierr /= 0) return
       else if (format_tag .eq. 'NMOD') then
-         write(run_log_unit,12)
+         lines = unwritten_line
+         write(lines,12)
+         call core_log(lines)
  12      format(1x,'loading starting model (YREC7 format)')
          call read_yrec7(s, iread, header, ierr)
          if (ierr /= 0) return
       else if (format_tag .eq. 'MOD2 ') then
-         write(run_log_unit,16)
+         lines = unwritten_line
+         write(lines,16)
+         call core_log(lines)
  16      format(1x,'loading starting model (MODEL2 format)')
          call read_model2(s, iread, header, ierr)
          if (ierr /= 0) return
       else
-         write(run_log_unit,20)
+         lines = unwritten_line
+         write(lines,20)
+         call core_log(lines)
  20      format('STARIN: ***** RUN TERMINATED, INVALID INPUT', &
                 ' MODEL FILE.  *****')
          ! run_yrec returns the error; the command-line wrapper (main)
@@ -355,6 +370,7 @@ end subroutine read_starting_model_file
 ! extended-composition flag that differs from the controls. A warning
 ! only: the run goes on.
 subroutine check_model_against_controls
+      character(len=message_length) :: lines(4)
       if (s%model_number.gt.0) then
        mixing_length_matches = .true.
 ! The tolerance 2e-3 allows for model files storing the mixing length
@@ -366,10 +382,10 @@ subroutine check_model_against_controls
 ! for the model's flag.
        if (.not.mixing_length_matches .or. header%use_extended_composition.neqv. &
             s%physics%use_extended_composition) then
-          write(run_log_unit,1040) s%mixing_length_alpha,header%mixing_length, &
+          lines = unwritten_line
+          write(lines,1040) s%mixing_length_alpha,header%mixing_length, &
                s%physics%use_extended_composition,lexcp0
-          write(terminal_unit,1040) s%mixing_length_alpha,header%mixing_length, &
-               s%physics%use_extended_composition,lexcp0
+          call core_report(lines)
  1040       format(1x,'ERROR IN SUBROUTINE STARIN'/1x,'USER PARAMETERS', &
              ' OF WRONG TYPE FOR INITIAL MODEL'/1x,'MIXING LENGTH - USER' &
              ,' DESIRES',f7.3,' MODEL MIX LENGTH',f7.3/1x, &
@@ -420,6 +436,7 @@ end subroutine set_starting_rotation_curve
 ! within 1e-6 of the center in each of species 1-15) before its mixture
 ! is altered; mixture_ok is false, with a message, if not.
 subroutine check_mixture_homogeneity
+      character(len=message_length) :: lines(4)
       mixture_ok = .true.
       if (s%control%change_cno_mixture_active .or. s%control%change_isotope_ratios_active) then
          do i = 1,15
@@ -429,8 +446,9 @@ subroutine check_mixture_homogeneity
             do i = 1,15
                fraction_diff = abs(s%xa(i,j)-reference_composition(i))
                if (fraction_diff.gt.1.0d-6) then
-                  write(*,592)i,j,fraction_diff
-                  write(run_log_unit,592)i,j,fraction_diff
+                  lines = unwritten_line
+                  write(lines,592)i,j,fraction_diff
+                  call core_stdout_and_log(lines)
  592              format('SPECIES ',i3,' IN SHELL ',i5, &
                     ' DIFFERS FROM CENTER BY ',e12.4, &
                     ' MIX NOT MODIFIED IN EVOLVED MODEL')
@@ -446,6 +464,7 @@ end subroutine check_mixture_homogeneity
 ! Scale the C, N and O isotopes in every shell so that C, N and O make
 ! up the requested fractions of Z. Z itself is not changed.
 subroutine rescale_cno_mixture
+      character(len=message_length) :: lines(4)
       if (s%control%change_cno_mixture_active) then
 ! The current fractions, from the (homogeneous) central composition:
 !   f_C = (X(C12) + X(C13))/Z,  f_N = (X(N14) + X(N15))/Z,
@@ -480,10 +499,10 @@ subroutine rescale_cno_mixture
                s%xa(i,j)=oxygen_scale_ratio*s%xa(i,j)
             end do
          end do
-         write(*,594)(reference_composition(k),k=i_c12,i_o18), &
+         lines = unwritten_line
+         write(lines,594)(reference_composition(k),k=i_c12,i_o18), &
               (s%xa(k,1),k=i_c12,i_o18)
-         write(run_log_unit,594)(reference_composition(k),k=i_c12,i_o18), &
-              (s%xa(k,1),k=i_c12,i_o18)
+         call core_stdout_and_log(lines)
  594     format(1x,'CNO mixture applied to the starting model:',/, &
              4x,'old (C12 C13 N14 N15 O16 O17 O18):',7es12.4,/, &
              4x,'new (C12 C13 N14 N15 O16 O17 O18):',7es12.4)
@@ -499,6 +518,7 @@ end subroutine rescale_cno_mixture
 ! and likewise for O16 and O18. N15 and O17 are not altered, and B10
 ! and B11 are not species of the model.
 subroutine set_isotope_ratios
+      character(len=message_length) :: lines(4)
       if (s%control%change_isotope_ratios_active) then
          sum_c12_c13 = s%xa(i_c12,1)+s%xa(i_c13,1)
          sum_o16_o18 = s%xa(i_o16,1)+s%xa(i_o18,1)
@@ -515,10 +535,10 @@ subroutine set_isotope_ratios
             s%xa(i_li7,j)=s%control%initial_li7_fraction
             s%xa(i_be9,j)=s%control%initial_be9_fraction
          end do
-         write(*,593)(reference_composition(k),k=i_he3,i_be9), &
+         lines = unwritten_line
+         write(lines,593)(reference_composition(k),k=i_he3,i_be9), &
               (s%xa(k,1),k=i_he3,i_be9)
-         write(run_log_unit,593)(reference_composition(k),k=i_he3,i_be9), &
-              (s%xa(k,1),k=i_he3,i_be9)
+         call core_stdout_and_log(lines)
  593     format(1x,'isotope/light-element mixture applied to the', &
              ' starting model:',/, &
              4x,'old (He3 C12 C13 N14 N15 O16 O17 O18 H2 Li6 Li7 Be9):', &
@@ -539,6 +559,7 @@ end subroutine set_isotope_ratios
 ! first, so that auto-calibrated solar models keep the change (MHP 9/14).
 subroutine extend_core_toward_center
       use math_lib
+      character(len=message_length) :: lines(4)
 
       if (s%physics%extend_core_inward .and. s%card_from_starting_model(run_index)) then
 ! The innermost mass is to drop by the factor core_mass_reduction_factor
@@ -554,11 +575,17 @@ subroutine extend_core_toward_center
 ! (starin printed RUN TERMINATED but went on writing past json; fixed
 ! 2026-10).
           if (num_shells_extended .gt. json) then
-             write(run_log_unit,476)"STARIN: Unable to extend core inward ", &
+             lines = unwritten_line
+             write(lines,476)"STARIN: Unable to extend core inward ", &
                    "- JSON too small"
-             write(run_log_unit,477) "STARIN: Required size =", &
+             call core_log(lines)
+             lines = unwritten_line
+             write(lines,477) "STARIN: Required size =", &
                     num_shells_extended, ", JSON = ", json
-             write(run_log_unit,478) "STARIN:  ***** RUN TERMINATED *****"
+             call core_log(lines)
+             lines = unwritten_line
+             write(lines,478) "STARIN:  ***** RUN TERMINATED *****"
+             call core_log(lines)
   476        format(2a)
   477        format(a, i8, a, i8)
   478        format(a)
@@ -651,6 +678,7 @@ end subroutine extend_core_toward_center
 ! Sets ierr on failure.
 subroutine rescale_and_refit_envelope
       use math_lib
+      character(len=message_length) :: lines(4)
 
       if (s%card_kind(run_index).ne.1) call rescale_model(s, s%luminosity_lsun, &
            s%xa,s%log_mass,s%log_total_mass,s%nz,run_index, &
@@ -670,7 +698,9 @@ subroutine rescale_and_refit_envelope
           if (i < (1)) then
 ! The requested fitting mass lies inside the innermost shell: report
 ! it and leave the envelope mass unchanged.
-          write(run_log_unit,576)s%requested_log_fit_point_mass_fraction
+          lines = unwritten_line
+          write(lines,576)s%requested_log_fit_point_mass_fraction
+          call core_log(lines)
  576        format(5x,'ERROR IN SUBROUTINE STARIN'/5x,'DESIRED', &
               ' ENVELOPE MASS',1pe22.13,' TOO LARGE'/5x,'ENVELOPE', &
               ' MASS NOT CHANGED')
@@ -687,7 +717,9 @@ subroutine rescale_and_refit_envelope
           if (ierr /= 0) return
        endif
        envelope_recomputed_flag = .true.
-       write(run_log_unit,597)old_senv,s%log_fit_point_mass_fraction
+       lines = unwritten_line
+       write(lines,597)old_senv,s%log_fit_point_mass_fraction
+       call core_log(lines)
  597     format(5x,'***** NEW ENVELOPE MASS CALCULATED *****'/8x, &
               'OLD SENV ',1pe22.13,'  NEW SENV',e22.13)
       exit envelope_rescale
@@ -872,9 +904,13 @@ end subroutine integrate_envelope_to_new_fit
 ! failure.
 subroutine append_envelope_as_shells
       use math_lib
+      character(len=message_length), allocatable :: point_lines(:)
+      character(len=message_length) :: lines(4)
 ! Stop if the envelope points would overflow the json-point arrays.
             if (s%nz+s%env_points%num_env_points.ge.json) then
-               write(*,*) 'read_starting_model: grid overflow (json too small)'
+               lines = unwritten_line
+               write(lines,*) 'read_starting_model: grid overflow (json too small)'
+               call core_stdout(lines)
                ierr = 1
                return
             end if
@@ -911,8 +947,10 @@ subroutine append_envelope_as_shells
             if (ierr /= 0) then
 ! A degenerate interpolation interval in mass is fatal; run_yrec
 ! returns the error.
-               write(run_log_unit,*) 'STARIN: degenerate', &
+               lines = unwritten_line
+               write(lines,*) 'STARIN: degenerate', &
                     ' envelope interpolation interval (was STOP 9998)'
+               call core_log(lines)
                return
             end if
 ! The new shells rotate with the old last shell's omega, with the
@@ -924,12 +962,17 @@ subroutine append_envelope_as_shells
                        exp10((2.0d0*s%logR(j)))
                end do
             endif
-            write(*,910)
+            lines = unwritten_line
+            write(lines,910)
+            call core_stdout(lines)
  910  format(1x,'NEW INTERIOR POINTS FROM CHANGE IN ENVELOPE MASS'/ &
             ' J,LOG RHO, LOG L, LOG P, LOG R, LOG M, LOG T, CONV T/F')
-      write(*,911)(j,s%logRho(j),s%luminosity_lsun(j),s%logP(j), &
+      allocate(point_lines(s%nz-old_last_shell+1))
+      point_lines = unwritten_line
+      write(point_lines,911)(j,s%logRho(j),s%luminosity_lsun(j),s%logP(j), &
                    s%logR(j),s%log_mass(j)-s%log_total_mass, &
                    s%logT(j),s%convective_flag(j), j = old_last_shell,s%nz)
+      call core_stdout(point_lines)
  911  format(i5,1p6e16.8,l2)
 end subroutine append_envelope_as_shells
 
@@ -947,6 +990,7 @@ end subroutine build_shell_masses
 ! inertia, and the totals of angular momentum and rotational kinetic
 ! energy, echoed beside the totals held on entry.
 subroutine initialize_rotation_state
+      character(len=message_length) :: lines(4)
 ! di_domega of omega_from_j, which this caller does not use
       double precision :: qiw(json)
       if (s%physics%rotation_active) then
@@ -971,8 +1015,10 @@ subroutine initialize_rotation_state
           angular_momentum_sum = angular_momentum_sum+shell_angular_momentum
           rotational_ke_sum = rotational_ke_sum + s%kinetic_energy_rot(i)
        end do
-       write(run_log_unit,560)total_angular_momentum, &
+       lines = unwritten_line
+       write(lines,560)total_angular_momentum, &
             angular_momentum_sum,total_rotational_ke,rotational_ke_sum
+       call core_log(lines)
  560     format(1x,'TOTAL J OF STAR - PREVIOUS ',1pe21.13,' NEW ', &
               1pe21.13/1x,'TOTAL ROTATIONAL K.E. OF STAR - PREVIOUS ', &
               1pe21.13,' NEW ',1pe21.13)

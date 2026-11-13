@@ -927,7 +927,8 @@ end function species_slot
 !   star reads: none
 !   star writes: stitched
 subroutine fill_stitched_arrays(s, ierr)
-      use run_messages, only: report_error
+      use core_messages, only: core_report, message_length
+      character(len=message_length) :: lines(1)
       type(star_info), intent(inout) :: s
       integer, intent(out) :: ierr
       type(output_column) :: cols(n_prof_cols)
@@ -941,10 +942,11 @@ subroutine fill_stitched_arrays(s, ierr)
             call extended_point_value(s, icol, j, value, found)
             if (.not. found) then
                cols = profile_columns()
-               call report_error('the profile column ' // trim(cols(icol)%name) // &
+               lines(1) = ' ERROR: the profile column ' // trim(cols(icol)%name) // &
                     ' has no value in the ' // &
                     trim(region_name(s%stitched%region(j))) // &
-                    ' (core/diagnostics/stitched_model.f90)')
+                    ' (core/diagnostics/stitched_model.f90)'
+               call core_report(lines)
                ierr = 1
                return
             end if

@@ -82,7 +82,8 @@ subroutine rezone(s, envelope_store_index, point_reset_flag, &
            ichi_dm_min, ichi_dp_core_max, ichi_dp_czbase_max, ichi_dp_env_max, ichi_dx_max, &
            ichi_dz_max, ichi_flag_dw, ichi_flag_dx, ichi_flag_dz
       use settings_install, only: install_surface_x_settings
-      use run_messages, only: run_log_unit, terminal_unit, solver_diagnostics
+      use run_messages, only: solver_diagnostics
+      use core_messages, only: core_log, core_report, core_stdout, message_length, unwritten_line
       use physical_constants
       use numerics_lib, only: natural_spline, splint, numerics_status_text
       use regridding, only: structure_profiles, rotation_profiles, &
@@ -190,12 +191,15 @@ contains
 ! outside it. Either sets point_reset_flag (and star%log_fit_point_mass_fraction); ierr if the
 ! whole model is cooler than tenv0.
 subroutine check_envelope_temperature_range
+      character(len=message_length) :: lines(4)
 ! The outer point is cooler than tenv0: delete points down to the first
 ! one hotter than tenv0.
       if (s%logT(s%nz).lt.s%physics%rezone_env_logt0) then
        do i = s%nz-1,1,-1
           if (s%logT(i).gt.s%physics%rezone_env_logt0) then
-             write(run_log_unit,10) s%nz,i
+             lines = unwritten_line
+             write(lines,10) s%nz,i
+             call core_log(lines)
    10     format(' OUTER POINTS DELETED OLD M =',I5,'  NEW M =',I5)
              s%nz = i
              s%log_fit_point_mass_fraction = s%log_mass(s%nz) - s%log_total_mass
@@ -206,8 +210,9 @@ subroutine check_envelope_temperature_range
        if (i < (1)) then
 ! The whole model is cooler than tenv0 (unlikely): stop with ierr, which
 ! run_yrec returns and the command-line wrapper stops on.
-       write(run_log_unit,30)
-       write(terminal_unit,30)
+       lines = unwritten_line
+       write(lines,30)
+       call core_report(lines)
    30    format(1X,39('>'),40('<')/1X,'ERROR IN HPOINT'/ &
      1X,'MAX. STAR T LESS THAN MINIMUM ENVELOPE T.RUN STOPPED')
        ierr = 1
@@ -234,10 +239,12 @@ subroutine check_envelope_temperature_range
        do i = 1,num_species_tracked
           s%xa(i,s%nz) = s%xa(i,s%nz-1)
        end do
+       call core_log(lines)
        s%logRho(s%nz) = s%logP(s%nz) - &
             s%logT(s%nz) - 8.0D0
        j = s%nz - 1
-       write(run_log_unit,60) j,s%log_mass(j),s%logP(j), &
+       lines = unwritten_line
+       write(lines,60) j,s%log_mass(j),s%logP(j), &
             s%logT(j),s%logR(j),s%nz,s%log_mass(s%nz), &
             s%logP(s%nz),s%logT(s%nz), &
             s%logR(s%nz)
@@ -258,6 +265,7 @@ subroutine flag_fixed_points
       use math_lib
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use convection_lib, only: envelope_overshoot_depth
+      character(len=message_length), allocatable :: flag_lines(:)
       real(dp) :: overshoot_depth, overshoot_base_radius
       flag_count = 1
       flag_overflow_warned = .false.
@@ -384,7 +392,10 @@ subroutine flag_fixed_points
       end do
       end if
       if (solver_diagnostics()) then
-         write(run_log_unit,185) (flag_point(j),j=1,flag_count)
+         allocate(flag_lines(flag_count/20 + 1))
+         flag_lines = unwritten_line
+         write(flag_lines,185) (flag_point(j),j=1,flag_count)
+         call core_log(flag_lines)
       end if
   185 format(1X,'FLAG-POINTS',20I4)
 end subroutine flag_fixed_points
@@ -394,10 +405,13 @@ end subroutine flag_fixed_points
 ! the star%nz terminator; the first dropped append of a rezone is
 ! reported in the run log.
 subroutine append_flag_point(zone)
+      character(len=message_length) :: lines(4)
       integer, intent(in) :: zone
       if (flag_count .gt. max_flag_points - 1) then
          if (.not. flag_overflow_warned) then
-            write(run_log_unit,110) max_flag_points
+            lines = unwritten_line
+            write(lines,110) max_flag_points
+            call core_log(lines)
   110       format(1X,'MORE THAN ',i4,' FLAG POINTS - REST DROPPED')
             flag_overflow_warned = .true.
          end if
@@ -500,6 +514,7 @@ end subroutine accumulate_chi_spacing
 ! The flagged points themselves are kept (the spline passes through its
 ! knots). ierr past json points or on a spline failure.
 subroutine place_points_along_chi
+      character(len=message_length) :: lines(4)
       do j = 1,s%nz
          spline_x(j) = chi(j)
          spline_y(j) = s%log_mass(j)
@@ -514,7 +529,9 @@ subroutine place_points_along_chi
          segment_point_count = int(delta_chi)+1
          if (new_num_zones+segment_point_count.gt.json) then
 ! More points than the arrays hold: stop with ierr.
-            write(*,101) new_num_zones+segment_point_count,json
+            lines = unwritten_line
+            write(lines,101) new_num_zones+segment_point_count,json
+            call core_stdout(lines)
  101        format(' DESIRED NUMBER OF POINTS ',I6,'EXCEEEDS JSON ', &
      I6/' RUN STOPPED')
             ierr = 1
@@ -528,7 +545,9 @@ subroutine place_points_along_chi
                  spline_second_deriv, spline_eval_x, spline_eval_y, jerr_gate)
             ! A spline failure returns through ierr, after its message.
             if (jerr_gate /= 0) then
-               write(run_log_unit,*) 'splint: '//numerics_status_text(jerr_gate)
+               lines = unwritten_line
+               write(lines,*) 'splint: '//numerics_status_text(jerr_gate)
+               call core_log(lines)
                ierr = jerr_gate
                return
             end if
@@ -546,6 +565,7 @@ end subroutine place_points_along_chi
 ! int(Delta X/tol_dx_max) points evenly in log m between them. Skipped
 ! when tol_dx_max is zero; ierr on a spline failure.
 subroutine add_points_for_x_jumps
+      character(len=message_length) :: lines(4)
       do j = 1,s%nz
          spline_x(j) = s%log_mass(j)
          spline_y(j) = s%xa(i_h1,j)
@@ -557,7 +577,9 @@ subroutine add_points_for_x_jumps
          call splint(spline_x, spline_y, s%nz, spline_second_deriv, &
               spline_eval_x, spline_eval_y, jerr_gate)
          if (jerr_gate /= 0) then
-            write(run_log_unit,*) 'splint: '//numerics_status_text(jerr_gate)
+            lines = unwritten_line
+            write(lines,*) 'splint: '//numerics_status_text(jerr_gate)
+            call core_log(lines)
             ierr = jerr_gate
             return
          end if
@@ -583,12 +605,14 @@ subroutine add_points_for_x_jumps
 ! The number of points to insert. Shift the points from j outward up by
 ! num_new_points, then fill the interval below j evenly in log m.
          num_new_points = int(delta_x_over_max)
+            call core_stdout(lines)
          point_insert_spacing = (new_log_mass(j)-new_log_mass(j-1))/ &
               dfloat(num_new_points+1)
 ! More points than the arrays hold: stop with ierr, as
 ! place_points_along_chi does (no check here before 2026-10).
          if (working_num_zones+num_new_points.gt.json) then
-            write(*,'(a,i6,a,i6)') ' DESIRED NUMBER OF POINTS ', &
+            lines = unwritten_line
+            write(lines,'(a,i6,a,i6)') ' DESIRED NUMBER OF POINTS ', &
                  working_num_zones+num_new_points, ' EXCEEDS JSON ', json
             ierr = 1
             return
@@ -613,6 +637,7 @@ end subroutine add_points_for_x_jumps
 ! add_points_for_x_jumps does for X. Skipped when tol_dz_max is zero;
 ! ierr on a spline failure.
 subroutine add_points_for_z_jumps
+      character(len=message_length) :: lines(4)
       do j = 1,s%nz
          spline_x(j) = s%log_mass(j)
          spline_y(j) = s%xa(i_metals,j)
@@ -624,7 +649,9 @@ subroutine add_points_for_z_jumps
          call splint(spline_x, spline_y, s%nz, spline_second_deriv, &
               spline_eval_x, spline_eval_y, jerr_gate)
          if (jerr_gate /= 0) then
-            write(run_log_unit,*) 'splint: '//numerics_status_text(jerr_gate)
+            lines = unwritten_line
+            write(lines,*) 'splint: '//numerics_status_text(jerr_gate)
+            call core_log(lines)
             ierr = jerr_gate
             return
          end if
@@ -648,12 +675,14 @@ subroutine add_points_for_z_jumps
          delta_z_over_max = (z_new(j-1) - z_new(j))/point_spacing_max(4)
 ! The number of points to insert; shift and fill as for X.
          num_new_points = int(delta_z_over_max)
+            call core_stdout(lines)
          point_insert_spacing = (new_log_mass(j)-new_log_mass(j-1))/ &
               dfloat(num_new_points+1)
 ! More points than the arrays hold: stop with ierr, as
 ! place_points_along_chi does (no check here before 2026-10).
          if (working_num_zones+num_new_points.gt.json) then
-            write(*,'(a,i6,a,i6)') ' DESIRED NUMBER OF POINTS ', &
+            lines = unwritten_line
+            write(lines,'(a,i6,a,i6)') ' DESIRED NUMBER OF POINTS ', &
                  working_num_zones+num_new_points, ' EXCEEDS JSON ', json
             ierr = 1
             return
@@ -750,6 +779,7 @@ end subroutine locate_new_cz_edges
 ! opacity tables if the surface X moved.
 subroutine interpolate_onto_new_grid
       use math_lib
+      character(len=message_length) :: lines(4)
       call regrid_composition_terms
       if (ierr == 0) call regrid_structure_variables
       if (ierr == 0) call regrid_rotation_variables
@@ -757,8 +787,9 @@ subroutine interpolate_onto_new_grid
       if (ierr /= 0) then
 ! osplin could not regrid a profile (the regridding kernels' status):
 ! the run stops with ierr, as for the other rezoning failures.
-         write(run_log_unit,'(a)') ' rezone: osplin: '//numerics_status_text(ierr)
-         write(terminal_unit,'(a)') ' rezone: osplin: '//numerics_status_text(ierr)
+         lines = unwritten_line
+         write(lines,'(a)') ' rezone: osplin: '//numerics_status_text(ierr)
+         call core_report(lines)
          return
       end if
       call transfer_new_points
@@ -897,6 +928,7 @@ end subroutine regrid_start_of_step_eps
 ! Adopt the new points: the new mesh and the splined structure and
 ! rotation variables become the model, with the new point count.
 subroutine transfer_new_points
+      character(len=message_length) :: lines(4)
       do j = 1,new_num_zones
        s%log_mass(j) = new_log_mass(j)
        s%logP(j) = s%logP_start(j)
@@ -916,7 +948,9 @@ subroutine transfer_new_points
        end do
       endif
       if (solver_diagnostics()) then
-         write(run_log_unit,1020) s%nz,new_num_zones
+         lines = unwritten_line
+         write(lines,1020) s%nz,new_num_zones
+         call core_log(lines)
       end if
  1020 format(' POINTS  OLD',I5,'   NEW',I5)
       s%nz = new_num_zones
@@ -983,14 +1017,18 @@ end subroutine respin_on_new_grid
 !   J = sum_i j_i dm_i,   E_rot = sum_i (1/2) omega_i j_i dm_i,
 ! and store the rotation state as the start of the step.
 subroutine retally_angular_momentum
+      character(len=message_length) :: lines(4)
        call compute_angular_momentum_totals(s%j_rot(1:s%nz), &
             s%omega(1:s%nz), s%dm(1:s%nz), &
             s%kinetic_energy_rot(1:s%nz), sum_angular_momentum, &
             sum_rotational_ke)
 ! The totals before and after the rezone, a solver diagnostic.
-       if (solver_diagnostics()) &
-            write(run_log_unit,1120)total_angular_momentum, &
-            sum_angular_momentum,total_rotational_ke,sum_rotational_ke
+       if (solver_diagnostics()) then
+          lines = unwritten_line
+          write(lines,1120)total_angular_momentum, &
+               sum_angular_momentum,total_rotational_ke,sum_rotational_ke
+          call core_log(lines)
+       end if
  1120    format(1X,'TOTAL J OF STAR - PREVIOUS ',1PE21.13,' NEW ', &
      1PE21.13/' TOTAL ROTATIONAL K.E. OF STAR-PREVIOUS ',1PE21.13, &
      ' NEW ',1PE21.13)

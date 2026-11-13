@@ -414,26 +414,26 @@ convection/semiconvection.o: composition_layout.mod convection_configuration.mod
 convection/temperature_gradients.o: convection_configuration.mod convection_messages.mod eos_lib.mod kap_lib.mod math_lib.mod physical_constants.mod
 convection/test/test_convection.o: convection_lib.mod eos_lib.mod kap_lib.mod physical_constants.mod run_messages.mod star_info_lib.mod
 core/core_messages.o: run_messages.mod
-core/diagnostics/neutrino_flux_output.o: burn_step.mod math_lib.mod net_lib.mod observables.mod physical_constants.mod run_messages.mod star_info_lib.mod
+core/diagnostics/neutrino_flux_output.o: burn_step.mod core_messages.mod math_lib.mod net_lib.mod observables.mod physical_constants.mod star_info_lib.mod
 core/diagnostics/observables.o: convection_geometry.mod energy_sources.mod eos_lib.mod math_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod structure_equations.mod turnover_timescale.mod
-core/diagnostics/stitched_model.o: envelope_integration.mod math_lib.mod output_columns.mod physical_constants.mod run_messages.mod star_info_lib.mod
-core/diagnostics/turnover_timescale.o: convection_geometry.mod math_lib.mod numerics_lib.mod physical_constants.mod run_messages.mod star_info_lib.mod stitched_model.mod
+core/diagnostics/stitched_model.o: core_messages.mod envelope_integration.mod math_lib.mod output_columns.mod physical_constants.mod star_info_lib.mod
+core/diagnostics/turnover_timescale.o: convection_geometry.mod core_messages.mod math_lib.mod numerics_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod
 core/envelope/envelope_integrands.o: atm_lib.mod convection_lib.mod envelope_points.mod eos_lib.mod kap_lib.mod math_lib.mod physical_constants.mod
 core/envelope/envelope_integration.o: atm_lib.mod envelope_integration_kernel.mod math_lib.mod physical_constants.mod star_info_lib.mod
 core/envelope/envelope_integration_kernel.o: atm_lib.mod composition_layout.mod envelope_integrands.mod envelope_points.mod eos_lib.mod kap_lib.mod math_lib.mod numerics_lib.mod physical_constants.mod run_messages.mod
 core/envelope/envelope_rebuild.o: control_slots.mod envelope_integration.mod envelope_integration_kernel.mod envelope_refit.mod math_lib.mod omega_profile.mod physical_constants.mod star_info_lib.mod
 core/envelope/envelope_refit.o: star_info_lib.mod
 core/main.o: run_driver.mod
-core/model/model_rescaling.o: control_slots.mod math_lib.mod physical_constants.mod run_messages.mod settings_install.mod shell_boundaries.mod star_info_lib.mod
+core/model/model_rescaling.o: control_slots.mod core_messages.mod math_lib.mod physical_constants.mod settings_install.mod shell_boundaries.mod star_info_lib.mod
 core/model/regridding.o: math_lib.mod numerics_lib.mod physical_constants.mod
-core/model/rezoning.o: am_regions.mod control_slots.mod convection_lib.mod math_lib.mod moments_of_inertia.mod numerics_lib.mod omega_profile.mod physical_constants.mod regridding.mod rotating_shape.mod run_messages.mod settings_install.mod shell_physics.mod star_info_lib.mod
+core/model/rezoning.o: am_regions.mod control_slots.mod convection_lib.mod core_messages.mod math_lib.mod moments_of_inertia.mod numerics_lib.mod omega_profile.mod physical_constants.mod regridding.mod rotating_shape.mod run_messages.mod settings_install.mod shell_physics.mod star_info_lib.mod
 core/model/shell_boundaries.o: control_slots.mod star_info_lib.mod
-core/model/starting_model.o: am_regions.mod control_slots.mod convection_lib.mod envelope_integration.mod envelope_refit.mod eos_lib.mod kap_lib.mod math_lib.mod model_files.mod model_rescaling.mod moments_of_inertia.mod observables.mod physical_constants.mod rotating_shape.mod run_files.mod run_messages.mod settings_install.mod shell_physics.mod star_info_lib.mod stitched_model.mod turnover_timescale.mod
-core/run/calibration.o: control_slots.mod math_lib.mod physical_constants.mod run_messages.mod star_info_lib.mod
-core/run/monte_carlo.o: control_slots.mod controls_sync.mod math_lib.mod model_files.mod net_lib.mod output_files.mod physical_constants.mod run_files.mod run_messages.mod star_info_lib.mod
+core/model/starting_model.o: am_regions.mod control_slots.mod convection_lib.mod core_messages.mod envelope_integration.mod envelope_refit.mod eos_lib.mod kap_lib.mod math_lib.mod model_files.mod model_rescaling.mod moments_of_inertia.mod observables.mod physical_constants.mod rotating_shape.mod run_files.mod settings_install.mod shell_physics.mod star_info_lib.mod stitched_model.mod turnover_timescale.mod
+core/run/calibration.o: control_slots.mod core_messages.mod math_lib.mod physical_constants.mod star_info_lib.mod
+core/run/monte_carlo.o: control_slots.mod controls_sync.mod core_messages.mod math_lib.mod model_files.mod net_lib.mod output_files.mod physical_constants.mod run_files.mod run_messages.mod star_info_lib.mod
 core/run/run_driver.o: calibration.mod controls_check.mod controls_reader.mod model_files.mod monte_carlo.mod neutrino_flux_output.mod physical_constants.mod run_files.mod run_log.mod run_setup.mod settings_install.mod shell_boundaries.mod star_info_lib.mod starting_model.mod step_driver.mod stop_conditions.mod timestep_control.mod yrec_output.mod yrec_reset.mod yrec_version.mod
 core/run/run_setup.o: control_slots.mod math_lib.mod monte_carlo.mod physical_constants.mod settings_install.mod star_info_lib.mod
-core/run/stop_conditions.o: calibration.mod math_lib.mod run_messages.mod star_info_lib.mod
+core/run/stop_conditions.o: calibration.mod core_messages.mod math_lib.mod star_info_lib.mod
 core/run/yrec_capi.o: core_messages.mod run_driver.mod star_info_lib.mod yrec_reset.mod
 core/run/yrec_reset.o: run_files.mod run_messages.mod star_info_lib.mod
 core/step/burn_step.o: convection_geometry.mod math_lib.mod net_lib.mod physical_constants.mod run_messages.mod star_info_lib.mod

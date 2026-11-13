@@ -120,7 +120,7 @@ subroutine turnover_from_interior_new(s, shell_mass, convective_flag, log10_radi
      adiabatic_gradient, radius_at_bcz, ierr)
       use math_lib
       use numerics_lib, only: natural_spline, splint, numerics_status_text
-      use run_messages, only: run_log_unit
+      use core_messages, only: core_log, message_length, unwritten_line
       use convection_geometry, only: cz_base_fraction
       use physical_constants, only: ln10
       use star_info_lib, only: json
@@ -335,6 +335,7 @@ end subroutine locate_cz_base_radius
 ! tau = H_p/v_c, with H_p = P/(rho g) and v_c splined at the point where
 ! r - r_bcz = H_p.
 subroutine time_scale_height_above_base()
+      character(len=message_length) :: lines(1)
 ! H_p at the base point, and its distance above the base minus H_p.
       pressure_scale_height2 = exp(ln10*(log10_pressure(cz_base_index)- &
            log10_density(cz_base_index)))/local_gravity(cz_base_index)
@@ -381,7 +382,9 @@ subroutine time_scale_height_above_base()
                call natural_spline(spline_x_delta, spline_y_velocity, 4, spline_deriv)
                call splint(spline_x_delta, spline_y_velocity, 4, spline_deriv,0.0d0,convective_velocity_bcz, ierr)
                if (ierr /= 0) then
-                  write(run_log_unit,*) 'splint: '//numerics_status_text(ierr)
+                  lines = unwritten_line
+                  write(lines,*) 'splint: '//numerics_status_text(ierr)
+                  call core_log(lines)
                   return
                end if
                spline_y_pscale(1) = exp(ln10*(log10_pressure(kk-2)-log10_density(kk-2)))/local_gravity(kk-2)
@@ -391,7 +394,9 @@ subroutine time_scale_height_above_base()
                call natural_spline(spline_x_delta, spline_y_pscale, 4, spline_deriv)
                call splint(spline_x_delta, spline_y_pscale, 4, spline_deriv,0.0d0,pressure_scale_height, ierr)
                if (ierr /= 0) then
-                  write(run_log_unit,*) 'splint: '//numerics_status_text(ierr)
+                  lines = unwritten_line
+                  write(lines,*) 'splint: '//numerics_status_text(ierr)
+                  call core_log(lines)
                   return
                end if
 ! tau = H_p/v_c.
@@ -407,6 +412,7 @@ end subroutine time_scale_height_above_base
 ! Without that spline: the crossing time of the bottom convection cell,
 ! tau = width/v_c, with v_c splined at the cell's middle.
 subroutine time_bottom_cell_crossing()
+      character(len=message_length) :: lines(1)
 ! Reached when one H_p above the base lies outside the star, when
 ! several convection cells sit in the radiative envelope, or when the
 ! innermost point already lay above one H_p. First the cell's upper
@@ -448,7 +454,9 @@ subroutine time_bottom_cell_crossing()
       call natural_spline(spline_x_radius, spline_y_velocity, 4, spline_deriv)
       call splint(spline_x_radius, spline_y_velocity, 4, spline_deriv,radius_test,convective_velocity_bcz, ierr)
       if (ierr /= 0) then
-         write(run_log_unit,*) 'splint: '//numerics_status_text(ierr)
+         lines = unwritten_line
+         write(lines,*) 'splint: '//numerics_status_text(ierr)
+         call core_log(lines)
          return
       end if
 ! tau = width/v_c.

@@ -33,7 +33,7 @@
 module stop_conditions
       use calibration, only: check_star_calibration
       use star_info_lib, only: i_h1, i_h2, i_he4, star_info
-      use run_messages, only: run_log_unit
+      use core_messages, only: core_stdout, core_stdout_and_log, message_length, unwritten_line
       use math_lib
       implicit none
       private
@@ -64,11 +64,14 @@ contains
 subroutine check_rotation_initialised(s, ierr)
       type(star_info), intent(inout) :: s
       integer, intent(inout) :: ierr
+      character(len=message_length) :: lines(1)
       if ((s%omega(1) .eq. 0) .and. (s%physics%rotation_active)) then
 1611      format('LROT set to TRUE, but OMEGA(1) = 0. Stopping.', &
                  ' Initialize rotation rates or set LROT to', &
                  ' FALSE.')
-          print 1611
+          lines = unwritten_line
+          write(lines,1611)
+          call core_stdout(lines)
           ! 2026 (phase five, step B): configuration error returns to the
           ! CLI wrapper (which stops) instead of stopping here.
           ierr = 1
@@ -91,6 +94,7 @@ logical function converged_model_is_nan(s)
       type(star_info), intent(inout) :: s
       integer :: nz, k
       character(len=24) :: what
+      character(len=message_length) :: lines(1)
 
       converged_model_is_nan = .true.
       nz = s%nz
@@ -113,8 +117,9 @@ logical function converged_model_is_nan(s)
          if (what == ' ') converged_model_is_nan = .false.
       end if
       if (converged_model_is_nan) then
-         write(*,10) trim(what), s%model_number + 1
-         write(run_log_unit,10) trim(what), s%model_number + 1
+         lines = unwritten_line
+         write(lines,10) trim(what), s%model_number + 1
+         call core_stdout_and_log(lines)
          s%termination_reason = 'NaN in '//trim(what)
       end if
    10 format(1x,'ERROR: NaN in ',a,' after model ',i0,' converged; stopping')
@@ -202,6 +207,7 @@ logical function structure_limit_stop_triggered(s)
            ['log_L  ', 'Teff   ', 'log_g  ', 'nu_max ']
       double precision :: qval(nlim), qup(nlim), qlo(nlim)
       integer :: k
+      character(len=message_length) :: lines(1)
 
       nk = s%current_card
       qval = [s%log_L_lsun, exp10(s%log_Teff), s%log_g_surface, &
@@ -214,18 +220,18 @@ logical function structure_limit_stop_triggered(s)
       structure_limit_stop_triggered = .false.
       do k = 1, nlim
          if (qup(k) < limit_active_below .and. qval(k) > qup(k)) then
-            write(*,10) trim(qname(k)), qval(k), 'above', &
+            lines = unwritten_line
+            write(lines,10) trim(qname(k)), qval(k), 'above', &
                  trim(qname(k))//'_upper_limit', qup(k)
-            write(run_log_unit,10) trim(qname(k)), qval(k), 'above', &
-                 trim(qname(k))//'_upper_limit', qup(k)
+            call core_stdout_and_log(lines)
             s%termination_reason = &
                  trim(qname(k))//' above '//trim(qname(k))//'_upper_limit'
             structure_limit_stop_triggered = .true.
          else if (qlo(k) > -limit_active_below .and. qval(k) < qlo(k)) then
-            write(*,10) trim(qname(k)), qval(k), 'below', &
+            lines = unwritten_line
+            write(lines,10) trim(qname(k)), qval(k), 'below', &
                  trim(qname(k))//'_lower_limit', qlo(k)
-            write(run_log_unit,10) trim(qname(k)), qval(k), 'below', &
-                 trim(qname(k))//'_lower_limit', qlo(k)
+            call core_stdout_and_log(lines)
             s%termination_reason = &
                  trim(qname(k))//' below '//trim(qname(k))//'_lower_limit'
             structure_limit_stop_triggered = .true.
@@ -258,13 +264,16 @@ logical function abundance_stop_triggered(s, nk)
       type(star_info), intent(inout) :: s
       integer, intent(in) :: nk
       integer :: k
+      character(len=message_length) :: lines(1)
       abundance_stop_triggered = .false.
       do k = 1, nstops
          if (s%card_stops_active(nk) .and. stop_value(s, k,nk).gt.0.0d0 .and. &
              s%xa(stop_species(k),1).lt.stop_value(s, k,nk)) then
-            write(*,'(A,E12.4,A,E12.4)') 'CENTRAL '//stop_letter(k)//' ', &
+            lines = unwritten_line
+            write(lines,'(A,E12.4,A,E12.4)') 'CENTRAL '//stop_letter(k)//' ', &
                  s%xa(stop_species(k),1), ' BELOW STOP VALUE ', &
                  stop_value(s, k,nk)
+            call core_stdout(lines)
             s%termination_reason = &
                  'central '//stop_letter(k)//' below stop value'
             abundance_stop_triggered = .true.
@@ -285,6 +294,7 @@ subroutine init_stop_conditions(s, nk)
       type(star_info), intent(inout) :: s
       integer, intent(in) :: nk
       integer :: k
+      character(len=message_length) :: lines(1)
 ! default end-of-card reason; overridden by whichever stop fires
 ! (read by run_log's end-of-run summary)
       s%termination_reason = 'model budget exhausted'
@@ -293,13 +303,11 @@ subroutine init_stop_conditions(s, nk)
          if (stop_value(s, k,nk).gt.0.0d0 .and. &
              s%xa(stop_species(k),1).lt.stop_value(s, k,nk)) then
             call set_stop_value(s, k, nk, -stop_value(s, k,nk))
-            write(*,'(A,E12.4,A,E12.4,A)') 'STARTING '//stop_letter(k)//' ', &
+            lines = unwritten_line
+            write(lines,'(A,E12.4,A,E12.4,A)') 'STARTING '//stop_letter(k)//' ', &
                  s%xa(stop_species(k),1), ' BELOW STOP VALUE ', &
                  stop_value(s, k,nk), ' STOP DISABLED.'
-            write(run_log_unit,'(A,E12.4,A,E12.4,A)') &
-                 'STARTING '//stop_letter(k)//' ', &
-                 s%xa(stop_species(k),1), ' BELOW STOP VALUE ', &
-                 stop_value(s, k,nk), ' STOP DISABLED.'
+            call core_stdout_and_log(lines)
          end if
       end do
 end subroutine init_stop_conditions

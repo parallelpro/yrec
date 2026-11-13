@@ -45,7 +45,7 @@ subroutine write_neutrino_flux_table(s)
       use star_info_lib, only: json, i_h1, i_h2, i_he3, i_he4, i_c12, &
            i_c13, i_n14, i_o16, i_o18, i_nu_pp, i_nu_pep, i_nu_hep, &
            i_nu_be7, i_nu_b8, i_nu_n13, i_nu_o15, i_nu_f17, n_nu_fluxes
-      use run_messages, only: log_line
+      use core_messages, only: core_log, message_length, unwritten_line
       use physical_constants
       use net_lib, only: nuclear_energy_result
       use burn_step, only: compute_zone_energy
@@ -67,7 +67,7 @@ subroutine write_neutrino_flux_table(s)
            zone_mass_fraction, zone_radius_fraction
       integer :: i, j
 ! one line of the table, as its format writes it
-      character(len=160) :: line
+      character(len=message_length) :: lines(1)
 
 ! The shell masses from the log m grid: shell_center_mass is the mass
 ! (g) inside each shell center, and shell_mass the mass (g) of each
@@ -100,16 +100,18 @@ subroutine write_neutrino_flux_table(s)
             s%neutrino_flux_total_e10_per_cm2_s(j) = s%neutrino_flux_total_e10_per_cm2_s(j) &
                  + flux_zone(j,i)
          end do
-         write(line,911)i,shell_mass(i), &
+         lines = unwritten_line
+         write(lines,911)i,shell_mass(i), &
               (flux_zone(j,i),j=1,n_nu_fluxes)
  911     format(I5,1P11E10.3)
-         call log_line(trim(line))
+         call core_log(lines)
       end do
 
 ! The total fluxes, in units of 10^10 cm^-2 s^-1.
-      write(line,222)(s%neutrino_flux_total_e10_per_cm2_s(i),i=1,n_nu_fluxes)
+      lines = unwritten_line
+      write(lines,222)(s%neutrino_flux_total_e10_per_cm2_s(i),i=1,n_nu_fluxes)
  222  format(1P10E10.3)
-      call log_line(trim(line))
+      call core_log(lines)
 
 ! Normalize each shell's flux to the total of its slot.
       do j = 1,n_nu_fluxes
@@ -132,7 +134,8 @@ subroutine write_neutrino_flux_table(s)
 ! The radius in solar radii.
          zone_radius_fraction = exp(ln10*s%logR(i))/s%solar_radius_cgs
 ! The fluxes in the order Bahcall & Pinsonneault use.
-         write(line,145)zone_radius_fraction,t6_million_k, &
+         lines = unwritten_line
+         write(lines,145)zone_radius_fraction,t6_million_k, &
               log_electron_density,zone_mass_fraction, &
               be7_mass_fraction(i), &
               flux_zone(i_nu_pp,i), &
@@ -144,7 +147,7 @@ subroutine write_neutrino_flux_table(s)
               flux_zone(i_nu_pep,i), &
               flux_zone(i_nu_hep,i)
  145     format(F9.5,F7.3,F6.3,1P10E10.3)
-         call log_line(trim(line))
+         call core_log(lines)
       end do
       return
 end subroutine write_neutrino_flux_table

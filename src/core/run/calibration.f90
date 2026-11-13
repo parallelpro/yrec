@@ -66,7 +66,7 @@ contains
 !     solar_calibration_converged
 subroutine check_solar_calibration(s, log_l_lsun, log_r_rsun, run_index, current_zx)
 
-      use run_messages, only: terminal_unit
+      use core_messages, only: core_terminal_values
       use math_lib
       implicit none
       type(star_info), intent(inout) :: s
@@ -134,20 +134,17 @@ subroutine check_solar_calibration(s, log_l_lsun, log_r_rsun, run_index, current
          s%card_initial_x(run_index+1) = s%card_rescale_targets(i_target_x,run_index+1)
          s%card_initial_x(run_index+2) = s%card_rescale_targets(i_target_x,run_index+1)
          s%card_initial_x(run_index+3) = s%card_rescale_targets(i_target_x,run_index+1)
-         write(terminal_unit,*) "New BL, Old BL, Delta BL: ", &
-             log_l_lsun, s%log_l_lsun_prev_check, log_l_lsun-s%log_l_lsun_prev_check
-         write(terminal_unit,*) "New RL, Old RL, Delta RL: ", &
-             log_r_rsun, s%log_r_rsun_prev_check, log_r_rsun-s%log_r_rsun_prev_check
-         write(terminal_unit,*) "New X, Old X, DX: ", &
-             s%card_rescale_targets(i_target_x,run_index+1), s%card_rescale_targets(i_target_x,run_index-2), &
-             s%delta_x
-         write(terminal_unit,*) "New A, Old A, DA: ", &
-             s%card_mixing_length_alpha(run_index+1), &
-             s%card_mixing_length_alpha(run_index-2), s%delta_alpha
+         call core_terminal_values([log_l_lsun, s%log_l_lsun_prev_check, &
+              log_l_lsun-s%log_l_lsun_prev_check], text="New BL, Old BL, Delta BL: ")
+         call core_terminal_values([log_r_rsun, s%log_r_rsun_prev_check, &
+              log_r_rsun-s%log_r_rsun_prev_check], text="New RL, Old RL, Delta RL: ")
+         call core_terminal_values([s%card_rescale_targets(i_target_x,run_index+1), &
+              s%card_rescale_targets(i_target_x,run_index-2), s%delta_x], text="New X, Old X, DX: ")
+         call core_terminal_values([s%card_mixing_length_alpha(run_index+1), &
+              s%card_mixing_length_alpha(run_index-2), s%delta_alpha], text="New A, Old A, DA: ")
          if(s%control%calibrate_solar_zx)then
-            write(terminal_unit,*) "New Z, Old Z, DZ: ", &
-             s%card_rescale_targets(i_target_z,run_index+1), s%card_rescale_targets(i_target_z,run_index-2), &
-             delta_z
+            call core_terminal_values([s%card_rescale_targets(i_target_z,run_index+1), &
+                 s%card_rescale_targets(i_target_z,run_index-2), delta_z], text="New Z, Old Z, DZ: ")
          endif
          s%log_l_lsun_prev_check = log_l_lsun
          s%log_r_rsun_prev_check = log_r_rsun
@@ -185,7 +182,8 @@ end subroutine check_solar_calibration
 !     termination_reason
 subroutine check_star_calibration(s, log_l_lsun, log_teff, current_age, run_index)
 
-      use run_messages, only: run_log_unit
+      use core_messages, only: core_log, core_log_values, core_stdout, core_stdout_values, &
+           message_length, unwritten_line
       use physical_constants
       use math_lib
       implicit none
@@ -199,6 +197,7 @@ subroutine check_star_calibration(s, log_l_lsun, log_teff, current_age, run_inde
       double precision :: dlogl_dlogr, dage_dlogr
       double precision :: new_x, prev_x, dx_dlogl
       logical :: luminosity_matches
+      character(len=message_length) :: lines(1)
 ! The step in X that seeds the second calibration run (the "Y=Y+0.01"
 ! of the messages below).
       double precision, parameter :: x_calibration_step = 0.01d0
@@ -250,8 +249,12 @@ subroutine check_star_calibration(s, log_l_lsun, log_teff, current_age, run_inde
            end if
       endif
 !
-      write(*,*) ' Just passed R*'
-      write(run_log_unit,*) '#Just passed R*'
+      lines = unwritten_line
+      write(lines,*) ' Just passed R*'
+      call core_stdout(lines)
+      lines = unwritten_line
+      write(lines,*) '#Just passed R*'
+      call core_log(lines)
       s%just_passed_target_radius_flag = .true.
 !
 ! The previous model lies on one side of R* and this one on the other:
@@ -268,10 +271,10 @@ subroutine check_star_calibration(s, log_l_lsun, log_teff, current_age, run_inde
            (r_rsun_current-s%r_rsun_prev_model)
       s%age_gyr_at_target_radius = current_age + &
            dage_dlogr*(s%calibration_target_radius_rsun-r_rsun_current)
-      write(*,*) ' X, LogL/Lsun at R* =', s%card_rescale_targets(i_target_x,run_index-1), &
-           s%log_l_lsun_at_target_radius
-      write(run_log_unit,*) '#X, LogL/Lsun at R* =', &
-           s%card_rescale_targets(i_target_x,run_index-1), s%log_l_lsun_at_target_radius
+      call core_stdout_values([s%card_rescale_targets(i_target_x,run_index-1), &
+           s%log_l_lsun_at_target_radius], text=' X, LogL/Lsun at R* =')
+      call core_log_values([s%card_rescale_targets(i_target_x,run_index-1), &
+           s%log_l_lsun_at_target_radius], text='#X, LogL/Lsun at R* =')
       luminosity_matches = abs(exp10(s%log_l_lsun_at_target_radius)-s%control%target_luminosity_lsun) &
            .le. s%control%target_star_luminosity_tolerance
 ! No pair of cards follows this one (the run arrays end at num_cards):
@@ -299,10 +302,10 @@ subroutine check_star_calibration(s, log_l_lsun, log_teff, current_age, run_inde
        s%card_initial_x(run_index+1) = s%card_rescale_targets(i_target_x,run_index+1)
        s%card_initial_x(run_index+2) = s%card_initial_x(run_index+1)
 !
-      write(*,*) ' Have hit R* & L*, prepare final run to age:', &
-        s%age_gyr_at_target_radius
-      write(run_log_unit,*)'#Have hit R* & L*, prepare final run to age:', &
-        s%age_gyr_at_target_radius
+      call core_stdout_values([s%age_gyr_at_target_radius], &
+           text=' Have hit R* & L*, prepare final run to age:')
+      call core_log_values([s%age_gyr_at_target_radius], &
+           text='#Have hit R* & L*, prepare final run to age:')
          return
       else
          if (run_index .eq. 2) then
@@ -315,8 +318,8 @@ subroutine check_star_calibration(s, log_l_lsun, log_teff, current_age, run_inde
           s%card_initial_x(run_index+1) = new_x
           s%card_initial_x(run_index+2) = new_x
 !
-      write(*,*) ' NK=2, Y=Y+0.01, Setup next run, X=', new_x
-      write(run_log_unit,*) '#NK=2, Y=Y+0.01, Setup next run, X=', new_x
+      call core_stdout_values([new_x], text=' NK=2, Y=Y+0.01, Setup next run, X=')
+      call core_log_values([new_x], text='#NK=2, Y=Y+0.01, Setup next run, X=')
             return
        else
 ! Later passes (cards 4, 6, 8, ...): a secant step from this run's and
@@ -333,8 +336,8 @@ subroutine check_star_calibration(s, log_l_lsun, log_teff, current_age, run_inde
           new_x = dx_dlogl*(log10(s%control%target_luminosity_lsun)- &
                s%log_l_lsun_at_target_radius)+new_x
 !
-      write(*,*) ' Setup next run, NK, X =', run_index, new_x
-      write(run_log_unit, *) ' Setup next run, NK, X =', run_index, new_x
+      call core_stdout_values([new_x], text=' Setup next run, NK, X =', int_value=run_index)
+      call core_log_values([new_x], text=' Setup next run, NK, X =', int_value=run_index)
           s%log_l_lsun_at_target_radius_prev_run = s%log_l_lsun_at_target_radius
           s%card_rescale_targets(i_target_x,run_index+1) = new_x
           s%card_initial_x(run_index+1) = new_x
@@ -464,7 +467,7 @@ end subroutine setup_solar_calibration
 subroutine setup_star_calibration(s)
 
       use control_slots, only: max_runs
-      use run_messages, only: run_log_unit
+      use core_messages, only: core_log_values, core_stdout_values
       use physical_constants
       use math_lib
       implicit none
@@ -519,10 +522,10 @@ subroutine setup_star_calibration(s)
          s%card_fixed_timestep_yr(i) = s%card_fixed_timestep_yr(2)
          s%card_fixed_timestep_active(i) = s%card_fixed_timestep_active(2)
       end do
-      write(*,*) ' Evolve to R*, L* = ', s%calibration_target_radius_rsun, &
-           s%control%target_luminosity_lsun
-      write(run_log_unit,*) '#Evolve to R*, L* = ', s%calibration_target_radius_rsun, &
-           s%control%target_luminosity_lsun
+      call core_stdout_values([s%calibration_target_radius_rsun, s%control%target_luminosity_lsun], &
+           text=' Evolve to R*, L* = ')
+      call core_log_values([s%calibration_target_radius_rsun, s%control%target_luminosity_lsun], &
+           text='#Evolve to R*, L* = ')
       return
 end subroutine setup_star_calibration
 
