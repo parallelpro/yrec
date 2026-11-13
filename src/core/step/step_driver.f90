@@ -97,11 +97,8 @@ subroutine evolve_step(s, output, model_iteration, step_status, ierr)
            check_stop_conditions, converged_model_is_nan, reached_end_age, &
            step_continue
       implicit none
-! outputs of the calls below that the step does not use: the model
-! read's chosen timestep, ikut flag and convective velocity, the
+! outputs of the calls below that the step does not use: the
 ! convection zones without overshoot and the radiative zones
-      real(dp) :: chosen_dt, convective_velocity
-      integer :: ikut_flag
       integer :: mixed_zone_bounds_no_overshoot(max_convective_zones,2), &
            radiative_zone_bounds(max_radiative_zones,2)
       type(star_info), intent(inout) :: s

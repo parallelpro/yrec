@@ -1237,11 +1237,9 @@ module star_info_lib
 
 ! Module-level (deliberately outside the star, which run_yrec builds
 ! afresh for every run): the namelist-path overrides of the C API
-! (yrec_capi) and the flag yrec_reset sets so that evolve_step
-! re-initializes its saved locals.
+! (yrec_capi).
       character(len=256), public, save :: control_nml_override = ' '
       character(len=256), public, save :: physics_nml_override = ' '
-      logical, public, save :: evolve_step_reset_pending = .false.
 
 end module star_info_lib
 

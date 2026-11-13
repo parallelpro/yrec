@@ -57,6 +57,9 @@ CASES = [
     ("test_envelope_integration", "test_envelope_integration",
      ["{repo}/src/core/test/test_structure_tams.inlist"], {"YREC_OUTPUT": "output"}, None),
     ("test_timestep_limits", "test_timestep_limits", [], {}, None),
+    ("test_model_kernels", "test_model_kernels", [], {}, None),
+    ("test_run_contracts", "test_run_contracts",
+     ["{repo}/examples/run_config_matrix/cm_env_overshoot.inlist"], {}, None),
     ("test_structure[tams]", "test_structure",
      ["{repo}/src/core/test/test_structure_tams.inlist", "3e-3"], {"YREC_OUTPUT": "output"}, None),
     ("test_structure[yale]", "test_structure",
@@ -84,6 +87,7 @@ KNOWN_FAILURES = {
     "test_structure[tams]": _O4,
     "test_structure[yale]": _O4,
     "test_structure[extra]": _O4,
+    "test_run_contracts": _O4,
 }
 
 RUNTIME_ERROR = re.compile(r"Fortran runtime error|Program received signal|Error termination")

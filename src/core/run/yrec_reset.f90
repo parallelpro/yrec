@@ -20,7 +20,7 @@
 ! table configuration -- the acceptance test (test_reentry.py) verifies
 ! the end-to-end equivalence.
 module yrec_reset
-      use star_info_lib, only: star_info, evolve_step_reset_pending
+      use star_info_lib, only: star_info
       implicit none
       private
       public :: yrec_run_prologue, close_run_units
@@ -34,8 +34,7 @@ module yrec_reset
 contains
 
 ! Gives run_yrec its star: s becomes a copy of star_template, after
-! re-arming evolve_step's reset and closing the units an earlier run
-! left open (close_run_units: the run's own, not a host's). It writes
+! closing the units an earlier run left open (close_run_units: the run's own, not a host's). It writes
 ! the whole record, which the contract's member lists do not show.
 !   star reads: none
 !   star writes: none
@@ -45,7 +44,6 @@ subroutine yrec_run_prologue(s)
       if (first_entry) then
          first_entry = .false.
       else
-         evolve_step_reset_pending = .true.
          call close_run_units
       end if
       if (.not. allocated(s)) allocate(s)

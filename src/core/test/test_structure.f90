@@ -124,9 +124,6 @@ contains
 ! The deck's controls, tables, network and convection settings, and its
 ! first card's starting model, as run_yrec sets them up.
 subroutine load_deck_model(path)
-! read_starting_model's outputs the test does not use
-      double precision :: chosen_dt, convective_velocity
-      integer :: ikut_flag
       character(len=*), intent(in) :: path
       ierr = 0
       control_nml_override = path

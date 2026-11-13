@@ -96,10 +96,6 @@ subroutine run_yrec(ierr)
       integer :: convergence_iterations
 ! Wall clock for the end-of-run summary line (terminal only).
       integer(kind=8) :: clock_start, clock_now, clock_rate
-! Set by compute_timestep when it switches the structure-based timestep
-! limits off; the driver then applies the switch to
-! star%structure_dt_limits_active.
-      logical :: disable_structure_dt_limits
       integer :: i
       integer :: kind_card, model_iteration
       real(dp) :: log_r_rsun, current_zx
