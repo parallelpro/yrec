@@ -88,8 +88,8 @@ end subroutine compute_zone_energy
 !----------------------------------------------------------------------
 ! The Li6, Li7 and Be9 abundances (x_start, x_end) and the natural log of
 ! their burning rates (log_rate_start, log_rate_end), mass-averaged over
-! the surface convection zone, for burn_li_be (and the commented-out
-! burn_li_be_midpoint, rotation/burn_li_be_midpoint.f90):
+! the surface convection zone, for burn_li_be (and the retired
+! burn_li_be_midpoint, rotation/retired/burn_li_be_midpoint.f90.txt):
 !   start of the step: from cz_base_zone_old up, with the start-of-step
 !     rates;
 !   end of the step: from cz_base_zone up, with the end-of-step rates and

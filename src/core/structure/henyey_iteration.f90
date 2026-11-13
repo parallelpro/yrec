@@ -234,7 +234,7 @@ end subroutine linearize_structure_equations
 ! they are not folded into the others). This is the per-iteration twin
 ! of observables' renormalize_luminosity_breakdown; it also guards a
 ! nonpositive sum, and is kept separate on purpose
-! (reports/henyey-wave2.md item 6).
+! (audit/readability-sweep-2026-09-03/reports/henyey-wave2.md item 6).
 !   star reads: luminosity_lsun, nz, physics%helium_flash_active
 !   star writes: luminosity_breakdown_lsun
 subroutine renormalize_luminosity_channels(s)
