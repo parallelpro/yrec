@@ -34,6 +34,7 @@ module mass_change
       use physical_constants
       use eos_lib
       use math_lib
+      use core_messages, only: core_stdout, message_length, unwritten_line
       implicit none
       private
       public :: change_mass
@@ -160,14 +161,19 @@ end subroutine set_mass_change_rate
 ! timescale and sets it to nz. Then sums the convective envelope's mass.
 subroutine measure_convective_envelope()
       use run_messages, only: solver_diagnostics
+      character(len=message_length) :: lines(1)
 ! The turnover timescale was computed beforehand, for the previous model
 ! (compute_turnover_timescale; MHP 2/12). (The F77 code printed it
 ! unlabelled every step; it is now a diagnostic.)
       if(jenv.lt.nz)then
-         if (solver_diagnostics()) write(*,'(a,1p,2e12.4)') &
-              ' mass change: turnover time (yr), R/Rsun', &
-              s%convective_turnover_timescale/seconds_per_year, &
-              total_radius_cm/s%solar_radius_cgs
+         if (solver_diagnostics()) then
+            lines = unwritten_line
+            write(lines,'(a,1p,2e12.4)') &
+                 ' mass change: turnover time (yr), R/Rsun', &
+                 s%convective_turnover_timescale/seconds_per_year, &
+                 total_radius_cm/s%solar_radius_cgs
+            call core_stdout(lines)
+         end if
          s%envelope_cz_bottom_index_start = jenv
       else
          s%convective_turnover_timescale = 0.0d0
@@ -434,8 +440,11 @@ contains
 ! (convection_zone_mass); ierr = 1 when the envelope boundary is the
 ! surface zone.
 subroutine weigh_surface_convection_zone()
+      character(len=message_length) :: lines(1)
       if(jenv.eq.nz) then
-         write(*,*) 'mdot: envelope boundary at the surface (911)'
+         lines = unwritten_line
+         lines(1) = ' mdot: envelope boundary at the surface (911)'
+         call core_stdout(lines)
          ierr = 1
          return
       end if
@@ -451,6 +460,7 @@ subroutine limit_mass_change_timestep()
 !   dt_max = min(ftotdmdt M, fczdmdt M_cz)/|Mdot|.
 ! A zero rate sets no limit (it used to divide by zero, which traps in
 ! the devel builds).
+      character(len=message_length) :: lines(1)
       if(mass_loss_rate_cgs.gt.0.0d0)then
          timestep_limit_total_mass = s%physics%accretion_total_fraction*s%star_mass*s%solar_mass_cgs/ &
               mass_loss_rate_cgs
@@ -462,8 +472,10 @@ subroutine limit_mass_change_timestep()
               exp10(s%log_mass(nz)))/mass_loss_rate_cgs
          timestep_limit = min(timestep_limit,timestep_limit_envelope)
          if(timestep_limit.lt.s%dt)then
-            write(*,10)s%dt,timestep_limit
+            lines = unwritten_line
+            write(lines,10)s%dt,timestep_limit
  10         format(' TIMESTEP REDUCED FOR MASS LOSS - OLD,NEW',1P2E12.3)
+            call core_stdout(lines)
             s%dt = timestep_limit
          endif
       endif
@@ -566,26 +578,32 @@ end subroutine update_masses
 ! rotation law (wind_specific_angular_momentum), and the zone keeps
 ! J_cz + dJ on its new masses (remove_wind_angular_momentum).
 subroutine spin_down_cz_by_wind()
+      character(len=message_length) :: lines(1)
       if(wind_carries_angular_momentum)then
          wind_j_surface = wind_specific_angular_momentum(s%physics%cz_rotation_law_exponent, &
               total_radius_cm, s%omega(nz), s%logR(nz), s%j_rot(nz))
          call remove_wind_angular_momentum(wind_j_surface, delta_mass_cgs, &
               cz_shell_masses_before, s%dm(jenv:nz), s%j_rot(jenv:nz), &
               wind_am)
-! The run log: dM, dJ, omega(nz), the new and old J_cz, and the
+! Standard output: dM, dJ, omega(nz), the new and old J_cz, and the
 ! convective envelope's mass.
-         write(*,22)delta_mass_cgs,wind_am%lost,s%omega(nz), &
+         lines = unwritten_line
+         write(lines,22)delta_mass_cgs,wind_am%lost,s%omega(nz), &
               wind_am%zone_after,wind_am%zone_before,cz_total_mass_below_fitting
  22      format(1P6E13.4)
+         call core_stdout(lines)
       endif
 end subroutine spin_down_cz_by_wind
 
 ! ---------------------------------------------------------------
-! The run log: the new mass and the step's change, in Msun.
+! Standard output: the new mass and the step's change, in Msun.
 subroutine report_new_mass()
+      character(len=message_length) :: lines(1)
       delta_mass_msun = delta_mass_cgs/s%solar_mass_cgs
-      write(*,20)s%star_mass,delta_mass_msun
+      lines = unwritten_line
+      write(lines,20)s%star_mass,delta_mass_msun
  20   format('MASS LOSS APPLIED - NEW M,DEL M',1P2E19.10)
+      call core_stdout(lines)
 end subroutine report_new_mass
 
 ! ---------------------------------------------------------------

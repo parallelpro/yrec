@@ -33,6 +33,9 @@ module core_messages
       private
       public :: core_report, core_terminal, core_log, core_stdout, &
            core_stdout_and_log
+! envelope/, structure/ and step/ (E)
+      public :: log_envelope_start_retry, log_mixed_zone_bounds, &
+           rewind_core_log
 
 ! The length of one message line. A line may hold a path of up to 256
 ! characters and its context.
@@ -71,6 +74,35 @@ end subroutine core_stdout_and_log
 ! ---------------------------------------------------------------
 ! The messages of envelope/, structure/ and step/ that have a
 ! procedure of their own.
+
+! The atmosphere integration's starting optical depth lay past the
+! photosphere's (log tau), so it starts again from a tenth of the
+! density (envelope_integration's report_envint_events). List-directed,
+! as it always was: the numbers keep their trailing blanks.
+subroutine log_envelope_start_retry(log_tau_start, log_tau_photosphere)
+      use, intrinsic :: iso_fortran_env, only: dp => real64
+      real(dp), intent(in) :: log_tau_start, log_tau_photosphere
+      write(run_log_unit,*) "ENVINT: X0>XLIM, X0,XLIM:", log_tau_start, &
+           log_tau_photosphere
+      write(run_log_unit,*) "ENVINT: get new X0 by dividing ATMD0 by 10"
+end subroutine log_envelope_start_retry
+
+! The mixed regions of the composition step, (first, last) shell of each
+! of the first num_zones rows of bounds, with the solver diagnostics
+! (composition_step). Each pair ends in a blank, the last one too: the
+! line keeps its trailing blank.
+subroutine log_mixed_zone_bounds(bounds, num_zones)
+      integer, intent(in) :: bounds(:,:), num_zones
+      integer :: zone, edge
+      write(run_log_unit,110) ((bounds(zone,edge), edge=1,2), zone=1,num_zones)
+  110 format(' ZONES MIXED IN ORDER--',12('(',i5,',',i5,') ') )
+end subroutine log_mixed_zone_bounds
+
+! Rewind the run log, so that it holds the current model's lines only
+! (control%rewind_short_file; step_driver).
+subroutine rewind_core_log()
+      rewind(run_log_unit)
+end subroutine rewind_core_log
 
 ! ---------------------------------------------------------------
 ! The messages of model/, run/ and diagnostics/ that have a

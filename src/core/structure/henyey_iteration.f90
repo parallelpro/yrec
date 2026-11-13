@@ -157,7 +157,8 @@ subroutine henyey_iterate(s, delta_time, max_iterations, converged, &
       use star_info_lib, only: i_lum_3alpha, i_lum_cno, i_lum_he_c, &
            i_lum_pp1, i_lum_pp2, i_lum_pp3, n_lum_channels
       use energy_sources, only: num_energy_sources
-      use run_messages, only: run_log_unit, terminal_unit, solver_diagnostics
+      use run_messages, only: solver_diagnostics
+      use core_messages, only: core_report, core_log, message_length, unwritten_line
       use physical_constants
       use math_lib
       implicit none
@@ -183,6 +184,7 @@ subroutine henyey_iterate(s, delta_time, max_iterations, converged, &
       double precision :: hydrogen_burn_luminosity, helium_burn_luminosity
       double precision :: shell_angular_momentum
       integer :: jerr
+      character(len=message_length) :: lines(2)
 
       ierr = 0
 ! Set on every path: the early return below and an error return leave
@@ -274,10 +276,12 @@ subroutine accept_small_residuals()
                s%max_residual(4).le. s%physics%solver_tolerances(5,2)) then
              s%newton_iterations = iterations_done + 1
              if (solver_diagnostics()) then
-                write(run_log_unit,20) (s%max_residual(j),j=1,4)
+                lines = unwritten_line
+                write(lines(1),20) (s%max_residual(j),j=1,4)
    20           format(' R.H.S. BELOW TOLERANCES--P',1PE9.2,'  T ',E9.2, &
               '  R ',E9.2,'  L ',E9.2)
-                write(run_log_unit,75) iterations_done+1
+                write(lines(2),75) iterations_done+1
+                call core_log(lines)
              end if
              converged = .true.
              return
@@ -393,24 +397,29 @@ end subroutine set_henyey_correction_factor
 subroutine log_henyey_corrections()
 ! The correction trace is written only with solver diagnostics on.
        if (solver_diagnostics()) then
-          write (run_log_unit,60) converged,s%max_residual(4), &
+          lines = unwritten_line
+          write (lines(1),60) converged,s%max_residual(4), &
                s%physics%solver_tolerances(4,1),s%max_correction_index(4)
    60       format (1X,'DEL-L/L  ',L2,1P2E12.4,5X,I5)
-          write(run_log_unit,70)(s%max_correction_index(j),s%max_residual(j), &
+          write(lines(2),70)(s%max_correction_index(j),s%max_residual(j), &
                j=1,4),correction_factor,hydrogen_burn_luminosity, &
                helium_burn_luminosity,(s%luminosity_breakdown_lsun(j),j=6,7)
    70       format(' CORR',I5,'P',1PE9.2,I5,'T',E9.2,I5,'R',E9.2,I5,'L', &
             E9.2,'  F=',0PF5.3,'  E-HY',1PE10.3,' HE',E10.3,' NU',E10.3, &
             ' G',E10.3)
+          call core_log(lines)
           if (converged) then
-             write(run_log_unit,75) iterations_done+1
+             lines = unwritten_line
+             write(lines(1),75) iterations_done+1
    75          format(10X,'MODEL CONVERGED AFTER ',I4,'  ITERATIONS')
+             call core_log(lines)
           endif
        endif
        if (corrections_too_large) then
-          write(terminal_unit,80)
-          write(run_log_unit,80)
+          lines = unwritten_line
+          write(lines(1),80)
    80       format(1X,'-----CORRECTIONS EXCEEDED TOLERANCES')
+          call core_report(lines)
             return
          endif
 end subroutine log_henyey_corrections

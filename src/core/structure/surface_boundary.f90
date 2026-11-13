@@ -82,7 +82,8 @@ subroutine compute_surface_boundary(s, tri_teffl, tri_logl, envelope_coeffs, &
       use atm_lib, only: atm_leaves_table, atm_reenters_table, atm_note_choice_switch, &
            atm_eddington_gray
       use star_info_lib, only: json
-      use run_messages, only: run_log_unit, terminal_unit, solver_diagnostics
+      use run_messages, only: solver_diagnostics
+      use core_messages, only: core_report, core_log, message_length, unwritten_line
       use physical_constants
       use math_lib
       implicit none
@@ -115,6 +116,7 @@ subroutine compute_surface_boundary(s, tri_teffl, tri_logl, envelope_coeffs, &
       logical :: envelope_needs_recompute, print_envelope_flag, &
            save_boundary_flag
       double precision :: b, gl, rl, adjusted_teffl, vertex_log10_teff
+      character(len=message_length) :: lines(4)
 
       ierr = 0
       call switch_atmosphere_choice()
@@ -190,8 +192,9 @@ subroutine locate_point_in_triangle()
        call reflect_until_inside(tri_teffl, tri_logl, tri_orientation, &
             log10_teff, log_luminosity, tri_err, reflected, n_reflections, ierr)
        if (ierr /= 0) then
-          write(terminal_unit,10) log10_teff, log_luminosity, max_reflections
-          write(run_log_unit,10) log10_teff, log_luminosity, max_reflections
+          lines = unwritten_line
+          write(lines,10) log10_teff, log_luminosity, max_reflections
+          call core_report(lines)
  10       format(' ERROR: the envelope triangle did not reach log Teff =',f8.5, &
                &  ', log L =',f9.5,' in',i5,' reflections' &
                &  /'   (a triangle of zero area, or one whose orientation', &
@@ -258,22 +261,29 @@ subroutine refit_coefficients()
        call fit_triangle_coefficients(vtx_logp, vtx_logt, vtx_logr, &
             tri_logl, tri_teffl, envelope_coeffs, ierr)
        if (ierr /= 0) then
-          write(terminal_unit,20)
-          write(run_log_unit,20)
+          lines = unwritten_line
+          write(lines,20)
+          call core_report(lines)
  20       format(' ERROR: the envelope triangle''s fitting points are collinear', &
                &  ' in (log P, log T): no boundary condition can be fitted')
           return
        end if
        if (solver_diagnostics()) then
-        write(run_log_unit,50)(i,tri_vertex_valid(i),tri_teffl(i),tri_logl(i),vtx_logp(i),vtx_logt(i),vtx_logr(i), &
+        lines = unwritten_line
+        write(lines,50)(i,tri_vertex_valid(i),tri_teffl(i),tri_logl(i),vtx_logp(i),vtx_logt(i),vtx_logr(i), &
               (envelope_coeffs(3*(i-1)+j),j=1,3), i=1,3)
+        call core_log(lines)
        end if
  50      format(' ENVELOPE TRIANGLE  LOG(TE)  LOG(L)   LOG(P)   LOG(T)', &
               3X,'LOG(R)   COEFFICIENTS'/I14,L1,2X,5F9.5,8X,'LOG(R)', &
               3F10.5/ I14,L1,2X,5F9.5,5X,'LOG(L/L0)',3F10.5/ &
               I14,L1,2X,5F9.5,7X,'LOG(TE)',3F10.5)
       else
-       if (solver_diagnostics()) write(run_log_unit,70)
+       if (solver_diagnostics()) then
+          lines = unwritten_line
+          write(lines,70)
+          call core_log(lines)
+       end if
  70      format(' ENVELOPE TRIANGLE NOT CHANGED')
       endif
 end subroutine refit_coefficients

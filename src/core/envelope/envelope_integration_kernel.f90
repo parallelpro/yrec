@@ -23,7 +23,14 @@
 ! effects on the star, the photospheric pressure (star%photosphere_logP)
 ! and the switch to a gray atmosphere when the Allard table lookup fails,
 ! come back as outputs that the driver applies.
+!
+! The kernel prints nothing. What it has to say (its notes, its solver
+! diagnostics and the reason for a failure) comes back as events
+! (envint_events), in the order they happened, and atm_get reports
+! them (envelope_integration's report_envint_events); a failure also
+! returns ierr.
 module envelope_integration_kernel
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use composition_layout, only: n_species_extended
       use envelope_points, only: envelope_structure_state, &
            atmosphere_structure_state, atmosphere_point_state
@@ -78,6 +85,49 @@ module envelope_integration_kernel
 ! (It was numerics_lib's numerics_termination.)
       integer, parameter, public :: envelope_termination = -2
 
+! The events of an integration, for the driver to report. Each is one of
+! the kinds below with the numbers its message shows (counts and
+! values); unlisted slots are zero.
+!   envint_start_retry          the atmosphere's starting log tau lay
+!                               past the photosphere's, so the starting
+!                               density was divided by 10 (values: the
+!                               starting log tau, the photosphere's)
+!   envint_atmosphere_done      the atmosphere reached the photosphere
+!                               (counts: steps accepted, rejected;
+!                               values: the summed relative error in P)
+!   envint_atmosphere_maxstp    the atmosphere did not reach the
+!                               photosphere in maxstp steps (ierr 1)
+!   envint_bsstep_limits        the Bulirsch-Stoer limits are out of
+!                               range (counts: max_stage_index,
+!                               extrap_order; ierr numerics_bad_input)
+!   envint_bsstep_failed        a Bulirsch-Stoer step failed (counts:
+!                               bsstep's status; ierr
+!                               envelope_termination)
+!   envint_vertex               the fitting point of the vertex being
+!                               saved (values: log P, log T, log R,
+!                               log(m/M))
+!   envint_envelope_done        the envelope reached the fitting mass
+!                               (counts: steps accepted, rejected;
+!                               values: log(m/M) left to go, the last
+!                               log(m/M), and the summed relative errors
+!                               in log m, log T and log r)
+!   envint_envelope_maxstp      the envelope did not reach the fitting
+!                               mass in maxstp steps (ierr 1)
+      integer, parameter, public :: envint_start_retry = 1, &
+           envint_atmosphere_done = 2, envint_atmosphere_maxstp = 3, &
+           envint_bsstep_limits = 4, envint_bsstep_failed = 5, &
+           envint_vertex = 6, envint_envelope_done = 7, &
+           envint_envelope_maxstp = 8
+      type, public :: envint_event
+            integer :: kind = 0
+            integer :: counts(2) = 0
+            real(dp) :: values(5) = 0.0_dp
+      end type envint_event
+      type, public :: envint_events
+            integer :: num_events = 0
+            type(envint_event), allocatable :: event(:)
+      end type envint_events
+
 ! The atmosphere (compute_atmosphere_derivs: log P against log tau) or
 ! the envelope (compute_envelope_derivs: log(m/M), log T and log r
 ! against log P) as an ode_system for bsstep. It carries the values the
@@ -88,8 +138,7 @@ module envelope_integration_kernel
             double precision :: luminosity_linear = 0.0d0, &
                  pressure_rotation_factor = 0.0d0, &
                  temperature_rotation_factor = 0.0d0, log10_gravity = 0.0d0
-            logical :: in_atmosphere = .false., want_derivatives = .false., &
-                 conductive_opacity_flag = .false.
+            logical :: in_atmosphere = .false., want_derivatives = .false.
             double precision :: log10_radius = 0.0d0, log10_teff = 0.0d0, &
                  hydrogen_fraction = 0.0d0, metal_fraction = 0.0d0
             integer :: saha_iterations = 0
@@ -119,18 +168,18 @@ subroutine equation_derivatives(self, x, y, dydx, ierr)
       double precision, intent(out) :: dydx(:)
       integer, intent(out) :: ierr
       if (self%atmosphere) then
-         call compute_atmosphere_derivs(x, y, dydx, self%luminosity_linear, &
-              self%pressure_rotation_factor, self%temperature_rotation_factor, &
+         call compute_atmosphere_derivs(x, y, dydx, &
+              self%pressure_rotation_factor, &
               self%log10_gravity, self%in_atmosphere, self%want_derivatives, &
-              self%conductive_opacity_flag, self%log10_radius, self%log10_teff, &
+              self%log10_teff, &
               self%hydrogen_fraction, self%metal_fraction, self%saha_iterations, &
               self%atm_choice, self%hsra_log_t_offset, self%surface_composition, &
               self%atm_point, self%pt, ierr)
       else
          call compute_envelope_derivs(x, y, dydx, self%luminosity_linear, &
               self%pressure_rotation_factor, self%temperature_rotation_factor, &
-              self%log10_gravity, self%in_atmosphere, self%want_derivatives, &
-              self%conductive_opacity_flag, self%log10_radius, self%log10_teff, &
+              self%in_atmosphere, self%want_derivatives, &
+              self%log10_radius, self%log10_teff, &
               self%hydrogen_fraction, self%metal_fraction, self%saha_iterations, &
               self%log10_total_mass, self%log10_gravitational_constant, &
               self%surface_composition, self%pt, ierr)
@@ -155,25 +204,24 @@ end subroutine equation_derivatives
 ! save_boundary_flag, the vertex (vtx_logp, vtx_logr, vtx_logt) at the
 ! fitting mass and the state where T first reaches
 ! envelope_store_log_temperature (stored_envelope_state: log P, log T,
-! log R, log(m/M); stored_vertex_index); ierr.
+! log R, log(m/M); stored_vertex_index); the events to report
+! (envint_events); ierr.
 subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
      log10_photo_pressure, &
      luminosity_linear, pressure_rotation_factor, &
      temperature_rotation_factor, log10_gravity, log10_star_mass, &
-     vertex_index, print_flag, save_boundary_flag, log10_pressure_limit, &
+     vertex_index, save_boundary_flag, log10_pressure_limit, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
      stored_envelope_state, stored_vertex_index, &
      saha_iterations, vtx_logp, vtx_logr, vtx_logt, &
-     env_points, atm_points, atm_point, ierr)
+     env_points, atm_points, atm_point, events, ierr)
 
       use eos_lib
       use kap_lib
       use atm_lib, only: atm_get_surface_pt, ttau_start_log10_temperature, &
            ttau_photosphere_x_limit, atm_choice_is_tabulated
-      use run_messages, only: run_log_unit, terminal_unit, solver_diagnostics
       use physical_constants
-      use numerics_lib, only: bsstep, bsstep_max_extrap_order, bsstep_max_stages, &
-           numerics_bad_input, numerics_status_text
+      use numerics_lib, only: bsstep, numerics_bad_input
       implicit none
 
       type(envint_config), intent(inout) :: cfg
@@ -184,9 +232,6 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
            log10_gravity
       double precision, intent(in) :: log10_star_mass
       integer, intent(in) :: vertex_index
-! print_flag: also write the fitted vertex to the run log (with
-! save_boundary_flag and the solver diagnostics on).
-      logical, intent(in) :: print_flag
       logical, intent(in) :: save_boundary_flag
       double precision, intent(in) :: log10_pressure_limit
       double precision, intent(inout) :: log10_radius
@@ -202,8 +247,10 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
       type(envelope_structure_state), intent(inout) :: env_points
       type(atmosphere_structure_state), intent(inout) :: atm_points
       type(atmosphere_point_state), intent(inout) :: atm_point
+! events: what the integration has to report, in order (envint_events).
+      type(envint_events), intent(out) :: events
 ! ierr: nonzero when the table lookup, the EOS, the opacity or either
-! integration fails; the diagnostic is printed where the failure is.
+! integration fails; an integration's own failure is also an event.
       integer, intent(out) :: ierr
 
 ! The most steps either integration may take (raised from 200 to give
@@ -214,7 +261,7 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
 
       double precision :: ion_fraction(3)
 ! --- locals ---
-      logical :: want_derivatives, in_atmosphere, conductive_opacity_flag
+      logical :: want_derivatives, in_atmosphere
       logical :: allard_lookup_failed
       integer :: jj, jerr
       double precision :: log10_temperature, temperature, log10_pressure, &
@@ -299,7 +346,6 @@ subroutine prepare_surface_boundary
 ! in pt for atm_points and env_points.
       want_derivatives = .true.
       in_atmosphere = .true.
-      conductive_opacity_flag = .false.
 
 ! Interpolate the surface log P and log T in the table (legacy ATMPL).
       tabulated_bc = .false.
@@ -312,15 +358,11 @@ subroutine prepare_surface_boundary
             return
          end if
          if(allard_lookup_failed) then
-            cfg%atm_choice=0
-            switched_to_gray = .true.
 ! Teff is above the Allard tables' maximum, or log g outside their
 ! range: switch to the Eddington gray atmosphere (atm_choice 0,
-! legacy KTTAU = 0).
-            write(*,'(1x,a)') 'note: Allard table lookup out of range;' &
-                 // ' switching to a gray atmosphere'
-            write(run_log_unit,'(1x,a)') 'note: Allard table lookup' &
-                 // ' out of range; switching to a gray atmosphere'
+! legacy KTTAU = 0). The driver reports the switch.
+            cfg%atm_choice=0
+            switched_to_gray = .true.
          else
             tabulated_bc = .true.
          endif
@@ -364,8 +406,8 @@ subroutine integrate_atmosphere
       x_limit = ttau_photosphere_x_limit(cfg%atm_choice)
 
       if  (indep_var .gt. x_limit) then ! The start lies past the end point:
-         write(run_log_unit,*)"ENVINT: X0>XLIM, X0,XLIM:",indep_var,x_limit
-       write(run_log_unit,*)"ENVINT: get new X0 by dividing ATMD0 by 10"
+       call add_envint_event(events, envint_start_retry, &
+            values=[indep_var, x_limit])
        atm_density_guess = atm_density_guess / 10d0   ! divide the starting density by 10
        cycle atm_retry        ! and find the start again.
       endif
@@ -497,10 +539,8 @@ subroutine integrate_to_photosphere()
 
 ! Done when log tau is within step_tolerance of the photosphere.
        if(dabs(indep_var - x_limit).le.step_tolerance) then
-          if (solver_diagnostics()) write(run_log_unit,35)num_ok,num_bad,err_sum(1)
-   35       format(1X,'ATMOSPHERE INTEGRATION COMPLETE',1X, &
-                 'NUMBER OF STEPS ACCEPTED',I5,' REJECTED', &
-                 I5/5X,'MAXIMUM RELATIVE ERROR IN P ',1PE22.13)
+          call add_envint_event(events, envint_atmosphere_done, &
+               counts=[num_ok, num_bad], values=[err_sum(1)])
           exit
        endif
        if(h_next.lt.h_min) h_next = h_min
@@ -508,11 +548,8 @@ subroutine integrate_to_photosphere()
       end do
       if (step_index .gt. maxstp) then
 ! The integration did not reach the photosphere in maxstp steps:
-! report it and return an error.
-      write(terminal_unit,50)
-      write(run_log_unit,50)
-   50 format(5X,'ATMOSPHERE INTEGRATION FAILED AFTER MAXSTP',1X, &
-             'INTEGRATIONS.I QUIT.')
+! return an error.
+      call add_envint_event(events, envint_atmosphere_maxstp)
       jerr = 1
       ierr = jerr
       return
@@ -544,23 +581,24 @@ subroutine take_atmosphere_step()
             h_next,step_err,cfg%max_stage_index,cfg%extrap_order,hydrogen_fraction,jerr)
        call unload_equations()
 ! A bsstep limit out of range is a configuration error; any other
-! bsstep failure (the solution diverged) returns envelope_termination,
-! after the historical message for a step that vanished.
+! bsstep failure (the solution diverged) returns envelope_termination;
+! each is an event, for the driver's message.
        if (jerr == numerics_bad_input) then
-          call report_bsstep_limits()
+          call add_envint_event(events, envint_bsstep_limits, &
+               counts=[cfg%max_stage_index, cfg%extrap_order])
           ierr = jerr
           return
        else if (jerr /= 0) then
-          write(*,*) 'bsstep: '//numerics_status_text(jerr)
+          call add_envint_event(events, envint_bsstep_failed, counts=[jerr])
           ierr = envelope_termination
           return
        end if
 ! Add up the error estimate, and find d log P / d log tau at the start
 ! of the next step.
        err_sum(1) = err_sum(1) + step_err(1)
-       call compute_atmosphere_derivs(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
-            temperature_rotation_factor,log10_gravity,in_atmosphere, &
-            want_derivatives,conductive_opacity_flag,log10_radius, &
+       call compute_atmosphere_derivs(indep_var,y,dydx,pressure_rotation_factor, &
+            log10_gravity,in_atmosphere, &
+            want_derivatives, &
             log10_teff,hydrogen_fraction,metal_fraction,saha_iterations, &
             cfg%atm_choice, cfg%hsra_log_t_offset, cfg%surface_composition, &
             atm_point, pt, jerr)
@@ -667,12 +705,9 @@ subroutine integrate_envelope
       end if
       call invert_envelope_points()
 
-      if (solver_diagnostics()) write(run_log_unit,215)num_ok,num_bad,mass_diff_remaining,y(1),(err_sum(jj),jj=1,3)
- 215  format(1X,'ENVELOPE INTEGRATION COMPLETE',1X, &
-           'NUMBER OF STEPS ACCEPTED',I5,' REJECTED', &
-           I5/5X,'SENV-LAST M=',1PE22.13,'  LAST M=',E22.13/ &
-           5X,'MAX RELATIVE ERRORS:M ',1PE14.5,'  T ',E14.5, &
-           '  R ',E14.5)
+      call add_envint_event(events, envint_envelope_done, &
+           counts=[num_ok, num_bad], &
+           values=[mass_diff_remaining, y(1), (err_sum(jj),jj=1,3)])
 
 end subroutine integrate_envelope
 
@@ -713,8 +748,8 @@ subroutine start_envelope_integration()
       end if
 ! dy/dx at the start of the first step.
       call compute_envelope_derivs(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
-           temperature_rotation_factor,log10_gravity,in_atmosphere, &
-           want_derivatives,conductive_opacity_flag,log10_radius, &
+           temperature_rotation_factor,in_atmosphere, &
+           want_derivatives,log10_radius, &
            log10_teff,hydrogen_fraction,metal_fraction,saha_iterations, &
            cfg%log10_total_mass, cfg%log10_gravitational_constant, &
            cfg%surface_composition, pt, jerr)
@@ -806,11 +841,8 @@ subroutine integrate_to_fitting_mass()
       end do
       if (step_index .gt. maxstp) then
 ! The integration did not reach the fitting mass in maxstp steps:
-! report it and return an error.
-      write(terminal_unit,911)
-      write(run_log_unit,911)
- 911  format(5X,'ENVELOPE INTEGRATION FAILED AFTER MAXSTP TRIES.',1X, &
-           'I QUIT')
+! return an error.
+      call add_envint_event(events, envint_envelope_maxstp)
       jerr = 1
       ierr = jerr
       return
@@ -862,11 +894,12 @@ subroutine take_envelope_step()
        call unload_equations()
 ! A bsstep failure returns as in the atmosphere.
        if (jerr == numerics_bad_input) then
-          call report_bsstep_limits()
+          call add_envint_event(events, envint_bsstep_limits, &
+               counts=[cfg%max_stage_index, cfg%extrap_order])
           ierr = jerr
           return
        else if (jerr /= 0) then
-          write(*,*) 'bsstep: '//numerics_status_text(jerr)
+          call add_envint_event(events, envint_bsstep_failed, counts=[jerr])
           ierr = envelope_termination
           return
        end if
@@ -876,8 +909,8 @@ subroutine take_envelope_step()
        end do
 ! dy/dx at the start of the next step.
        call compute_envelope_derivs(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &
-              temperature_rotation_factor,log10_gravity,in_atmosphere, &
-              want_derivatives,conductive_opacity_flag,log10_radius, &
+              temperature_rotation_factor,in_atmosphere, &
+              want_derivatives,log10_radius, &
               log10_teff,hydrogen_fraction,metal_fraction,saha_iterations, &
               cfg%log10_total_mass, cfg%log10_gravitational_constant, &
               cfg%surface_composition, pt, jerr)
@@ -886,20 +919,6 @@ subroutine take_envelope_step()
           return
        end if
 end subroutine take_envelope_step
-
-! ---------------------------------------------------------------
-! The message for Bulirsch-Stoer limits out of range (the controls imax
-! and nuse), to the terminal and the run log.
-subroutine report_bsstep_limits()
-       character(len=*), parameter :: fmt = &
-            '(1x,a,i0,a,i0,a,i0,a,i0)'
-       write(terminal_unit,fmt) 'ENVINT: Bulirsch-Stoer limits out of range: imax = ', &
-            cfg%max_stage_index, ', nuse = ', cfg%extrap_order, '; need 2 <= nuse <= ', &
-            bsstep_max_extrap_order, ' and nuse <= imax <= ', bsstep_max_stages
-       write(run_log_unit,fmt) 'ENVINT: Bulirsch-Stoer limits out of range: imax = ', &
-            cfg%max_stage_index, ', nuse = ', cfg%extrap_order, '; need 2 <= nuse <= ', &
-            bsstep_max_extrap_order, ' and nuse <= imax <= ', bsstep_max_stages
-end subroutine report_bsstep_limits
 
 ! ---------------------------------------------------------------
 ! The new envelope point into env_points, unless the step went past the
@@ -968,11 +987,10 @@ subroutine interpolate_envelope_vertex()
              vtx_logp(vertex_index) = indep_var + interp_weight*(x_start - indep_var)
              vtx_logr(vertex_index) = y(3) + interp_weight*(y_start(3) - y(3))
              vtx_logt(vertex_index) = y(2) + interp_weight*(y_start(2) - y(2))
-             if(print_flag .and. solver_diagnostics())write(run_log_unit, &
-                  230)vtx_logp(vertex_index),vtx_logt(vertex_index),vtx_logr(vertex_index), &
-                  cfg%log_fit_point_mass_fraction
+             call add_envint_event(events, envint_vertex, &
+                  values=[vtx_logp(vertex_index), vtx_logt(vertex_index), &
+                  vtx_logr(vertex_index), cfg%log_fit_point_mass_fraction])
           endif
- 230     format(4X,3F16.12,8X,F16.12)
 end subroutine interpolate_envelope_vertex
 
 ! ---------------------------------------------------------------
@@ -1022,7 +1040,6 @@ subroutine load_equations(atmosphere)
       equations%log10_gravity = log10_gravity
       equations%in_atmosphere = in_atmosphere
       equations%want_derivatives = want_derivatives
-      equations%conductive_opacity_flag = conductive_opacity_flag
       equations%log10_radius = log10_radius
       equations%log10_teff = log10_teff
       equations%hydrogen_fraction = hydrogen_fraction
@@ -1048,5 +1065,30 @@ subroutine unload_equations()
 end subroutine unload_equations
 
 end subroutine integrate_envelope_atmosphere
+
+! ---------------------------------------------------------------
+! Append an event of the given kind, with its counts and values (the
+! slots not given stay zero), to events.
+subroutine add_envint_event(events, kind, counts, values)
+      type(envint_events), intent(inout) :: events
+      integer, intent(in) :: kind
+      integer, intent(in), optional :: counts(:)
+      real(dp), intent(in), optional :: values(:)
+      type(envint_event), allocatable :: grown(:)
+      integer :: n
+
+      if (.not. allocated(events%event)) allocate(events%event(4))
+      n = events%num_events + 1
+      if (n > size(events%event)) then
+         allocate(grown(2*size(events%event)))
+         grown(1:n-1) = events%event(1:n-1)
+         call move_alloc(grown, events%event)
+      end if
+      events%event(n) = envint_event()
+      events%event(n)%kind = kind
+      if (present(counts)) events%event(n)%counts(1:size(counts)) = counts
+      if (present(values)) events%event(n)%values(1:size(values)) = values
+      events%num_events = n
+end subroutine add_envint_event
 
 end module envelope_integration_kernel

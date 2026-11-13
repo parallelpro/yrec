@@ -1240,10 +1240,6 @@ KERNEL_FILES = [
 # the round that removes the I/O (PLAN.md's rounds). A round deletes its
 # entries; an entry whose file is clean, or not covered, is an error.
 NO_IO_ALLOWANCE = {
-    "core/envelope/envelope_integration_kernel.f90":
-        "core round (b: core_messages; the kernel returns codes, core.md finding 5)",
-    "core/envelope/envelope_integrands.f90":
-        "core round (b: its dead `if (.false.) print` lines, core.md finding 5)",
     "rotation/seculr/instability_velocities.f90":
         "rotation follow-up, outside PLAN.md's rounds (rotation.md finding 6: the RAT print)",
 }

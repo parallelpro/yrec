@@ -4,10 +4,9 @@
 ! The right-hand sides of the outer-layer integrations of
 ! envelope_integration_kernel: the atmosphere in optical depth
 ! (compute_atmosphere_derivs) and the envelope in pressure
-! (compute_envelope_derivs). Both take the same argument list, so that
-! the kernel's envelope_equations can call either, and both leave the
-! physics of the point in pt (point_physics, an argument) for the kernel to
-! record.
+! (compute_envelope_derivs). The kernel's envelope_equations calls
+! either, with the arguments each uses; both leave the physics of the
+! point in pt (point_physics, an argument) for the kernel to record.
 module envelope_integrands
       implicit none
       private
@@ -47,10 +46,10 @@ contains
 ! and kappa from the EOS and opacity at (P, T). Also stores the point
 ! (tau, P, T, rho, kappa, the ionization fractions) in atm_point and
 ! its physics in pt.
-subroutine compute_atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_linear, &
-     pressure_rotation_factor, temperature_rotation_factor, log10_gravity, &
-     in_atmosphere, want_derivatives, conductive_opacity_flag, &
-     log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
+subroutine compute_atmosphere_derivs(log10_optical_depth, y, dydx, &
+     pressure_rotation_factor, log10_gravity, &
+     in_atmosphere, want_derivatives, &
+     log10_teff, hydrogen_fraction, metal_fraction, &
      saha_iterations, atm_choice, hsra_log_t_offset, composition, atm_point, pt, ierr)
 
       use eos_lib
@@ -65,11 +64,8 @@ subroutine compute_atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_li
       double precision, intent(in) :: log10_optical_depth
       double precision, intent(in) :: y(1)
       double precision, intent(out) :: dydx(1)
-      double precision, intent(in) :: luminosity_linear, &
-           pressure_rotation_factor, temperature_rotation_factor, log10_gravity
-      logical, intent(in) :: in_atmosphere, want_derivatives, &
-           conductive_opacity_flag
-      double precision, intent(in) :: log10_radius
+      double precision, intent(in) :: pressure_rotation_factor, log10_gravity
+      logical, intent(in) :: in_atmosphere, want_derivatives
       double precision, intent(inout) :: log10_teff
       double precision, intent(in) :: hydrogen_fraction, metal_fraction
       integer, intent(inout) :: saha_iterations
@@ -146,10 +142,6 @@ subroutine compute_atmosphere_derivs(log10_optical_depth, y, dydx, luminosity_li
       pt%qrmu = eos_res%specific_gas_constant
       pt%qemu = eos_res%electron_mean_weight_inverse
 
-! The arguments this integrand does not use stay in the shared argument
-! list; this dead statement keeps the compiler from warning about them.
-      if (.false.) print *, luminosity_linear, temperature_rotation_factor, conductive_opacity_flag, log10_radius
-
       return
 end subroutine compute_atmosphere_derivs
 
@@ -168,8 +160,8 @@ end subroutine compute_atmosphere_derivs
 ! FTL) are the rotational distortion factors, 1 without rotation. Also
 ! stores the point and its physics in pt for env_points.
 subroutine compute_envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
-     pressure_rotation_factor, temperature_rotation_factor, log10_gravity, &
-     in_atmosphere, want_derivatives, conductive_opacity_flag, &
+     pressure_rotation_factor, temperature_rotation_factor, &
+     in_atmosphere, want_derivatives, &
      log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
      saha_iterations, log10_total_mass, log10_gravitational_constant, composition, pt, ierr)
 
@@ -184,9 +176,8 @@ subroutine compute_envelope_derivs(log10_pressure_indep, y, dydx, luminosity_lin
       double precision, intent(in) :: y(3)
       double precision, intent(out) :: dydx(3)
       double precision, intent(in) :: luminosity_linear, &
-           pressure_rotation_factor, temperature_rotation_factor, log10_gravity
-      logical, intent(in) :: in_atmosphere, want_derivatives, &
-           conductive_opacity_flag
+           pressure_rotation_factor, temperature_rotation_factor
+      logical, intent(in) :: in_atmosphere, want_derivatives
       double precision, intent(inout) :: log10_radius
       double precision, intent(in) :: log10_teff
       double precision, intent(in) :: hydrogen_fraction, metal_fraction
@@ -293,10 +284,6 @@ subroutine compute_envelope_derivs(log10_pressure_indep, y, dydx, luminosity_lin
       pt%qdela = eos_res%adiabatic_gradient
       pt%qrmu = eos_res%specific_gas_constant
       pt%qemu = eos_res%electron_mean_weight_inverse
-
-! The arguments this integrand does not use stay in the shared argument
-! list; this dead statement keeps the compiler from warning about them.
-      if (.false.) print *, log10_gravity, conductive_opacity_flag
 
       return
 end subroutine compute_envelope_derivs

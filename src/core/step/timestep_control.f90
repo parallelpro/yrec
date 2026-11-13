@@ -118,12 +118,16 @@ contains
 ! off (MHP 9/01) once the centre is hotter than log Tc = 7.1 while the
 ! gravothermal luminosity L_grav (luminosity_components(7)) is negative.
 subroutine decide_structure_limits()
+      use core_messages, only: core_stdout, message_length, unwritten_line
+      character(len=message_length) :: lines(1)
       structure_limits_active = s%structure_dt_limits_active
       if(structure_limits_active) then
          if(log_temperature(1).gt.7.1d0 .and. luminosity_components(7).lt. 0.0d0) then
-            write(*, 100) log_temperature(1), luminosity_components(7)
+            lines = unwritten_line
+            write(lines, 100) log_temperature(1), luminosity_components(7)
  100        format(1x,'timestep control: structure-based limits', &
                  ' disabled (log Tc =',f7.4,', L_grav =',es10.2,' Lsun)')
+            call core_stdout(lines)
             structure_limits_active = .false.
             disable_structure_dt_limits = .true.
          endif

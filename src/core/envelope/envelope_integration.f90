@@ -139,6 +139,7 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
       type(envint_step_config), intent(in), optional :: atm_steps, env_steps
 
       type(envint_config) :: cfg
+      type(envint_events) :: events
       logical :: switched_to_gray
       double precision :: log10_photo_pressure
 ! scratch stand-ins for the absent vertex group (never read back)
@@ -195,6 +196,8 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
               scratch_stored_vertex_index, scratch_logp, scratch_logr, &
               scratch_logt)
       end if
+! The kernel's notes, diagnostics and failure, as it used to print them.
+      call report_envint_events(events, switched_to_gray, print_flag)
 
 ! star-state consequences of the integration, applied HERE and only
 ! here (the kernel never sees star_info):
@@ -216,12 +219,99 @@ contains
                  log10_photo_pressure, &
                  luminosity_linear, pressure_rotation_factor, &
                  temperature_rotation_factor, log10_gravity, log10_star_mass, &
-                 vidx, print_flag, save_boundary_flag, log10_pressure_limit, &
+                 vidx, save_boundary_flag, log10_pressure_limit, &
                  log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
                  state, sidx, saha_iterations, logp, logr, logt, &
-                 s%env_points, s%atm_points, s%atm_point, ierr)
+                 s%env_points, s%atm_points, s%atm_point, events, ierr)
       end subroutine run_kernel
 
 end subroutine atm_get
+
+! ---------------------------------------------------------------
+! The messages of one envelope integration (integrate_envelope_atmosphere
+! prints nothing): the switch to a gray atmosphere after a failed Allard
+! lookup, to standard output and the run log; then the kernel's events
+! in order. The completed integrations' step counts and errors go to the
+! run log with the solver diagnostics on, and the fitted vertex as well
+! when print_flag asks for it; a starting optical depth past the
+! photosphere goes to the run log; the integrations' failures go to the
+! terminal and the run log, except a failed Bulirsch-Stoer step, whose
+! status goes to standard output.
+subroutine report_envint_events(events, switched_to_gray, print_flag)
+      use envelope_integration_kernel, only: envint_events, &
+           envint_start_retry, envint_atmosphere_done, &
+           envint_atmosphere_maxstp, envint_bsstep_limits, &
+           envint_bsstep_failed, envint_vertex, envint_envelope_done, &
+           envint_envelope_maxstp
+      use core_messages, only: core_report, core_log, core_stdout, &
+           core_stdout_and_log, log_envelope_start_retry, message_length, &
+           unwritten_line
+      use run_messages, only: solver_diagnostics
+      use numerics_lib, only: numerics_status_text, bsstep_max_extrap_order, &
+           bsstep_max_stages
+      type(envint_events), intent(in) :: events
+      logical, intent(in) :: switched_to_gray, print_flag
+      character(len=message_length) :: lines(3)
+      integer :: k
+
+      if (switched_to_gray) then
+         lines = unwritten_line
+         lines(1) = ' note: Allard table lookup out of range;' &
+              // ' switching to a gray atmosphere'
+         call core_stdout_and_log(lines)
+      end if
+      do k = 1, events%num_events
+         lines = unwritten_line
+         associate (e => events%event(k))
+         select case (e%kind)
+         case (envint_start_retry)
+            call log_envelope_start_retry(e%values(1), e%values(2))
+         case (envint_atmosphere_done)
+            if (solver_diagnostics()) then
+               write(lines,35) e%counts(1), e%counts(2), e%values(1)
+   35          format(1X,'ATMOSPHERE INTEGRATION COMPLETE',1X, &
+                    'NUMBER OF STEPS ACCEPTED',I5,' REJECTED', &
+                    I5/5X,'MAXIMUM RELATIVE ERROR IN P ',1PE22.13)
+               call core_log(lines)
+            end if
+         case (envint_atmosphere_maxstp)
+            write(lines,50)
+   50       format(5X,'ATMOSPHERE INTEGRATION FAILED AFTER MAXSTP',1X, &
+                 'INTEGRATIONS.I QUIT.')
+            call core_report(lines)
+         case (envint_bsstep_limits)
+            write(lines,'(1x,a,i0,a,i0,a,i0,a,i0)') &
+                 'ENVINT: Bulirsch-Stoer limits out of range: imax = ', &
+                 e%counts(1), ', nuse = ', e%counts(2), '; need 2 <= nuse <= ', &
+                 bsstep_max_extrap_order, ' and nuse <= imax <= ', bsstep_max_stages
+            call core_report(lines)
+         case (envint_bsstep_failed)
+            lines(1) = ' bsstep: '//numerics_status_text(e%counts(1))
+            call core_stdout(lines)
+         case (envint_vertex)
+            if (print_flag .and. solver_diagnostics()) then
+               write(lines,230) e%values(1:4)
+ 230           format(4X,3F16.12,8X,F16.12)
+               call core_log(lines)
+            end if
+         case (envint_envelope_done)
+            if (solver_diagnostics()) then
+               write(lines,215) e%counts(1), e%counts(2), e%values(1:5)
+ 215           format(1X,'ENVELOPE INTEGRATION COMPLETE',1X, &
+                    'NUMBER OF STEPS ACCEPTED',I5,' REJECTED', &
+                    I5/5X,'SENV-LAST M=',1PE22.13,'  LAST M=',E22.13/ &
+                    5X,'MAX RELATIVE ERRORS:M ',1PE14.5,'  T ',E14.5, &
+                    '  R ',E14.5)
+               call core_log(lines)
+            end if
+         case (envint_envelope_maxstp)
+            write(lines,911)
+ 911        format(5X,'ENVELOPE INTEGRATION FAILED AFTER MAXSTP TRIES.',1X, &
+                 'I QUIT')
+            call core_report(lines)
+         end select
+         end associate
+      end do
+end subroutine report_envint_events
 
 end module envelope_integration

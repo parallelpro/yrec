@@ -39,6 +39,7 @@
 ! clear_energy_sources is called.
 module energy_sources
       use composition_layout, only: n_species_extended
+      use core_messages, only: core_stdout, message_length, unwritten_line
       implicit none
       private
       public :: energy_point, energy_source_eval, max_energy_sources, &
@@ -88,18 +89,22 @@ subroutine add_energy_source(name, eval, ierr)
       procedure(energy_source_eval) :: eval
       integer, intent(out) :: ierr
       integer :: i
+      character(len=message_length) :: lines(1)
 
       ierr = 0
+      lines = unwritten_line
       do i = 1, num_sources
          if (sources(i)%name == name) then
-            write(*,'(a)') 'add_energy_source: '//trim(name)//' is already registered'
+            lines(1) = 'add_energy_source: '//trim(name)//' is already registered'
+            call core_stdout(lines)
             ierr = 1
             return
          end if
       end do
       if (num_sources >= max_energy_sources) then
-         write(*,'(a,i0,a)') 'add_energy_source: no room for ', &
+         write(lines,'(a,i0,a)') 'add_energy_source: no room for ', &
               max_energy_sources + 1, ' sources'
+         call core_stdout(lines)
          ierr = 1
          return
       end if
@@ -142,6 +147,7 @@ subroutine evaluate_energy_sources(pt, eps, deps_dlnrho, deps_dlnt, ierr)
       integer, intent(out) :: ierr
       double precision :: e, de_drho, de_dt
       integer :: i
+      character(len=message_length) :: lines(1)
 
       eps = 0.0d0
       deps_dlnrho = 0.0d0
@@ -150,7 +156,9 @@ subroutine evaluate_energy_sources(pt, eps, deps_dlnrho, deps_dlnt, ierr)
       do i = 1, num_sources
          call sources(i)%eval(pt, e, de_drho, de_dt, ierr)
          if (ierr /= 0) then
-            write(*,'(a)') 'energy source '//trim(sources(i)%name)//' failed'
+            lines = unwritten_line
+            lines(1) = 'energy source '//trim(sources(i)%name)//' failed'
+            call core_stdout(lines)
             return
          end if
          eps = eps + e

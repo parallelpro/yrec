@@ -83,7 +83,9 @@ subroutine advance_composition(s, timestep, opts, core_cz_edge, &
      envelope_cz_edge, mixed_zone_bounds_no_overshoot, ierr)
       use star_info_lib, only: i_h1, i_he3, i_he4, i_metals, json, &
            max_convective_zones, max_radiative_zones
-      use run_messages, only: run_log_unit, solver_diagnostics
+      use run_messages, only: solver_diagnostics
+      use core_messages, only: core_log, log_mixed_zone_bounds, &
+           message_length, unwritten_line
       use physical_constants
       use net_lib, only: num_rate_rows
       use burn_step, only: compute_burn_rates, burn_network, &
@@ -110,7 +112,6 @@ subroutine advance_composition(s, timestep, opts, core_cz_edge, &
       integer :: num_species
       integer :: num_radiative_zones, num_mixed_zones, &
            num_mixed_zones_no_overshoot
-      integer :: zone_idx, inner_zone_idx
 
       ierr = 0
 
@@ -152,11 +153,8 @@ subroutine advance_composition(s, timestep, opts, core_cz_edge, &
 ! log with the solver diagnostics.
       if (s%physics%use_semiconvection .or. opts%homogenize) &
            call homogenize_mixed_regions
-      if (num_mixed_zones.ge.1 .and. solver_diagnostics()) then
-         write(run_log_unit,110) ((s%mixed_zone_bounds(zone_idx,inner_zone_idx), &
-              inner_zone_idx=1,2),zone_idx=1,num_mixed_zones)
-  110    format(' ZONES MIXED IN ORDER--',12('(',i5,',',i5,') ') )
-      end if
+      if (num_mixed_zones.ge.1 .and. solver_diagnostics()) &
+           call log_mixed_zone_bounds(s%mixed_zone_bounds, num_mixed_zones)
 
 ! 6. Gravitational settling.
       if (s%settling_active) then
@@ -259,6 +257,7 @@ subroutine settle
       double precision :: total_mass_unlogged, dlnp_dr(json)
       type(settling_substep_plan) :: substeps
       integer :: k, search_idx, substep_idx
+      character(len=message_length) :: lines(1)
       if (s%xa(i_h1,1).lt.s%physics%hydrogen_diffusion_floor) then
          s%settling_active = .false.
          return
@@ -273,8 +272,10 @@ subroutine settle
       if (.not.s%convective_flag(s%nz)) then
 ! Without a surface convection zone, skip settling with a warning in the
 ! run log (DBG 2/92: a warning, not a stop).
-         write(run_log_unit,911)
+         lines = unwritten_line
+         write(lines,911)
   911    format(1x,'NO SURFACE CZ - DIFFUSION NOT MEANINGFUL')
+         call core_log(lines)
          return
       end if
       do search_idx = envelope_cz_edge, 1, -1
