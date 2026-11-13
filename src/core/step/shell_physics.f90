@@ -5,6 +5,7 @@
 ! opacity, the temperature gradients, mu, and the viscosity, for the
 ! rotation code and the convection-zone edges.
 module shell_physics
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use star_info_lib, only: star_info
       implicit none
       private
@@ -41,21 +42,21 @@ subroutine compute_shell_physics(s, ierr)
       use convection_lib, only: compute_temperature_gradients
 
       use star_info_lib, only: i_h1, i_he4, i_metals, i_he3
-      use physical_constants
-      use eos_lib
-      use kap_lib
+      use eos_lib, only: eos_get, eos_result
+      use kap_lib, only: i_kap, kap_get, num_kap_results
       use math_lib
       implicit none
       type(star_info), intent(inout) :: s
       integer, intent(out) :: ierr
 
-      double precision :: atomic_weight(4)
-! Indexed by species slot (i_h1, i_he4, i_metals as C12, i_he3).
-      data atomic_weight /1.007825d0, 4.002603d0, 12.0d0, 3.01603d0/
+! The atomic masses (amu) of H1, He4, the metals (as C12) and He3,
+! indexed by their composition slots (i_h1 = 1, i_he4 = 2, i_metals = 3,
+! i_he3 = 4), as rotation's transport_checks has them.
+      real(dp), parameter :: atomic_weight(4) = [1.007825d0, 4.002603d0, 12.0d0, 3.01603d0]
 ! --- locals ---
       logical :: want_derivatives, in_atmosphere
       integer :: im
-      double precision :: log10_mass, log10_temperature, log10_pressure, &
+      real(dp) :: log10_mass, log10_temperature, log10_pressure, &
            log10_radius, luminosity_lsun, hydrogen_fraction, &
            metal_fraction, log10_density, pressure_rotation_factor, &
            temperature_rotation_factor
@@ -67,13 +68,13 @@ subroutine compute_shell_physics(s, ierr)
 ! returned, not the model's log_density; passing log_density instead
 ! changes rotating runs (the byte gate catches it).
       type(eos_result) :: eos_res
-      double precision :: kap_res(num_kap_results)
+      real(dp) :: kap_res(num_kap_results)
       integer :: saha_iterations
-      double precision :: actual_gradient, radiative_gradient, &
+      real(dp) :: actual_gradient, radiative_gradient, &
            dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
            convective_velocity
       logical :: is_convective
-      double precision :: dfx1, dfx2, dfx3, dfx4, temp_scratch, amu2, emu2
+      real(dp) :: dfx1, dfx2, dfx3, dfx4, temp_scratch, amu2, emu2
 
       ierr = 0
 
