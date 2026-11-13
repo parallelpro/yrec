@@ -17,6 +17,7 @@
 !   store_start/end_li_be_rates, burn_li_be, average_li_be_over_cz
 !                         Li6, Li7 and Be9 over a step
 module burn_step
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use net_lib, only: num_rate_rows, nuclear_energy_result, &
            surface_accretion
       use convection_geometry, only: locate_surface_mixing_base
@@ -47,11 +48,11 @@ contains
 function surface_accretion_now(s, mass) result(accretion)
       use star_info_lib, only: i_h2
       type(star_info), intent(inout) :: s
-      double precision, intent(in) :: mass
+      real(dp), intent(in) :: mass
       type(surface_accretion) :: accretion
 
       accretion%on = s%mass_change_active
-      accretion%inflow = s%physics%mass_accretion_rate.gt.0.0d0
+      accretion%inflow = s%physics%mass_accretion_rate > 0.0d0
       accretion%deuterium_fraction = s%physics%accreted_composition(i_h2)
       accretion%mass = mass
 end function surface_accretion_now
@@ -73,12 +74,12 @@ subroutine compute_zone_energy(s, log_density, log_temperature, xa, &
       use net_lib, only: compute_nuclear_energy
       type(star_info), intent(inout) :: s
 ! xa: the shell's composition, star%xa layout
-      double precision, intent(in) :: log_density, log_temperature, xa(:)
+      real(dp), intent(in) :: log_density, log_temperature, xa(:)
       integer, intent(in) :: shell_index
       type(nuclear_energy_result), intent(out) :: e
 
       call compute_nuclear_energy(log_density, log_temperature, xa, &
-           shell_index.ge.s%envelope_cz_bottom_index_start, s%convective_turnover_timescale, e)
+           shell_index >= s%envelope_cz_bottom_index_start, s%convective_turnover_timescale, e)
 end subroutine compute_zone_energy
 
 
@@ -87,8 +88,8 @@ end subroutine compute_zone_energy
 !----------------------------------------------------------------------
 ! The Li6, Li7 and Be9 abundances (x_start, x_end) and the natural log of
 ! their burning rates (log_rate_start, log_rate_end), mass-averaged over
-! the surface convection zone, for burn_li_be (and the commented-out
-! burn_li_be_midpoint, rotation/burn_li_be_midpoint.f90):
+! the surface convection zone, for burn_li_be (and the retired
+! burn_li_be_midpoint, rotation/retired/burn_li_be_midpoint.f90.txt):
 !   start of the step: from cz_base_zone_old up, with the start-of-step
 !     rates;
 !   end of the step: from cz_base_zone up, with the end-of-step rates and
@@ -112,16 +113,16 @@ subroutine average_li_be_over_cz(s, composition, mass_coordinate, shell_mass, &
      x_start, log_rate_start, x_end, cz_mass_end, log_rate_end)
       use star_info_lib, only: json, i_li6, i_li7, i_be9
       type(star_info), intent(inout) :: s
-      double precision, intent(in) :: composition(n_species_extended,json)
-      double precision, intent(in) :: mass_coordinate(json)
-      double precision, intent(in) :: shell_mass(json)
+      real(dp), intent(in) :: composition(:,:)
+      real(dp), intent(in) :: mass_coordinate(:)
+      real(dp), intent(in) :: shell_mass(:)
       integer, intent(in) :: cz_base_zone, cz_base_zone_old, num_zones
-      double precision, intent(in) :: cz_base_frac
-      double precision, intent(out) :: x_start(3), log_rate_start(3), &
-           x_end(3), cz_mass_end, log_rate_end(3)
+      real(dp), intent(in) :: cz_base_frac
+      real(dp), intent(out) :: x_start(:), log_rate_start(:), &
+           x_end(:), cz_mass_end, log_rate_end(:)
 
       integer, parameter :: species(3) = [i_li6, i_li7, i_be9]
-      double precision :: rate_sum(3), rate(3), cz_mass_start, mass
+      real(dp) :: rate_sum(3), rate(3), cz_mass_start, mass
       integer :: zone_idx
 
 ! The start of the step, at the start-of-step depth.
@@ -147,8 +148,8 @@ subroutine average_li_be_over_cz(s, composition, mass_coordinate, shell_mass, &
          mass = shell_mass(zone_idx)
          rate = [s%rate_li6(zone_idx), s%rate_li7(zone_idx), &
               s%rate_be9(zone_idx)]
-         if (zone_idx.eq.cz_base_zone .and. cz_base_zone.gt.1 .and. &
-              cz_base_zone.lt.num_zones) then
+         if (zone_idx == cz_base_zone .and. cz_base_zone > 1 .and. &
+              cz_base_zone < num_zones) then
             mass = mass + cz_base_frac* &
                  (mass_coordinate(cz_base_zone)-mass_coordinate(cz_base_zone-1))
             rate = rate + 0.5d0*cz_base_frac*([s%rate_li6(cz_base_zone-1), &
@@ -205,25 +206,25 @@ subroutine burn_li_be(s, timestep, composition, radius, mass_coordinate, &
       type(star_info), intent(inout) :: s
 
 ! timestep: s
-      double precision, intent(in) :: timestep
-      double precision, intent(inout) :: composition(n_species_extended,json)
-      double precision, intent(in) :: radius(json)
-      double precision, intent(in) :: mass_coordinate(json)
-      double precision, intent(in) :: shell_mass(json)
-      double precision, intent(in) :: log_temperature(json)
+      real(dp), intent(in) :: timestep
+      real(dp), intent(inout) :: composition(:,:)
+      real(dp), intent(in) :: radius(:)
+      real(dp), intent(in) :: mass_coordinate(:)
+      real(dp), intent(in) :: shell_mass(:)
+      real(dp), intent(in) :: log_temperature(:)
 ! grada, gradr: the gradients the base of the surface mixed region is
 ! located with (locate_surface_mixing_base)
-      double precision, intent(in) :: grada(json), gradr(json)
+      real(dp), intent(in) :: grada(:), gradr(:)
       integer, intent(in) :: env_cz_zone, env_cz_zone_old, num_zones
 
       integer, parameter :: species(3) = [i_li6, i_li7, i_be9]
       integer :: zone_idx, isp, cz_base_zone, cz_base_zone_old, min_zone, max_zone
-      double precision :: cz_base_frac
-      double precision :: rate_start(3), rate_end(3), rate
-      double precision :: x_cz_start(3), x_cz_end(3), log_rate_cz_start(3), &
+      real(dp) :: cz_base_frac
+      real(dp) :: rate_start(3), rate_end(3), rate
+      real(dp) :: x_cz_start(3), x_cz_end(3), log_rate_cz_start(3), &
            log_rate_cz_end(3), cz_mass_end
       logical :: accreting
-      double precision :: mass_coord_beg, mass_coord_end, delta_mass, &
+      real(dp) :: mass_coord_beg, mass_coord_end, delta_mass, &
            radiative_frac
 
 ! 1. The base of the surface mixed region at the start and end of the
@@ -240,12 +241,12 @@ subroutine burn_li_be(s, timestep, composition, radius, mass_coordinate, &
 ! stops at the first shell too cool to burn (rate_be9 <= 1e-32 at the
 ! start or end) and skips shells already depleted.
       do zone_idx = 1,min_zone-1
-         if(s%rate_be9(zone_idx).le.1.0d-32 .or. s%rate_be9_start(zone_idx).le.1.0d-32)exit
-         if(all(composition(species,zone_idx).lt.1.0d-24))cycle
-         if(log_temperature(zone_idx).gt.7.0d0)then
+         if(s%rate_be9(zone_idx) <= 1.0d-32 .or. s%rate_be9_start(zone_idx) <= 1.0d-32)exit
+         if(all(composition(species,zone_idx) < 1.0d-24))cycle
+         if(log_temperature(zone_idx) > 7.0d0)then
             composition(species,zone_idx) = 0.0d0
             cycle
-         endif
+         end if
          rate_start = [s%rate_li6_start(zone_idx), s%rate_li7_start(zone_idx), &
               s%rate_be9_start(zone_idx)]
          rate_end = [s%rate_li6(zone_idx), s%rate_li7(zone_idx), &
@@ -253,14 +254,14 @@ subroutine burn_li_be(s, timestep, composition, radius, mass_coordinate, &
          do isp = 1,3
             composition(species(isp),zone_idx) = composition(species(isp),zone_idx)* &
                  surviving_fraction(rate_start(isp), rate_end(isp), timestep, linear_in_log)
-            if(composition(species(isp),zone_idx).lt.1.0d-24) &
+            if(composition(species(isp),zone_idx) < 1.0d-24) &
                  composition(species(isp),zone_idx) = 0.0d0
          end do
       end do
 
 ! 3. The convection zone as one unit. When its base is too cool to burn
 ! (rate_be9 <= 1e-32 at the start or end), nothing more burns: return.
-      if (s%rate_be9_start(cz_base_zone_old).le.1.0d-32.or.s%rate_be9(cz_base_zone).le.1.0d-32) then
+      if (s%rate_be9_start(cz_base_zone_old) <= 1.0d-32.or.s%rate_be9(cz_base_zone) <= 1.0d-32) then
          return
       end if
       call average_li_be_over_cz(s, composition, mass_coordinate, shell_mass, &
@@ -268,7 +269,7 @@ subroutine burn_li_be(s, timestep, composition, radius, mass_coordinate, &
            x_cz_start, log_rate_cz_start, x_cz_end, cz_mass_end, log_rate_cz_end)
 ! When the zone deepened, start from the abundance mixed over the deeper
 ! zone.
-      if(cz_base_zone.lt.cz_base_zone_old) x_cz_start = x_cz_end
+      if(cz_base_zone < cz_base_zone_old) x_cz_start = x_cz_end
 ! The zone's abundance survives the step on its mass-averaged rates.
 ! With mass accretion (MHP 05/02), the accreted gas burns from its
 ! arrival on (accreted_survival, S_acc) and is mixed in by mass:
@@ -277,7 +278,7 @@ subroutine burn_li_be(s, timestep, composition, radius, mass_coordinate, &
 ! of the end-of-step depth: not strictly true, but not a bad
 ! approximation either.
       accreting = s%mass_change_active .and. &
-           s%physics%mass_accretion_rate.gt.0.0d0
+           s%physics%mass_accretion_rate > 0.0d0
       do isp = 1,3
          x_cz_end(isp) = x_cz_start(isp)*surviving_fraction(exp(log_rate_cz_start(isp)), &
               exp(log_rate_cz_end(isp)), timestep, linear_in_log)
@@ -286,7 +287,7 @@ subroutine burn_li_be(s, timestep, composition, radius, mass_coordinate, &
               accreted_survival(exp(log_rate_cz_start(isp)), exp(log_rate_cz_end(isp)), &
               timestep, linear_in_log)*s%accreted_mass)/ &
               (cz_mass_end + s%accreted_mass)
-         if(x_cz_end(isp).lt.1.0d-24) x_cz_end(isp) = 0.0d0
+         if(x_cz_end(isp) < 1.0d-24) x_cz_end(isp) = 0.0d0
       end do
 ! The new abundance is set from the shallower base (max_zone) out; when
 ! the zone deepened, the shells between the two bases are left as they
@@ -297,7 +298,7 @@ subroutine burn_li_be(s, timestep, composition, radius, mass_coordinate, &
 
 ! 4. Shells that began convective and ended radiative (a retreating
 ! convection zone).
-      if (cz_base_zone.le.cz_base_zone_old) then
+      if (cz_base_zone <= cz_base_zone_old) then
          return
       end if
 ! The base moved out in mass from mass_coord_beg (the midpoint of the old
@@ -309,16 +310,16 @@ subroutine burn_li_be(s, timestep, composition, radius, mass_coordinate, &
 !   radiative_frac = (mass_coord_end - m)/(mass_coord_end - mass_coord_beg),
 ! 1 at the old base and 0 at the new one. (The sign was fixed in the 2026
 ! bugsweep.)
-      if(cz_base_zone_old.gt.1)then
+      if(cz_base_zone_old > 1)then
          mass_coord_beg = 0.5d0*(mass_coordinate(cz_base_zone_old)+mass_coordinate(cz_base_zone_old-1))
       else
          mass_coord_beg = 0.0d0
-      endif
+      end if
       mass_coord_end = 0.5d0*(mass_coordinate(cz_base_zone)+mass_coordinate(cz_base_zone-1))
       delta_mass = mass_coord_end - mass_coord_beg
       do zone_idx = cz_base_zone_old,cz_base_zone-1
 ! Stop at the first shell too cool to burn.
-         if(s%rate_be9(zone_idx).le.1.0d-32)exit
+         if(s%rate_be9(zone_idx) <= 1.0d-32)exit
          radiative_frac = (mass_coord_end - mass_coordinate(zone_idx))/delta_mass
          rate_end = [s%rate_li6(zone_idx), s%rate_li7(zone_idx), &
               s%rate_be9(zone_idx)]
@@ -330,7 +331,7 @@ subroutine burn_li_be(s, timestep, composition, radius, mass_coordinate, &
                  (1.0d0-radiative_frac)*log_rate_cz_start(isp))
             composition(species(isp),zone_idx) = composition(species(isp),zone_idx)* &
                  surviving_fraction(rate, rate, timestep, linear_in_time)
-            if(composition(species(isp),zone_idx).lt.1.0d-24) &
+            if(composition(species(isp),zone_idx) < 1.0d-24) &
                  composition(species(isp),zone_idx) = 0.0d0
          end do
       end do
@@ -361,15 +362,15 @@ subroutine store_li_be_rates(s, composition, log_density, log_temperature, &
       use net_lib, only: compute_li_be_rates
       type(star_info), intent(inout) :: s
 
-      double precision, intent(in) :: composition(n_species_extended,json)
-      double precision, intent(in) :: log_density(json)
-      double precision, intent(in) :: log_temperature(json)
+      real(dp), intent(in) :: composition(:,:)
+      real(dp), intent(in) :: log_density(:)
+      real(dp), intent(in) :: log_temperature(:)
       integer, intent(in) :: num_zones
       logical, intent(in) :: start_of_step
 
-      double precision, parameter :: min_log_temperature = 6.0d0
+      real(dp), parameter :: min_log_temperature = 6.0d0
       integer :: zone_idx
-      double precision :: rhox, t9, li6_rate, li7_rate, be9_rate
+      real(dp) :: rhox, t9, li6_rate, li7_rate, be9_rate
 
       do zone_idx = 1,num_zones
          if (log_temperature(zone_idx) < min_log_temperature .and. &
@@ -419,8 +420,8 @@ end subroutine store_start_li_be_rates
 subroutine store_end_li_be_rates(s, composition, log_density, log_temperature, num_zones)
       use star_info_lib, only: json
       type(star_info), intent(inout) :: s
-      double precision, intent(in) :: composition(n_species_extended,json), log_density(json), &
-           log_temperature(json)
+      real(dp), intent(in) :: composition(:,:), log_density(:), &
+           log_temperature(:)
       integer, intent(in) :: num_zones
       call store_li_be_rates(s, composition, log_density, log_temperature, &
            num_zones, .false.)
@@ -467,20 +468,20 @@ subroutine burn_network_region(s, log_temperature, zone_begin, zone_end, &
       use run_messages, only: report_error
       type(star_info), intent(inout) :: s
 
-      double precision, intent(in) :: log_temperature(json)
+      real(dp), intent(in) :: log_temperature(:)
       integer, intent(in) :: zone_begin, zone_end
-      double precision, intent(in) :: rate_by_zone(num_rate_rows, json)
-      double precision, intent(in) :: shell_mass(json)
-      double precision, intent(inout) :: composition(n_species_extended,json)
+      real(dp), intent(in) :: rate_by_zone(:,:)
+      real(dp), intent(in) :: shell_mass(:)
+      real(dp), intent(inout) :: composition(:,:)
 ! timestep: s
-      double precision, intent(in) :: timestep
+      real(dp), intent(in) :: timestep
       integer, intent(out) :: ierr
 
 ! region_start: the region's start-of-step composition, every slot (the
 ! network species are read at network_species_slot, wherever the layout
 ! puts them)
-      double precision :: region_start(n_species_extended), rate_vec(num_rate_rows)
-      double precision :: x_start(n_network), x(n_network), region_mass, metals
+      real(dp) :: region_start(n_species_extended), rate_vec(num_rate_rows)
+      real(dp) :: x_start(n_network), x(n_network), region_mass, metals
       integer :: k, guess_zone
       character(len=160) :: message
 
@@ -571,7 +572,7 @@ end subroutine burn_network_region
 function burn_regions(s, log_temperature, radiative_zone_bounds, &
      num_radiative_zones, mixed_zone_bounds, num_mixed_zones) result(regions)
       type(star_info), intent(inout) :: s
-      double precision, intent(in) :: log_temperature(:)
+      real(dp), intent(in) :: log_temperature(:)
       integer, intent(in) :: radiative_zone_bounds(:,:), mixed_zone_bounds(:,:)
       integer, intent(in) :: num_radiative_zones, num_mixed_zones
       integer, allocatable :: regions(:,:)
@@ -607,15 +608,15 @@ subroutine network_rates_of_model(s, log_density, log_temperature, &
       use star_info_lib, only: json
       use net_lib, only: compute_network_rates
       type(star_info), intent(inout) :: s
-      double precision, intent(in) :: log_density(json), &
-           log_temperature(json), composition(n_species_extended,json)
+      real(dp), intent(in) :: log_density(:), &
+           log_temperature(:), composition(:,:)
       integer, intent(in) :: num_zones
-      double precision, intent(out) :: rate_by_zone(num_rate_rows, json)
+      real(dp), intent(out) :: rate_by_zone(:,:)
       integer :: zone_idx, clear_idx
 
       do zone_idx = 1, num_zones
 ! Stop at the first shell at or below the nuclear cutoff.
-         if (log_temperature(zone_idx).le.s%physics%nuclear_logT_cutoffs(1)) exit
+         if (log_temperature(zone_idx) <= s%physics%nuclear_logT_cutoffs(1)) exit
          call compute_network_rates(log_density(zone_idx), log_temperature(zone_idx), &
               composition(:,zone_idx), rate_by_zone(:, zone_idx))
       end do
@@ -648,8 +649,8 @@ subroutine compute_burn_rates(s, store_start_rates, rate_by_zone)
 ! rates (star%deuterium_burning_rate_start; the composition step's
 ! predictor pass).
       logical, intent(in) :: store_start_rates
-      double precision, intent(out) :: rate_by_zone(num_rate_rows, json)
-      double precision :: deuterium_test
+      real(dp), intent(out) :: rate_by_zone(:,:)
+      real(dp) :: deuterium_test
       integer :: zone_idx, clear_idx
 
       call network_rates_of_model(s, s%logRho, s%logT, s%xa, s%nz, &
@@ -658,18 +659,18 @@ subroutine compute_burn_rates(s, store_start_rates, rate_by_zone)
 ! deuterium, or with inflowing accretion the larger of it and the
 ! accreted gas's, exceeds min_deuterium_step (1e-11); zero from the
 ! first shell at or below the nuclear cutoff out.
-      if (s%mass_change_active .and. s%physics%mass_accretion_rate.gt.0.0d0) then
+      if (s%mass_change_active .and. s%physics%mass_accretion_rate > 0.0d0) then
          deuterium_test = max(s%xa(i_h2,s%nz), &
               s%physics%accreted_composition(i_h2))
       else
          deuterium_test = s%xa(i_h2,s%nz)
       end if
       do zone_idx = 1, s%nz
-         if (s%logT(zone_idx).le.s%physics%nuclear_logT_cutoffs(1)) exit
+         if (s%logT(zone_idx) <= s%physics%nuclear_logT_cutoffs(1)) exit
          if (deuterium_test > min_deuterium_step) then
             s%deuterium_burning_rate(zone_idx) = deuterium_rate( &
                  s%logRho(zone_idx), s%logT(zone_idx), s%xa(i_h1,zone_idx), &
-                 zone_idx.ge.s%envelope_cz_bottom_index_start, s%convective_turnover_timescale)
+                 zone_idx >= s%envelope_cz_bottom_index_start, s%convective_turnover_timescale)
             if (store_start_rates) s%deuterium_burning_rate_start(zone_idx) = &
                  s%deuterium_burning_rate(zone_idx)
          else
@@ -693,11 +694,11 @@ subroutine burn_network(s, radiative_zone_bounds, num_radiative_zones, &
      num_mixed_zones, rate_by_zone, timestep, ierr)
       use star_info_lib, only: json, max_radiative_zones
       type(star_info), intent(inout) :: s
-      integer, intent(in) :: radiative_zone_bounds(max_radiative_zones,2), &
+      integer, intent(in) :: radiative_zone_bounds(:,:), &
            num_radiative_zones, num_mixed_zones
-      double precision, intent(in) :: rate_by_zone(num_rate_rows, json)
+      real(dp), intent(in) :: rate_by_zone(:,:)
 ! timestep: s
-      double precision, intent(in) :: timestep
+      real(dp), intent(in) :: timestep
       integer, intent(out) :: ierr
       integer, allocatable :: regions(:,:)
       integer :: r
@@ -726,10 +727,10 @@ subroutine burn_deuterium(s, radiative_zone_bounds, num_radiative_zones, &
       use star_info_lib, only: max_radiative_zones
       use net_lib, only: burn_deuterium_region, min_deuterium_step
       type(star_info), intent(inout) :: s
-      integer, intent(in) :: radiative_zone_bounds(max_radiative_zones,2), &
+      integer, intent(in) :: radiative_zone_bounds(:,:), &
            num_radiative_zones, num_mixed_zones
 ! timestep: s
-      double precision, intent(in) :: timestep
+      real(dp), intent(in) :: timestep
       integer, allocatable :: regions(:,:)
       integer :: r
 

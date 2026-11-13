@@ -25,15 +25,19 @@
 ! accreted composition are computed by the star-blind kernels of
 ! mass_change_kernel.f90.
 module mass_change
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use atm_lib, only: atm_get_surface_pt, atm_table_is_loaded, atm_allard
-      use star_info_lib, only: json, star_info
+      use star_info_lib, only: json, star_info, i_h1, i_metals
       use mass_change_kernel, only: wind_angular_momentum, &
            convection_zone_mass, change_shell_masses, &
            wind_specific_angular_momentum, remove_wind_angular_momentum, &
            mix_accreted_composition
-      use physical_constants
-      use eos_lib
+      use physical_constants, only: c4pi, cc13, cc23, cgl, csig, ln10, &
+           log10_radius_from_l_teff, radiation_constant_over_3, &
+           seconds_per_year
+      use eos_lib, only: eos_get, eos_result
       use math_lib
+      use core_messages, only: core_stdout, message_length, unwritten_line
       implicit none
       private
       public :: change_mass
@@ -58,43 +62,43 @@ contains
 !     envelope_cz_bottom_index_start, mass_change_active
 subroutine change_mass(s, old_log_envelope_mass_fraction, new_atmosphere_fit_needed, ierr)
       type(star_info), intent(inout) :: s
-      double precision, intent(out) :: old_log_envelope_mass_fraction
+      real(dp), intent(out) :: old_log_envelope_mass_fraction
       logical, intent(out) :: new_atmosphere_fit_needed
       integer, intent(out) :: ierr
 ! The efficiency of the accreted matter's thermal energy: it brings
 ! accretion_efficiency G M/R per gram (MHP 5/02).
-      double precision, parameter :: accretion_efficiency = 1.0d0
+      real(dp), parameter :: accretion_efficiency = 1.0d0
       logical :: disk_exhausted
       integer :: nz, jenv, zone_idx
-      double precision :: mass_loss_rate_msun_yr
-      double precision :: log10_radius, total_radius_cm
-      double precision :: total_mass_grams
-      double precision :: cz_total_mass_below_fitting
-      double precision :: local_temperature, local_pressure, local_density, &
+      real(dp) :: mass_loss_rate_msun_yr
+      real(dp) :: log10_radius, total_radius_cm
+      real(dp) :: total_mass_grams
+      real(dp) :: cz_total_mass_below_fitting
+      real(dp) :: local_temperature, local_pressure, local_density, &
            local_beta, mean_molecular_weight_local
-      double precision :: accretion_specific_energy, &
+      real(dp) :: accretion_specific_energy, &
            accretion_specific_energy0
-      double precision :: sum_thermal_energy, thermal_energy_accreted_bar
-      double precision :: local_radius_cm, delta_accretion_energy, &
+      real(dp) :: sum_thermal_energy, thermal_energy_accreted_bar
+      real(dp) :: local_radius_cm, delta_accretion_energy, &
            thermal_energy_accreted, local_entropy, thermal_energy_per_gram
-      double precision :: mean_thermal_energy
+      real(dp) :: mean_thermal_energy
 ! the mass-weighted mean specific entropy of the convective envelope
 ! (ideal gas, up to a constant; erg/(g K)), zeroed after it is computed
 ! (below), so the accretion shifts it drives are zero
-      double precision :: envelope_specific_entropy
-      double precision :: log10_gravity, allard_log10_pressure, allard_log10_temperature
+      real(dp) :: envelope_specific_entropy
+      real(dp) :: log10_gravity, allard_log10_pressure, allard_log10_temperature
       logical :: allard_lookup_failed
-      double precision :: log10_temperature_local, log10_pressure_local, &
+      real(dp) :: log10_temperature_local, log10_pressure_local, &
            log10_density_local
-      double precision :: hydrogen_fraction_local, metal_fraction_local
+      real(dp) :: hydrogen_fraction_local, metal_fraction_local
       logical :: eos_deriv_flag, eos_atmosphere_flag
       integer :: saha_iterations
-      double precision :: beta_local
+      real(dp) :: beta_local
 ! Nothing here is saved between calls: the eos seeds log10 rho and beta
 ! start at zero on every call (below). The legacy blanket SAVE carried
 ! the previous call's values; zero is what it saw on its first call.
       type(eos_result) :: eos_res
-      double precision :: mass_loss_rate_cgs, pressure_from_wind, &
+      real(dp) :: mass_loss_rate_cgs, pressure_from_wind, &
            temperature_from_wind
 
 ! Start from the constant rate mass_accretion_rate (Msun/yr); the step
@@ -110,7 +114,7 @@ subroutine change_mass(s, old_log_envelope_mass_fraction, new_atmosphere_fit_nee
       jenv = s%envelope_cz_bottom_index
       call set_mass_change_rate()
       call measure_convective_envelope()
-      if(mass_loss_rate_msun_yr.gt.0.0d0)then
+      if(mass_loss_rate_msun_yr > 0.0d0)then
          new_atmosphere_fit_needed = .true.
          call average_envelope_energies()
          call find_accreted_surface_state()
@@ -120,7 +124,7 @@ subroutine change_mass(s, old_log_envelope_mass_fraction, new_atmosphere_fit_nee
 ! The envelope entropy is zeroed after all, so apply_mass_change shifts
 ! R, P and T by zero: the entropy correction is switched off.
          envelope_specific_entropy = 0.0d0
-      endif
+      end if
       call apply_mass_change(s, total_radius_cm, mass_loss_rate_msun_yr, &
            accretion_specific_energy, mean_thermal_energy, &
            cz_total_mass_below_fitting, envelope_specific_entropy, &
@@ -150,7 +154,7 @@ subroutine set_mass_change_rate()
          mass_loss_rate_msun_yr = s%physics%reimers_scaling_factor* &
               exp10(s%log_L_lsun)* &
               (total_radius_cm/s%solar_radius_cgs)/s%star_mass
-      endif
+      end if
 end subroutine set_mass_change_rate
 
 ! ---------------------------------------------------------------
@@ -160,19 +164,24 @@ end subroutine set_mass_change_rate
 ! timescale and sets it to nz. Then sums the convective envelope's mass.
 subroutine measure_convective_envelope()
       use run_messages, only: solver_diagnostics
+      character(len=message_length) :: lines(1)
 ! The turnover timescale was computed beforehand, for the previous model
 ! (compute_turnover_timescale; MHP 2/12). (The F77 code printed it
 ! unlabelled every step; it is now a diagnostic.)
-      if(jenv.lt.nz)then
-         if (solver_diagnostics()) write(*,'(a,1p,2e12.4)') &
-              ' mass change: turnover time (yr), R/Rsun', &
-              s%convective_turnover_timescale/seconds_per_year, &
-              total_radius_cm/s%solar_radius_cgs
+      if(jenv < nz)then
+         if (solver_diagnostics()) then
+            lines = unwritten_line
+            write(lines,'(a,1p,2e12.4)') &
+                 ' mass change: turnover time (yr), R/Rsun', &
+                 s%convective_turnover_timescale/seconds_per_year, &
+                 total_radius_cm/s%solar_radius_cgs
+            call core_stdout(lines)
+         end if
          s%envelope_cz_bottom_index_start = jenv
       else
          s%convective_turnover_timescale = 0.0d0
          s%envelope_cz_bottom_index_start = nz
-      endif
+      end if
 ! The mass of the convective envelope, sum of dm(jenv..nz) (MHP 8/10).
 ! dm(nz) reaches the total mass, so this includes the mass outside the
 ! fitting point, despite the name.
@@ -267,8 +276,8 @@ subroutine find_accreted_surface_state()
             log10_pressure_local = allard_log10_pressure
          end if
       end if
-      hydrogen_fraction_local = s%xa(1,nz)
-      metal_fraction_local = s%xa(3,nz)
+      hydrogen_fraction_local = s%xa(i_h1,nz)
+      metal_fraction_local = s%xa(i_metals,nz)
       eos_deriv_flag = .false.
       saha_iterations = 1
       eos_atmosphere_flag = .true.
@@ -301,7 +310,7 @@ subroutine evaluate_stahler_surface()
 ! recomputes P_gas/(rho T) before using it); the call is kept because
 ! the eos carries solver state (the Saha solver's starting guesses)
 ! from one call to the next.
-      if(accretion_efficiency.gt.0.0d0)then
+      if(accretion_efficiency > 0.0d0)then
          mass_loss_rate_cgs = mass_loss_rate_msun_yr*s%solar_mass_cgs/ &
               seconds_per_year
          pressure_from_wind = mass_loss_rate_cgs/c4pi* &
@@ -319,7 +328,7 @@ subroutine evaluate_stahler_surface()
               eos_deriv_flag, eos_atmosphere_flag, saha_iterations, &
               composition_at_zone=s%xa(:,nz), ierr=ierr)
          if (ierr /= 0) return
-      endif
+      end if
 end subroutine evaluate_stahler_surface
 
 end subroutine change_mass
@@ -357,57 +366,44 @@ subroutine apply_mass_change(s, total_radius_cm, mass_loss_rate_msun_yr, &
      cz_total_mass_below_fitting, envelope_specific_entropy, &
      old_log_envelope_mass_fraction, disk_exhausted, ierr)
       type(star_info), intent(inout) :: s
-      double precision, intent(in) :: total_radius_cm
-      double precision, intent(inout) :: mass_loss_rate_msun_yr
-      double precision, intent(in) :: accretion_specific_energy, &
+      real(dp), intent(in) :: total_radius_cm
+      real(dp), intent(inout) :: mass_loss_rate_msun_yr
+      real(dp), intent(in) :: accretion_specific_energy, &
            mean_thermal_energy
-      double precision, intent(in) :: cz_total_mass_below_fitting
-      double precision, intent(in) :: envelope_specific_entropy
-      double precision, intent(out) :: old_log_envelope_mass_fraction
+      real(dp), intent(in) :: cz_total_mass_below_fitting
+      real(dp), intent(in) :: envelope_specific_entropy
+      real(dp), intent(out) :: old_log_envelope_mass_fraction
       logical, intent(out) :: disk_exhausted
       integer, intent(out) :: ierr
       integer :: nz, jenv, zone_idx
-!      double precision :: omega_ratio_sq, omega_max_ratio_sq
-      double precision :: mass_loss_rate_cgs
-      double precision :: cz_mass_grams
-      double precision :: timestep_limit_total_mass, timestep_limit_cz_mass, &
+      real(dp) :: mass_loss_rate_cgs
+      real(dp) :: cz_mass_grams
+      real(dp) :: timestep_limit_total_mass, timestep_limit_cz_mass, &
            timestep_limit
-      double precision :: timestep_limit_envelope
-      double precision :: disk_age_test
-      double precision :: delta_mass_cgs
-      double precision :: new_thermal_energy
-      double precision :: local_temperature, local_pressure, local_density, &
+      real(dp) :: timestep_limit_envelope
+      real(dp) :: disk_age_test
+      real(dp) :: delta_mass_cgs
+      real(dp) :: new_thermal_energy
+      real(dp) :: local_temperature, local_pressure, local_density, &
            local_beta, mean_molecular_weight_local
-      double precision :: delta_log_specific_entropy, delta_ln_mass, &
+      real(dp) :: delta_log_specific_entropy, delta_ln_mass, &
            delta_log_radius
-      double precision :: boundary_radius_cm, radius_scale_factor, &
+      real(dp) :: boundary_radius_cm, radius_scale_factor, &
            radius_before_cm, radius_after_cm
       logical :: wind_carries_angular_momentum
-      double precision, allocatable :: cz_shell_masses_before(:)
-      double precision :: wind_j_surface
+      real(dp), allocatable :: cz_shell_masses_before(:)
+      real(dp) :: wind_j_surface
       type(wind_angular_momentum) :: wind_am
-      double precision :: delta_mass_msun
-      double precision :: total_mass_grams_old, total_mass_grams_new
+      real(dp) :: delta_mass_msun
+      real(dp) :: total_mass_grams_old, total_mass_grams_new
 
       ierr = 0
       disk_exhausted = .false.
       nz = s%nz
       jenv = s%envelope_cz_bottom_index
       old_log_envelope_mass_fraction = s%log_mass(nz) - s%log_total_mass
-! Commented out (2026-10-12, by the author's decision): the solar wind
-! scaled by the surface rotation (MHP 8/10),
-!   Mdot = Mdot_sun min((omega/omega_ref)^2, (omega_max/omega_ref)^2).
-! Nothing set its switch or its three parameters (the legacy LSOLWIND
-! is read but never reached them), so it never ran. To revive it,
-! uncomment this block, its locals and its star members
-! (state/star_info_lib), and set them.
-!      if(star%use_rotation_scaled_solar_wind .and. star%physics%rotation_active) then
-!         omega_ratio_sq = (star%omega(nz)/star%wind_reference_omega)**2
-!         omega_max_ratio_sq = (star%wind_max_omega/star%wind_reference_omega)**2
-!         mass_loss_rate_msun_yr = star%solar_wind_mass_loss_rate_msun_yr* &
-!              min(omega_ratio_sq,omega_max_ratio_sq)
-!         write(*,*)star%omega(nz),mass_loss_rate_msun_yr
-!      endif
+! The solar wind scaled by the surface rotation (MHP 8/10) is retired:
+! step/retired/rotation_scaled_solar_wind.f90.txt.
 ! The magnitude of the rate, in g/s.
       mass_loss_rate_cgs = abs(mass_loss_rate_msun_yr)*s%solar_mass_cgs/ &
            seconds_per_year
@@ -420,7 +416,7 @@ subroutine apply_mass_change(s, total_radius_cm, mass_loss_rate_msun_yr, &
 ! With mass loss from a rotating star, the lost matter carries off
 ! angular momentum (a thermal wind).
       wind_carries_angular_momentum = s%physics%rotation_active .and. &
-           delta_mass_cgs.lt.0.0d0
+           delta_mass_cgs < 0.0d0
       call adjust_cz_for_accreted_entropy()
       call update_masses()
       call spin_down_cz_by_wind()
@@ -434,8 +430,11 @@ contains
 ! (convection_zone_mass); ierr = 1 when the envelope boundary is the
 ! surface zone.
 subroutine weigh_surface_convection_zone()
-      if(jenv.eq.nz) then
-         write(*,*) 'mdot: envelope boundary at the surface (911)'
+      character(len=message_length) :: lines(1)
+      if(jenv == nz) then
+         lines = unwritten_line
+         lines(1) = ' mdot: envelope boundary at the surface (911)'
+         call core_stdout(lines)
          ierr = 1
          return
       end if
@@ -451,7 +450,8 @@ subroutine limit_mass_change_timestep()
 !   dt_max = min(ftotdmdt M, fczdmdt M_cz)/|Mdot|.
 ! A zero rate sets no limit (it used to divide by zero, which traps in
 ! the devel builds).
-      if(mass_loss_rate_cgs.gt.0.0d0)then
+      character(len=message_length) :: lines(1)
+      if(mass_loss_rate_cgs > 0.0d0)then
          timestep_limit_total_mass = s%physics%accretion_total_fraction*s%star_mass*s%solar_mass_cgs/ &
               mass_loss_rate_cgs
          timestep_limit_cz_mass = s%physics%accretion_cz_fraction*cz_mass_grams/mass_loss_rate_cgs
@@ -461,21 +461,23 @@ subroutine limit_mass_change_timestep()
          timestep_limit_envelope = 0.5d0*(exp10(s%log_total_mass)- &
               exp10(s%log_mass(nz)))/mass_loss_rate_cgs
          timestep_limit = min(timestep_limit,timestep_limit_envelope)
-         if(timestep_limit.lt.s%dt)then
-            write(*,10)s%dt,timestep_limit
+         if(timestep_limit < s%dt)then
+            lines = unwritten_line
+            write(lines,10)s%dt,timestep_limit
  10         format(' TIMESTEP REDUCED FOR MASS LOSS - OLD,NEW',1P2E12.3)
+            call core_stdout(lines)
             s%dt = timestep_limit
-         endif
-      endif
+         end if
+      end if
 ! With accretion only (Mdot > 0, MHP 8/10): a step that would pass the
 ! disk-locking age is clipped to end there, and the mass change stops.
-      if(s%physics%disk_locking_active .and. mass_loss_rate_msun_yr.gt.0.0d0)then
+      if(s%physics%disk_locking_active .and. mass_loss_rate_msun_yr > 0.0d0)then
          disk_age_test = s%disk_gate_age_gyr + 1.0d-9*s%dt/seconds_per_year
-         if(disk_age_test.gt.s%physics%disk_locking_age_gyr)then
+         if(disk_age_test > s%physics%disk_locking_age_gyr)then
             s%dt = (s%physics%disk_locking_age_gyr-s%disk_gate_age_gyr)*1.0d9*seconds_per_year
             disk_exhausted = .true.
-         endif
-      endif
+         end if
+      end if
 end subroutine limit_mass_change_timestep
 
 ! ---------------------------------------------------------------
@@ -485,7 +487,7 @@ end subroutine limit_mass_change_timestep
 subroutine adjust_cz_for_accreted_entropy()
 ! The mean thermal energy per gram of the convection zone once the
 ! accreted matter has mixed in (new_thermal_energy, not used further).
-      if(delta_mass_cgs.gt.0.0d0)then
+      if(delta_mass_cgs > 0.0d0)then
          new_thermal_energy = (accretion_specific_energy*delta_mass_cgs+ &
               mean_thermal_energy*cz_total_mass_below_fitting)/ &
               (delta_mass_cgs+cz_total_mass_below_fitting)
@@ -514,7 +516,7 @@ subroutine adjust_cz_for_accreted_entropy()
 ! A fully convective star (jenv = 1) shifts every zone. Otherwise only
 ! the base zone's P and T shift, and the radii above it stretch about
 ! the base, r' = r_b + 10^(d log R) (r - r_b).
-         if(jenv.eq.1)then
+         if(jenv == 1)then
             do zone_idx = jenv,nz
                s%logR(zone_idx) = s%logR(zone_idx)+delta_log_radius
                s%logP(zone_idx) = s%logP(zone_idx)+s%delta_log_pressure
@@ -531,8 +533,8 @@ subroutine adjust_cz_for_accreted_entropy()
                     (radius_before_cm-boundary_radius_cm)
                s%logR(zone_idx) = log10(radius_after_cm)
             end do
-         endif
-      endif
+         end if
+      end if
 end subroutine adjust_cz_for_accreted_entropy
 
 ! ---------------------------------------------------------------
@@ -566,26 +568,32 @@ end subroutine update_masses
 ! rotation law (wind_specific_angular_momentum), and the zone keeps
 ! J_cz + dJ on its new masses (remove_wind_angular_momentum).
 subroutine spin_down_cz_by_wind()
+      character(len=message_length) :: lines(1)
       if(wind_carries_angular_momentum)then
          wind_j_surface = wind_specific_angular_momentum(s%physics%cz_rotation_law_exponent, &
               total_radius_cm, s%omega(nz), s%logR(nz), s%j_rot(nz))
          call remove_wind_angular_momentum(wind_j_surface, delta_mass_cgs, &
               cz_shell_masses_before, s%dm(jenv:nz), s%j_rot(jenv:nz), &
               wind_am)
-! The run log: dM, dJ, omega(nz), the new and old J_cz, and the
+! Standard output: dM, dJ, omega(nz), the new and old J_cz, and the
 ! convective envelope's mass.
-         write(*,22)delta_mass_cgs,wind_am%lost,s%omega(nz), &
+         lines = unwritten_line
+         write(lines,22)delta_mass_cgs,wind_am%lost,s%omega(nz), &
               wind_am%zone_after,wind_am%zone_before,cz_total_mass_below_fitting
  22      format(1P6E13.4)
-      endif
+         call core_stdout(lines)
+      end if
 end subroutine spin_down_cz_by_wind
 
 ! ---------------------------------------------------------------
-! The run log: the new mass and the step's change, in Msun.
+! Standard output: the new mass and the step's change, in Msun.
 subroutine report_new_mass()
+      character(len=message_length) :: lines(1)
       delta_mass_msun = delta_mass_cgs/s%solar_mass_cgs
-      write(*,20)s%star_mass,delta_mass_msun
+      lines = unwritten_line
+      write(lines,20)s%star_mass,delta_mass_msun
  20   format('MASS LOSS APPLIED - NEW M,DEL M',1P2E19.10)
+      call core_stdout(lines)
 end subroutine report_new_mass
 
 ! ---------------------------------------------------------------
@@ -593,12 +601,12 @@ end subroutine report_new_mass
 ! zone (mix_accreted_composition, with M_cz = cz_total_mass_below_fitting
 ! and X_acc = accreted_composition), and the accreted mass recorded.
 subroutine mix_in_accreted_composition()
-      if(delta_mass_cgs.gt.0.0d0)then
+      if(delta_mass_cgs > 0.0d0)then
          call mix_accreted_composition(cz_total_mass_below_fitting, &
               delta_mass_cgs, s%physics%accreted_composition, &
               s%xa(:,jenv:nz))
          s%accreted_mass = delta_mass_cgs
-      endif
+      end if
 end subroutine mix_in_accreted_composition
 
 end subroutine apply_mass_change

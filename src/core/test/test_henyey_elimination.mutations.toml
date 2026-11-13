@@ -1,0 +1,128 @@
+# Mutations of test_henyey_elimination: each check must print FAIL under a
+# mutation of the code it covers (core/README.md, the tests). Run, after
+# `make tests` in src/: python3 src/tools/mutate.py core --program
+# test_henyey_elimination (src/tools/mutate.py describes this format and
+# the verdicts).
+program = "test_henyey_elimination"
+timeout = 60
+
+[[mutation]]
+id = 'henyey-01'
+check = 'N = 2: no error'
+file = 'core/structure/henyey_elimination.f90'
+old = 'if (q(2,2) == 0.0d0) then'
+new = 'if (q(2,2) /= 0.0d0) then'
+
+[[mutation]]
+id = 'henyey-02'
+check = 'N = 3: no error'
+file = 'core/structure/henyey_elimination.f90'
+old = 'if (q(1,1) == 0.0d0) then'
+new = 'if (q(1,1) /= 0.0d0) then'
+
+[[mutation]]
+id = 'henyey-03'
+check = 'N = 40: no error'
+file = 'core/structure/henyey_elimination.f90'
+old = '''
+      denominator = 1.0D0 - half_delta_log_mass*cur%qr_dr
+      if (denominator == 0.0d0) then'''
+new = '''
+      denominator = 1.0D0 - half_delta_log_mass*cur%qr_dr
+      if (denominator /= 0.0d0) then'''
+
+[[mutation]]
+id = 'henyey-04'
+check = 'N = 2: corrections = dense solve'
+file = 'core/structure/henyey_elimination.f90'
+old = 'pivot_ratio = (surface_bc(4) - elim_coeff(4,1,num_shells))*pivot_divisor'
+new = 'pivot_ratio = (surface_bc(4) + elim_coeff(4,1,num_shells))*pivot_divisor'
+
+[[mutation]]
+id = 'henyey-05'
+check = 'N = 3: corrections = dense solve'
+file = 'core/structure/henyey_elimination.f90'
+old = 'correction_t*elim_coeff(1,2,im)'
+new = 'correction_p*elim_coeff(1,2,im)'
+
+[[mutation]]
+id = 'henyey-06'
+check = 'N = 40: corrections = dense solve'
+file = 'core/structure/henyey_elimination.f90'
+old = 'pivotb= -half_delta_log_mass*prev%qt_dl'
+new = 'pivotb= half_delta_log_mass*prev%qt_dl'
+
+[[mutation]]
+id = 'henyey-07'
+check = 'N = 40: corrections = dense solve'
+file = 'core/structure/henyey_elimination.f90'
+old = 'q(4,1) = -half_delta_log_mass*prev%ql_dp + elim_coeff(4,1,zone_index-1)'
+new = 'q(4,1) = -half_delta_log_mass*prev%ql_dp - elim_coeff(4,1,zone_index-1)'
+
+[[mutation]]
+id = 'henyey-08'
+check = 'N = 2: residual maxima = max |F_k|'
+file = 'core/structure/henyey_elimination.f90'
+old = '(log_pressure(zone_index) - log_pressure(zone_index-1))'
+new = '(log_pressure(zone_index) + log_pressure(zone_index-1))'
+
+[[mutation]]
+id = 'henyey-09'
+check = 'N = 3: residual maxima = max |F_k|'
+file = 'core/structure/henyey_elimination.f90'
+old = '(luminosity(zone_index) - luminosity(zone_index-1))'
+new = '(luminosity(zone_index) - 0.5d0*luminosity(zone_index-1))'
+
+[[mutation]]
+id = 'henyey-10'
+check = 'N = 40: residual maxima = max |F_k|'
+file = 'core/structure/henyey_elimination.f90'
+old = 'max_residual(1) = max(max_residual(1),abs(elim_rhs(1,zone_index)))'
+new = 'max_residual(1) = max(max_residual(1),abs(elim_rhs(2,zone_index)))'
+
+[[mutation]]
+id = 'henyey-11'
+check = 'eliminate: zero radius pivot'
+file = 'core/structure/henyey_elimination.f90'
+old = '''
+      denominator = 1.0D0 - half_delta_log_mass*cur%qr_dr
+      if (denominator == 0.0d0) then'''
+new = '''
+      denominator = 1.0D0 - half_delta_log_mass*cur%qr_dr
+      if (.false.) then'''
+
+[[mutation]]
+id = 'henyey-12'
+check = 'eliminate: zero temperature pivot'
+file = 'core/structure/henyey_elimination.f90'
+old = 'if (q(2,2) == 0.0d0) then'
+new = 'if (.false.) then'
+
+[[mutation]]
+id = 'henyey-13'
+check = 'eliminate: zero pressure pivot'
+file = 'core/structure/henyey_elimination.f90'
+old = 'if (q(1,1) == 0.0d0) then'
+new = 'if (.false.) then'
+
+[[mutation]]
+id = 'henyey-14'
+check = 'solve: zero dlog P pivot'
+file = 'core/structure/henyey_elimination.f90'
+old = '''
+      denominator = surface_bc(1) - elim_coeff(3,1,num_shells)
+      if (denominator == 0.0d0) then'''
+new = '''
+      denominator = surface_bc(1) - elim_coeff(3,1,num_shells)
+      if (.false.) then'''
+
+[[mutation]]
+id = 'henyey-15'
+check = 'solve: zero dlog T pivot'
+file = 'core/structure/henyey_elimination.f90'
+old = '''
+           elim_coeff(4,2,num_shells) - pivot_ratio*t_coupling_term
+      if (denominator == 0.0d0) then'''
+new = '''
+           elim_coeff(4,2,num_shells) - pivot_ratio*t_coupling_term
+      if (.false.) then'''

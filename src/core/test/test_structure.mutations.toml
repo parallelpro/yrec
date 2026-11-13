@@ -1,0 +1,89 @@
+# Mutations of test_structure: each check must print FAIL under a mutation
+# of the code it covers (core/README.md, the tests). The program runs the
+# birthline deck with the Yale EOS (tolerance 1e-4, as test_structure.py's
+# yale case), which checks the eps_grav partials (18869257's 1/chi), with
+# the test energy source registered ('extra'; its term is too small at
+# these shells for a check, which test_structure.py's TAMS extra case and
+# test_other_energy.py make). Run, after `make tests` in
+# src/: python3 src/tools/mutate.py core --program test_structure
+# (src/tools/mutate.py describes this format and the verdicts).
+program = "test_structure"
+timeout = 300
+args = ["{repo}/testsuite/Test_solarGS98_yaleeos.inlist", "1e-4", "extra"]
+
+[env]
+YREC_OUTPUT = "output"
+
+[[mutation]]
+id = 'structure-01'
+check = '  ql/lnP'
+file = 'core/structure/shell_equations.f90'
+old = 'eos%dlnrho_dlnt_dp/eos%dlnrho_dlnt)'
+new = 'eos%dlnrho_dlnt_dp)'
+
+[[mutation]]
+id = 'structure-02'
+check = '  ql/lnT'
+file = 'core/structure/shell_equations.f90'
+old = 'eos%dlnrho_dlnt_dt/eos%dlnrho_dlnt)'
+new = 'eos%dlnrho_dlnt_dt)'
+
+[[mutation]]
+id = 'structure-03'
+check = '  qp/lnR'
+file = 'core/structure/shell_equations.f90'
+old = 'terms%qp_dr = -qp - qp - qp - qp'
+new = 'terms%qp_dr = -qp - qp - qp'
+
+[[mutation]]
+id = 'structure-04'
+check = '  qp/lnP'
+file = 'core/structure/shell_equations.f90'
+old = '''
+terms%qp_dp = -qp
+'''
+new = '''
+terms%qp_dp = -0.9d0*qp
+'''
+
+[[mutation]]
+id = 'structure-05'
+check = '  qr/lnR'
+file = 'core/structure/shell_equations.f90'
+old = 'terms%qr_dr = - terms%qr - terms%qr - terms%qr'
+new = 'terms%qr_dr = - terms%qr - terms%qr'
+
+[[mutation]]
+id = 'structure-06'
+check = '  qr/lnP'
+file = 'core/structure/shell_equations.f90'
+old = 'terms%qr_dp = -terms%qr*eos%dlnrho_dlnp'
+new = 'terms%qr_dp = -0.9d0*terms%qr*eos%dlnrho_dlnp'
+
+[[mutation]]
+id = 'structure-07'
+check = '  qr/lnT'
+file = 'core/structure/shell_equations.f90'
+old = 'terms%qr_dt = -terms%qr*eos%dlnrho_dlnt'
+new = 'terms%qr_dt = -0.9d0*terms%qr*eos%dlnrho_dlnt'
+
+[[mutation]]
+id = 'structure-08'
+check = '  qt/lnR'
+file = 'core/structure/shell_equations.f90'
+old = 'terms%qt_dr = -qt - qt - qt - qt'
+new = 'terms%qt_dr = -qt - qt - qt'
+
+[[mutation]]
+id = 'structure-09'
+check = '  ql/lnT'
+file = 'core/structure/shell_equations.f90'
+old = 'diag%deps_dlnt = diag%burn%deps_dlnt'
+new = 'diag%deps_dlnt = 0.9d0*diag%burn%deps_dlnt'
+
+[[mutation]]
+id = 'structure-10'
+check = '  ql/lnP'
+file = 'core/structure/shell_equations.f90'
+old = 'terms%ql_dp = terms%ql_dp + diag%deps_dlnrho*eos%dlnrho_dlnp'
+new = 'terms%ql_dp = terms%ql_dp + 0.9d0*diag%deps_dlnrho*eos%dlnrho_dlnp'

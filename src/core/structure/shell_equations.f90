@@ -29,6 +29,7 @@
 ! core/test/test_structure checks every partial against finite
 ! differences of these terms.
 module shell_equations
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use composition_layout, only: i_h1, i_metals, n_species_extended
       use physical_constants, only: log10_newton_g_default
       use eos_lib, only: eos_result, eos_get
@@ -47,10 +48,10 @@ module shell_equations
 ! equations (pressure, temperature, radius, luminosity), the term q and
 ! its nonzero partials.
       type :: henyey_shell_terms
-         double precision :: qp, qp_dr, qp_dp
-         double precision :: qt, qt_dr, qt_dl, qt_dp, qt_dt
-         double precision :: qr, qr_dr, qr_dp, qr_dt
-         double precision :: ql, ql_dp, ql_dt
+         real(dp) :: qp, qp_dr, qp_dp
+         real(dp) :: qt, qt_dr, qt_dl, qt_dp, qt_dt
+         real(dp) :: qr, qr_dr, qr_dp, qr_dt
+         real(dp) :: ql, ql_dp, ql_dt
       end type henyey_shell_terms
 
 ! One shell's state: its mass coordinate (log m and m in g), the four
@@ -62,15 +63,15 @@ module shell_equations
 ! overshoot region, and inside the surface convection zone (where
 ! deuterium burning is capped by the turnover time).
       type :: shell_state
-         double precision :: log_mass = 0.0d0, mass = 0.0d0, shell_mass = 0.0d0
-         double precision :: log_temperature = 0.0d0, log_pressure = 0.0d0, &
+         real(dp) :: log_mass = 0.0d0, mass = 0.0d0, shell_mass = 0.0d0
+         real(dp) :: log_temperature = 0.0d0, log_pressure = 0.0d0, &
               log_radius = 0.0d0, luminosity_lsun = 0.0d0
-         double precision :: log_density = 0.0d0
-         double precision :: xa(n_species_extended) = 0.0d0
-         double precision :: fp = 1.0d0, ft = 1.0d0
-         double precision :: log_temperature_delta = 0.0d0, &
+         real(dp) :: log_density = 0.0d0
+         real(dp) :: xa(n_species_extended) = 0.0d0
+         real(dp) :: fp = 1.0d0, ft = 1.0d0
+         real(dp) :: log_temperature_delta = 0.0d0, &
               log_pressure_delta = 0.0d0
-         double precision :: rotational_ke = 0.0d0, rotational_ke_start = 0.0d0
+         real(dp) :: rotational_ke = 0.0d0, rotational_ke_start = 0.0d0
          logical :: in_overshoot = .false., in_surface_cz = .false.
       end type shell_state
 
@@ -79,12 +80,12 @@ module shell_equations
 ! spot contrast), the convective turnover time (s, the deuterium cap),
 ! ln10/Lsun, whether the star rotates, and log10 G (cgs).
       type :: structure_settings
-         double precision :: dt = 0.0d0
-         double precision :: log_teff = 0.0d0
-         double precision :: turnover_timescale = 0.0d0
-         double precision :: ln10_over_lsun = 0.0d0
+         real(dp) :: dt = 0.0d0
+         real(dp) :: log_teff = 0.0d0
+         real(dp) :: turnover_timescale = 0.0d0
+         real(dp) :: ln10_over_lsun = 0.0d0
          logical :: rotation_active = .false.
-         double precision :: log10_gravitational_constant = log10_newton_g_default
+         real(dp) :: log10_gravitational_constant = log10_newton_g_default
       end type structure_settings
 
 ! The shell's values for output: the eos density, whether the shell is
@@ -95,17 +96,17 @@ module shell_equations
 ! and, when the step has a duration (has_eps_grav), eps_grav (erg/g/s);
 ! eps_extra, the extra energy sources' sum (erg/g/s; zero without any).
       type :: shell_diagnostics
-         double precision :: log_density = 0.0d0
+         real(dp) :: log_density = 0.0d0
          logical :: convective = .false.
-         double precision :: radiative_gradient = 0.0d0, actual_gradient = 0.0d0, &
+         real(dp) :: radiative_gradient = 0.0d0, actual_gradient = 0.0d0, &
               convective_velocity = 0.0d0
-         double precision :: kap_res(num_kap_results) = 0.0d0
-         double precision :: gamma1 = 0.0d0
+         real(dp) :: kap_res(num_kap_results) = 0.0d0
+         real(dp) :: gamma1 = 0.0d0
          type(nuclear_energy_result) :: burn
-         double precision :: deps_dlnrho = 0.0d0, deps_dlnt = 0.0d0
+         real(dp) :: deps_dlnrho = 0.0d0, deps_dlnt = 0.0d0
          logical :: has_eps_grav = .false.
-         double precision :: eps_grav = 0.0d0
-         double precision :: eps_extra = 0.0d0
+         real(dp) :: eps_grav = 0.0d0
+         real(dp) :: eps_extra = 0.0d0
       end type shell_diagnostics
 
 contains
@@ -128,7 +129,7 @@ contains
 ! carried from shell to shell. ierr is nonzero when the eos, the opacity,
 ! the gradients or an extra energy source fail.
 subroutine evaluate_shell_equations(sh, cfg, eos, saha_iterations, terms, diag, ierr)
-      use physical_constants
+      use physical_constants, only: c4pil, clni, ln10
       use math_lib
       type(shell_state), intent(in) :: sh
       type(structure_settings), intent(in) :: cfg
@@ -141,17 +142,21 @@ subroutine evaluate_shell_equations(sh, cfg, eos, saha_iterations, terms, diag, 
 ! Every mesh point is interior (not atmosphere), and the eos and
 ! gradient derivatives are always wanted.
       logical, parameter :: want_derivatives = .true., in_atmosphere = .false.
-! One year in seconds and its inverse: the entropy term's floor on the
-! time step (form_gravitational_energy_terms).
-      double precision, parameter :: one_year_sec = 3.1558d7, &
-           one_year_sec_inv = 3.1688d-8
-      double precision :: hydrogen_fraction, metal_fraction
-      double precision :: dgrad_dt_component, dgrad_dp_component, &
+! One year in seconds and the inverse the entropy term uses, as the F77
+! COEFFT wrote them (TIME, TIMEI; the inverse is 3.16877e-8 to five
+! digits, physical_constants' seconds_per_year is the year: replacing
+! either moves results, a B item): the entropy term's floor on the time
+! step while hydrogen is above eps_grav_floor_min_x
+! (form_gravitational_energy_terms).
+      real(dp), parameter :: one_year_sec = 3.1558d7, &
+           one_year_sec_inv = 3.1688d-8, eps_grav_floor_min_x = 0.01d0
+      real(dp) :: hydrogen_fraction, metal_fraction
+      real(dp) :: dgrad_dt_component, dgrad_dp_component, &
            dgrad_dr_component
-      double precision :: qtemp, qp, qt, qt_dl
-      double precision :: zone_dt, entropy_term1, entropy_term2, &
+      real(dp) :: qtemp, qp, qt, qt_dl
+      real(dp) :: zone_dt, entropy_term1, entropy_term2, &
            entropy_term, entropy_term3, rotational_energy_term, cccql
-      double precision :: chi_rho, chi_t, specific_heat_cv
+      real(dp) :: chi_rho, chi_t, specific_heat_cv
 
       ierr = 0
       hydrogen_fraction = sh%xa(i_h1)
@@ -279,10 +284,10 @@ end subroutine form_nuclear_energy_terms
 ! dt is the time step, or one year in zones with X > 0.01 when the step
 ! is shorter than that.
 subroutine form_gravitational_energy_terms()
-         diag%has_eps_grav = cfg%dt.gt.0.0d0
+         diag%has_eps_grav = cfg%dt > 0.0d0
          if (diag%has_eps_grav) then
             zone_dt = 1.0d0/cfg%dt
-            if (sh%xa(i_h1).gt.0.01d0 .and. cfg%dt.lt.one_year_sec) &
+            if (sh%xa(i_h1) > eps_grav_floor_min_x .and. cfg%dt < one_year_sec) &
                  zone_dt = one_year_sec_inv
 ! entropy_term1 = P chi/rho, entropy_term2 = entropy_term1/grad_ad,
 ! entropy_term = entropy_term2 Delta ln T - entropy_term1 Delta ln P,
@@ -337,7 +342,7 @@ end subroutine form_gravitational_energy_terms
 ! With no source registered nothing is evaluated or added.
 subroutine form_extra_energy_terms()
          type(energy_point) :: pt
-         double precision :: eps_extra, deps_dlnrho, deps_dlnt
+         real(dp) :: eps_extra, deps_dlnrho, deps_dlnt
          diag%eps_extra = 0.0d0
          if (num_energy_sources() == 0) return
          pt%mass = sh%mass

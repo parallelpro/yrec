@@ -8,6 +8,7 @@
 ! henyey_eliminate (henyey_elimination.f90) as it goes, and stores the
 ! shells' values for output.
 module structure_equations
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use star_info_lib, only: star_info
       implicit none
       private
@@ -54,7 +55,8 @@ contains
 !     pulse_specific_heat
 subroutine compute_henyey_coefficients(s, delta_time, saha_iterations, &
      envelope_zone_index, ierr)
-      use henyey_elimination
+      use henyey_elimination, only: eliminate_star_shell_pair
+      use core_messages, only: core_report, message_length, unwritten_line
       use shell_equations, only: henyey_shell_terms, shell_state, &
            structure_settings, shell_diagnostics, evaluate_shell_equations
       use star_info_lib, only: i_eps_grav, i_eps_neu, i_h1, i_lum_grav, &
@@ -62,12 +64,12 @@ subroutine compute_henyey_coefficients(s, delta_time, saha_iterations, &
       use net_lib, only: n_chains
       use eos_lib, only: eos_result
       use kap_lib, only: i_kap, i_dlnkap_dlnrho, i_dlnkap_dlnt
-      use physical_constants
+      use physical_constants, only: c4pi3l, cc13, cgl, clni, gas_constant
       use math_lib
       implicit none
       type(star_info), intent(inout) :: s
 
-      double precision, intent(in) :: delta_time
+      real(dp), intent(in) :: delta_time
       integer, intent(inout) :: saha_iterations
       integer, intent(in) :: envelope_zone_index
       integer, intent(out) :: ierr
@@ -82,10 +84,10 @@ subroutine compute_henyey_coefficients(s, delta_time, saha_iterations, &
 ! The equation terms at the current shell (cur) and, carried from the
 ! previous pass of the loop, at the shell below (prev).
       type(henyey_shell_terms) :: prev, cur
-      double precision :: energy_sum_inverse
+      real(dp) :: energy_sum_inverse
 ! the current shell's dln rho/dln P and dln rho/dln T (the central
 ! boundary condition and the pulse arrays)
-      double precision :: dlnrho_dlnt, dlnrho_dlnp
+      real(dp) :: dlnrho_dlnt, dlnrho_dlnp
       integer :: im, im1, j, chain
 
       ierr = 0
@@ -101,6 +103,7 @@ subroutine compute_henyey_coefficients(s, delta_time, saha_iterations, &
        call store_shell_structure()
        call add_shell_energy_budget()
        call eliminate_shell_pair()
+       if (ierr /= 0) return
        call store_zone_energy_channels()
        call store_zone_thermodynamics()
        call store_pulse_derivatives()
@@ -156,8 +159,8 @@ subroutine gather_shell_state()
        sh%ft = s%ft_rot(im)
        sh%log_temperature_delta = s%log_temperature_delta(im)
        sh%log_pressure_delta = s%log_pressure_delta(im)
-       if (s%mass_change_active.and.s%physics%mass_accretion_rate.gt.0.0d0) then
-          if (im.ge.envelope_zone_index) then
+       if (s%mass_change_active.and.s%physics%mass_accretion_rate > 0.0d0) then
+          if (im >= envelope_zone_index) then
              sh%log_temperature_delta = s%log_temperature_delta(im)+ &
                   s%delta_log_temperature
              sh%log_pressure_delta = s%log_pressure_delta(im)+ &
@@ -167,7 +170,7 @@ subroutine gather_shell_state()
        sh%rotational_ke = s%kinetic_energy_rot(im)
        sh%rotational_ke_start = s%kinetic_energy_rot_start(im)
        sh%in_overshoot = im >= s%envelope_overshoot_bottom_index .and. im <= s%envelope_overshoot_top_index
-       sh%in_surface_cz = im.ge.s%envelope_cz_bottom_index_start
+       sh%in_surface_cz = im >= s%envelope_cz_bottom_index_start
 end subroutine gather_shell_state
 
 ! ---------------------------------------------------------------
@@ -218,9 +221,13 @@ end subroutine add_shell_energy_budget
 ! Eliminate the pair (im-1, im), or set the central boundary conditions
 ! at im = 1; carry cur into prev.
 subroutine eliminate_shell_pair()
-         if (im.gt.1) then
+         if (im > 1) then
             im1 = im
-            call henyey_eliminate(s, im1, prev, cur)
+            call eliminate_star_shell_pair(s, im1, prev, cur, ierr)
+            if (ierr /= 0) then
+               call report_zero_pivot(im1)
+               return
+            end if
          else
 ! The central boundary conditions, rows 3 and 4 at shell 1 in the form
 ! of henyey_elimination.f90,
@@ -242,6 +249,18 @@ subroutine eliminate_shell_pair()
 ! Carry this shell's terms into the next pair's elimination.
          prev = cur
 end subroutine eliminate_shell_pair
+
+! ---------------------------------------------------------------
+! A zero pivot in the elimination of the pair (shell - 1, shell): to
+! the terminal and the run log; the run stops.
+subroutine report_zero_pivot(shell)
+      integer, intent(in) :: shell
+      character(len=message_length) :: lines(1)
+      lines = unwritten_line
+      write(lines(1),'(a,i0,a,i0,a)') ' henyey_eliminate: a zero pivot in the pair of shells ', &
+           shell - 1, ' and ', shell, '; run stopped'
+      call core_report(lines)
+end subroutine report_zero_pivot
 
 ! ---------------------------------------------------------------
 ! Store the shell's energy generation for output, for every model:
@@ -270,7 +289,7 @@ subroutine store_zone_energy_channels()
             end do
             s%eps_channels(i_eps_neu,im) = diag%burn%eps_neutrino_loss
             s%eps_channels(i_eps_grav,im) = s%eps_grav(im)
-            if (s%eps_total(im).gt.1.0d-22) then
+            if (s%eps_total(im) > 1.0d-22) then
                energy_sum_inverse = 1.0d0/s%eps_total(im)
             else
                energy_sum_inverse = 0.0d0
@@ -295,22 +314,8 @@ subroutine store_zone_thermodynamics()
          s%conv_vel(im) = diag%convective_velocity
          s%adiabatic_index_gamma1(im) = diag%gamma1
 
-! Disabled with rotation's advection-diffusion transport (2026-10-12),
-! their only reader: the copies of dln kappa/dln T, d eps/dln T and
-! (eps - eps_nu - eps_grav)/eps for rotation_stability_setup. They come
-! back with that transport.
-!         if (star%physics%rotation_active) then
-!            rot_scr%dlnkappa_dlnt(im) = diag%kap_res(i_dlnkap_dlnt)
-!            if (star%eps_total(im).gt.0.0d0) then
-!               total_energy_sum = star%eps_total(im)
-!               neutrino_and_grav_sum = star%eps_channels(i_eps_neu,im)+star%eps_channels(i_eps_grav,im)
-!               rot_scr%neutrino_loss_fraction(im) = (total_energy_sum - &
-!                    neutrino_and_grav_sum)/total_energy_sum
-!            else
-!               rot_scr%neutrino_loss_fraction(im) = 0.0d0
-!            end if
-!            rot_scr%deps_dlnt(im) = diag%deps_dlnt
-!         end if
+! The copies for rotation's stability setup are retired with its
+! advection-diffusion transport: structure/retired/rotation_stability_copies.f90.txt.
 end subroutine store_zone_thermodynamics
 
 ! ---------------------------------------------------------------
@@ -350,10 +355,10 @@ end subroutine compute_henyey_coefficients
 ! (with_extra_sources). henyey_iterate's per-iteration renormalization
 ! and observables' post-convergence one both take it, so a new channel
 ! (n_lum_channels + 1) is in both sums.
-pure double precision function luminosity_channel_sum(breakdown_lsun, &
+pure real(dp) function luminosity_channel_sum(breakdown_lsun, &
      with_extra_sources)
       use star_info_lib, only: i_lum_extra, n_lum_channels
-      double precision, intent(in) :: breakdown_lsun(n_lum_channels)
+      real(dp), intent(in) :: breakdown_lsun(:)
       logical, intent(in) :: with_extra_sources
       integer :: j
 

@@ -229,10 +229,7 @@ subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
       call update_surface_mixture
       call snapshot_step_start
       if (ierr /= 0) return
-      call compute_shell_physics(s, s%fp_rot,s%ft_rot, &
-           s%xa,s%logRho,s%luminosity_lsun,s%logP, &
-           s%logR,s%log_mass,s%logT,s%convective_flag,s%nz, &
-           s%log_Teff, jerr)
+      call compute_shell_physics(s, jerr)
       if (jerr /= 0) then
       ! Pass the error on.
          ierr = jerr
@@ -905,9 +902,7 @@ subroutine append_envelope_as_shells
 ! and interpolate the last one onto it (append_envelope_points, shared
 ! with rebuild_envelope; here a point exactly at the fitting mass is
 ! kept as a shell).
-            call append_envelope_points(s, .true., num_species, s%xa, &
-                 s%logRho, s%luminosity_lsun, s%logP, s%logR, &
-                 s%log_mass, s%logT, s%convective_flag, s%nz, ierr)
+            call append_envelope_points(s, .true., num_species, ierr)
             if (ierr /= 0) then
 ! A degenerate interpolation interval in mass is fatal; run_yrec
 ! returns the error.

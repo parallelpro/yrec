@@ -1,60 +1,58 @@
 !----------------------------------------------------------------------
 ! envelope_integration
 !----------------------------------------------------------------------
-! Added 2026 (physics-purity pass, atm split -- docs/ROADMAP.md): the
-! envelope/atmosphere INTEGRATION, moved out of atm_lib. atm_get is
-! the star solver's outer-boundary integrator: it integrates the
-! atmosphere and envelope down to the fit point, driving the
-! atmosphere_derivs/envelope_derivs integrands (which call the eos/
-! kap facades) through numerics' bsstep in core/envelope/envelope_integration_kernel.f90,
-! consuming the pure atm surface lookups (surfp/kcsurfp/interpolate_allard_surface --
-! still atm-domain physics) and writing model state (star%photosphere_logP and
-! the star's envelope and atmosphere points). In MESA terms this is star-solver code (create_atm/env
-! integration), not the atm physics module -- which is why it now
-! lives in core/ with the derivative routines, surfbc and the
-! turnover diagnostics. atm/ keeps what MESA's atm has: tables,
-! their init, and pure surface lookups.
+! The star-layer driver of the outer layers' integration. atm_get
+! integrates the atmosphere and the envelope from the surface down to the
+! fitting point: it fills the kernel's settings (envint_config) from the
+! star's controls and atm_choice_in_use, calls the star-blind kernel
+! (envelope_integration_kernel.f90, whose integrands in
+! envelope_integrands.f90 call the eos and kap facades, through numerics'
+! bsstep), applies the integration's two effects on the star
+! (star%photosphere_logP, and the gray atmosphere after a failed Allard
+! lookup), and reports the kernel's events (report_envint_events). The
+! points it integrates go to the star's env_points, atm_points and
+! atm_point. The tables and their surface lookups are atm's. The helpers
+! fixed_envint_step, surface_log10_radius_cm and ambient_log10_teff serve
+! atm_get's callers (compute_surface_boundary, rebuild_envelope,
+! read_starting_model, build_stitched_model).
 module envelope_integration
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use star_info_lib, only: star_info
       implicit none
+      private
+      public :: atm_get, fixed_envint_step, surface_log10_radius_cm, &
+           ambient_log10_teff
 
-! 2026 W2: fixed Bulirsch-Stoer step-size triple (begin/min/max) a
-! driver can hand atm_get in place of the controls' {atm,env}_step_*
-! values -- replaces the former save/override/restore of those controls
-! around the call in rebuild_envelope, read_starting_model and
-! build_stitched_model.
+! A Bulirsch-Stoer step-size triple (begin, min, max) a driver can hand
+! atm_get in place of the controls' {atm,env}_step_* values, for that
+! call only (rebuild_envelope, read_starting_model, build_stitched_model).
       type, public :: envint_step_config
-            double precision :: step_begin, step_min, step_max
+            real(dp) :: step_begin, step_min, step_max
       end type envint_step_config
 
 contains
 
 ! all three step sizes equal to h (the only pattern the drivers use)
 pure function fixed_envint_step(h) result(steps)
-      double precision, intent(in) :: h
+      real(dp), intent(in) :: h
       type(envint_step_config) :: steps
       steps%step_begin = h
       steps%step_min = h
       steps%step_max = h
 end function fixed_envint_step
 
-! 2026 W3: the surface geometry atm_get's callers derive from (L, Teff)
-! before integrating -- shared by rebuild_envelope, surfbc and
-! build_stitched_model.
-!
 ! log10 of the surface radius (cm) from log10 L/Lsun and log10 Teff,
-! L = 4 pi R**2 sigma Teff**4. NOTE the operand order inside the
-! parenthesis: this is the order the three callers above have always
-! used; physical_constants's log10_radius_from_l_teff evaluates the
-! same identity with the - 4 log Teff term last, which can differ in
-! the last bit. Unifying
-! them is a numbers-changing decision (R6), so both forms are kept.
+! L = 4 pi R**2 sigma Teff**4, as rebuild_envelope, compute_surface_boundary
+! and build_stitched_model derive it before integrating. The operand
+! order is theirs; physical_constants' log10_radius_from_l_teff adds the
+! - 4 log Teff term last, which can differ in the last bit, so the two
+! forms are kept apart (merging them moves results).
 !   star reads: log10_solar_luminosity
 !   star writes: none
-double precision function surface_log10_radius_cm(s, log_luminosity_lsun, log_teff)
-      use physical_constants
+real(dp) function surface_log10_radius_cm(s, log_luminosity_lsun, log_teff)
+      use physical_constants, only: c4pil, csigl
       type(star_info), intent(inout) :: s
-      double precision, intent(in) :: log_luminosity_lsun, log_teff
+      real(dp), intent(in) :: log_luminosity_lsun, log_teff
       surface_log10_radius_cm = 0.5d0*(log_luminosity_lsun + s%log10_solar_luminosity &
            - 4.0d0*log_teff - c4pil - csigl)
 end function surface_log10_radius_cm
@@ -67,10 +65,10 @@ end function surface_log10_radius_cm
 ! its own copy with d0 literals, which is not token-identical.
 !   star reads: physics%spot_filling_factor, physics%spot_temp_contrast
 !   star writes: none
-double precision function ambient_log10_teff(s, log_teff)
+real(dp) function ambient_log10_teff(s, log_teff)
       use math_lib
       type(star_info), intent(inout) :: s
-      double precision, intent(in) :: log_teff
+      real(dp), intent(in) :: log_teff
       ambient_log10_teff = log_teff - 0.25*log10(s%physics%spot_filling_factor * &
            pow(s%physics%spot_temp_contrast, 4.0) + 1.0 - s%physics%spot_filling_factor)
 end function ambient_log10_teff
@@ -93,56 +91,52 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
      vertex_index, stored_envelope_state, stored_vertex_index, &
      vtx_logp, vtx_logr, vtx_logt, atm_steps, env_steps)
 
-! 2026 envint purity split phase B: atm_get is now the thin star-layer
-! DRIVER. It snapshots the configuration out of the star (its controls
-! and atm_choice_in_use) into an envint_config, calls the star-blind kernel
-! (core/envelope/envelope_integration_kernel.f90), and applies the star-state consequences:
-! star%photosphere_logP from the integrated photosphere, and the Allard
-! gray-fallback switch (atm_choice_in_use -> 0) when the
-! kernel reports it.
-!
-! 2026 W2 (readability, core 5): the fit-vertex bookkeeping
-! (vertex_index, stored_envelope_state, stored_vertex_index,
-! vtx_logp/logr/logt) is OPTIONAL and only surfbc passes it -- all
-! six together; the other drivers call with save_boundary_flag
-! .false., under which the kernel never writes them (it only
-! compares stored_vertex_index against vertex_index), so they get
-! zero-valued scratch here. atm_steps/env_steps, when present,
-! replace the controls' {atm,env}_step_* triples for this call only
-! (the drivers that used to overwrite and restore the controls).
-      use envelope_integration_kernel
+! atm_get: one integration of the atmosphere and the envelope for the
+! star, at L (Lsun, luminosity_linear), f_P and f_T, log g, log M, log R,
+! log Teff and the surface X, Z and composition. The fitting-vertex
+! arguments (vertex_index, stored_envelope_state, stored_vertex_index,
+! vtx_logp/logr/logt) are optional and go together: only
+! compute_surface_boundary passes them, with save_boundary_flag; the
+! other drivers call without them and save_boundary_flag false, under
+! which the kernel never writes them, so they get zeroed stand-ins here.
+! atm_steps and env_steps, when present, replace the controls' step
+! sizes for this call. print_flag adds the fitted vertex to the solver
+! diagnostics.
+      use envelope_integration_kernel, only: envint_config, envint_events, &
+           integrate_envelope_atmosphere
       use physical_constants, only: cgl
-      use atm_lib, only: hsra_t_tau_offset
+      use atm_lib, only: hsra_t_tau_offset, atm_eddington_gray
       implicit none
       type(star_info), intent(inout) :: s
 
-      double precision, intent(inout) :: luminosity_linear, &
+      real(dp), intent(inout) :: luminosity_linear, &
            pressure_rotation_factor, temperature_rotation_factor, &
            log10_gravity
-      double precision, intent(in) :: log10_star_mass
+      real(dp), intent(in) :: log10_star_mass
       logical, intent(in) :: print_flag
       logical, intent(in) :: save_boundary_flag
-      double precision, intent(in) :: log10_pressure_limit
-      double precision, intent(inout) :: log10_radius
-      double precision, intent(inout) :: log10_teff
-      double precision, intent(inout) :: hydrogen_fraction, metal_fraction
+      real(dp), intent(in) :: log10_pressure_limit
+      real(dp), intent(inout) :: log10_radius
+      real(dp), intent(inout) :: log10_teff
+      real(dp), intent(inout) :: hydrogen_fraction, metal_fraction
       ! surface_composition: the outer shell's composition (star%xa layout),
       ! for the EOS's Debye-Hueckel correction.
-      double precision, intent(in) :: surface_composition(:)
+      real(dp), intent(in) :: surface_composition(:)
       integer, intent(inout) :: saha_iterations
       integer, intent(out) :: ierr
       integer, intent(in), optional :: vertex_index
-      double precision, intent(inout), optional :: stored_envelope_state(4)
+      real(dp), intent(inout), optional :: stored_envelope_state(:)
       integer, intent(inout), optional :: stored_vertex_index
-      double precision, intent(inout), optional :: vtx_logp(3), vtx_logr(3), &
-           vtx_logt(3)
+      real(dp), intent(inout), optional :: vtx_logp(:), vtx_logr(:), &
+           vtx_logt(:)
       type(envint_step_config), intent(in), optional :: atm_steps, env_steps
 
       type(envint_config) :: cfg
+      type(envint_events) :: events
       logical :: switched_to_gray
-      double precision :: log10_photo_pressure
+      real(dp) :: log10_photo_pressure
 ! scratch stand-ins for the absent vertex group (never read back)
-      double precision :: scratch_state(4), scratch_logp(3), scratch_logr(3), &
+      real(dp) :: scratch_state(4), scratch_logp(3), scratch_logr(3), &
            scratch_logt(3)
       integer :: scratch_vertex_index, scratch_stored_vertex_index
 
@@ -195,6 +189,8 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
               scratch_stored_vertex_index, scratch_logp, scratch_logr, &
               scratch_logt)
       end if
+! The kernel's notes, diagnostics and failure, as it used to print them.
+      call report_envint_events(events, switched_to_gray, print_flag)
 
 ! star-state consequences of the integration, applied HERE and only
 ! here (the kernel never sees star_info):
@@ -202,26 +198,125 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
       if (switched_to_gray) then
 ! Allard table lookup out of range: the kernel fell back to a gray
 ! atmosphere for this and all future calls (historical behavior)
-         s%atm_choice_in_use = 0
+         s%atm_choice_in_use = atm_eddington_gray
       end if
 
 contains
 
       subroutine run_kernel(vidx, state, sidx, logp, logr, logt)
             integer, intent(in) :: vidx
-            double precision, intent(inout) :: state(4)
+            real(dp), intent(inout) :: state(:)
             integer, intent(inout) :: sidx
-            double precision, intent(inout) :: logp(3), logr(3), logt(3)
+            real(dp), intent(inout) :: logp(:), logr(:), logt(:)
             call integrate_envelope_atmosphere(cfg, switched_to_gray, &
                  log10_photo_pressure, &
                  luminosity_linear, pressure_rotation_factor, &
                  temperature_rotation_factor, log10_gravity, log10_star_mass, &
-                 vidx, print_flag, save_boundary_flag, log10_pressure_limit, &
+                 vidx, save_boundary_flag, log10_pressure_limit, &
                  log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
                  state, sidx, saha_iterations, logp, logr, logt, &
-                 s%env_points, s%atm_points, s%atm_point, ierr)
+                 s%env_points, s%atm_points, s%atm_point, events, ierr)
       end subroutine run_kernel
 
 end subroutine atm_get
 
+! ---------------------------------------------------------------
+! The messages of one envelope integration (integrate_envelope_atmosphere
+! prints nothing): the switch to a gray atmosphere after a failed Allard
+! lookup, to standard output and the run log; then the kernel's events
+! in order. The completed integrations' step counts and errors go to the
+! run log with the solver diagnostics on, and the fitted vertex as well
+! when print_flag asks for it; a starting optical depth past the
+! photosphere goes to the run log; the integrations' failures go to the
+! terminal and the run log, except a failed Bulirsch-Stoer step, whose
+! status goes to standard output.
+subroutine report_envint_events(events, switched_to_gray, print_flag)
+      use envelope_integration_kernel, only: envint_events, &
+           envint_start_retry, envint_atmosphere_done, &
+           envint_atmosphere_maxstp, envint_bsstep_limits, &
+           envint_bsstep_failed, envint_vertex, envint_envelope_done, &
+           envint_envelope_maxstp
+      use core_messages, only: core_report, core_log, core_stdout, &
+           core_stdout_and_log, log_envelope_start_retry, message_length, &
+           unwritten_line
+      use run_messages, only: solver_diagnostics
+      use numerics_lib, only: numerics_status_text, bsstep_max_extrap_order, &
+           bsstep_max_stages
+      type(envint_events), intent(in) :: events
+      logical, intent(in) :: switched_to_gray, print_flag
+      character(len=message_length) :: lines(3)
+      integer :: k
+
+      if (switched_to_gray) then
+         lines = unwritten_line
+         lines(1) = ' note: Allard table lookup out of range;' &
+              // ' switching to a gray atmosphere'
+         call core_stdout_and_log(lines)
+      end if
+      do k = 1, events%num_events
+         lines = unwritten_line
+         associate (e => events%event(k))
+         select case (e%kind)
+         case (envint_start_retry)
+            call log_envelope_start_retry(e%values(1), e%values(2))
+         case (envint_atmosphere_done)
+            if (solver_diagnostics()) then
+               write(lines,35) e%counts(1), e%counts(2), e%values(1)
+   35          format(1X,'ATMOSPHERE INTEGRATION COMPLETE',1X, &
+                    'NUMBER OF STEPS ACCEPTED',I5,' REJECTED', &
+                    I5/5X,'MAXIMUM RELATIVE ERROR IN P ',1PE22.13)
+               call core_log(lines)
+            end if
+         case (envint_atmosphere_maxstp)
+            write(lines,50)
+   50       format(5X,'ATMOSPHERE INTEGRATION FAILED AFTER MAXSTP',1X, &
+                 'INTEGRATIONS.I QUIT.')
+            call core_report(lines)
+         case (envint_bsstep_limits)
+            write(lines,'(1x,a,i0,a,i0,a,i0,a,i0)') &
+                 'ENVINT: Bulirsch-Stoer limits out of range: imax = ', &
+                 e%counts(1), ', nuse = ', e%counts(2), '; need 2 <= nuse <= ', &
+                 bsstep_max_extrap_order, ' and nuse <= imax <= ', bsstep_max_stages
+            call core_report(lines)
+         case (envint_bsstep_failed)
+            lines(1) = ' bsstep: '//numerics_status_text(e%counts(1))
+            call core_stdout(lines)
+         case (envint_vertex)
+            if (print_flag .and. solver_diagnostics()) then
+               write(lines,230) e%values(1:4)
+ 230           format(4X,3F16.12,8X,F16.12)
+               call core_log(lines)
+            end if
+         case (envint_envelope_done)
+            if (solver_diagnostics()) then
+               write(lines,215) e%counts(1), e%counts(2), e%values(1:5)
+ 215           format(1X,'ENVELOPE INTEGRATION COMPLETE',1X, &
+                    'NUMBER OF STEPS ACCEPTED',I5,' REJECTED', &
+                    I5/5X,'SENV-LAST M=',1PE22.13,'  LAST M=',E22.13/ &
+                    5X,'MAX RELATIVE ERRORS:M ',1PE14.5,'  T ',E14.5, &
+                    '  R ',E14.5)
+               call core_log(lines)
+            end if
+         case (envint_envelope_maxstp)
+            write(lines,911)
+ 911        format(5X,'ENVELOPE INTEGRATION FAILED AFTER MAXSTP TRIES.',1X, &
+                 'I QUIT')
+            call core_report(lines)
+         end select
+         end associate
+      end do
+end subroutine report_envint_events
+
 end module envelope_integration
+
+! Sources
+! - The integration was atm_lib's until the physics-purity pass of 2026
+!   (docs/ROADMAP.md, the atm split), which moved it into core as
+!   star-solver code (MESA's create_atm and envelope integration), with
+!   the kernel split from this driver (envint purity split); atm keeps
+!   the tables and their surface lookups.
+! - The step-size triple replaced a save, override and restore of the
+!   controls around the call in rebuild_envelope, read_starting_model
+!   and build_stitched_model (2026, readability wave 2).
+! - The kernel prints nothing since round 2 (core_messages; this driver
+!   reports its events).

@@ -1,0 +1,41 @@
+test_timestep_limits report
+-- structure
+structure: off -> unlimited                                    1.0E+20  ok
+structure: nothing changed -> the previous dt                  0.0E+00  ok
+structure: f = dlog P/atime(dp)                                0.0E+00  ok
+structure: f = dlog T/atime(dt), the largest change            0.0E+00  ok
+structure: f = dlog R/atime(dr)                                0.0E+00  ok
+structure: f = (dL/mean L)/(2.3026 atime(dl))                  0.0E+00  ok
+structure: the centre's L against L(2)                         0.0E+00  ok
+structure: f clipped to a                                      0.0E+00  ok
+structure: f clipped to 1/a                                    0.0E+00  ok
+structure: a limit below 1 s -> unlimited                      1.0E+20  ok
+-- omega
+omega: off -> unlimited, max_domega_frac kept                  1.0E+20  ok
+omega: max_domega_frac = max 2|w - w0|/(w + w0)                0.0E+00  ok
+omega: dt = dt_prev max_domega_global/max_domega_frac          0.0E+00  ok
+omega: no change -> unlimited                                  1.0E+20  ok
+-- hydrogen
+hydrogen: L_H <= 1e-34 -> unlimited                            1.0E+20  ok
+hydrogen: core E_H dX m_cc/(L_cc Lsun)                         0.0E+00  ok
+hydrogen: core dX = atime(dx_core_frac) X_cc                   0.0E+00  ok
+hydrogen: shell E_H atime(dx_total) X_surf Msun/(L_H Lsun)     0.0E+00  ok
+-- helium
+helium: L_3alpha <= 1e-34 -> unlimited                         1.0E+20  ok
+helium: flash 1e15/eps_3alpha                                  0.0E+00  ok
+helium: flash rate floored at 1e-22                            0.0E+00  ok
+helium: core E_He dY m_cc/(L_cc Lsun)                          0.0E+00  ok
+helium: shell the smaller of the two limits                    0.0E+00  ok
+helium: shell with L <= 0 -> unlimited                         1.0E+20  ok
+hottest_zone: the first largest log T                          2.0E+00  ok
+-- hr
+hr: off while the structure limits are on                      1.0E+20  ok
+hr: off unless use_envelope_triangle_dt                        1.0E+20  ok
+hr: f = dlog Teff/tri_delta_teffl                              1.1E-14  ok
+hr: f = dlog L/tri_delta_logl                                  0.0E+00  ok
+hr: nothing changed -> the previous dt                         0.0E+00  ok
+-- tightest
+tightest: the growth limit a dt_prev                           0.0E+00  ok
+tightest: the smallest limit                                   0.0E+00  ok
+tightest: dt_prev <= 1 s: the smallest limit alone             3.0E+00  ok
+test_timestep_limits: done

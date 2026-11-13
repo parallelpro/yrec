@@ -388,7 +388,7 @@ module star_info_lib
 ! (surface_boundary's on_gray_fallback, derived, not a latch).
             integer :: atm_choice_in_use
 ! the structure-based timestep limits are on [logical]; run_driver,
-! step_driver, controls_sync. From physics%use_structure_dt_limits;
+! timestep_control, controls_sync. From physics%use_structure_dt_limits;
 ! compute_timestep switches them off, and each solar-calibration cycle
 ! restores them from the control (run_driver).
             logical :: structure_dt_limits_active
@@ -574,27 +574,27 @@ module star_info_lib
             real(dp) :: log_fit_point_mass_fraction
 ! (log P, log T, log r, log m/M) where a vertex's envelope integration
 ! first reached envelope_store_log_temperature [log10 cgs];
-! henyey_iteration. The rezone uses it to add a point at the surface.
+! surface_boundary. The rezone uses it to add a point at the surface.
             real(dp) :: stored_envelope_state(4)
 ! coefficients c(1:9) of the envelope fit at the fitting point: log R,
-! log L and log Teff each = c log P + c log T + c [-]; henyey_iteration,
+! log L and log Teff each = c log P + c log T + c [-]; surface_boundary,
 ! model_files. Rebuilt by compute_surface_boundary when the triangle
 ! changes; read from YREC7/MODEL2 files, not written to .mod.
             real(dp) :: envelope_fit_coeffs(9)
 ! log10 L of the three vertices of the envelope-fit triangle
-! [log10 Lsun]; henyey_iteration, model_files
+! [log10 Lsun]; surface_boundary, model_files
             real(dp) :: triangle_log_l_lsun(3)
 ! log10 Teff of the three vertices of the envelope-fit triangle
-! [log10 K]; henyey_iteration, model_files
+! [log10 K]; surface_boundary, model_files
             real(dp) :: triangle_log_teff(3)
 ! log10 P at the fitting point of each vertex's envelope integration
-! [log10 dyn/cm^2]; henyey_iteration, model_files
+! [log10 dyn/cm^2]; surface_boundary, model_files
             real(dp) :: fit_point_logP(3)
 ! log10 T at the fitting point of each vertex [log10 K];
-! henyey_iteration, model_files
+! surface_boundary, model_files
             real(dp) :: fit_point_logT(3)
 ! log10 r at the fitting point of each vertex [log10 cm];
-! henyey_iteration, model_files
+! surface_boundary, model_files
             real(dp) :: fit_point_logR(3)
 ! which triangle vertex stored stored_envelope_state (0: none) [-];
 ! step_driver, run_driver
@@ -717,7 +717,7 @@ module star_info_lib
 ! dt in years [yr]; step_driver, run_driver. In .mod.
             real(dp) :: timestep_yr
 ! largest fractional change of omega over the step [-]; step_driver,
-! run_driver. Written by compute_timestep and evolve_angular_momentum.
+! timestep_control. Written by compute_timestep and evolve_angular_momentum.
             real(dp) :: max_domega_frac
 ! the structure solve of this step diverged; a set flag stops the run on
 ! the next pass [logical]; step_driver, run_driver

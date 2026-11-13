@@ -1,0 +1,36 @@
+-- integrands
+atmosphere: dlog P/dlog tau = g tau/(kappa P)                1.1E-16  ok
+atmosphere: T^4 = (3/4) Teff^4 (tau + 2/3)                   4.4E-16  ok
+envelope: dlog m/dlog P = -4 pi r^4 P/(G m^2)                1.6E-14  ok
+envelope: dlog r/dlog P = -r P/(G m rho)                     8.8E-15  ok
+envelope: dlog T/dlog P = grad                               0.0E+00  ok
+-- solve
+ierr = 0                                                     0.0E+00  ok
+events: atmosphere done, vertex, envelope done               3.0E+00  ok
+not switched to gray                                         0.0E+00  ok
+photosphere at tau = 2/3                                     5.6E-11  ok
+T = Teff at the photosphere                                  1.6E-11  ok
+photospheric P = the last atmosphere point's                 0.0E+00  ok
+envelope ends at the fitting mass                            1.0E-14  ok
+the vertex event holds the vertex                            0.0E+00  ok
+-- reference
+atmosphere steps = RK4 (log P)                               5.5E-08  ok
+envelope steps = RK4 (log m, log T, log r)                   6.0E-08  ok
+vertex = interpolation to the fitting mass                   8.2E-12  ok
+-- thin
+thin: ierr = 0, no envelope points                           0.0E+00  ok
+thin: vertex = the surface point                             0.0E+00  ok
+-- retry
+retry: an envint_start_retry event first                     1.0E+00  ok
+retry: its start lies past the photosphere                   6.2E+00  ok
+retry: then the integration succeeds                         0.0E+00  ok
+-- errors
+atmosphere maxstp: ierr = 1, its event last                  1.0E+00  ok
+atmosphere maxstp: no photospheric pressure                 -1.0E+99  ok
+envelope maxstp: ierr = 1, its event last                    1.0E+00  ok
+envelope maxstp: the photosphere was reached                 5.0E+00  ok
+bsstep limits: ierr = numerics_bad_input                     3.0E+00  ok
+bsstep limits: the event holds imax, nuse                    1.0E+00  ok
+step underflow: ierr = envelope_termination                 -2.0E+00  ok
+step underflow: the event holds bsstep's status              4.0E+00  ok
+test_envelope_integration: done

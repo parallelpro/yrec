@@ -5,6 +5,7 @@
 ! opacity, the temperature gradients, mu, and the viscosity, for the
 ! rotation code and the convection-zone edges.
 module shell_physics
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use star_info_lib, only: star_info
       implicit none
       private
@@ -25,44 +26,37 @@ contains
 ! and grad_ad (gradr, gradT, grada), the mean molecular weight mu, the
 ! opacity, c_P, dlnrho/dlnT (dlnrho_dlnt) and the convective velocity;
 ! then viscos gives the kinematic viscosity and the thermal diffusivity.
-! log_luminosity holds L/Lsun, not its log (callers pass star%luminosity_lsun).
+! It reads the model from the star (its composition, structure, rotation
+! factors and log Teff), as its three callers (starting_model, rezoning,
+! evolve_rotation) all passed it.
 !   star reads: envelope_he3_fraction, envelope_helium_fraction,
 !     envelope_hydrogen_fraction, envelope_inverse_atomic_weight,
 !     envelope_metal_fraction, envelope_overshoot_bottom_index,
-!     envelope_overshoot_top_index
-!   star writes: conv_vel, cp, dlnrho_dlnt, grada, gradr, gradT,
-!     kinematic_viscosity, mu, opacity_zone, thermal_diffusivity
-subroutine compute_shell_physics(s, fp, ft, composition, log_density, log_luminosity, &
-     log_pressure, log_radius, log_mass, log_temperature, convective_flag, &
-     num_zones, log_teff, ierr)
+!     envelope_overshoot_top_index, fp_rot, ft_rot, log_mass, log_Teff,
+!     logP, logR, logRho, logT, luminosity_lsun, nz, xa
+!   star writes: conv_vel, convective_flag, cp, dlnrho_dlnt, grada,
+!     gradr, gradT, kinematic_viscosity, mu, opacity_zone,
+!     thermal_diffusivity
+subroutine compute_shell_physics(s, ierr)
       use viscosity, only: viscos
       use convection_lib, only: compute_temperature_gradients
 
-      use star_info_lib, only: json, i_h1, i_he4, i_metals, i_he3
-      use physical_constants
-      use eos_lib
-      use kap_lib
+      use star_info_lib, only: i_h1, i_he4, i_metals, i_he3
+      use eos_lib, only: eos_get, eos_result
+      use kap_lib, only: i_kap, kap_get, num_kap_results
       use math_lib
       implicit none
       type(star_info), intent(inout) :: s
-
-      double precision, intent(in) :: fp(json), ft(json)
-      double precision, intent(in) :: composition(15,json), log_density(json)
-      double precision, intent(in) :: log_luminosity(json), &
-           log_pressure(json), log_radius(json), log_mass(json), &
-           log_temperature(json)
-      logical, intent(out) :: convective_flag(json)
-      integer, intent(in) :: num_zones
-      double precision, intent(in) :: log_teff
       integer, intent(out) :: ierr
 
-      double precision :: atomic_weight(4)
-! Indexed by species slot (i_h1, i_he4, i_metals as C12, i_he3).
-      data atomic_weight /1.007825d0, 4.002603d0, 12.0d0, 3.01603d0/
+! The atomic masses (amu) of H1, He4, the metals (as C12) and He3,
+! indexed by their composition slots (i_h1 = 1, i_he4 = 2, i_metals = 3,
+! i_he3 = 4), as rotation's transport_checks has them.
+      real(dp), parameter :: atomic_weight(4) = [1.007825d0, 4.002603d0, 12.0d0, 3.01603d0]
 ! --- locals ---
       logical :: want_derivatives, in_atmosphere
       integer :: im
-      double precision :: log10_mass, log10_temperature, log10_pressure, &
+      real(dp) :: log10_mass, log10_temperature, log10_pressure, &
            log10_radius, luminosity_lsun, hydrogen_fraction, &
            metal_fraction, log10_density, pressure_rotation_factor, &
            temperature_rotation_factor
@@ -74,13 +68,13 @@ subroutine compute_shell_physics(s, fp, ft, composition, log_density, log_lumino
 ! returned, not the model's log_density; passing log_density instead
 ! changes rotating runs (the byte gate catches it).
       type(eos_result) :: eos_res
-      double precision :: kap_res(num_kap_results)
+      real(dp) :: kap_res(num_kap_results)
       integer :: saha_iterations
-      double precision :: actual_gradient, radiative_gradient, &
+      real(dp) :: actual_gradient, radiative_gradient, &
            dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
            convective_velocity
       logical :: is_convective
-      double precision :: dfx1, dfx2, dfx3, dfx4, temp_scratch, amu2, emu2
+      real(dp) :: dfx1, dfx2, dfx3, dfx4, temp_scratch, amu2, emu2
 
       ierr = 0
 
@@ -90,23 +84,23 @@ subroutine compute_shell_physics(s, fp, ft, composition, log_density, log_lumino
       in_atmosphere = .false.
 ! The Saha solver state starts at 0 and carries over from zone to zone.
       saha_iterations = 0
-      do im = 1,num_zones
-         log10_mass = log_mass(im)
-         log10_temperature = log_temperature(im)
-         log10_pressure = log_pressure(im)
-         log10_radius = log_radius(im)
-         luminosity_lsun = log_luminosity(im)
-         hydrogen_fraction = composition(i_h1,im)
-         metal_fraction = composition(i_metals,im)
-         log10_density = log_density(im)
-         pressure_rotation_factor = fp(im)
-         temperature_rotation_factor = ft(im)
+      do im = 1,s%nz
+         log10_mass = s%log_mass(im)
+         log10_temperature = s%logT(im)
+         log10_pressure = s%logP(im)
+         log10_radius = s%logR(im)
+         luminosity_lsun = s%luminosity_lsun(im)
+         hydrogen_fraction = s%xa(i_h1,im)
+         metal_fraction = s%xa(i_metals,im)
+         log10_density = s%logRho(im)
+         pressure_rotation_factor = s%fp_rot(im)
+         temperature_rotation_factor = s%ft_rot(im)
 
          eos_res%log10_density = log10_density
          call eos_get(log10_temperature, log10_pressure, &
               hydrogen_fraction, metal_fraction, eos_res, &
               want_derivatives, in_atmosphere, saha_iterations, &
-              composition_at_zone=composition(:,im), ierr=ierr)
+              composition_at_zone=s%xa(:,im), ierr=ierr)
          if (ierr /= 0) return
          call kap_get(eos_res%log10_density, log10_temperature, &
               hydrogen_fraction, metal_fraction, kap_res, &
@@ -118,10 +112,10 @@ subroutine compute_shell_physics(s, fp, ft, composition, log_density, log_lumino
               dgrad_dt_component, dgrad_dp_component, dgrad_dr_component, &
               convective_velocity, want_derivatives, is_convective, &
               pressure_rotation_factor, temperature_rotation_factor, &
-              log_teff, &
+              s%log_Teff, &
               im >= s%envelope_overshoot_bottom_index .and. im <= s%envelope_overshoot_top_index, ierr)
          if (ierr /= 0) return
-         convective_flag(im) = is_convective
+         s%convective_flag(im) = is_convective
          s%gradr(im) = radiative_gradient
          s%gradT(im) = actual_gradient
          s%grada(im) = eos_res%adiabatic_gradient
@@ -131,17 +125,17 @@ subroutine compute_shell_physics(s, fp, ft, composition, log_density, log_lumino
 !              over H, He4, Z (as C12) and He3, the first term being 1/mu_ion
 !              of the surface mixture and X_k,env its abundances;
 !   1/mu_e = X/A_H + 2 (X_He3/A_He3 + Y/A_He4) + Z/2.
-         dfx1 = composition(i_h1,im) - s%envelope_hydrogen_fraction
-         dfx2 = composition(i_he4,im) - s%envelope_helium_fraction
-         dfx3 = composition(i_metals,im) - s%envelope_metal_fraction
-         dfx4 = composition(i_he3,im) - s%envelope_he3_fraction
+         dfx1 = s%xa(i_h1,im) - s%envelope_hydrogen_fraction
+         dfx2 = s%xa(i_he4,im) - s%envelope_helium_fraction
+         dfx3 = s%xa(i_metals,im) - s%envelope_metal_fraction
+         dfx4 = s%xa(i_he3,im) - s%envelope_he3_fraction
          temp_scratch = s%envelope_inverse_atomic_weight + dfx1/atomic_weight(i_h1) + &
               dfx2/atomic_weight(i_he4) + dfx3/atomic_weight(i_metals) + &
               dfx4/atomic_weight(i_he3)
          amu2 = 1.0d0/temp_scratch
-         temp_scratch = composition(i_h1,im)/atomic_weight(i_h1) + &
-              2.0d0*(composition(i_he3,im)/atomic_weight(i_he3) + &
-              composition(i_he4,im)/atomic_weight(i_he4)) + 0.5d0*composition(i_metals,im)
+         temp_scratch = s%xa(i_h1,im)/atomic_weight(i_h1) + &
+              2.0d0*(s%xa(i_he3,im)/atomic_weight(i_he3) + &
+              s%xa(i_he4,im)/atomic_weight(i_he4)) + 0.5d0*s%xa(i_metals,im)
          emu2 = 1.0d0/temp_scratch
          s%mu(im) = amu2*emu2/(amu2+emu2)
          s%opacity_zone(im) = kap_res(i_kap)
@@ -150,8 +144,8 @@ subroutine compute_shell_physics(s, fp, ft, composition, log_density, log_lumino
          s%conv_vel(im) = convective_velocity
       end do
 ! The thermal diffusivity and kinematic viscosity.
-      call viscos(composition, log_density, log_temperature, s%opacity_zone, &
-           s%cp, num_zones, s%kinematic_viscosity, s%thermal_diffusivity)
+      call viscos(s%xa, s%logRho, s%logT, s%opacity_zone, &
+           s%cp, s%nz, s%kinematic_viscosity, s%thermal_diffusivity)
 end subroutine compute_shell_physics
 
 end module shell_physics

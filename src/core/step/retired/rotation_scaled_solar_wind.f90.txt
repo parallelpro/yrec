@@ -1,0 +1,27 @@
+! Retired from core/step/mass_change.f90 (apply_mass_change, after the
+! mass-loss rate is set and before it is converted to g/s), round 2
+! (2026-11-12); commented out there since 2026-10-12 by the author's
+! decision.
+!
+! The solar wind scaled by the surface rotation (MHP 8/10),
+!   Mdot = Mdot_sun min((omega/omega_ref)^2, (omega_max/omega_ref)^2).
+! Nothing set its switch or its three parameters (the legacy LSOLWIND was
+! read but never reached them), so it never ran.
+!
+! To revive it: add the switch and the three parameters
+! (use_rotation_scaled_solar_wind, wind_reference_omega, wind_max_omega,
+! solar_wind_mass_loss_rate_msun_yr) as controls (io/README, the controls
+! recipe) and star members, declare the two locals in apply_mass_change,
+! put the block back where the pointer comment is, write its line
+! through core_messages (core_stdout) rather than write(*,*), and update
+! the star contract (tools/check_star_contracts.py --fix).
+
+      real(dp) :: omega_ratio_sq, omega_max_ratio_sq
+
+      if(star%use_rotation_scaled_solar_wind .and. star%physics%rotation_active) then
+         omega_ratio_sq = (star%omega(nz)/star%wind_reference_omega)**2
+         omega_max_ratio_sq = (star%wind_max_omega/star%wind_reference_omega)**2
+         mass_loss_rate_msun_yr = star%solar_wind_mass_loss_rate_msun_yr* &
+              min(omega_ratio_sq,omega_max_ratio_sq)
+         write(*,*)star%omega(nz),mass_loss_rate_msun_yr
+      endif

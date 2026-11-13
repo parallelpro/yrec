@@ -1,0 +1,100 @@
+# Mutations of test_mass_change: each check must print FAIL under a
+# mutation of the code it covers (core/README.md, the tests). Run, after
+# `make tests` in src/: python3 src/tools/mutate.py core --program
+# test_mass_change (src/tools/mutate.py describes this format and the
+# verdicts). mass_change-06 is bc874267 reverted (a convection zone that
+# reaches the centre), mass_change-09 91a6b567's measurement of J_cz on
+# the masses after the change.
+program = "test_mass_change"
+timeout = 60
+
+[[mutation]]
+id = 'mass_change-01'
+check = '  M_cz = convection_zone_mass'
+file = 'core/step/mass_change_kernel.f90'
+old = 'cz_mass = m(nz) - m(jenv)'
+new = 'cz_mass = m(nz) - m(jenv+1)'
+
+[[mutation]]
+id = 'mass_change-02'
+check = '  sum of dm = M + dM'
+file = 'core/step/mass_change_kernel.f90'
+old = 'dm(nz) = total_mass - 0.5d0*(m(nz) + m(nz-1))'
+new = 'dm(nz) = total_mass - 0.5d0*(m(nz) + m(nz-2))'
+
+[[mutation]]
+id = 'mass_change-03'
+check = '  m(k > jenv) - m(jenv) scale by (M_cz+dM)/M_cz'
+file = 'core/step/mass_change_kernel.f90'
+old = 'mass_scale_factor = (cz_mass + delta_mass)/cz_mass'
+new = 'mass_scale_factor = (cz_mass + 0.5d0*delta_mass)/cz_mass'
+
+[[mutation]]
+id = 'mass_change-04'
+check = '  m(k <= jenv) unchanged'
+file = 'core/step/mass_change_kernel.f90'
+old = 'do zone_idx = jenv+1, nz'
+new = 'do zone_idx = jenv-1, nz'
+
+[[mutation]]
+id = 'mass_change-05'
+check = '  m(k > jenv) unchanged (dM lands in dm(nz))'
+file = 'core/step/mass_change_kernel.f90'
+old = 'if (delta_mass < 0.0d0) then'
+new = 'if (delta_mass /= 0.0d0) then'
+
+[[mutation]]
+id = 'mass_change-06'
+check = '  dm(1) = (m(1) + m(2))/2'
+file = 'core/step/mass_change_kernel.f90'
+old = '''
+      do zone_idx = max(jenv,2), nz-1
+         dm(zone_idx) = 0.5d0*(m(zone_idx+1) - m(zone_idx-1))
+      end do
+      if (jenv == 1) dm(1) = 0.5d0*(m(2) + m(1))'''
+new = '''
+      do zone_idx = jenv, nz-1
+         dm(zone_idx) = 0.5d0*(m(zone_idx+1) - m(zone_idx-1))
+      end do'''
+
+[[mutation]]
+id = 'mass_change-07'
+check = '  j_s = (2/3) R^2 omega(nz) (R/r(nz))^walpcz'
+file = 'core/step/mass_change_kernel.f90'
+old = 'surface_moment_of_inertia_per_mass = 2.0d0/3.0d0*total_radius**2'
+new = 'surface_moment_of_inertia_per_mass = 2.0d0/5.0d0*total_radius**2'
+
+[[mutation]]
+id = 'mass_change-08'
+check = '  dJ = j_s dM'
+file = 'core/step/mass_change_kernel.f90'
+old = 'am%lost = j_surface*delta_mass'
+new = 'am%lost = 0.5d0*j_surface*delta_mass'
+
+[[mutation]]
+id = 'mass_change-09'
+check = '  J_cz = sum of j dm before'
+file = 'core/step/mass_change_kernel.f90'
+old = 'am%zone_before = zone_angular_momentum(j_rot, dm_before)'
+new = 'am%zone_before = zone_angular_momentum(j_rot, dm_after)'
+
+[[mutation]]
+id = 'mass_change-10'
+check = '  sum of j dm after = J_cz + dJ'
+file = 'core/step/mass_change_kernel.f90'
+old = 'am_ratio = am%zone_after/zone_angular_momentum(j_rot, dm_after)'
+new = 'am_ratio = am%zone_after/zone_angular_momentum(j_rot, dm_before)'
+
+[[mutation]]
+id = 'mass_change-11'
+check = '  sum of X dm = old + X_acc dM, h1'
+file = 'core/step/mass_change_kernel.f90'
+old = 'x_accreted(species_idx)*delta_mass)/(delta_mass + cz_mass)'
+new = 'x_accreted(species_idx)*delta_mass)/(cz_mass)'
+
+[[mutation]]
+id = 'mass_change-12'
+check = '  sum of X dm = old + X_acc dM, o18'
+file = 'core/step/mass_change_kernel.f90'
+old = 'do species_idx = 1, n_species_basic'
+new = 'do species_idx = 1, n_species_basic - 1'

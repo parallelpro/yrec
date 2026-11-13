@@ -17,6 +17,7 @@
 ! switch for overshoot. The overshoot depth alpha_ov H_P and H_P itself
 ! are convection_lib's (envelope_overshoot_depth, pressure_scale_height).
 module convection_geometry
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use star_info_lib, only: star_info
       implicit none
       private
@@ -31,8 +32,8 @@ contains
 ! between its value in the zone below (gap_below) and in the last
 ! convective zone (gap):
 !   f = gap_below / (gap_below - gap).
-double precision function cz_base_fraction(gap_below, gap)
-      double precision, intent(in) :: gap_below, gap
+real(dp) function cz_base_fraction(gap_below, gap)
+      real(dp), intent(in) :: gap_below, gap
       cz_base_fraction = gap_below/(gap_below - gap)
 end function cz_base_fraction
 
@@ -45,11 +46,11 @@ integer function first_zone_above(log_radius, start_zone, radius_limit)
       use star_info_lib, only: json
       use physical_constants, only: ln10
       use math_lib
-      double precision, intent(in) :: log_radius(json), radius_limit
+      real(dp), intent(in) :: log_radius(:), radius_limit
       integer, intent(in) :: start_zone
       integer :: k
       do k = start_zone, 1, -1
-         if (exp(ln10*log_radius(k)).lt.radius_limit) then
+         if (exp(ln10*log_radius(k)) < radius_limit) then
             first_zone_above = k + 1
             return
          end if
@@ -80,25 +81,25 @@ end function first_zone_above
 subroutine locate_surface_mixing_base(s, radius, grada, gradr, env_cz_zone, &
      env_cz_zone_old, num_zones, cz_base_zone, cz_base_zone_old, cz_base_frac)
       use star_info_lib, only: json
-      use physical_constants
+      use physical_constants, only: ln10
       use math_lib
       implicit none
       type(star_info), intent(inout) :: s
 
-      double precision, intent(in) :: radius(json)
+      real(dp), intent(in) :: radius(:)
 ! grada, gradr: the adiabatic and radiative gradients the base is located
 ! with (a rotation sub-step's interpolated model's, or the model's own)
-      double precision, intent(in) :: grada(json), gradr(json)
+      real(dp), intent(in) :: grada(:), gradr(:)
       integer, intent(in) :: env_cz_zone, env_cz_zone_old, num_zones
       integer, intent(out) :: cz_base_zone, cz_base_zone_old
-      double precision, intent(inout) :: cz_base_frac
+      real(dp), intent(inout) :: cz_base_frac
 
-      double precision :: del_diff, del_diff_below
-      double precision :: search_radius, shell_radius, delta_radius, &
+      real(dp) :: del_diff, del_diff_below
+      real(dp) :: search_radius, shell_radius, delta_radius, &
            cz_base_radius
 
 ! del_ad - del_rad at the last convective zone and at the one below it.
-      if(env_cz_zone.gt.1.and.env_cz_zone.lt.num_zones)then
+      if(env_cz_zone > 1.and.env_cz_zone < num_zones)then
          del_diff = grada(env_cz_zone) - gradr(env_cz_zone)
          del_diff_below = grada(env_cz_zone-1) - gradr(env_cz_zone-1)
 ! The true base (del_ad = del_rad) by linear interpolation, a fraction f
@@ -119,8 +120,8 @@ subroutine locate_surface_mixing_base(s, radius, grada, gradr, env_cz_zone, &
 ! reaches the overshoot depth alpha_ov H_P (envelope_overshoot_depth_start)
 ! below it. Later calls in the step (the rotation sub-steps) start from
 ! the previous call's end-of-step zone.
-            if(s%cz_base_radius_last_call.eq.0.0d0)then
-               if (env_cz_zone_old.gt.1) then
+            if(s%cz_base_radius_last_call == 0.0d0)then
+               if (env_cz_zone_old > 1) then
                   s%cz_base_radius_last_call = 0.5d0*(exp(ln10*s%logR_start(env_cz_zone_old)) &
                            +exp(ln10*s%logR_start(env_cz_zone_old-1)))
                   search_radius = s%cz_base_radius_last_call - s%envelope_overshoot_depth_start
@@ -134,7 +135,7 @@ subroutine locate_surface_mixing_base(s, radius, grada, gradr, env_cz_zone, &
                end if
             else
                cz_base_zone_old = s%envelope_cz_base_zone_last_call
-            endif
+            end if
 ! The ending depth, from the interpolated true base,
 !   r_base = (r(k) + r(k-1))/2 - cz_base_frac (r(k) - r(k-1)),
 ! k = env_cz_zone; the mixed region reaches alpha_ov H_P
@@ -150,18 +151,18 @@ subroutine locate_surface_mixing_base(s, radius, grada, gradr, env_cz_zone, &
 ! clipped to [-0.5, 0.5], both radii the current model's (the legacy
 ! code took r(k) from the start-of-step model until 2026-11, bug_sweep
 ! O10).
-            if (cz_base_zone.gt.1) then
+            if (cz_base_zone > 1) then
                shell_radius = exp(ln10*radius(cz_base_zone-1))
                delta_radius = exp(ln10*radius(cz_base_zone))-shell_radius
                cz_base_frac = 0.5d0-((search_radius-shell_radius)/delta_radius)
                cz_base_frac = max(-0.5d0,cz_base_frac)
                cz_base_frac = min(0.5d0,cz_base_frac)
-            endif
-         endif
+            end if
+         end if
       else
          cz_base_zone = env_cz_zone
          cz_base_zone_old = env_cz_zone_old
-      endif
+      end if
       s%envelope_cz_base_zone_last_call = cz_base_zone
       return
 end subroutine locate_surface_mixing_base

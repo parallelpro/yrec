@@ -37,6 +37,7 @@
 ! same way.)
 ! Li/Be are burned later, after the structure converges (burn_li_be).
 module composition_step
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use star_info_lib, only: star_info
       implicit none
       private
@@ -82,9 +83,12 @@ contains
 subroutine advance_composition(s, timestep, opts, core_cz_edge, &
      envelope_cz_edge, mixed_zone_bounds_no_overshoot, ierr)
       use star_info_lib, only: i_h1, i_he3, i_he4, i_metals, json, &
-           max_convective_zones, max_radiative_zones
-      use run_messages, only: run_log_unit, solver_diagnostics
-      use physical_constants
+           max_convective_zones, max_radiative_zones, n_species_basic, &
+           n_species_extended
+      use run_messages, only: solver_diagnostics
+      use core_messages, only: core_log, log_mixed_zone_bounds, &
+           message_length, unwritten_line
+      use physical_constants, only: cgl, ln10
       use net_lib, only: num_rate_rows
       use burn_step, only: compute_burn_rates, burn_network, &
            burn_deuterium
@@ -96,28 +100,27 @@ subroutine advance_composition(s, timestep, opts, core_cz_edge, &
       type(star_info), intent(inout) :: s
 
 ! timestep: s
-      double precision, intent(in) :: timestep
+      real(dp), intent(in) :: timestep
       type(composition_step_options), intent(in) :: opts
       integer, intent(out) :: core_cz_edge, envelope_cz_edge
-      integer, intent(inout) :: mixed_zone_bounds_no_overshoot(max_convective_zones,2)
+      integer, intent(inout) :: mixed_zone_bounds_no_overshoot(:,:)
       integer, intent(out) :: ierr
 
 ! rate_by_zone(r_*/rv_*, zone): the composition rate vector of every
 ! shell, from compute_burn_rates.
-      double precision :: rate_by_zone(num_rate_rows, json)
+      real(dp) :: rate_by_zone(num_rate_rows, json)
       integer :: radiative_zone_bounds(max_radiative_zones,2)
       logical :: deep_mix_flag(json)
       integer :: num_species
       integer :: num_radiative_zones, num_mixed_zones, &
            num_mixed_zones_no_overshoot
-      integer :: zone_idx, inner_zone_idx
 
       ierr = 0
 
       if (s%physics%use_extended_composition) then
-         num_species = 15
+         num_species = n_species_extended
       else
-         num_species = 11
+         num_species = n_species_basic
       end if
 
 ! 1. The mixed regions: the convection zones with and without overshoot,
@@ -152,11 +155,8 @@ subroutine advance_composition(s, timestep, opts, core_cz_edge, &
 ! log with the solver diagnostics.
       if (s%physics%use_semiconvection .or. opts%homogenize) &
            call homogenize_mixed_regions
-      if (num_mixed_zones.ge.1 .and. solver_diagnostics()) then
-         write(run_log_unit,110) ((s%mixed_zone_bounds(zone_idx,inner_zone_idx), &
-              inner_zone_idx=1,2),zone_idx=1,num_mixed_zones)
-  110    format(' ZONES MIXED IN ORDER--',12('(',i5,',',i5,') ') )
-      end if
+      if (num_mixed_zones >= 1 .and. solver_diagnostics()) &
+           call log_mixed_zone_bounds(s%mixed_zone_bounds, num_mixed_zones)
 
 ! 6. Gravitational settling.
       if (s%settling_active) then
@@ -170,7 +170,7 @@ subroutine advance_composition(s, timestep, opts, core_cz_edge, &
 ! 8. After deep mixing (MHP 1/95), recompute the zone bounds and the
 ! edges (core_cz_edge, envelope_cz_edge; legacy JCORE, JENV) from the
 ! ordinary convective flags.
-      if (s%physics%envelope_logp_step.lt.1.0d0 .and. opts%deep_mixing) then
+      if (s%physics%envelope_logp_step < 1.0d0 .and. opts%deep_mixing) then
          call find_convection_zones(s%xa, s%logRho, s%logP, s%logR, &
               s%log_mass, s%logT, s%convective_flag, s%nz, &
               radiative_zone_bounds, s%mixed_zone_bounds, &
@@ -192,12 +192,12 @@ contains
 ! dpenv, m <= dpenv M; outside that, and otherwise, each shell keeps its
 ! ordinary convective flag.
 subroutine set_deep_mix_flags
-      double precision :: max_mixed_mass
+      real(dp) :: max_mixed_mass
       integer :: k, j
-      if (s%physics%envelope_logp_step.lt.1.0d0 .and. opts%deep_mixing) then
+      if (s%physics%envelope_logp_step < 1.0d0 .and. opts%deep_mixing) then
          max_mixed_mass = s%physics%envelope_logp_step*exp(ln10*s%log_total_mass)
          do k = 1, s%nz
-            if (s%m(k).gt.max_mixed_mass) then
+            if (s%m(k) > max_mixed_mass) then
                do j = k, s%nz
                   deep_mix_flag(j) = s%convective_flag(j)
                end do
@@ -218,12 +218,12 @@ end subroutine set_deep_mix_flags
 ! and last shell). A one-shell region is skipped unless it starts at the
 ! centre.
 subroutine homogenize_mixed_regions
-      double precision :: species_sum(15), weight_sum
+      real(dp) :: species_sum(n_species_extended), weight_sum
       integer :: mixed_zone_idx, mix_start, mix_end, shell_idx, species_idx
       do mixed_zone_idx = 1, num_mixed_zones
          mix_start = s%mixed_zone_bounds(mixed_zone_idx,1)
          mix_end = s%mixed_zone_bounds(mixed_zone_idx,2)
-         if (mix_start.ne.1 .and. mix_start.ge.mix_end) cycle
+         if (mix_start /= 1 .and. mix_start >= mix_end) cycle
          weight_sum = 0.0d0
          do species_idx = 1, num_species
             species_sum(species_idx) = 0.0d0
@@ -256,10 +256,11 @@ end subroutine homogenize_mixed_regions
 ! (star%settling_active) once the central X drops below
 ! physics%hydrogen_diffusion_floor.
 subroutine settle
-      double precision :: total_mass_unlogged, dlnp_dr(json)
+      real(dp) :: total_mass_unlogged, dlnp_dr(json)
       type(settling_substep_plan) :: substeps
       integer :: k, search_idx, substep_idx
-      if (s%xa(i_h1,1).lt.s%physics%hydrogen_diffusion_floor) then
+      character(len=message_length) :: lines(1)
+      if (s%xa(i_h1,1) < s%physics%hydrogen_diffusion_floor) then
          s%settling_active = .false.
          return
       end if
@@ -273,12 +274,14 @@ subroutine settle
       if (.not.s%convective_flag(s%nz)) then
 ! Without a surface convection zone, skip settling with a warning in the
 ! run log (DBG 2/92: a warning, not a stop).
-         write(run_log_unit,911)
+         lines = unwritten_line
+         write(lines,911)
   911    format(1x,'NO SURFACE CZ - DIFFUSION NOT MEANINGFUL')
+         call core_log(lines)
          return
       end if
       do search_idx = envelope_cz_edge, 1, -1
-         if (s%xa(i_he4,search_idx).gt.s%physics%helium_diffusion_min) exit
+         if (s%xa(i_he4,search_idx) > s%physics%helium_diffusion_min) exit
       end do
 ! Y < helium_diffusion_min everywhere from the convection zone's base
 ! inward: nothing to settle.

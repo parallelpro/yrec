@@ -38,7 +38,9 @@
 ! second run in the same process uses the same sources) until
 ! clear_energy_sources is called.
 module energy_sources
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use composition_layout, only: n_species_extended
+      use core_messages, only: core_stdout, message_length, unwritten_line
       implicit none
       private
       public :: energy_point, energy_source_eval, max_energy_sources, &
@@ -47,12 +49,12 @@ module energy_sources
 
 ! What a source sees at one shell (see the header).
       type :: energy_point
-         double precision :: mass = 0.0d0, shell_mass = 0.0d0
-         double precision :: log_temperature = 0.0d0, log_pressure = 0.0d0, &
+         real(dp) :: mass = 0.0d0, shell_mass = 0.0d0
+         real(dp) :: log_temperature = 0.0d0, log_pressure = 0.0d0, &
               log_density = 0.0d0, log_radius = 0.0d0
-         double precision :: luminosity_lsun = 0.0d0
-         double precision :: xa(n_species_extended) = 0.0d0
-         double precision :: dt = 0.0d0
+         real(dp) :: luminosity_lsun = 0.0d0
+         real(dp) :: xa(n_species_extended) = 0.0d0
+         real(dp) :: dt = 0.0d0
       end type energy_point
 
       abstract interface
@@ -60,9 +62,9 @@ module energy_sources
 ! constant T and ln T at constant rho, and ierr (nonzero stops the
 ! iteration with an error).
          subroutine energy_source_eval(pt, eps, deps_dlnrho, deps_dlnt, ierr)
-            import :: energy_point
+            import :: energy_point, dp
             type(energy_point), intent(in) :: pt
-            double precision, intent(out) :: eps, deps_dlnrho, deps_dlnt
+            real(dp), intent(out) :: eps, deps_dlnrho, deps_dlnt
             integer, intent(out) :: ierr
          end subroutine energy_source_eval
       end interface
@@ -88,18 +90,22 @@ subroutine add_energy_source(name, eval, ierr)
       procedure(energy_source_eval) :: eval
       integer, intent(out) :: ierr
       integer :: i
+      character(len=message_length) :: lines(1)
 
       ierr = 0
+      lines = unwritten_line
       do i = 1, num_sources
          if (sources(i)%name == name) then
-            write(*,'(a)') 'add_energy_source: '//trim(name)//' is already registered'
+            lines(1) = 'add_energy_source: '//trim(name)//' is already registered'
+            call core_stdout(lines)
             ierr = 1
             return
          end if
       end do
       if (num_sources >= max_energy_sources) then
-         write(*,'(a,i0,a)') 'add_energy_source: no room for ', &
+         write(lines,'(a,i0,a)') 'add_energy_source: no room for ', &
               max_energy_sources + 1, ' sources'
+         call core_stdout(lines)
          ierr = 1
          return
       end if
@@ -138,10 +144,11 @@ end function energy_source_name
 ! The sum of the registered sources at pt and of their partials.
 subroutine evaluate_energy_sources(pt, eps, deps_dlnrho, deps_dlnt, ierr)
       type(energy_point), intent(in) :: pt
-      double precision, intent(out) :: eps, deps_dlnrho, deps_dlnt
+      real(dp), intent(out) :: eps, deps_dlnrho, deps_dlnt
       integer, intent(out) :: ierr
-      double precision :: e, de_drho, de_dt
+      real(dp) :: e, de_drho, de_dt
       integer :: i
+      character(len=message_length) :: lines(1)
 
       eps = 0.0d0
       deps_dlnrho = 0.0d0
@@ -150,7 +157,9 @@ subroutine evaluate_energy_sources(pt, eps, deps_dlnrho, deps_dlnt, ierr)
       do i = 1, num_sources
          call sources(i)%eval(pt, e, de_drho, de_dt, ierr)
          if (ierr /= 0) then
-            write(*,'(a)') 'energy source '//trim(sources(i)%name)//' failed'
+            lines = unwritten_line
+            lines(1) = 'energy source '//trim(sources(i)%name)//' failed'
+            call core_stdout(lines)
             return
          end if
          eps = eps + e
