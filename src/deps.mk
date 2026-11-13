@@ -434,8 +434,8 @@ core/run/monte_carlo.o: control_slots.mod controls_sync.mod math_lib.mod model_f
 core/run/run_driver.o: calibration.mod controls_check.mod controls_reader.mod model_files.mod monte_carlo.mod neutrino_flux_output.mod physical_constants.mod run_files.mod run_log.mod run_setup.mod settings_install.mod shell_boundaries.mod star_info_lib.mod starting_model.mod step_driver.mod stop_conditions.mod timestep_control.mod yrec_output.mod yrec_reset.mod yrec_version.mod
 core/run/run_setup.o: control_slots.mod math_lib.mod monte_carlo.mod physical_constants.mod settings_install.mod star_info_lib.mod
 core/run/stop_conditions.o: calibration.mod math_lib.mod run_messages.mod star_info_lib.mod
-core/run/yrec_capi.o: run_driver.mod star_info_lib.mod
-core/run/yrec_reset.o: star_info_lib.mod
+core/run/yrec_capi.o: core_messages.mod run_driver.mod star_info_lib.mod yrec_reset.mod
+core/run/yrec_reset.o: run_files.mod run_messages.mod star_info_lib.mod
 core/step/burn_step.o: convection_geometry.mod math_lib.mod net_lib.mod physical_constants.mod run_messages.mod star_info_lib.mod
 core/step/composition_step.o: burn_step.mod convection_lib.mod element_diffusion_lib.mod math_lib.mod net_lib.mod physical_constants.mod run_messages.mod star_info_lib.mod
 core/step/convection_geometry.o: math_lib.mod physical_constants.mod star_info_lib.mod
@@ -453,6 +453,7 @@ core/structure/surface_boundary.o: atm_lib.mod envelope_integration.mod math_lib
 core/test/test_mass_change.o: composition_layout.mod mass_change_kernel.mod
 core/test/test_reentry.o: run_driver.mod star_info_lib.mod
 core/test/test_regrid.o: math_lib.mod numerics_lib.mod physical_constants.mod regridding.mod
+core/test/test_run_contracts.o: calibration.mod control_slots.mod physical_constants.mod run_files.mod run_messages.mod star_info_lib.mod yrec_capi.mod
 core/test/test_structure.o: controls_reader.mod convection_lib.mod convection_settings_builder.mod energy_sources.mod eos_lib.mod net_lib.mod net_settings_builder.mod rotation_configuration.mod rotation_settings_builder.mod run_files.mod run_setup.mod shell_equations.mod star_info_lib.mod starting_model.mod
 core/test/test_triangle_fit.o: triangle_fit.mod
 element_diffusion/bahcall_loeb_units.o: physical_constants.mod

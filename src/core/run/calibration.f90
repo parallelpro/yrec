@@ -10,7 +10,12 @@ module calibration
       use control_slots, only: i_target_x, i_target_z
       implicit none
       private
-      public :: check_solar_calibration, check_star_calibration, setup_solar_calibration, setup_star_calibration
+      public :: check_solar_calibration, check_star_calibration, setup_solar_calibration, setup_star_calibration, &
+           end_star_calibration_card
+
+! The star calibration's cards per pass: an odd card rescales, the even
+! card after it evolves.
+      integer, parameter :: star_calib_cards_per_cycle = 2
 
 ! The solar calibration's fixed empirical partial derivatives of log L
 ! and log R with respect to the hydrogen fraction X and the mixing length
@@ -164,15 +169,20 @@ end subroutine check_solar_calibration
 !  - sets X for the next pair: on the first pass (card 2), X - 0.01
 !    (Y + 0.01 at fixed Z); after that, a secant step in X against
 !    log L(R*).
+! A crossing on a card with no pair of cards after it (the last card,
+! num_cards = max_runs) sets up nothing: the calibration ends there, and
+! termination_reason gives its verdict (R* and L* reached with no card
+! left for the final run, or not converged).
 !   star reads: calibration_target_radius_rsun,
 !     control%target_luminosity_lsun,
-!     control%target_star_luminosity_tolerance, solar_luminosity_cgs,
-!     solar_radius_cgs
+!     control%target_star_luminosity_tolerance, num_cards,
+!     solar_luminosity_cgs, solar_radius_cgs
 !   star writes: age_gyr_at_target_radius, age_gyr_prev_model,
 !     card_initial_x, card_max_age_yr, card_rescale_targets,
 !     card_stops_active, just_passed_target_radius_flag,
 !     log_l_lsun_at_target_radius, log_l_lsun_at_target_radius_prev_run,
-!     log_l_lsun_prev_model, r_rsun_prev_model, star_found_flag
+!     log_l_lsun_prev_model, r_rsun_prev_model, star_found_flag,
+!     termination_reason
 subroutine check_star_calibration(s, log_l_lsun, log_teff, current_age, run_index)
 
       use run_messages, only: run_log_unit
@@ -188,6 +198,7 @@ subroutine check_star_calibration(s, log_l_lsun, log_teff, current_age, run_inde
       double precision :: teff_current, r_rsun_current
       double precision :: dlogl_dlogr, dage_dlogr
       double precision :: new_x, prev_x, dx_dlogl
+      logical :: luminosity_matches
 ! The step in X that seeds the second calibration run (the "Y=Y+0.01"
 ! of the messages below).
       double precision, parameter :: x_calibration_step = 0.01d0
@@ -261,8 +272,21 @@ subroutine check_star_calibration(s, log_l_lsun, log_teff, current_age, run_inde
            s%log_l_lsun_at_target_radius
       write(run_log_unit,*) '#X, LogL/Lsun at R* =', &
            s%card_rescale_targets(i_target_x,run_index-1), s%log_l_lsun_at_target_radius
-      if (abs(exp10(s%log_l_lsun_at_target_radius)-s%control%target_luminosity_lsun) &
-           .le. s%control%target_star_luminosity_tolerance) then
+      luminosity_matches = abs(exp10(s%log_l_lsun_at_target_radius)-s%control%target_luminosity_lsun) &
+           .le. s%control%target_star_luminosity_tolerance
+! No pair of cards follows this one (the run arrays end at num_cards):
+! the calibration ends with this crossing, and its verdict.
+      if (run_index + star_calib_cards_per_cycle > s%num_cards) then
+         if (luminosity_matches) then
+            s%termination_reason = &
+                 'star calibration: R* and L* reached on the last card, no card left for the final run'
+         else
+            write(s%termination_reason,'(a,i0,a)') &
+                 'star calibration NOT converged in ', s%num_cards, ' cards'
+         end if
+         return
+      end if
+      if (luminosity_matches) then
 ! The track passes through the target L and R. Do one more run with the
 ! same X, stopped at the interpolated age at R* (converted from Gyr to
 ! yr).
@@ -501,5 +525,28 @@ subroutine setup_star_calibration(s)
            s%control%target_luminosity_lsun
       return
 end subroutine setup_star_calibration
+
+! ---------------------------------------------------------------
+! The star calibration's verdict after a card that ran to its end (a
+! card whose model crossed R* is left before it ends; on the last card
+! check_star_calibration gives the verdict there): the final run that
+! check_star_calibration armed has finished on an even card, so the run
+! list ends (runs_complete); or the last card has ended without the
+! calibration finding the star.
+!   star reads: current_card, num_cards, star_found_flag
+!   star writes: termination_reason
+subroutine end_star_calibration_card(s, runs_complete)
+      type(star_info), intent(inout) :: s
+      logical, intent(out) :: runs_complete
+
+      runs_complete = .false.
+      if (s%star_found_flag .and. mod(s%current_card, star_calib_cards_per_cycle) == 0) then
+         s%termination_reason = 'star calibration converged'
+         runs_complete = .true.
+      else if (s%current_card >= s%num_cards) then
+         write(s%termination_reason,'(a,i0,a)') &
+              'star calibration NOT converged in ', s%num_cards, ' cards'
+      end if
+end subroutine end_star_calibration_card
 
 end module calibration

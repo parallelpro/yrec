@@ -10,7 +10,8 @@ module run_driver
       use run_setup, only: prepare_run
       use shell_boundaries, only: locate_shell_boundaries
       use starting_model, only: read_starting_model
-      use calibration, only: check_solar_calibration, setup_solar_calibration, setup_star_calibration
+      use calibration, only: check_solar_calibration, setup_solar_calibration, setup_star_calibration, &
+           end_star_calibration_card
       implicit none
       private
       public :: run_yrec
@@ -51,7 +52,7 @@ contains
 !     luminosity_lsun, m, num_cards, nz, omega, physics%atm_choice,
 !     physics%compute_neutrino_fluxes, physics%diffuse_helium_active,
 !     physics%helium_flash_active, physics%use_structure_dt_limits,
-!     solar_calibration_converged, star_found_flag, star_mass, xa
+!     solar_calibration_converged, star_mass, xa
 !   star writes: atm_choice_in_use, convective_turnover_timescale,
 !     core_cz_top_index, current_card, current_card_envelope_x,
 !     current_card_envelope_z, dln_luminosity_dt, dlog_pressure_dt,
@@ -94,7 +95,6 @@ subroutine run_yrec(ierr)
 ! Cards per calibration cycle (see the protocol comment in the run
 ! loop).
       integer, parameter :: solar_calib_cards_per_cycle = 3
-      integer, parameter :: star_calib_cards_per_cycle = 2
       logical :: runs_complete
       integer :: monte_carlo_run_number
       double precision :: age_scale_factor
@@ -208,8 +208,8 @@ subroutine run_yrec(ierr)
 !  below gives up after 14 unconverged triples.
 !
 !  Star calibration (calibrate_star_flag; setup_star_calibration and
-!  check_star_calibration): the cards run in pairs of
-!  star_calib_cards_per_cycle = 2; odd cards rescale and even cards
+!  check_star_calibration): the cards run in pairs (calibration's
+!  star_calib_cards_per_cycle = 2); odd cards rescale and even cards
 !  evolve. check_star_calibration watches every model of an even card
 !  for the crossing of the target radius. That check lives in
 !  check_stop_conditions (called by evolve_step); a crossing returns
@@ -217,7 +217,10 @@ subroutine run_yrec(ierr)
 !  end_kind_card, no verdict) and goes straight on to the next
 !  (rescale) card. Once the luminosity at the crossing matches too, it
 !  arms a final run stopped at the interpolated age (star_found_flag),
-!  which the verdict below turns into the end of the run list.
+!  which the verdict below turns into the end of the run list. The
+!  last card sets up no further pair: a crossing there ends the run list
+!  with check_star_calibration's verdict, and a last card that ends
+!  without one gets end_star_calibration_card's.
          call end_of_card_calibration(runs_complete)
          if (runs_complete) exit run_loop
 
@@ -315,11 +318,10 @@ subroutine end_of_card_calibration(runs_complete)
 
 ! Star calibration: the final run to the interpolated age, armed by
 ! check_star_calibration, has finished on an even card, so no more runs
-! are needed.
-         if (s%control%calibrate_star_flag .and. s%star_found_flag.and.(mod(s%current_card,star_calib_cards_per_cycle).eq.0)) then
-            s%termination_reason = 'star calibration converged'
-            runs_complete = .true.
-            return
+! are needed; or the last card has ended without finding the star.
+         if (s%control%calibrate_star_flag) then
+            call end_star_calibration_card(s, runs_complete)
+            if (runs_complete) return
          end if
 end subroutine end_of_card_calibration
 

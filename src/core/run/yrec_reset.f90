@@ -8,8 +8,9 @@
 ! storage, so zero-initialized plus the type's declaration defaults --
 ! exactly what a module-level star was at process start). At every entry
 ! after the first it also tells the step/diagnostics routines to
-! re-initialize their SAVEd locals and closes any file units the last run
-! left open (closing a not-connected unit is a no-op). The controls need
+! re-initialize their SAVEd locals and closes the units the last run
+! left open (close_run_units: the run log and the final model, not a
+! host program's units). The controls need
 ! no snapshot: read_controls resets s%control and s%physics to their
 ! defaults and re-seeds
 ! the namelist buffer before every read. Physics-domain table state is
@@ -22,7 +23,7 @@ module yrec_reset
       use star_info_lib, only: star_info, evolve_step_reset_pending
       implicit none
       private
-      public :: yrec_run_prologue
+      public :: yrec_run_prologue, close_run_units
 
       logical, save :: first_entry = .true.
 ! The process-start star: never written, only copied (see the header).
@@ -34,26 +35,48 @@ contains
 
 ! Gives run_yrec its star: s becomes a copy of star_template, after
 ! re-arming evolve_step's reset and closing the units an earlier run
-! left open. It writes the whole record, which the contract's member
-! lists do not show.
+! left open (close_run_units: the run's own, not a host's). It writes
+! the whole record, which the contract's member lists do not show.
 !   star reads: none
 !   star writes: none
 subroutine yrec_run_prologue(s)
       type(star_info), allocatable, intent(inout) :: s
-      integer :: u
 
       if (first_entry) then
          first_entry = .false.
       else
          evolve_step_reset_pending = .true.
-         do u = 7, 99
-            close(u)
-         end do
+         call close_run_units
       end if
       if (.not. allocated(s)) allocate(s)
       s = star_template
 
       return
 end subroutine yrec_run_prologue
+
+! ---------------------------------------------------------------
+! The units the run connects by number, closed if they are open: the
+! run log (run_messages' run_log_unit) and the final model (run_files'
+! last_model_unit). The run's other files have newunit numbers, which
+! are negative, and open_run_files closes them itself before it opens
+! them again. A unit a host program opened stays open, and so do the
+! standard units, which the run's units are before the controls read
+! assigns them.
+subroutine close_run_units
+      use run_messages, only: run_log_unit
+      use run_files, only: last_model_unit
+      call close_run_unit(run_log_unit)
+      call close_run_unit(last_model_unit)
+contains
+subroutine close_run_unit(unit)
+      use, intrinsic :: iso_fortran_env, only: error_unit, input_unit, output_unit
+      integer, intent(in) :: unit
+      logical :: is_open
+      integer :: ios
+      if (unit == input_unit .or. unit == output_unit .or. unit == error_unit) return
+      inquire(unit=unit, opened=is_open, iostat=ios)
+      if (ios == 0 .and. is_open) close(unit)
+end subroutine close_run_unit
+end subroutine close_run_units
 
 end module yrec_reset
