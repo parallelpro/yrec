@@ -217,7 +217,7 @@ Coupling iterations are written in the step driver. Two cases need care to keep 
 
 ### 4.4 Structure: separating physics from the Henyey numerics
 
-**Today.** `compute_henyey_coefficients` evaluates the microphysics and forms the per-shell terms `q*` and their partials in one loop, interleaved with calls to `henyey_eliminate`. The per-shell type `henyey_shell_terms` carries only the partials that happen to be nonzero for today's physics: there is no `ql_dr` or `ql_dl`.
+**Today.** `compute_henyey_coefficients` loops over the shells: for each it gathers the shell from the star, calls the star-free kernel `evaluate_shell_equations` (`core/structure/shell_equations.f90`), which evaluates the microphysics and forms the per-shell terms `q*` and their partials, and eliminates the shell (`henyey_eliminate`). The per-shell type `henyey_shell_terms` carries only the partials that happen to be nonzero for today's physics: there is no `ql_dr` or `ql_dl`.
 
 **Target.**
 
@@ -232,7 +232,7 @@ Coupling iterations are written in the step driver. Two cases need care to keep 
 - **The difference equation.** For equation k at shell i:
   `rhs_k = ½ Δlog₁₀m · (q_k(i−1) + q_k(i)) − (y_k(i) − y_k(i−1))`
   (`henyey_elimination.f90`, top of the routine).
-- **Partials.** `q*_dX` is ∂q/∂ln X: a natural-log derivative for P, T and R. The eliminator multiplies ½Δlog₁₀m by ln 10 to convert to the log₁₀ variables. The luminosity partial is therefore pre-divided by ln 10 (`qt_dl = qt/(L ln 10)`, `core/structure/structure_equations.f90`).
+- **Partials.** `q*_dX` is ∂q/∂ln X: a natural-log derivative for P, T and R. The eliminator multiplies ½Δlog₁₀m by ln 10 to convert to the log₁₀ variables. The luminosity partial is therefore pre-divided by ln 10 (`qt_dl = qt/(L ln 10)`, `core/structure/shell_equations.f90`'s header).
 - **The luminosity term.** `ql = (ln 10 · m / L☉) · ε`, where ε is the total specific energy rate in erg g⁻¹ s⁻¹. So `ql_dT` and `ql_dP` take the **absolute** derivatives dε/dln T and dε/dln ρ, which is what `engeb` returns.
 - **The envelope.** The envelope integration (`compute_envelope_derivs`) carries m, T and R against log P at constant L. Any energy source above the fitting mass is excluded. This must be stated in the energy-source interface, and checked: a source that is nonzero above the fitting point should cause a warning.
 
@@ -308,11 +308,13 @@ end type
 - The ordered list of sources replaces the if-chain in `kap_eval`.
 - One generic driver does the temperature and Z blending. It blends derivatives consistently, including the weight-derivative term that is missing today.
 - Opening and reading tables moves out of `io/controls_reader.f90` into each source's `load`.
+- **Status (round 1, 2026-11-10; round 1B):** done in this form. Each family is a `kap_source` descriptor (`kap/opacity_source.f90`: its window in log T, whether it covers any Z or blends two tables, and its `load`, `refresh`, `lookup` and `core_lookup`); `opacity_families` holds the precedence lists that replaced the if-chains; `kap_eval` is named steps over `opacity_blending`'s formulas, each written once; each family's reader (`kap/<family>/<family>_reader.f90`) runs in its `load`, at `kap_init`; and since round 1B the ramp returns the blend's own derivatives (O18).
 
 **EOS:**
 
 - **A named result type** (`eos_result`): log ρ, ∂ln ρ/∂ln P at fixed T, ∂ln ρ/∂ln T at fixed P, c_P, ∇_ad, Γ₁, β, η, the ionization fractions and the second derivatives the solver uses. Each field states its units and its definition. It replaces the 24 positional slots. (Done 2026-10-11: `eos/eos_results.f90`; Γ₁ is still derived by the caller.)
 - **One integration pattern instead of two:** an ordered list of sources with validity windows and a blend. The Yale/Saha base, SCV, OPAL 95/01/06 and MHD all become entries.
+- **Status (round 1, 2026-11-10; round 1B):** in part. SCV, OPAL (the three vintages, one code driven by a row per vintage) and MHD are `eos_table_source_t` entries of one ordered list (`eos/eos_table_source.f90`, `eos/eos_source_list.f90`), each with its window, lookup, edge weight and adopt and blend procedures, applied by `blend_eos` in stages (in place of the Saha result, over the gas, or the whole EOS), and each reads its tables at `eos_init` (OPAL's on its first use); since round 1B SCV's edge is a weighted ramp, as OPAL's are (M88). The Yale/Saha base and the fully ionized gas are still `blend_eos`'s own steps, not entries.
 
 #### (d) Rotational transport mechanisms
 
@@ -441,15 +443,18 @@ Each phase leaves the code working and producing science. Every phase also does 
   - coupling iterations moved into the step driver (section 4.3);
   - the `aging` flag replaces the negative `dt`.
 - **Exit criteria:** tier S on the configuration matrix; an `other_energy` example in `examples/`.
-- **Status (2026-10):** explicit state passing is done (the star is an argument everywhere, and no module holds a star); the per-shell kernel `evaluate_shell_equations` has a finite-difference test, though its terms still carry only today's nonzero partials; the extra energy sources and the `other_energy` example exist (section 4.5a). Open: the diagnostics pass after convergence, the coupling iterations in the step driver, the `aging` flag.
+- **Status (2026-11-13, after round 2):**
+  - Done: explicit state passing (the star is an argument everywhere, no module holds a star, and since round 2 core's drivers read the star's members themselves rather than taking them as arguments); the coupling iterations in the step driver (section 4.3: the solve split at levels ≥ 3, level 4 inside the structure-rotation iteration of `converge_with_rotation`); the `aging` flag (`evolve_model_flag`, 88b32a90, 2026-10-28); the extra energy sources and the `other_energy` example (section 4.5a).
+  - In part: the per-shell kernel `evaluate_shell_equations` is star-free, with a finite-difference test of every partial, but its terms carry only today's nonzero partials (bug_sweep O1: the convective gradient's dependence on L is not linearized); the eliminator, `henyey_eliminate` and `henyey_solve`, takes arrays and knows nothing about physics since round 2, tested against a dense solve, but its pivots are still hand-derived, not a generic 4×4 block elimination; the diagnostics run once after convergence (`build_stitched_model`, `compute_observables`), and since round 2 they feed no physics (the turnover time is a stage of the step), but they write star members, not a separate `s%diag`.
+  - Open: the built-in terms (nuclear, neutrino, gravothermal, rotational) as entries of the energy-source list, the warning for a source above the fitting point, `s%diag`, and the exit criterion's tier S on the configuration matrix.
 
 ### Phase 3: microphysics
 
 - **Work:**
   - per-domain settings (done: a settings record per domain, built in `setup/` and installed by `setup/settings_install.f90`; section 4.6);
-  - `eos_result`;
-  - opacity and EOS source lists with the generic blend drivers;
-  - table loading moved into the sources;
+  - `eos_result` (done 2026-10-11, section 4.5c);
+  - opacity and EOS source lists with the generic blend drivers (round 1, 2026-11-10: kap's families done; eos's table sources, with the Yale/Saha base and the fully ionized gas not yet entries; section 4.5c);
+  - table loading moved into the sources (round 1: each kap family's `load` at `kap_init`, each eos source's tables at `eos_init`);
   - eos, kap, atm and net import nothing from the star layer, enforced by `check_boundaries` (done 2026-10-11: each installs a settings record at init).
 - **Exit criteria:** tier S, including the MHD EOS path, which gets a pin first (test_eos pins every other EOS configuration; it runs MHD only when `YREC_MHD_TABLES` points at the tables, which the repository does not ship).
 
@@ -485,7 +490,7 @@ Resolved from the git rename history of `src/`. Routines merged into a module ar
 |---|---|
 | `starin` | `core/model/starting_model.f90` |
 | `crrect` | `core/structure/henyey_iteration.f90` (`refresh_surface_bc`, `henyey_iterate`) |
-| `coefft` | `core/structure/structure_equations.f90` |
+| `coefft` | `core/structure/structure_equations.f90` (`compute_henyey_coefficients`), its kernel `core/structure/shell_equations.f90` (`evaluate_shell_equations`) |
 | `reduce` | `core/structure/henyey_elimination.f90` |
 | `hsolve` | `core/structure/henyey_elimination.f90` |
 | `compute_surface_boundary` | `core/structure/surface_boundary.f90` |
@@ -508,7 +513,7 @@ Resolved from the git rename history of `src/`. Routines merged into a module ar
 | `hpoint` | `core/model/rezoning.f90` |
 | `findsh` | `core/model/shell_boundaries.f90` |
 | `set_up_constants_and_tables` | `core/run/run_setup.f90` |
-| `htimer` | `core/step/timestep_control.f90` |
+| `htimer` | `core/step/timestep_control.f90` (`compute_timestep`), its limits `core/step/timestep_limits.f90` |
 | `getw` | `rotation/evolve_rotation.f90` (`evolve_angular_momentum`) |
 | `midmod` | `rotation/mid_timestep_model.f90` |
 | `solid`, `getrot`, `wczimp` | `rotation/omega_profile.f90` (`solid_body_omega`, `omega_from_j`, `enforce_rotation_profile`) |
@@ -525,19 +530,19 @@ Resolved from the git rename history of `src/`. Routines merged into a module ar
 | `mwind`, `wind`, `mcowind`, `cowind`, `amcalc` | `rotation/magnetic_braking.f90` (`brake_convection_zone` for mwind/wind, `compute_solid_body_braking` for mcowind/cowind) |
 | `massloss`, `mdot` | `core/step/mass_change.f90` (`change_mass`, `apply_mass_change`) |
 | `eqstat`, `eqstat2` | `eos/blended_eos.f90` (`compute_blended_eos`, `blend_eos`) |
-| `meqos`, `mhdtbl` | `eos/mhd/mhd_eos.f90` (`compute_mhd_eos`, `read_mhd_tables`) |
-| `oeqos`, `oeqos01`, `oeqos06`; `eqbound`, `eqbound01`, `eqbound06` | `eos/opal/opal_eos.f90` (`compute_opal_eos` for all three; `find_opal_edge_ramp` over `find_opal95_ramp` (`opal95_eos.f90`), `find_opal2001_ramp`, `find_opal2006_ramp`) |
-| `esac01`/`esac06`, `readcoeos01`/`06`, `t6rinteos01`/`06` | `eos/opal/opal_eos.f90` (`interpolate_opal_eos`, `readcoeos`, `t6rinteos`, branching on the vintage; `esac01`/`esac06` remain as entry points) |
+| `meqos`, `mhdtbl` | `eos/mhd/mhd_eos.f90` (`compute_mhd_eos`), `eos/mhd/mhd_table_reader.f90` (`read_mhd_tables`) |
+| `oeqos`, `oeqos01`, `oeqos06`; `eqbound`, `eqbound01`, `eqbound06` | `eos/opal/opal_eos.f90` (`compute_opal_eos` for all three vintages; `find_opal_edge_ramp` over `find_table_edge_ramp` (1995, 2001) and `find_ragged_edge_ramp` (2006)) |
+| `esac01`/`esac06`, `readcoeos01`/`06`, `t6rinteos01`/`06` | `eos/opal/opal_eos.f90` (`interpolate_opal_eos`, `t6rinteos`, driven by the vintage's row of `opal_layout`), `eos/opal/opal_table_reader.f90` (`readcoeos`); `esac95`, `esac01` and `esac06` remain as test_eos's entry points (`eos/eos_test_entries.f90`) |
 | `eqscve`, `eqscvg`, `setscv` | `eos/scv/scv_eos.f90` (`compute_scv_envelope_eos`, `compute_scv_eos`, `build_scv_envelope_table`) |
 | `eqsaha`, `eqrelv` | `eos/yale/yale_eos.f90` (`compute_saha_eos`, `compute_fully_ionized_eos`) |
 | `mu` | `eos/eos_mixture.f90` (`compute_mean_weights`) |
 | `surfp`, `kcsurfp` (`surface_p_interp`) | `atm/tables/kurucz_atmosphere.f90` (`interpolate_surface_pressure`); its reader, `atm/tables/kurucz_table_reader.f90` (`read_surface_pressure_table`) |
 | `alsurfp`, `alfilein`, `altabinit` | `atm/tables/allard_atmosphere.f90` (`interpolate_allard_surface`); `atm/tables/allard_table_reader.f90` (`read_allard_tables`, `find_table_ranges`) |
-| `getopac` (`kap_eval`), `setupopac` (`load_opacity_tables`), `surfopac` (`refresh_surface_tables`) | `kap/kap_lib.f90` (all three) |
-| `ll95tbl`, `getopal95` | `kap/opal95/opal95_opacity.f90` (`read_opal95_tables`, `compute_opal95_opacity`) |
-| `rdlaol`, `gtlaol`, `rdzlaol`, `gtpurz` | `kap/laol89/laol_opacity.f90` (`read_laol_tables`, `compute_laol_opacity`, `read_pure_z_table`, `compute_pure_z_opacity`) |
-| `readalex06`, `getalex06` | `kap/alex06/alex06_opacity.f90` (`read_alex06_tables`, `compute_alex06_opacity`) |
-| `kurucz`, `condopacpint`, `condopacp` | `kap/kurucz90/kurucz_opacity.f90` (`compute_kurucz_opacity`), `kap/conductive/conductive_opacity.f90` (`compute_conductive_opacity`, `condopacp`) |
+| `getopac`, `setupopac`, `surfopac` | `kap/kap_lib.f90` (`kap_eval` behind `kap_get`; `kap_init`, which loads each selected family; `kap_update_surface_tables`, each family's `refresh`) |
+| `ll95tbl`, `getopal95` | `kap/opal95/opal95_reader.f90` (`read_opal95_tables`), `kap/opal95/opal95_opacity.f90` (`compute_opal95_opacity`) |
+| `rdlaol`, `gtlaol`, `rdzlaol`, `gtpurz` | `kap/laol89/laol_reader.f90` (`read_laol_tables`, `read_pure_z_table`), `kap/laol89/laol_opacity.f90` (`compute_laol_opacity`, `compute_pure_z_opacity`) |
+| `readalex06`, `getalex06` | `kap/alex06/alex06_reader.f90` (`read_alex06_tables`), `kap/alex06/alex06_opacity.f90` (`compute_alex06_opacity`) |
+| `kurucz`, `condopacpint`, `condopacp` | `kap/kurucz90/kurucz_opacity.f90` (`compute_kurucz_opacity`; its reader `kurucz_reader.f90`), `kap/conductive/conductive_opacity.f90` (`compute_conductive_opacity`, `condopacp`; the table's reader `conductive_reader.f90`) |
 | `trapzd`, `qgauss`, `func` | `rotation/shape/shell_quadrature.f90` (`refine_distortion_integral`, `average_over_equipotential`, `equipotential_integrand`) |
 | `tridia` | `rotation/seculr/secular_transport.f90` (`solve_angular_momentum_transport`) |
 | `intpt` | `eos/mhd/mhd_eos.f90` (`interpolate_mhd_table`) |
