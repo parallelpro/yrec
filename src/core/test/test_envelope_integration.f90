@@ -510,11 +510,13 @@ subroutine check_thin_envelope()
 end subroutine check_thin_envelope
 
 ! ---------------------------------------------------------------
-! A starting density of 1e3 g/cm^3 puts the start past the photosphere.
+! A starting density of 1e-2 g/cm^3 puts the start past the photosphere
+! (a density within the tables, so that the devel build's traps stay
+! quiet).
 subroutine check_start_retry()
       type(envint_config) :: cfg
       cfg = base_cfg
-      cfg%atm_step_initial = 1.0e3_dp
+      cfg%atm_step_initial = 1.0e-2_dp
       call integrate(cfg)
       call report('retry: an envint_start_retry event first', &
            real(event_kind(1), dp), event_kind(1) == envint_start_retry)

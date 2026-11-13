@@ -22,7 +22,7 @@ thin: ierr = 0, no envelope points                           0.0E+00  ok
 thin: vertex = the surface point                             0.0E+00  ok
 -- retry
 retry: an envint_start_retry event first                     1.0E+00  ok
-retry: its start lies past the photosphere                   1.7E-01  ok
+retry: its start lies past the photosphere                   6.2E+00  ok
 retry: then the integration succeeds                         0.0E+00  ok
 -- errors
 atmosphere maxstp: ierr = 1, its event last                  1.0E+00  ok
