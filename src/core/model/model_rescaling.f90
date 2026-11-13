@@ -6,6 +6,7 @@
 ! (main-sequence models) or its core and total mass (horizontal-branch
 ! models), and optionally a Z ramp toward the center.
 module model_rescaling
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use shell_boundaries, only: find_shell_boundaries
       use star_info_lib, only: star_info
       use control_slots, only: i_target_mass, i_target_x, i_target_z, &
@@ -13,6 +14,15 @@ module model_rescaling
       implicit none
       private
       public :: rescale_model
+
+! A model with central X above main_sequence_x_min is rescaled as a
+! main-sequence model, else as a horizontal-branch one [mass fraction];
+! a species value relative to H is on the scale log N(H) = 12 [dex]; a
+! horizontal-branch mass rescale stretches the mass outside the H shell
+! when at least hb_old_method_envelope_msun lies outside the core, else
+! outside the core [Msun]; z_floor keeps a Z ratio finite [mass fraction].
+      real(dp), parameter :: main_sequence_x_min = 1.0d-10, log_abundance_scale_h = 12.0d0, &
+           hb_old_method_envelope_msun = 0.01d0, z_floor = 1.d-30
 
 contains
 
@@ -52,7 +62,7 @@ contains
 !     envelope_metal_fraction, log_mass, log_total_mass, star_mass,
 !     surface_hydrogen_fraction, surface_metal_fraction, xa
 subroutine rescale_model(s, ierr)
-      use physical_constants
+      use physical_constants, only: ln10
       use star_info_lib, only: i_h1
       use control_slots, only: itime_core_min
       use core_messages, only: core_log, core_stdout_values, message_length, unwritten_line
@@ -63,17 +73,17 @@ subroutine rescale_model(s, ierr)
 
       integer :: run_index
 ! --- locals ---
-      double precision :: x_rescale_factor
+      real(dp) :: x_rescale_factor
       integer :: zone_idx, species_idx
-      double precision :: delta_z, z_rescale_factor
-      double precision :: log_mass_shift
-      double precision :: core_mass_old, env_mass_old, env_mass_old2, &
+      real(dp) :: delta_z, z_rescale_factor
+      real(dp) :: log_mass_shift
+      real(dp) :: core_mass_old, env_mass_old, env_mass_old2, &
            shell_mass_old, delta_env_mass, delta_core_mass, env_mass_new, &
            mass_scale_factor, env_mass_check, shell_mass_prev, &
            mass_shift_grams, unlogged_mass_temp, core_mass_new, &
            shell_mass_new
-      double precision :: z_ramp_slope, mass_fraction_local, z_ramp_value
-      double precision :: species_target
+      real(dp) :: z_ramp_slope, mass_fraction_local, z_ramp_value
+      real(dp) :: species_target
       integer :: core_edge, envelope_edge, shell_begin, shell_end, shell_mid
       logical :: has_h_shell
 
@@ -84,7 +94,7 @@ subroutine rescale_model(s, ierr)
 
       call rescale_surface_x
       call rescale_interior_z
-      if(s%xa(1,1).gt.1.0d-10) then
+      if(s%xa(1,1) > main_sequence_x_min) then
 ! Main-sequence model: one species, and the mass.
          call rescale_one_species
          call rescale_main_sequence_mass
@@ -98,7 +108,7 @@ subroutine rescale_model(s, ierr)
          call rescale_hb_core_mass
          if (ierr /= 0) return
          call report_hb_masses
-      endif
+      end if
       call set_helium_from_x_and_z
       call ramp_interior_z
       return
@@ -113,11 +123,11 @@ contains
 ! requested X above 1 is refused with a message.
 subroutine rescale_surface_x
       character(len=message_length) :: lines(4)
-      if(s%card_rescale_targets(i_target_x,run_index).gt.0.0d0) then
-         if(s%card_rescale_targets(i_target_x,run_index).le.1.0d0) then
-            x_rescale_factor = s%card_rescale_targets(i_target_x,run_index)/dmax1(s%surface_hydrogen_fraction,1.0d-20)
+      if(s%card_rescale_targets(i_target_x,run_index) > 0.0d0) then
+         if(s%card_rescale_targets(i_target_x,run_index) <= 1.0d0) then
+            x_rescale_factor = s%card_rescale_targets(i_target_x,run_index)/max(s%surface_hydrogen_fraction,1.0d-20)
             do zone_idx = 1,s%nz
-               s%xa(1,zone_idx) = dmin1(s%card_rescale_targets(i_target_x,run_index), &
+               s%xa(1,zone_idx) = min(s%card_rescale_targets(i_target_x,run_index), &
                     s%xa(1,zone_idx)*x_rescale_factor)
             end do
             s%surface_hydrogen_fraction = s%card_rescale_targets(i_target_x,run_index)
@@ -133,8 +143,8 @@ subroutine rescale_surface_x
  1000       format(1x,'ERROR IN SUBROUTINE RSCALE'/1x,'RESCALING OF X', &
            ' IN KIND CARD #',i3,1x,'FAILED - DESIRED COMP',f9.6/1x, &
            'GREATER THAN UNITY.  X NOT RESCALED')
-         endif
-      endif
+         end if
+      end if
 end subroutine rescale_surface_x
 
 ! ---------------------------------------------------------------
@@ -150,13 +160,13 @@ end subroutine rescale_surface_x
 ! with a message.
 subroutine rescale_interior_z
       character(len=message_length) :: lines(4)
-      if(s%card_rescale_targets(i_target_z,run_index).gt.0.0d0) then
-         if(s%card_rescale_targets(i_target_z,run_index).le.1.0d0) then
+      if(s%card_rescale_targets(i_target_z,run_index) > 0.0d0) then
+         if(s%card_rescale_targets(i_target_z,run_index) <= 1.0d0) then
             delta_z = s%card_rescale_targets(i_target_z,run_index) - s%surface_metal_fraction
             do zone_idx = 1,s%nz
-               z_rescale_factor=dmax1(0.d0,s%xa(3,zone_idx)+delta_z)/ &
-                    (s%xa(3,zone_idx)+1.d-30)
-               s%xa(3,zone_idx) = dmax1(0.0d0,s%xa(3,zone_idx)+delta_z)
+               z_rescale_factor=max(0.d0,s%xa(3,zone_idx)+delta_z)/ &
+                    (s%xa(3,zone_idx)+z_floor)
+               s%xa(3,zone_idx) = max(0.0d0,s%xa(3,zone_idx)+delta_z)
                do species_idx = 5,11
                   s%xa(species_idx,zone_idx) = s%xa(species_idx,zone_idx)*z_rescale_factor
                end do
@@ -176,8 +186,8 @@ subroutine rescale_interior_z
  1002       format(1x,'ERROR IN SUBROUTINE RSCALE'/1x,'RESCALING OF Z', &
            ' IN KIND CARD #',i3,1x,'FAILED - DESIRED COMP',f9.6/1x, &
            'GREATER THAN UNITY.  Z NOT RESCALED')
-         endif
-      endif
+         end if
+      end if
 end subroutine rescale_interior_z
 
 ! ---------------------------------------------------------------
@@ -186,7 +196,7 @@ end subroutine rescale_interior_z
 ! every shell (main-sequence models).
 subroutine rescale_one_species
       character(len=message_length) :: lines(4)
-         if(s%physics%rescale_species_active.and.s%physics%new_species_value.ge.0.0d0) then
+         if(s%physics%rescale_species_active.and.s%physics%new_species_value >= 0.0d0) then
 ! new_species_value is a mass fraction or, with value_relative_to_h
 ! (legacy LREL), a log abundance relative to the surface X on a scale
 ! where X is 12, by mass:
@@ -197,8 +207,8 @@ subroutine rescale_one_species
 ! to about 1e-12 X.)
             species_target = s%physics%new_species_value
             if(s%physics%value_relative_to_h) species_target = &
-                 exp(ln10*(s%physics%new_species_value-12.0d0))*s%xa(1,s%nz)
-            if(species_target.lt.1.0d0) then
+                 exp(ln10*(s%physics%new_species_value-log_abundance_scale_h))*s%xa(1,s%nz)
+            if(species_target < 1.0d0) then
                do zone_idx = 1,s%nz
                   s%xa(s%physics%new_species_index,zone_idx) = species_target
                end do
@@ -210,8 +220,8 @@ subroutine rescale_one_species
  1004       format(1x,'ERROR IN SUBROUTINE RSCALE'/1x,'RESCALING OF ', &
            'SPECIES ',i3,' IN KIND CARD # ',i3,' FAILED - DESIRED COMP',f9.6/1x, &
            'GREATER THAN UNITY.  Z NOT RESCALED')
-            endif
-         endif
+            end if
+         end if
 end subroutine rescale_one_species
 
 ! ---------------------------------------------------------------
@@ -219,14 +229,14 @@ end subroutine rescale_one_species
 ! (main-sequence models): log M and every log m shift by
 ! log10(M_new/M_old); nothing else in the model changes.
 subroutine rescale_main_sequence_mass
-         if(s%card_rescale_targets(i_target_mass,run_index).gt.0.0d0) then
+         if(s%card_rescale_targets(i_target_mass,run_index) > 0.0d0) then
             log_mass_shift = log10(s%card_rescale_targets(i_target_mass,run_index)/s%star_mass)
             s%log_total_mass = s%log_total_mass + log_mass_shift
             s%star_mass = s%card_rescale_targets(i_target_mass,run_index)
             do zone_idx = 1,s%nz
                s%log_mass(zone_idx) = s%log_mass(zone_idx) + log_mass_shift
             end do
-         endif
+         end if
 end subroutine rescale_main_sequence_mass
 
 ! ---------------------------------------------------------------
@@ -240,7 +250,7 @@ end subroutine rescale_main_sequence_mass
 !                  fitting point.
 subroutine measure_hb_masses
       character(len=message_length) :: lines(4)
-         if(s%card_rescale_targets(i_target_mass,run_index).gt.0.0d0.or.s%card_rescale_targets(i_target_core_mass,run_index).gt.0.0d0) then
+         if(s%card_rescale_targets(i_target_mass,run_index) > 0.0d0.or.s%card_rescale_targets(i_target_core_mass,run_index) > 0.0d0) then
             call find_shell_boundaries(s%xa(i_h1,:), s%luminosity_lsun, s%convective_flag, s%nz, &
                  s%physics%timestep_factors(itime_core_min), core_edge, envelope_edge, &
                  shell_begin, shell_end, shell_mid, has_h_shell)
@@ -255,7 +265,7 @@ subroutine measure_hb_masses
             call core_log(lines)
    63       format(1x,'HB-OLD MASSES: CORE ', &
            f9.6,' SHELL ',f9.6,' ENV ',f9.6,' TOTAL',f9.6)
-         endif
+         end if
 end subroutine measure_hb_masses
 
 ! ---------------------------------------------------------------
@@ -269,12 +279,12 @@ end subroutine measure_hb_masses
 ! would not be positive.
 subroutine rescale_hb_total_mass
       character(len=message_length) :: lines(4)
-         if(s%card_rescale_targets(i_target_mass,run_index).gt.0.0d0) then
+         if(s%card_rescale_targets(i_target_mass,run_index) > 0.0d0) then
 
             delta_env_mass = s%card_rescale_targets(i_target_mass,run_index) - s%star_mass
             env_mass_new = env_mass_old + delta_env_mass
 
-            if((((pow(10d0, s%log_total_mass))/s%solar_mass_cgs)-core_mass_old).ge.0.01d0) then
+            if((((pow(10d0, s%log_total_mass))/s%solar_mass_cgs)-core_mass_old) >= hb_old_method_envelope_msun) then
       call core_stdout_values([(exp10(s%log_total_mass)-exp10(s%log_mass(s%nz)))/ &
            (exp10(s%log_mass(s%nz))-exp10(s%log_mass(shell_begin-1)))], &
            text='Entering old method ')
@@ -282,7 +292,7 @@ subroutine rescale_hb_total_mass
       call core_stdout_values([exp10(s%log_mass(s%nz)) - exp10(s%log_mass(shell_begin-1))], &
            text='Envelope ')
 ! The new envelope mass outside the H shell must be positive.
-            if(env_mass_new.le.0.0d0)then
+            if(env_mass_new <= 0.0d0)then
                lines = unwritten_line
                write(lines,69)env_mass_old,env_mass_old+delta_env_mass,s%card_rescale_targets(i_target_mass,run_index),s%star_mass
                call core_log(lines)
@@ -294,7 +304,7 @@ subroutine rescale_hb_total_mass
                ! (main) stops.
                ierr = 1
                return
-            endif
+            end if
 
 ! Base m_b = m(shell_end); s from the masses in Msun.
         mass_scale_factor =(s%card_rescale_targets(i_target_mass,run_index)-exp(ln10*s%log_mass(shell_end))/s%solar_mass_cgs)/ &
@@ -320,7 +330,7 @@ subroutine rescale_hb_total_mass
 ! The mass outside the core must be positive. (This tests the old
 ! mass, M_old - M_core, not the new one.)
             env_mass_check = ((exp10(s%log_total_mass))/s%solar_mass_cgs)-core_mass_old
-            if(env_mass_check.le.0.0d0)then
+            if(env_mass_check <= 0.0d0)then
                lines = unwritten_line
                write(lines,69)env_mass_old,env_mass_old+delta_env_mass,s%card_rescale_targets(i_target_mass,run_index),s%star_mass
                call core_log(lines)
@@ -328,7 +338,7 @@ subroutine rescale_hb_total_mass
                ! (main) stops.
                ierr = 1
                return
-            endif
+            end if
 
 ! Base m_b = m(shell_begin-1); s from the masses in Msun.
         mass_scale_factor =(s%card_rescale_targets(i_target_mass,run_index)-exp(ln10*s%log_mass(shell_begin-1))/s%solar_mass_cgs)/ &
@@ -342,8 +352,8 @@ subroutine rescale_hb_total_mass
            mass_scale_factor*(exp10(s%log_mass(zone_idx))-exp10(s%log_mass(shell_begin-1))))
             end do
             env_mass_old = (exp(ln10*s%log_total_mass)-exp(ln10*s%log_mass(shell_end)))/s%solar_mass_cgs
-         endif
-         endif
+         end if
+         end if
 end subroutine rescale_hb_total_mass
 
 ! ---------------------------------------------------------------
@@ -360,13 +370,13 @@ end subroutine rescale_hb_total_mass
 ! would not keep a positive mass.
 subroutine rescale_hb_core_mass
       character(len=message_length) :: lines(4)
-         if(s%card_rescale_targets(i_target_core_mass,run_index).gt.0.0d0) then
+         if(s%card_rescale_targets(i_target_core_mass,run_index) > 0.0d0) then
 
             shell_mass_prev= (exp(ln10*s%log_mass(shell_end)))
             delta_core_mass = s%card_rescale_targets(i_target_core_mass,run_index) - core_mass_old
             delta_env_mass = - delta_core_mass
             env_mass_new = env_mass_old2 + delta_env_mass
-            if(env_mass_new.le.0.0d0)then
+            if(env_mass_new <= 0.0d0)then
                lines = unwritten_line
                write(lines,71)env_mass_old,env_mass_new,s%card_rescale_targets(i_target_core_mass,run_index),core_mass_old
                call core_log(lines)
@@ -379,7 +389,7 @@ subroutine rescale_hb_core_mass
                ! (main) stops.
                ierr = 1
                return
-            endif
+            end if
             log_mass_shift = log10(s%card_rescale_targets(i_target_core_mass,run_index)/core_mass_old)
             do zone_idx = 1,shell_begin-1
                s%log_mass(zone_idx) = s%log_mass(zone_idx) + log_mass_shift
@@ -401,7 +411,7 @@ subroutine rescale_hb_core_mass
              mass_scale_factor*(exp10(s%log_mass(s%nz))-exp10(s%log_mass(zone_idx))))
             end do
 
-         endif
+         end if
 end subroutine rescale_hb_core_mass
 
 ! ---------------------------------------------------------------
@@ -409,7 +419,7 @@ end subroutine rescale_hb_core_mass
 ! masses.
 subroutine report_hb_masses
       character(len=message_length) :: lines(4)
-         if(s%card_rescale_targets(i_target_mass,run_index).gt.0.0d0.or.s%card_rescale_targets(i_target_core_mass,run_index).gt.0.0d0)then
+         if(s%card_rescale_targets(i_target_mass,run_index) > 0.0d0.or.s%card_rescale_targets(i_target_core_mass,run_index) > 0.0d0)then
             core_mass_new = exp(ln10*s%log_mass(shell_begin-1))/s%solar_mass_cgs
             env_mass_new = (exp(ln10*s%log_total_mass)-exp(ln10*s%log_mass(shell_end)))/s%solar_mass_cgs
             shell_mass_new = (exp(ln10*s%log_mass(shell_end))-exp(ln10*s%log_mass(shell_begin-1)))/s%solar_mass_cgs
@@ -419,7 +429,7 @@ subroutine report_hb_masses
   101       format(1x,'HB-RESCALED MASSES: CORE ', &
            f9.6,' SHELL ',f9.6,' ENV ',f9.6,' TOTAL ',f9.6)
 
-         endif
+         end if
 end subroutine report_hb_masses
 
 ! ---------------------------------------------------------------
@@ -442,28 +452,28 @@ end subroutine set_helium_from_x_and_z
 ! (Z_old - Z_new)/Z_old, the fraction of Z removed: right only for a
 ! halved Z, zero for an unchanged one, negative for a raised one.)
 subroutine ramp_interior_z
-      if(s%control%use_z_ramp.and.(s%card_z_ramp_core_z(run_index).gt.0d0).and.(s%card_z_ramp_inner_mass_fraction(run_index).gt.0d0) &
-           .and.(s%card_z_ramp_outer_mass_fraction(run_index).gt.0d0))then
+      if(s%control%use_z_ramp.and.(s%card_z_ramp_core_z(run_index) > 0d0).and.(s%card_z_ramp_inner_mass_fraction(run_index) > 0d0) &
+           .and.(s%card_z_ramp_outer_mass_fraction(run_index) > 0d0))then
             z_ramp_slope = (s%surface_metal_fraction - s%card_z_ramp_core_z(run_index))/(s%card_z_ramp_outer_mass_fraction(run_index)-s%card_z_ramp_inner_mass_fraction(run_index))
             do zone_idx = 1,s%nz
                mass_fraction_local = exp10(s%log_mass(zone_idx))/(s%star_mass*s%solar_mass_cgs)
-               if (mass_fraction_local .lt. s%card_z_ramp_inner_mass_fraction(run_index)) then
-                  z_rescale_factor = s%card_z_ramp_core_z(run_index)/(s%xa(3,zone_idx)+1.d-30)
+               if (mass_fraction_local < s%card_z_ramp_inner_mass_fraction(run_index)) then
+                  z_rescale_factor = s%card_z_ramp_core_z(run_index)/(s%xa(3,zone_idx)+z_floor)
                   s%xa(3,zone_idx) = s%card_z_ramp_core_z(run_index)
                   s%xa(1, zone_idx) = 1.0d0-s%xa(3,zone_idx)-s%xa(4,zone_idx)-s%xa(2,zone_idx)
                   do species_idx = 5,11
                       s%xa(species_idx,zone_idx) = s%xa(species_idx,zone_idx)*z_rescale_factor
-                  enddo
-               else if (mass_fraction_local .lt. s%card_z_ramp_outer_mass_fraction(run_index)) then
+                  end do
+               else if (mass_fraction_local < s%card_z_ramp_outer_mass_fraction(run_index)) then
                   z_ramp_value = (mass_fraction_local-s%card_z_ramp_inner_mass_fraction(run_index))*z_ramp_slope+s%card_z_ramp_core_z(run_index)
-                  z_rescale_factor = z_ramp_value/(s%xa(3,zone_idx)+1.d-30)
+                  z_rescale_factor = z_ramp_value/(s%xa(3,zone_idx)+z_floor)
                   s%xa(3, zone_idx) = z_ramp_value
                   s%xa(1, zone_idx) = 1.0d0-s%xa(3,zone_idx)-s%xa(4,zone_idx)-s%xa(2,zone_idx)
                   do species_idx = 5,11
                       s%xa(species_idx,zone_idx) = s%xa(species_idx,zone_idx)*z_rescale_factor
-                  enddo
+                  end do
                end if
-            enddo
+            end do
       end if
 end subroutine ramp_interior_z
 

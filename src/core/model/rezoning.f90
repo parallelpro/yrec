@@ -24,7 +24,7 @@ module rezoning
       use settings_install, only: install_surface_x_settings
       use run_messages, only: solver_diagnostics
       use core_messages, only: core_log, core_report, core_stdout, message_length, unwritten_line
-      use physical_constants
+      use physical_constants, only: cc23, ln10
       use numerics_lib, only: natural_spline, splint, numerics_status_text
       use regridding, only: structure_profiles, rotation_profiles, &
            compute_shell_masses, regrid_profile, regrid_composition, &
@@ -36,6 +36,11 @@ module rezoning
 ! The most points flag_fixed_points keeps (append_flag_point guards
 ! every append; one slot stays for the star%nz terminator).
       integer, parameter :: max_flag_points = 100
+
+! A spacing limit at or below spacing_limit_off is off [X, Z]; the
+! start-of-step deuterium rates are regridded only while the surface
+! deuterium is at least deuterium_regrid_min [mass fraction] (O6).
+      real(dp), parameter :: spacing_limit_off = 1.0D-15, deuterium_regrid_min = 1.0D-14
 
 ! The rezone's state, which its steps pass on to each other:
 !   flag_point(1:flag_count)  the points the rezone keeps and does not
@@ -160,9 +165,9 @@ subroutine check_envelope_temperature_range(s, rz, ierr)
       character(len=message_length) :: lines(4)
 ! The outer point is cooler than tenv0: delete points down to the first
 ! one hotter than tenv0.
-      if (s%logT(s%nz).lt.s%physics%rezone_env_logt0) then
+      if (s%logT(s%nz) < s%physics%rezone_env_logt0) then
        do i = s%nz-1,1,-1
-          if (s%logT(i).gt.s%physics%rezone_env_logt0) then
+          if (s%logT(i) > s%physics%rezone_env_logt0) then
              lines = unwritten_line
              write(lines,10) s%nz,i
              call core_log(lines)
@@ -171,7 +176,7 @@ subroutine check_envelope_temperature_range(s, rz, ierr)
              s%log_fit_point_mass_fraction = s%log_mass(s%nz) - s%log_total_mass
              s%reset_triangle = .true.
              exit
-          endif
+          end if
        end do
        if (i < (1)) then
 ! The whole model is cooler than tenv0 (unlikely): stop with ierr, which
@@ -189,8 +194,8 @@ subroutine check_envelope_temperature_range(s, rz, ierr)
 ! log P and log R by the stored state's offsets from the fitting point,
 ! with Delta log T = Delta log P/4, L and the composition copied, and
 ! log rho = log P - log T - 8 (a rough ideal-gas estimate).
-      else if (s%logT(s%nz).gt.s%physics%rezone_env_logt1.and. &
-           s%stored_vertex_index.ne.0) then
+      else if (s%logT(s%nz) > s%physics%rezone_env_logt1.and. &
+           s%stored_vertex_index /= 0) then
        s%nz = s%nz + 1
        s%log_fit_point_mass_fraction = s%stored_envelope_state(4)
        s%log_mass(s%nz) = s%log_total_mass + s%log_fit_point_mass_fraction
@@ -216,7 +221,7 @@ subroutine check_envelope_temperature_range(s, rz, ierr)
        call core_log(lines)
    60    format(' OUTER POINT ADDED',I5,F15.10,'  PTR',3F10.6)
        s%reset_triangle = .true.
-      endif
+      end if
 end subroutine check_envelope_temperature_range
 
 
@@ -264,13 +269,13 @@ end subroutine flag_fixed_points
 subroutine flag_convection_zone_edges(s, rz)
       type(star_info), intent(inout) :: s
       type(rezone_state), intent(inout) :: rz
-      if (s%core_cz_top_index.gt.1) then
+      if (s%core_cz_top_index > 1) then
        call append_flag_point(rz, s%core_cz_top_index)
-      endif
-      if (s%envelope_cz_bottom_index.lt.s%nz .and. &
-           s%envelope_cz_bottom_index.gt.1) then
+      end if
+      if (s%envelope_cz_bottom_index < s%nz .and. &
+           s%envelope_cz_bottom_index > 1) then
        call append_flag_point(rz, s%envelope_cz_bottom_index)
-      endif
+      end if
 end subroutine flag_convection_zone_edges
 
 ! ---------------------------------------------------------------
@@ -280,9 +285,9 @@ end subroutine flag_convection_zone_edges
 subroutine flag_h_shell_base(s, rz)
       type(star_info), intent(inout) :: s
       type(rezone_state), intent(inout) :: rz
-      if (s%has_h_shell.and.s%h_shell_bot_index.gt.1) then
+      if (s%has_h_shell.and.s%h_shell_bot_index > 1) then
        call append_flag_point(rz, s%h_shell_bot_index - 1)
-      endif
+      end if
 end subroutine flag_h_shell_base
 
 ! ---------------------------------------------------------------
@@ -301,24 +306,24 @@ subroutine flag_jumps(s, rz, list_full)
       real(dp) :: log_omega_top, log_omega_bot
       do i = 2,s%nz
 ! A jump in X between neighbouring shells,
-       if (dabs(s%xa(i_h1,i)-s%xa(i_h1,i-1)).gt.s%physics%chi_grid_scale(ichi_flag_dx)) then
+       if (abs(s%xa(i_h1,i)-s%xa(i_h1,i-1)) > s%physics%chi_grid_scale(ichi_flag_dx)) then
           call append_flag_point(rz, i)
 ! else a jump in Z,
-       else if (dabs(s%xa(i_metals,i)-s%xa(i_metals,i-1)).gt. &
+       else if (abs(s%xa(i_metals,i)-s%xa(i_metals,i-1)) > &
             s%physics%chi_grid_scale(ichi_flag_dz)) then
           call append_flag_point(rz, i)
 ! else (rotating models) a jump in log omega.
        else if (s%physics%rotation_active) then
           log_omega_top = log10(s%omega(i))
           log_omega_bot = log10(s%omega(i-1))
-          if (dabs(log_omega_top-log_omega_bot).gt.s%physics%chi_grid_scale(ichi_flag_dw)) then
+          if (abs(log_omega_top-log_omega_bot) > s%physics%chi_grid_scale(ichi_flag_dw)) then
              call append_flag_point(rz, i)
-          endif
-       endif
+          end if
+       end if
 ! Stop scanning once the list is full (append_flag_point warns on the
 ! first rejected append; one slot stays reserved for the star%nz
 ! terminator).
-       if (rz%flag_count.ge.max_flag_points) exit
+       if (rz%flag_count >= max_flag_points) exit
       end do
       list_full = i <= s%nz
 end subroutine flag_jumps
@@ -346,7 +351,7 @@ subroutine flag_envelope_bases(s, rz, ierr)
       if (.not.s%convective_flag(s%nz)) then
        overshoot_base_zone = s%nz
        fine_zone_base = s%nz
-      else if (s%envelope_cz_bottom_index.eq.1) then
+      else if (s%envelope_cz_bottom_index == 1) then
        overshoot_base_zone = 1
        fine_zone_base = 1
       else
@@ -362,36 +367,36 @@ subroutine flag_envelope_bases(s, rz, ierr)
           if (ierr /= 0) return
           overshoot_base_radius = exp(ln10*s%logR(s%envelope_cz_bottom_index)) - overshoot_depth
           do overshoot_base_zone = s%envelope_cz_bottom_index-1,1,-1
-             if (exp(ln10*s%logR(overshoot_base_zone)).lt.overshoot_base_radius) exit
+             if (exp(ln10*s%logR(overshoot_base_zone)) < overshoot_base_radius) exit
           end do
             overshoot_base_zone = overshoot_base_zone + 1
-            if (overshoot_base_zone.gt.1) then
+            if (overshoot_base_zone > 1) then
                call append_flag_point(rz, overshoot_base_zone)
-            endif
-       endif
-       if (s%physics%chi_grid_scale(ichi_czbase_fine_width).eq.0.0D0) then
+            end if
+       end if
+       if (s%physics%chi_grid_scale(ichi_czbase_fine_width) == 0.0D0) then
           fine_zone_base = overshoot_base_zone
        else
 ! The base of the finely zoned region: the deepest point with
 ! log P - log P(czb) <= tol_czbase_fine_width, flagged when it differs
 ! from the overshoot base.
-          if (overshoot_base_zone.eq.1) then
+          if (overshoot_base_zone == 1) then
              fine_zone_base = 1
           else
           do fine_zone_base = overshoot_base_zone-1,1,-1
              if (s%logP(fine_zone_base) - &
-                  s%logP(s%envelope_cz_bottom_index).gt.s%physics%chi_grid_scale(ichi_czbase_fine_width)) &
+                  s%logP(s%envelope_cz_bottom_index) > s%physics%chi_grid_scale(ichi_czbase_fine_width)) &
                   exit
           end do
             fine_zone_base = fine_zone_base + 1
-          if (fine_zone_base.ne.overshoot_base_zone) then
-            if (fine_zone_base.gt.1) then
+          if (fine_zone_base /= overshoot_base_zone) then
+            if (fine_zone_base > 1) then
                call append_flag_point(rz, fine_zone_base)
-            endif
+            end if
           end if
           end if
-       endif
-      endif
+       end if
+      end if
 end subroutine flag_envelope_bases
 
 ! ---------------------------------------------------------------
@@ -411,32 +416,32 @@ subroutine sort_flag_points(s, rz)
 ! terminator is always in bounds.
       rz%flag_point(rz%flag_count) = s%nz
 ! Sort the flagged points into ascending order (bubble sort).
-      if (rz%flag_count.ne.1) then
+      if (rz%flag_count /= 1) then
       do
       sort_done = .true.
       do i = 1,rz%flag_count-1
-       if (rz%flag_point(i+1).lt.rz%flag_point(i)) then
+       if (rz%flag_point(i+1) < rz%flag_point(i)) then
           temp_swap = rz%flag_point(i)
           rz%flag_point(i) = rz%flag_point(i+1)
           rz%flag_point(i+1) = temp_swap
           sort_done = .false.
-       endif
+       end if
       end do
       if (sort_done) exit
       end do
 ! Remove the duplicates.
       i = 2
       do
-      if (rz%flag_point(i).eq.rz%flag_point(i-1)) then
-       if (i.lt.rz%flag_count) then
+      if (rz%flag_point(i) == rz%flag_point(i-1)) then
+       if (i < rz%flag_count) then
           do j = i,rz%flag_count-1
              rz%flag_point(j) = rz%flag_point(j+1)
           end do
-       endif
+       end if
        rz%flag_count = rz%flag_count - 1
-      endif
+      end if
       i = i + 1
-      if (i.gt.rz%flag_count) exit
+      if (i > rz%flag_count) exit
       end do
       end if
       if (solver_diagnostics()) then
@@ -457,7 +462,7 @@ subroutine append_flag_point(rz, zone)
       type(rezone_state), intent(inout) :: rz
       character(len=message_length) :: lines(4)
       integer, intent(in) :: zone
-      if (rz%flag_count .gt. max_flag_points - 1) then
+      if (rz%flag_count > max_flag_points - 1) then
          if (.not. rz%flag_overflow_warned) then
             lines = unwritten_line
             write(lines,110) max_flag_points
@@ -523,9 +528,9 @@ subroutine seed_new_point_run(s, rz)
       s%surface_luminosity_lsun_start = s%luminosity_lsun(s%nz)
 ! luminosity_max: the largest L in the model.
       do i = s%nz-1,1,-1
-         if (s%luminosity_lsun(i).gt.luminosity_max) then
+         if (s%luminosity_lsun(i) > luminosity_max) then
             luminosity_max = s%luminosity_lsun(i)
-         endif
+         end if
       end do
       rz%point_spacing_max(1) = s%physics%chi_grid_scale(ichi_dp_env_max)
       rz%point_spacing_max(2) = s%physics%chi_grid_scale(ichi_dl_max)*luminosity_max
@@ -562,24 +567,24 @@ subroutine accumulate_chi_spacing(s, rz)
       rz%chi(1) = 1.0D0
       do j = 2, s%nz
          pressure_test = s%logP(j) - s%logP(s%envelope_cz_bottom_index)
-         if (abs(pressure_test).lt.s%physics%chi_grid_scale(ichi_czbase_fine_width)) then
+         if (abs(pressure_test) < s%physics%chi_grid_scale(ichi_czbase_fine_width)) then
 ! The finely zoned region around the convection-zone base.
             dp_scale = s%physics%chi_grid_scale(ichi_dp_czbase_max)
-         else if (pressure_test.gt.s%physics%chi_grid_scale(ichi_czbase_fine_width)) then
+         else if (pressure_test > s%physics%chi_grid_scale(ichi_czbase_fine_width)) then
 ! Below it, in the radiative interior.
             dp_scale = s%physics%chi_grid_scale(ichi_dp_core_max)
          else
 ! Above it, in the surface convection zone.
             dp_scale = s%physics%chi_grid_scale(ichi_dp_env_max)
-         endif
-         if (s%luminosity_lsun(j).gt.s%luminosity_lsun(j-1)) then
+         end if
+         if (s%luminosity_lsun(j) > s%luminosity_lsun(j-1)) then
             dchi = (s%log_mass(j)-s%log_mass(j-1))/mass_scale + &
                  (s%luminosity_lsun(j)-s%luminosity_lsun(j-1))/luminosity_scale - &
                  (s%logP(j)-s%logP(j-1))/dp_scale
          else
             dchi = (s%log_mass(j)-s%log_mass(j-1))/mass_scale - &
                  (s%logP(j)-s%logP(j-1))/dp_scale
-         endif
+         end if
          rz%chi(j) = rz%chi(j-1)+dchi
       end do
 end subroutine accumulate_chi_spacing
@@ -623,7 +628,7 @@ subroutine place_points_along_chi(s, rz, ierr)
       do i = 1,rz%flag_count
          delta_chi = rz%chi(rz%flag_point(i))-chi_prev
          segment_point_count = int(delta_chi)+1
-         if (rz%new_num_zones+segment_point_count.gt.json) then
+         if (rz%new_num_zones+segment_point_count > json) then
 ! More points than the arrays hold: stop with ierr.
             lines = unwritten_line
             write(lines,101) rz%new_num_zones+segment_point_count,json
@@ -632,8 +637,8 @@ subroutine place_points_along_chi(s, rz, ierr)
      I6/' RUN STOPPED')
             ierr = 1
             return
-         endif
-         dchi = delta_chi/dfloat(segment_point_count)
+         end if
+         dchi = delta_chi/dble(segment_point_count)
 ! The new points of this segment.
          do j = point_prev_index+1,point_prev_index+segment_point_count
             spline_eval_x = chi_prev + dchi
@@ -703,18 +708,18 @@ subroutine add_points_for_x_jumps(s, rz, ierr)
          rz%x_new(i) = spline_eval_y
       end do
 ! Skip when tol_dx_max (legacy HPMAX(3)) is zero.
-      if (rz%point_spacing_max(3).gt.1.0D-15) then
+      if (rz%point_spacing_max(3) > spacing_limit_off) then
 ! The intervals where X rises outward by more than tol_dx_max, collected
 ! outermost first, so that each insertion below shifts only points
 ! outside the intervals still to be filled.
       gradient_flag_count = 0
       do j = rz%new_num_zones,2,-1
-         if (rz%x_new(j)-rz%x_new(j-1).gt.rz%point_spacing_max(3)) then
+         if (rz%x_new(j)-rz%x_new(j-1) > rz%point_spacing_max(3)) then
             gradient_flag_count = gradient_flag_count + 1
             gradient_flag_index(gradient_flag_count) = j
-         endif
+         end if
       end do
-      if (gradient_flag_count.ne.0) then
+      if (gradient_flag_count /= 0) then
       working_num_zones = rz%new_num_zones
       do i = 1,gradient_flag_count
          j = gradient_flag_index(i)
@@ -723,10 +728,10 @@ subroutine add_points_for_x_jumps(s, rz, ierr)
 ! num_new_points, then fill the interval below j evenly in log m.
          num_new_points = int(delta_x_over_max)
          point_insert_spacing = (rz%new_log_mass(j)-rz%new_log_mass(j-1))/ &
-              dfloat(num_new_points+1)
+              dble(num_new_points+1)
 ! More points than the arrays hold: stop with ierr, as
 ! place_points_along_chi does (no check here before 2026-10).
-         if (working_num_zones+num_new_points.gt.json) then
+         if (working_num_zones+num_new_points > json) then
             lines = unwritten_line
             write(lines,'(a,i6,a,i6)') ' DESIRED NUMBER OF POINTS ', &
                  working_num_zones+num_new_points, ' EXCEEDS JSON ', json
@@ -798,15 +803,15 @@ subroutine add_points_for_z_jumps(s, rz, ierr)
 ! Skip when tol_dz_max (legacy HPMAX(4)) is zero; otherwise collect the
 ! intervals where Z falls outward by more than tol_dz_max, outermost
 ! first.
-      if (rz%point_spacing_max(4).gt.1.0D-15) then
+      if (rz%point_spacing_max(4) > spacing_limit_off) then
       gradient_flag_count = 0
       do j = rz%new_num_zones,2,-1
-         if (rz%z_new(j-1)-rz%z_new(j).gt.rz%point_spacing_max(4)) then
+         if (rz%z_new(j-1)-rz%z_new(j) > rz%point_spacing_max(4)) then
             gradient_flag_count = gradient_flag_count + 1
             gradient_flag_index(gradient_flag_count) = j
-         endif
+         end if
       end do
-      if (gradient_flag_count.ne.0) then
+      if (gradient_flag_count /= 0) then
       working_num_zones = rz%new_num_zones
       do i = 1,gradient_flag_count
          j = gradient_flag_index(i)
@@ -814,10 +819,10 @@ subroutine add_points_for_z_jumps(s, rz, ierr)
 ! The number of points to insert; shift and fill as for X.
          num_new_points = int(delta_z_over_max)
          point_insert_spacing = (rz%new_log_mass(j)-rz%new_log_mass(j-1))/ &
-              dfloat(num_new_points+1)
+              dble(num_new_points+1)
 ! More points than the arrays hold: stop with ierr, as
 ! place_points_along_chi does (no check here before 2026-10).
-         if (working_num_zones+num_new_points.gt.json) then
+         if (working_num_zones+num_new_points > json) then
             lines = unwritten_line
             write(lines,'(a,i6,a,i6)') ' DESIRED NUMBER OF POINTS ', &
                  working_num_zones+num_new_points, ' EXCEEDS JSON ', json
@@ -854,10 +859,10 @@ subroutine drop_crowded_points(s, rz)
       j = 1
       compact_log_mass(j) = rz%new_log_mass(j)
       do k = 2,rz%new_num_zones-1
-       if (rz%new_log_mass(k) - compact_log_mass(j).gt.s%physics%chi_grid_scale(ichi_dm_min)) then
+       if (rz%new_log_mass(k) - compact_log_mass(j) > s%physics%chi_grid_scale(ichi_dm_min)) then
           j = j + 1
           compact_log_mass(j) = rz%new_log_mass(k)
-       endif
+       end if
       end do
       j = j + 1
       compact_log_mass(j) = rz%new_log_mass(rz%new_num_zones)
@@ -885,40 +890,40 @@ subroutine locate_new_cz_edges(s, rz)
       integer :: j
       integer :: radiative_zone_begin
       integer :: radiative_zone_end
-      if (s%core_cz_top_index.gt.1) then
+      if (s%core_cz_top_index > 1) then
        do j = 2,rz%new_num_zones
-          if (rz%new_log_mass(j).gt.s%log_mass(s%core_cz_top_index)) exit
+          if (rz%new_log_mass(j) > s%log_mass(s%core_cz_top_index)) exit
        end do
          s%core_cz_top_index = j - 1
       else
        s%core_cz_top_index = 1
-      endif
-      if (s%envelope_cz_bottom_index.lt.s%nz) then
+      end if
+      if (s%envelope_cz_bottom_index < s%nz) then
        do j = rz%new_num_zones-1,1,-1
-          if (rz%new_log_mass(j).lt.s%log_mass(s%envelope_cz_bottom_index)) &
+          if (rz%new_log_mass(j) < s%log_mass(s%envelope_cz_bottom_index)) &
                exit
        end do
          s%envelope_cz_bottom_index = j + 1
       else
        s%envelope_cz_bottom_index = rz%new_num_zones
-      endif
-      if (s%core_cz_top_index.gt.1) then
+      end if
+      if (s%core_cz_top_index > 1) then
        do i = 1,s%core_cz_top_index
           s%convective_flag(i) = .true.
        end do
        radiative_zone_begin = s%core_cz_top_index + 1
       else
        radiative_zone_begin = 1
-      endif
-      if (s%envelope_cz_bottom_index.lt.rz%new_num_zones) then
+      end if
+      if (s%envelope_cz_bottom_index < rz%new_num_zones) then
        do i = s%envelope_cz_bottom_index,rz%new_num_zones
           s%convective_flag(i) = .true.
        end do
        radiative_zone_end = s%envelope_cz_bottom_index - 1
       else
        radiative_zone_end = rz%new_num_zones
-      endif
-      if (radiative_zone_end.ge.1 .and. radiative_zone_begin.le.rz%new_num_zones) then
+      end if
+      if (radiative_zone_end >= 1 .and. radiative_zone_begin <= rz%new_num_zones) then
       do j = radiative_zone_begin,radiative_zone_end
        s%convective_flag(j) = .false.
       end do
@@ -960,7 +965,7 @@ subroutine interpolate_onto_new_grid(s, rz, ierr)
        call respin_on_new_grid(s, ierr)
        if (ierr /= 0) return
        call retally_angular_momentum(s)
-      endif
+      end if
       call rerun_physics_on_new_grid(s, ierr)
       if (ierr /= 0) return
       call refresh_surface_opacity(s, ierr)
@@ -1012,9 +1017,9 @@ subroutine regrid_composition_terms(s, rz, ierr)
 ! here: when the mesh grew, this is the regridded deuterium at that
 ! index, below the new surface.)
       if (s%physics%use_extended_composition .and. &
-           s%xa(i_h2,s%nz).ge.1.0D-14) then
+           s%xa(i_h2,s%nz) >= deuterium_regrid_min) then
          call regrid_in_place(s, rz, ierr, s%deuterium_burning_rate_start)
-      endif
+      end if
 end subroutine regrid_composition_terms
 
 
@@ -1079,7 +1084,7 @@ subroutine regrid_rotation_variables(s, rz, ierr)
          rz%ft_old(1:rz%new_point_count) = regridded%ft
          s%mean_radius_start(1:rz%new_point_count) = regridded%mean_radius
          s%eta_squared_start(1:rz%new_point_count) = regridded%eta_squared
-      endif
+      end if
 
 end subroutine regrid_rotation_variables
 
@@ -1116,7 +1121,7 @@ subroutine regrid_start_of_step_eps(s, rz, ierr)
          call regrid_profile(s%log_mass(1:rz%old_point_count), &
               spline_y(1:rz%old_point_count), rz%new_log_mass(1:rz%new_point_count), &
               s%eps_plus_neu_grav_start(1:rz%new_point_count), ierr)
-      endif
+      end if
 end subroutine regrid_start_of_step_eps
 
 
@@ -1150,7 +1155,7 @@ subroutine transfer_new_points(s, rz)
           s%eta_squared(j) = s%eta_squared_start(j)
           s%mean_radius(j) = s%mean_radius_start(j)
        end do
-      endif
+      end if
       if (solver_diagnostics()) then
          lines = unwritten_line
          write(lines,1020) s%nz,rz%new_num_zones
@@ -1331,18 +1336,9 @@ subroutine rerun_physics_on_new_grid(s, ierr)
 ! del_grad_diff_interface,
 ! which rotation_stability_setup overwrites before anything reads it.)
          end do
-! The theta term of the advection-diffusion transport on the new mesh,
-!   theta_i = r^4/(G m) omega d omega/dr   (r, m, omega: means of i-1, i)
-! (MHP 6/02), commented out with that transport (2026-10-12).
-!         do i = 2,star%nz
-!            delta_radius = exp(ln10*star%logR(i))-exp(ln10*star%logR(i-1))
-!            delta_omega = star%omega(i) - star%omega(i-1)
-!            omega_mid = 0.5D0*(star%omega(i)+star%omega(i-1))
-!            log_factor = 2.0D0*(star%logR(i)+star%logR(i-1))-0.5D0* &
-!     (star%log_mass(i)+star%log_mass(i-1))-cgl
-!            rot_scr%theta_rezoned(i) = exp(ln10*log_factor)*omega_mid*delta_omega/delta_radius
-!         end do
-      endif
+! (The advection-diffusion transport's theta term on the new mesh is in
+! model/retired/rezoning_theta_term.f90.txt.)
+      end if
 end subroutine rerun_physics_on_new_grid
 
 
@@ -1355,7 +1351,7 @@ end subroutine rerun_physics_on_new_grid
 subroutine refresh_surface_opacity(s, ierr)
       type(star_info), intent(inout) :: s
       integer, intent(inout) :: ierr
-      if (dabs(s%surface_hydrogen_fraction-s%xa(i_h1,s%nz)).gt.1.0D-8) then
+      if (abs(s%surface_hydrogen_fraction-s%xa(i_h1,s%nz)) > 1.0D-8) then
                s%surface_hydrogen_fraction = s%xa(i_h1,s%nz)
                s%surface_metal_fraction = s%xa(i_metals,s%nz)
                call install_surface_x_settings(s%surface_hydrogen_fraction, ierr)

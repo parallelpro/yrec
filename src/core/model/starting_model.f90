@@ -10,6 +10,7 @@ module starting_model
       use shell_physics, only: compute_shell_physics
       use model_rescaling, only: rescale_model
       use star_info_lib, only: star_info
+      use run_cards, only: card_evolve
       use am_regions, only: am_convective_regions
       use moments_of_inertia, only: zone_moments_of_inertia
       use rotating_shape, only: rotation_shape_factors
@@ -27,9 +28,9 @@ module starting_model
       use run_files, only: starting_model_unit
       use model_files, only: model_file_header, read_model_format_tag, read_mod_model, &
            read_yrec7, read_model2
-      use physical_constants
-      use eos_lib
-      use kap_lib
+      use physical_constants, only: c4pi3l, c4pil, cc13, cc23, cgl, csigl, ln10, seconds_per_year
+      use eos_lib, only: eos_get, eos_result
+      use kap_lib, only: kap_get, num_kap_results
       use stitched_model, only: build_stitched_model
       implicit none
       private
@@ -39,6 +40,11 @@ module starting_model
 ! (Na, Al, Mg, Fe, Si, C, H, O, N, Ar, Ne, He).
       real(dp), parameter :: atomic_weight(n_mix_species) = [23.0d0, 26.99d0, &
            24.32d0, 55.86d0, 28.1d0, 12.015d0, 1.008d0, 16.0d0, 14.01d0, 39.96d0, 20.19d0, 4.004d0]
+
+! An evolved model's mixing length matches the card's within this
+! [-]; a species differs from the centre's by more than this in a model
+! that is not homogeneous [mass fraction].
+      real(dp), parameter :: mixing_length_match_tol = 2.0d-3, homogeneity_tol = 1.0d-6
 
 ! What read_starting_model's steps pass on to each other:
 !   run_index              the card (the star's current_card);
@@ -151,7 +157,7 @@ subroutine read_starting_model(s, ierr)
             ! (main) stops.
             ierr = 1
             return
-      endif
+      end if
 
 ! The model file is on run_files' starting_model_unit (legacy IFIRST).
       sm%iread = starting_model_unit
@@ -250,7 +256,7 @@ subroutine acquire_starting_model(s, sm, ierr)
                call set_isotope_ratios(s, sm)
             end if
          end if
-      endif
+      end if
 end subroutine acquire_starting_model
 
 
@@ -276,21 +282,21 @@ subroutine read_starting_model_file(s, sm, ierr)
       call read_model_format_tag(sm%iread, format_tag, ierr)
       if (ierr /= 0) return
 
-      if (format_tag .eq. 'YMOD') then
+      if (format_tag == 'YMOD') then
          lines = unwritten_line
          write(lines,11)
          call core_log(lines)
  11      format(1x,'loading starting model (YREC .mod format)')
          call read_mod_model(s, sm%iread, sm%header, ierr)
          if (ierr /= 0) return
-      else if (format_tag .eq. 'NMOD') then
+      else if (format_tag == 'NMOD') then
          lines = unwritten_line
          write(lines,12)
          call core_log(lines)
  12      format(1x,'loading starting model (YREC7 format)')
          call read_yrec7(s, sm%iread, sm%header, ierr)
          if (ierr /= 0) return
-      else if (format_tag .eq. 'MOD2 ') then
+      else if (format_tag == 'MOD2 ') then
          lines = unwritten_line
          write(lines,16)
          call core_log(lines)
@@ -307,7 +313,7 @@ subroutine read_starting_model_file(s, sm, ierr)
          ! stops.
          ierr = 1
          return
-      endif
+      end if
 
 ! The timestep in s, and the log total mass.
       s%timestep_yr = sm%header%timestep_yr
@@ -331,13 +337,13 @@ subroutine check_model_against_controls(s, sm)
 ! bug kept from starin; core.md finding 3, on the B list).
       logical :: lexcp0
       character(len=message_length) :: lines(4)
-      if (s%model_number.gt.0) then
+      if (s%model_number > 0) then
        mixing_length_matches = .true.
 ! The tolerance 2e-3 allows for model files storing the mixing length
 ! to four significant digits; a model mixing length <= 0 is not
 ! checked.
-       if (sm%header%mixing_length.gt.0.0d0) mixing_length_matches = &
-            (dabs(s%mixing_length_alpha-sm%header%mixing_length).lt.2.0d-3)
+       if (sm%header%mixing_length > 0.0d0) mixing_length_matches = &
+            (abs(s%mixing_length_alpha-sm%header%mixing_length) < mixing_length_match_tol)
 ! The warning prints lexcp0, which is never set (see its declaration),
 ! for the model's flag.
        if (.not.mixing_length_matches .or. sm%header%use_extended_composition.neqv. &
@@ -350,8 +356,8 @@ subroutine check_model_against_controls(s, sm)
              ' OF WRONG TYPE FOR INITIAL MODEL'/1x,'MIXING LENGTH - USER' &
              ,' DESIRES',f7.3,' MODEL MIX LENGTH',f7.3/1x, &
              'EXTENDED COMP-USER DESIRES ',l1,' MODEL USED ',l1)
-       endif
-      endif
+       end if
+      end if
 end subroutine check_model_against_controls
 
 
@@ -394,13 +400,13 @@ subroutine set_starting_rotation_curve(s)
           do i = 1,s%nz
              s%omega(i) = s%physics%initial_omega
           end do
-       endif
+       end if
       else
          do i = 1,json
             s%fp_rot(i) = 1.0d0
             s%ft_rot(i) = 1.0d0
          end do
-      endif
+      end if
 end subroutine set_starting_rotation_curve
 
 
@@ -426,7 +432,7 @@ subroutine check_mixture_homogeneity(s, sm)
          homogeneity: do j = 2,s%nz
             do i = 1,15
                fraction_diff = abs(s%xa(i,j)-sm%reference_composition(i))
-               if (fraction_diff.gt.1.0d-6) then
+               if (fraction_diff > homogeneity_tol) then
                   lines = unwritten_line
                   write(lines,592)i,j,fraction_diff
                   call core_stdout_and_log(lines)
@@ -435,10 +441,10 @@ subroutine check_mixture_homogeneity(s, sm)
                     ' MIX NOT MODIFIED IN EVOLVED MODEL')
                   sm%mixture_ok = .false.
                   exit homogeneity
-               endif
+               end if
             end do
          end do homogeneity
-      endif
+      end if
 end subroutine check_mixture_homogeneity
 
 
@@ -504,7 +510,7 @@ subroutine rescale_cno_mixture(s, sm)
  594     format(1x,'CNO mixture applied to the starting model:',/, &
              4x,'old (C12 C13 N14 N15 O16 O17 O18):',7es12.4,/, &
              4x,'new (C12 C13 N14 N15 O16 O17 O18):',7es12.4)
-      endif
+      end if
 end subroutine rescale_cno_mixture
 
 
@@ -556,7 +562,7 @@ subroutine set_isotope_ratios(s, sm)
              12es12.4,/, &
              4x,'new (He3 C12 C13 N14 N15 O16 O17 O18 H2 Li6 Li7 Be9):', &
              12es12.4)
-      endif
+      end if
 end subroutine set_isotope_ratios
 
 
@@ -605,7 +611,7 @@ subroutine extend_core_toward_center(s, sm, ierr)
 ! Too many points for the json-point arrays: the run stops with ierr
 ! (starin printed RUN TERMINATED but went on writing past json; fixed
 ! 2026-10).
-          if (num_shells_extended .gt. json) then
+          if (num_shells_extended > json) then
              lines = unwritten_line
              write(lines,476)"STARIN: Unable to extend core inward ", &
                    "- JSON too small"
@@ -622,7 +628,7 @@ subroutine extend_core_toward_center(s, sm, ierr)
   478        format(a)
              ierr = 1
              return
-          endif
+          end if
           core_shell_spacing = s%physics%chi_grid_scale(ichi_dm_max)
 ! Move every old point up by N slots (logRho is not moved).
           do i=s%nz,1, -1
@@ -696,7 +702,7 @@ end subroutine extend_core_toward_center
 
 
 ! ---------------------------------------------------------------
-! On a rescale card (card_kind /= 1), rescale the model's X, Z or
+! On a rescale card (card_kind /= card_evolve), rescale the model's X, Z or
 ! mass (rescale_model). Then, with fit_point_move_requested, move the
 ! envelope fitting point to requested_log_fit_point_mass_fraction = log10(m_fit/M)
 ! (legacy SENV0), on the first model of every card (DBG 2/92):
@@ -720,17 +726,17 @@ subroutine rescale_and_refit_envelope(s, sm, ierr)
       integer :: i
       character(len=message_length) :: lines(4)
 
-      if (s%card_kind(sm%run_index).ne.1) call rescale_model(s, ierr)
+      if (s%card_kind(sm%run_index) /= card_evolve) call rescale_model(s, ierr)
       if (ierr /= 0) return
 
 ! A once-through loop: exit leaves the envelope change early.
       if (s%fit_point_move_requested) then
       envelope_rescale: do
        call clamp_requested_envelope_mass(s, sm)
-       if (s%log_fit_point_mass_fraction.eq.s%requested_log_fit_point_mass_fraction) exit envelope_rescale
+       if (s%log_fit_point_mass_fraction == s%requested_log_fit_point_mass_fraction) exit envelope_rescale
        sm%num_species = n_species_basic
        if (s%physics%use_extended_composition) sm%num_species = n_species_extended
-       if (s%requested_log_fit_point_mass_fraction.lt.s%log_fit_point_mass_fraction) then
+       if (s%requested_log_fit_point_mass_fraction < s%log_fit_point_mass_fraction) then
 ! The new envelope is deeper than the old one.
           call find_shell_below_new_fit(s, sm)
           if (i < (1)) then
@@ -753,7 +759,7 @@ subroutine rescale_and_refit_envelope(s, sm, ierr)
           if (ierr /= 0) return
           call append_envelope_as_shells(s, sm, ierr)
           if (ierr /= 0) return
-       endif
+       end if
        s%recompute_envelope_triangle = .true.
        lines = unwritten_line
        write(lines,597)sm%old_senv,s%log_fit_point_mass_fraction
@@ -762,7 +768,7 @@ subroutine rescale_and_refit_envelope(s, sm, ierr)
               'OLD SENV ',1pe22.13,'  NEW SENV',e22.13)
       exit envelope_rescale
       end do envelope_rescale
-      endif
+      end if
 
 end subroutine rescale_and_refit_envelope
 
@@ -777,11 +783,11 @@ end subroutine rescale_and_refit_envelope
 subroutine clamp_requested_envelope_mass(s, sm)
       type(star_info), intent(inout) :: s
       type(starting_model_state), intent(inout) :: sm
-       if (s%requested_log_fit_point_mass_fraction.gt.0.0d0) s%requested_log_fit_point_mass_fraction = &
+       if (s%requested_log_fit_point_mass_fraction > 0.0d0) s%requested_log_fit_point_mass_fraction = &
             -s%requested_log_fit_point_mass_fraction
 ! The limit -1e-12 stands for the base of the atmosphere, tau = 2/3
 ! (DBG 2/92; it was -1e-10).
-       if (s%requested_log_fit_point_mass_fraction.gt.-1.0d-12) s%requested_log_fit_point_mass_fraction = &
+       if (s%requested_log_fit_point_mass_fraction > -1.0d-12) s%requested_log_fit_point_mass_fraction = &
             -1.d-12
        s%log_fit_point_mass_fraction = s%log_mass(s%nz) - s%log_total_mass
        sm%old_senv = s%log_fit_point_mass_fraction
@@ -801,7 +807,7 @@ subroutine find_shell_below_new_fit(s, sm)
       integer :: i
           sm%target_log_mass_at_fit = s%log_total_mass+s%requested_log_fit_point_mass_fraction
           do i = s%nz-1,1,-1
-             if (s%log_mass(i).lt.sm%target_log_mass_at_fit) exit
+             if (s%log_mass(i) < sm%target_log_mass_at_fit) exit
           end do
 end subroutine find_shell_below_new_fit
 
@@ -931,7 +937,7 @@ subroutine set_new_last_shell_convection(s, sm, ierr)
                log10_density = eos_res%log10_density
                s%logRho(s%nz) = log10_density
                s%convective_flag(s%nz) = is_convective
-          endif
+          end if
 end subroutine set_new_last_shell_convection
 
 
@@ -990,12 +996,12 @@ subroutine integrate_envelope_to_new_fit(s, sm, ierr)
 ! envelope is integrated at the Teff of the unspotted surface
 ! (ambient_log10_teff, legacy ATEFFL):
 !   Teff_amb^4 = Teff^4/(f x^4 + 1 - f).
-          if (s%envelope_cz_bottom_index.eq.s%nz.and.s%physics%spot_filling_factor.ne. &
-               0.0.and.s%physics%spot_temp_contrast.ne.1.0) then
+          if (s%envelope_cz_bottom_index == s%nz.and.s%physics%spot_filling_factor /= &
+               0.0.and.s%physics%spot_temp_contrast /= 1.0) then
                spot_adjusted_log_teff = ambient_log10_teff(s, s%log_Teff)
           else
              spot_adjusted_log_teff = s%log_Teff
-          endif
+          end if
           call atm_get(s, shell_luminosity_lsun,point_pressure_rotation_factor, &
                  point_temperature_rotation_factor,log10_gravity,s%log_total_mass, &
                  print_flag,save_boundary_flag, &
@@ -1033,7 +1039,7 @@ subroutine append_envelope_as_shells(s, sm, ierr)
       character(len=message_length), allocatable :: point_lines(:)
       character(len=message_length) :: lines(4)
 ! Stop if the envelope points would overflow the json-point arrays.
-            if (s%nz+s%env_points%num_env_points.ge.json) then
+            if (s%nz+s%env_points%num_env_points >= json) then
                lines = unwritten_line
                write(lines,*) 'read_starting_model: grid overflow (json too small)'
                call core_stdout(lines)
@@ -1087,7 +1093,7 @@ subroutine append_envelope_as_shells(s, sm, ierr)
                   s%j_rot(j) = cc23*s%omega(sm%old_last_shell)* &
                        exp10((2.0d0*s%logR(j)))
                end do
-            endif
+            end if
             lines = unwritten_line
             write(lines,910)
             call core_stdout(lines)
@@ -1166,7 +1172,7 @@ subroutine initialize_rotation_state(s, ierr)
               1pe21.13,' NEW ',1pe21.13)
        s%total_angular_momentum = angular_momentum_sum
        s%total_rotational_ke = rotational_ke_sum
-      endif
+      end if
 end subroutine initialize_rotation_state
 
 
@@ -1194,7 +1200,7 @@ subroutine update_surface_mixture(s, sm, ierr)
       integer :: i
       real(dp) :: mixture_weight_sum
       real(dp) :: mixture_scale_factor
-      if (sm%run_index.le.1) then
+      if (sm%run_index <= 1) then
 ! The relative mass fractions w_i of the ten metals are the controls'
 ! mixture_weights_seed.
       do i=1, n_mix_species
@@ -1276,7 +1282,7 @@ subroutine snapshot_step_start(s)
          do i = 1,s%nz
           s%omega_start(i) = s%omega(i)
          end do
-      endif
+      end if
 end subroutine snapshot_step_start
 
 
