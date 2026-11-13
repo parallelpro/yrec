@@ -8,6 +8,7 @@
 ! (The legacy getnewenv's comment said "when the total mass is being
 ! decreased"; evolve_step calls it after change_mass accretes.)
 module envelope_rebuild
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use star_info_lib, only: star_info
       implicit none
       private
@@ -50,38 +51,38 @@ subroutine rebuild_envelope(s, target_envelope_mass, ierr)
       use star_info_lib, only: i_h1, i_metals, json, n_species_basic, &
            n_species_extended
       use control_slots, only: ichi_dp_env_max
-      use physical_constants
+      use physical_constants, only: cc23, cgl, ln10
       use math_lib
       use core_messages, only: core_stdout, message_length, unwritten_line
       implicit none
       type(star_info), intent(inout) :: s
       integer, intent(out) :: ierr
       integer :: jerr_atm
-      double precision, intent(inout) :: target_envelope_mass
+      real(dp), intent(inout) :: target_envelope_mass
 ! di_domega of omega_from_j, which this routine does not use
-      double precision :: qiw(json)
+      real(dp) :: qiw(json)
 
       integer :: species_end_index
       integer :: old_num_zones
-      double precision :: envelope_mass_before
+      real(dp) :: envelope_mass_before
       type(envint_step_config) :: env_steps
       logical :: surface_bc_flag, print_flag
       integer :: saha_iterations
-      double precision :: luminosity_linear
-      double precision :: log_radius_surface, log_gravity_surface
-      double precision :: hydrogen_fraction, metal_fraction
-      double precision :: fp_surface, ft_surface
-      double precision :: pressure_limit
-      double precision :: spot_adjusted_log_teff
-      double precision :: pressure_offset, density_offset, temperature_offset, &
+      real(dp) :: luminosity_linear
+      real(dp) :: log_radius_surface, log_gravity_surface
+      real(dp) :: hydrogen_fraction, metal_fraction
+      real(dp) :: fp_surface, ft_surface
+      real(dp) :: pressure_limit
+      real(dp) :: spot_adjusted_log_teff
+      real(dp) :: pressure_offset, density_offset, temperature_offset, &
            radius_offset
-      double precision :: mass_test, mass_test2
+      real(dp) :: mass_test, mass_test2
       integer :: num_new_env_points
       integer :: zone_index
-      double precision :: omega_ref
-      double precision :: sum_angular_momentum, sum_rotational_ke
-      double precision :: angular_momentum_shell
-      double precision :: mass_at_base
+      real(dp) :: omega_ref
+      real(dp) :: sum_angular_momentum, sum_rotational_ke
+      real(dp) :: angular_momentum_shell
+      real(dp) :: mass_at_base
 ! The rotation rates are star%omega itself: the new shells' guess starts
 ! from the rate of the old outermost shell, and omega_from_j's result
 ! is what the caller sees. (The legacy getnewenv read a local OMEGA
@@ -95,7 +96,7 @@ subroutine rebuild_envelope(s, target_envelope_mass, ierr)
       if (ierr /= 0) return
 ! Return an error if the new points could overflow the arrays (legacy
 ! stop 9999).
-      if(s%nz+s%env_points%num_env_points.ge.json) then
+      if(s%nz+s%env_points%num_env_points >= json) then
          call write_rebuild_note(' rebuild_envelope: grid overflow (json too small)')
          ierr = 1
          return
@@ -120,7 +121,7 @@ subroutine rebuild_envelope(s, target_envelope_mass, ierr)
               s%dm,s%convective_flag,s%nz,s%eta_squared, &
               s%i_rot,s%omega,qiw,s%mean_radius,s%disk_gate_age_gyr)
          call sum_rotation_totals()
-      endif
+      end if
       call print_new_interior_points()
       s%recompute_envelope_triangle = .true.
       call report_new_envelope_mass()
@@ -157,7 +158,7 @@ subroutine prepare_envelope_rebuild()
          species_end_index = n_species_extended
       else
          species_end_index = n_species_basic
-      endif
+      end if
 ! Keep log_fit_point_mass_fraction at or below
 ! max_log_fit_point_mass_fraction: an envelope of at least about 2.3e-12
 ! of the star.
@@ -202,12 +203,12 @@ subroutine integrate_new_envelope()
 ! Integrate down to the current fitting point from the surface L and
 ! Teff. A spotted run with a convective surface starts from the Teff of
 ! the unspotted surface (ambient_log10_teff, legacy ATEFFL).
-      if(s%convective_flag(s%nz).and.s%physics%spot_filling_factor.ne.0.0.and. &
-           s%physics%spot_temp_contrast.ne.1.0)then
+      if(s%convective_flag(s%nz).and.s%physics%spot_filling_factor /= 0.0.and. &
+           s%physics%spot_temp_contrast /= 1.0)then
          spot_adjusted_log_teff = ambient_log10_teff(s, s%log_Teff)
       else
          spot_adjusted_log_teff = s%log_Teff
-      endif
+      end if
       call atm_get(s, luminosity_linear,fp_surface,ft_surface,log_gravity_surface, &
            s%log_total_mass,print_flag,surface_bc_flag,pressure_limit, &
            log_radius_surface, &
@@ -241,7 +242,7 @@ subroutine shift_envelope_points()
       num_new_env_points = 0
       do zone_index = 1,s%env_points%num_env_points - 1
          mass_test2 = s%log_total_mass+s%env_points%env_log10_mass(zone_index+1)
-         if(mass_test2-mass_test.gt.1.0D-10)then
+         if(mass_test2-mass_test > 1.0D-10)then
             s%env_points%env_log10_density(zone_index) = s%env_points%env_log10_density(zone_index+1)+density_offset
             s%env_points%env_log10_pressure(zone_index) = s%env_points%env_log10_pressure(zone_index+1)+pressure_offset
             s%env_points%env_log10_radius(zone_index) = s%env_points%env_log10_radius(zone_index+1)+radius_offset
@@ -252,7 +253,7 @@ subroutine shift_envelope_points()
             s%env_points%env_convective_flag(zone_index) = s%env_points%env_convective_flag(zone_index+1)
             mass_test = mass_test2
             num_new_env_points = num_new_env_points + 1
-         endif
+         end if
       end do
       s%env_points%num_env_points = num_new_env_points
 end subroutine shift_envelope_points
@@ -279,14 +280,14 @@ end subroutine compute_new_shell_masses
 ! or omega ~ r^walpcz. Each shell's specific moment of inertia is
 ! the thin-shell i = (2/3) r^2, and j = omega i.
 subroutine guess_new_shell_rotation()
-         if(s%physics%cz_rotation_law_exponent.le.-2.0D0)then
+         if(s%physics%cz_rotation_law_exponent <= -2.0D0)then
 ! walpcz <= -2: constant specific angular momentum j.
             do zone_index = old_num_zones+1,s%nz
                s%j_rot(zone_index) = s%j_rot(old_num_zones)
                s%i_rot(zone_index) = cc23*exp10((2.0D0*s%logR(zone_index)))
                s%omega(zone_index) = s%j_rot(zone_index)/s%i_rot(zone_index)
             end do
-         else if(s%physics%cz_rotation_law_exponent.ge.0.0D0)then
+         else if(s%physics%cz_rotation_law_exponent >= 0.0D0)then
 ! walpcz >= 0: solid-body rotation, omega constant.
             do zone_index = old_num_zones+1,s%nz
                s%omega(zone_index) = s%omega(old_num_zones)
@@ -302,7 +303,7 @@ subroutine guess_new_shell_rotation()
                s%i_rot(zone_index) = cc23*exp10((2.0D0*s%logR(zone_index)))
                s%j_rot(zone_index) = s%omega(zone_index)*s%i_rot(zone_index)
             end do
-         endif
+         end if
 end subroutine guess_new_shell_rotation
 
 ! ---------------------------------------------------------------

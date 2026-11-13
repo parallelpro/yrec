@@ -59,18 +59,18 @@ module envelope_integration_kernel
 ! physics%extrap_order).
       type, public :: envint_config
             integer :: atm_choice
-            double precision :: atm_step_begin, atm_step_min, atm_step_max
-            double precision :: env_step_begin, env_step_min, env_step_max
-            double precision :: atm_error_tol, env_error_tol, atm_step_initial
-            double precision :: hsra_log_t_offset, log_fit_point_mass_fraction
-            double precision :: envelope_store_log_temperature, log10_solar_luminosity
-            double precision :: log10_gravitational_constant
-            double precision :: log10_total_mass
+            real(dp) :: atm_step_begin, atm_step_min, atm_step_max
+            real(dp) :: env_step_begin, env_step_min, env_step_max
+            real(dp) :: atm_error_tol, env_error_tol, atm_step_initial
+            real(dp) :: hsra_log_t_offset, log_fit_point_mass_fraction
+            real(dp) :: envelope_store_log_temperature, log10_solar_luminosity
+            real(dp) :: log10_gravitational_constant
+            real(dp) :: log10_total_mass
 ! the outer shell's composition (star%xa layout), for the EOS's
 ! Debye-Hueckel correction
-            double precision :: surface_composition(n_species_extended)
+            real(dp) :: surface_composition(n_species_extended)
             logical :: calc_envelope
-            double precision :: tolerance_fraction
+            real(dp) :: tolerance_fraction
             integer :: max_stage_index, extrap_order
       end type envint_config
 
@@ -79,7 +79,7 @@ module envelope_integration_kernel
 ! to it): an envelope of at least 1 - 10^log_fit_point_mass_fraction =
 ! ln(10) 1e-12, about 2.3e-12 of the star. integrate_envelope skips the
 ! envelope integration when log_fit_point_mass_fraction lies above it.
-      double precision, parameter, public :: max_log_fit_point_mass_fraction = -1.0d-12
+      real(dp), parameter, public :: max_log_fit_point_mass_fraction = -1.0d-12
 
 ! The status of an envelope integration that failed (bsstep: the
 ! solution diverged; the historical "solution diverged, stop", which
@@ -137,20 +137,20 @@ module envelope_integration_kernel
 ! saha_iterations).
       type, extends(ode_system) :: envelope_equations
             logical :: atmosphere = .true.
-            double precision :: luminosity_linear = 0.0d0, &
+            real(dp) :: luminosity_linear = 0.0d0, &
                  pressure_rotation_factor = 0.0d0, &
                  temperature_rotation_factor = 0.0d0, log10_gravity = 0.0d0
             logical :: in_atmosphere = .false., want_derivatives = .false.
-            double precision :: log10_radius = 0.0d0, log10_teff = 0.0d0, &
+            real(dp) :: log10_radius = 0.0d0, log10_teff = 0.0d0, &
                  hydrogen_fraction = 0.0d0, metal_fraction = 0.0d0
             integer :: saha_iterations = 0
 ! the T(tau) relation of the atmosphere integration (cfg%atm_choice,
 ! gray after a failed Allard lookup), its HSRA offset, log10 of the
 ! total mass in g, and log10 G (cgs)
             integer :: atm_choice = 0
-            double precision :: hsra_log_t_offset = 0.0d0, log10_total_mass = 0.0d0
-            double precision :: log10_gravitational_constant = 0.0d0
-            double precision :: surface_composition(n_species_extended) = 0.0d0
+            real(dp) :: hsra_log_t_offset = 0.0d0, log10_total_mass = 0.0d0
+            real(dp) :: log10_gravitational_constant = 0.0d0
+            real(dp) :: surface_composition(n_species_extended) = 0.0d0
 ! the atmosphere integration's current point, which the atmosphere
 ! integrand writes (copied in and out around each step), and the
 ! physics of the point the integrands last evaluated (likewise)
@@ -166,8 +166,8 @@ contains
 ! at (x, y).
 subroutine equation_derivatives(self, x, y, dydx, ierr)
       class(envelope_equations), intent(inout) :: self
-      double precision, intent(in) :: x, y(:)
-      double precision, intent(out) :: dydx(:)
+      real(dp), intent(in) :: x, y(:)
+      real(dp), intent(out) :: dydx(:)
       integer, intent(out) :: ierr
       if (self%atmosphere) then
          call compute_atmosphere_derivs(x, y, dydx, &
@@ -218,31 +218,33 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
      saha_iterations, vtx_logp, vtx_logr, vtx_logt, &
      env_points, atm_points, atm_point, events, ierr)
 
-      use eos_lib
-      use kap_lib
-      use atm_lib, only: atm_get_surface_pt, ttau_start_log10_temperature, &
+      use eos_lib, only: eos_get, eos_result
+      use kap_lib, only: i_dlnkap_dlnrho, i_dlnkap_dlnt, i_kap, i_log10_kap, &
+           kap_get, num_kap_results
+      use atm_lib, only: atm_get_surface_pt, ttau_start_log10_temperature, atm_eddington_gray, &
            ttau_photosphere_x_limit, atm_choice_is_tabulated
-      use physical_constants
+      use physical_constants, only: cdelrl, gas_constant, ln10, &
+           radiation_constant_over_3
       use numerics_lib, only: bsstep, numerics_bad_input
       implicit none
 
       type(envint_config), intent(inout) :: cfg
       logical, intent(out) :: switched_to_gray
-      double precision, intent(out) :: log10_photo_pressure
-      double precision, intent(in) :: luminosity_linear, &
+      real(dp), intent(out) :: log10_photo_pressure
+      real(dp), intent(in) :: luminosity_linear, &
            pressure_rotation_factor, temperature_rotation_factor, &
            log10_gravity
-      double precision, intent(in) :: log10_star_mass
+      real(dp), intent(in) :: log10_star_mass
       integer, intent(in) :: vertex_index
       logical, intent(in) :: save_boundary_flag
-      double precision, intent(in) :: log10_pressure_limit
-      double precision, intent(inout) :: log10_radius
-      double precision, intent(inout) :: log10_teff
-      double precision, intent(in) :: hydrogen_fraction, metal_fraction
-      double precision, intent(inout) :: stored_envelope_state(4)
+      real(dp), intent(in) :: log10_pressure_limit
+      real(dp), intent(inout) :: log10_radius
+      real(dp), intent(inout) :: log10_teff
+      real(dp), intent(in) :: hydrogen_fraction, metal_fraction
+      real(dp), intent(inout) :: stored_envelope_state(:)
       integer, intent(inout) :: stored_vertex_index
       integer, intent(inout) :: saha_iterations
-      double precision, intent(inout) :: vtx_logp(3), vtx_logr(3), vtx_logt(3)
+      real(dp), intent(inout) :: vtx_logp(:), vtx_logr(:), vtx_logt(:)
 ! The results (envelope_points): the envelope and atmosphere points, and
 ! the atmosphere integration's current point (whose last values the
 ! caller keeps).
@@ -259,54 +261,54 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
 ! the atmosphere integration room; DBG).
       integer, parameter :: maxstp = 2000
       logical :: tabulated_bc
-      double precision, parameter :: tiny = 1.0d-30
+      real(dp), parameter :: tiny = 1.0d-30
 
-      double precision :: ion_fraction(3)
+      real(dp) :: ion_fraction(3)
 ! --- locals ---
       logical :: want_derivatives, in_atmosphere
       logical :: allard_lookup_failed
       integer :: jj, jerr
-      double precision :: log10_temperature, temperature, log10_pressure, &
+      real(dp) :: log10_temperature, temperature, log10_pressure, &
            pressure, log10_density, density
-      double precision :: atm_density_guess
-      double precision :: beta, beta_inverse, beta14, specific_gas_constant, &
+      real(dp) :: atm_density_guess
+      real(dp) :: beta, beta_inverse, beta14, specific_gas_constant, &
            ion_mean_weight_inverse, electron_mean_weight_inverse, &
            electron_degeneracy_parameter
-      double precision :: dlnrho_dlnt, dlnrho_dlnp, specific_heat_cp, &
+      real(dp) :: dlnrho_dlnt, dlnrho_dlnp, specific_heat_cp, &
            adiabatic_gradient, dlnrho_dlnt_dt, dlnrho_dlnt_dp, &
            adiabatic_gradient_dt, adiabatic_gradient_dp, &
            specific_heat_cp_dt, specific_heat_cp_dp
-      double precision :: opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt
+      real(dp) :: opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt
 ! The results of eos_get and kap_get. The EOS scalars above mirror the
 ! slots of eos_res: they are shared by the contained routines and
 ! survive the atm_retry loop, so find_atmosphere_start copies them into
 ! eos_res before the call and back after it.
       type(eos_result) :: eos_res
-      double precision :: kap_res(num_kap_results)
+      real(dp) :: kap_res(num_kap_results)
 ! The physics of the point the integrands last evaluated (point_physics):
 ! each integrand call fills it, and the point recorders read it.
       type(point_physics) :: pt
 ! The independent variable: log tau in the atmosphere, log P in the
 ! envelope.
-      double precision :: indep_var
+      real(dp) :: indep_var
 ! The equations bsstep integrates (see load_equations, unload_equations).
       type(envelope_equations) :: equations
-      double precision :: chi_rho, chi_t, specific_heat_cv, gamma1
-      double precision :: prev_tau, prev_opacity, &
+      real(dp) :: chi_rho, chi_t, specific_heat_cv, gamma1
+      real(dp) :: prev_tau, prev_opacity, &
            prev_density, delta_tau_step, &
            pulse_radiative_gradient, pulse_gradient, opacity_now, &
            density_now, tau_now
       integer :: num_eqs, num_ok, num_bad, step_index, i
-      double precision :: tolerance, x_limit, h_max, h_min, h_step, &
+      real(dp) :: tolerance, x_limit, h_max, h_min, h_step, &
            step_tolerance, h_did, h_next
-      double precision :: y(3), dydx(3), y_scale(3), y_start(3), &
+      real(dp) :: y(3), dydx(3), y_scale(3), y_start(3), &
            err_sum(3), step_err(3)
-      double precision :: initial_mass_coord
+      real(dp) :: initial_mass_coord
       logical :: store_flag_set, pressure_limit_test_flag
       logical :: cz_in_envelope
-      double precision :: mass_diff_remaining, interp_weight
-      double precision :: mass_next_step
-      double precision :: x_start, taucz_env_accum, delta_radius_cz
+      real(dp) :: mass_diff_remaining, interp_weight
+      real(dp) :: mass_next_step
+      real(dp) :: x_start, taucz_env_accum, delta_radius_cz
 
       ierr = 0
       jerr = 0
@@ -363,12 +365,12 @@ subroutine prepare_surface_boundary
 ! Teff is above the Allard tables' maximum, or log g outside their
 ! range: switch to the Eddington gray atmosphere (atm_choice 0,
 ! legacy KTTAU = 0). The driver reports the switch.
-            cfg%atm_choice=0
+            cfg%atm_choice = atm_eddington_gray
             switched_to_gray = .true.
          else
             tabulated_bc = .true.
-         endif
-      endif
+         end if
+      end if
 end subroutine prepare_surface_boundary
 
 ! ---------------------------------------------------------------
@@ -407,12 +409,12 @@ subroutine integrate_atmosphere
 ! The end point, log tau of the photosphere for the chosen relation.
       x_limit = ttau_photosphere_x_limit(cfg%atm_choice)
 
-      if  (indep_var .gt. x_limit) then ! The start lies past the end point:
+      if  (indep_var > x_limit) then ! The start lies past the end point:
        call add_envint_event(events, envint_start_retry, &
             values=[indep_var, x_limit])
        atm_density_guess = atm_density_guess / 10d0   ! divide the starting density by 10
        cycle atm_retry        ! and find the start again.
-      endif
+      end if
 
       call integrate_to_photosphere()
       if (ierr /= 0) return
@@ -531,24 +533,24 @@ subroutine integrate_to_photosphere()
        call take_atmosphere_step()
        if (ierr /= 0) return
        call store_atmosphere_point()
-       if(h_did.eq.h_step) then
+       if(h_did == h_step) then
           num_ok = num_ok + 1
        else
           num_bad = num_bad + 1
-       endif
+       end if
        call store_atmosphere_gradients()
 
 
 ! Done when log tau is within step_tolerance of the photosphere.
-       if(dabs(indep_var - x_limit).le.step_tolerance) then
+       if(abs(indep_var - x_limit) <= step_tolerance) then
           call add_envint_event(events, envint_atmosphere_done, &
                counts=[num_ok, num_bad], values=[err_sum(1)])
           exit
-       endif
-       if(h_next.lt.h_min) h_next = h_min
+       end if
+       if(h_next < h_min) h_next = h_min
        h_step = h_next
       end do
-      if (step_index .gt. maxstp) then
+      if (step_index > maxstp) then
 ! The integration did not reach the photosphere in maxstp steps:
 ! return an error.
       call add_envint_event(events, envint_atmosphere_maxstp)
@@ -565,12 +567,12 @@ subroutine limit_atmosphere_step()
 ! y_scale (legacy YSCAL), the scale each variable's error is measured
 ! against: |y| + |h dy/dx| + tiny.
        do i = 1,num_eqs
-          y_scale(i) = dabs(y(i)) + dabs(h_step*dydx(i))+tiny
+          y_scale(i) = abs(y(i)) + abs(h_step*dydx(i))+tiny
        end do
 ! Keep the step from going past the end of the integration, and within
 ! the largest step.
-       if((indep_var-x_limit)*(indep_var+h_step-x_limit).lt.0.0d0) h_step = x_limit - indep_var
-       if(h_step.gt.h_max) h_step = h_max
+       if((indep_var-x_limit)*(indep_var+h_step-x_limit) < 0.0d0) h_step = x_limit - indep_var
+       if(h_step > h_max) h_step = h_max
 end subroutine limit_atmosphere_step
 
 ! ---------------------------------------------------------------
@@ -667,7 +669,7 @@ subroutine store_atmosphere_gradients()
        pulse_radiative_gradient = pt%qo*luminosity_linear*exp(ln10*(pt%qpl-log10_star_mass-4.0d0*pt%qtl &
               +cfg%log10_solar_luminosity-cfg%log10_gravitational_constant+ &
               cdelrl))*temperature_rotation_factor/pressure_rotation_factor
-       if (pulse_radiative_gradient-pt%qdela .le. 1.0d-6) then
+       if (pulse_radiative_gradient-pt%qdela <= 1.0d-6) then
          pulse_gradient = pulse_radiative_gradient
        else
          pulse_gradient = pt%qdela
@@ -692,12 +694,12 @@ end subroutine store_atmosphere_gradients
 subroutine integrate_envelope
       use math_lib
 ! An envelope too thin to integrate: the vertex is the surface point.
-      if(cfg%log_fit_point_mass_fraction.gt.max_log_fit_point_mass_fraction) then
+      if(cfg%log_fit_point_mass_fraction > max_log_fit_point_mass_fraction) then
        if(save_boundary_flag) then
           vtx_logp(vertex_index) = atm_point%log10_pressure
           vtx_logr(vertex_index) = log10_radius
           vtx_logt(vertex_index) = atm_point%log10_temperature
-       endif
+       end if
       else
       call start_envelope_integration()
       if (ierr /= 0) return
@@ -738,10 +740,10 @@ subroutine start_envelope_integration()
       h_max = cfg%env_step_max
       h_min = cfg%env_step_min
       h_step = cfg%env_step_begin
-      step_tolerance = dabs(cfg%tolerance_fraction*cfg%log_fit_point_mass_fraction)
+      step_tolerance = abs(cfg%tolerance_fraction*cfg%log_fit_point_mass_fraction)
 ! Forget a stored envelope state that belongs to this vertex. The
 ! pressure limit applies only when the boundary is not being saved.
-      if(stored_vertex_index.eq.vertex_index) stored_vertex_index = 0
+      if(stored_vertex_index == vertex_index) stored_vertex_index = 0
       store_flag_set = .false.
       if (save_boundary_flag) then
          pressure_limit_test_flag = .false.
@@ -775,7 +777,7 @@ subroutine store_first_envelope_point()
       env_points%env_log10_temperature(1) = pt%current_log10_temperature
       env_points%env_hydrogen_fraction(1) = hydrogen_fraction
       env_points%env_metal_fraction(1) = metal_fraction
-      env_points%env_convective_flag(1) = pt%current_velocity.gt.0.0d0
+      env_points%env_convective_flag(1) = pt%current_velocity > 0.0d0
 ! The gradients (grad_rad, grad_ad, grad), the convective velocity and
 ! beta.
       env_points%env_gradients(1,1) = pt%current_gradients(1)
@@ -812,36 +814,36 @@ subroutine integrate_to_fitting_mass()
        call limit_envelope_step()
        call take_envelope_step()
        if (ierr /= 0) return
-       if(h_did.eq.h_step) then
+       if(h_did == h_step) then
           num_ok = num_ok + 1
        else
           num_bad = num_bad + 1
-       endif
+       end if
 ! Done when log(m/M) is within step_tolerance of
 ! log_fit_point_mass_fraction: then interpolate the vertex at
 ! log_fit_point_mass_fraction.
        mass_diff_remaining = cfg%log_fit_point_mass_fraction - y(1)
        call store_envelope_point()
-       if(dabs(mass_diff_remaining).le.step_tolerance)then
+       if(abs(mass_diff_remaining) <= step_tolerance)then
           call interpolate_envelope_vertex()
           exit
 ! Otherwise, with save_boundary_flag, store the state where log T first
 ! reaches envelope_store_log_temperature (log P, log T, log R, log(m/M))
 ! for the surface boundary.
        else if(.not.store_flag_set) then
-          if(y(2).ge.cfg%envelope_store_log_temperature .and. save_boundary_flag) then
+          if(y(2) >= cfg%envelope_store_log_temperature .and. save_boundary_flag) then
              store_flag_set = .true.
              stored_vertex_index = vertex_index
              stored_envelope_state(1) = indep_var
              stored_envelope_state(2) = y(2)
              stored_envelope_state(3) = y(3)
              stored_envelope_state(4) = y(1)
-          endif
-       endif
-       if(h_next.lt.h_min) h_next = h_min
+          end if
+       end if
+       if(h_next < h_min) h_next = h_min
        h_step = h_next
       end do
-      if (step_index .gt. maxstp) then
+      if (step_index > maxstp) then
 ! The integration did not reach the fitting mass in maxstp steps:
 ! return an error.
       call add_envint_event(events, envint_envelope_maxstp)
@@ -858,31 +860,31 @@ subroutine limit_envelope_step()
        x_start = indep_var
        do i = 1,num_eqs
           y_start(i) = y(i)
-          y_scale(i) = dabs(y(i)) + dabs(h_step*dydx(i))+tiny
+          y_scale(i) = abs(y(i)) + abs(h_step*dydx(i))+tiny
        end do
        mass_next_step = y(1) + h_step*dydx(1)
-       if(cfg%log_fit_point_mass_fraction - y(1).gt.0.0d0 .or. cfg%log_fit_point_mass_fraction - mass_next_step.gt.0.0d0) then
+       if(cfg%log_fit_point_mass_fraction - y(1) > 0.0d0 .or. cfg%log_fit_point_mass_fraction - mass_next_step > 0.0d0) then
 ! The integration has passed the fitting mass, or the next step would:
 ! aim the step at it with the linear estimate h =
 ! (log_fit_point_mass_fraction - y(1)) / dydx(1), a step back when it
 ! has passed.
           h_step = (cfg%log_fit_point_mass_fraction - y(1))/dydx(1)
-       endif
+       end if
 ! Keep |h_step| within the largest step.
-       if(h_step.lt.0.0d0) then
-          if(h_step.lt.-h_max) h_step = -h_max
+       if(h_step < 0.0d0) then
+          if(h_step < -h_max) h_step = -h_max
        else
-          if(h_step.gt.h_max)  h_step = h_max
-       endif
+          if(h_step > h_max)  h_step = h_max
+       end if
 ! log10_pressure_limit (legacy PLIM) estimates the pressure at the end
 ! of the integration, from the pressure of the last model point. The
 ! first step that would cross it stops at it.
        if(pressure_limit_test_flag) then
-          if(indep_var + h_step.gt.log10_pressure_limit) then
+          if(indep_var + h_step > log10_pressure_limit) then
              h_step = log10_pressure_limit - indep_var
              pressure_limit_test_flag = .false.
-          endif
-       endif
+          end if
+       end if
 end subroutine limit_envelope_step
 
 ! ---------------------------------------------------------------
@@ -929,7 +931,7 @@ end subroutine take_envelope_step
 ! taucz_env_accum, which nothing reads.
 subroutine store_envelope_point()
       use math_lib
-         if(mass_diff_remaining.le.step_tolerance)then
+         if(mass_diff_remaining <= step_tolerance)then
             env_points%num_env_points = env_points%num_env_points + 1
             env_points%env_log10_density(env_points%num_env_points) = pt%current_log10_density
             env_points%env_log10_pressure(env_points%num_env_points) = pt%current_log10_pressure
@@ -938,7 +940,7 @@ subroutine store_envelope_point()
             env_points%env_log10_temperature(env_points%num_env_points) = pt%current_log10_temperature
             env_points%env_hydrogen_fraction(env_points%num_env_points) = hydrogen_fraction
             env_points%env_metal_fraction(env_points%num_env_points) = metal_fraction
-            env_points%env_convective_flag(env_points%num_env_points) = pt%current_velocity.gt.0.0d0
+            env_points%env_convective_flag(env_points%num_env_points) = pt%current_velocity > 0.0d0
 ! The gradients (grad_rad, grad_ad, grad), the convective velocity and
 ! beta.
             env_points%env_gradients(1,env_points%num_env_points) = pt%current_gradients(1)
@@ -968,13 +970,13 @@ subroutine store_envelope_point()
             if(.not.cz_in_envelope)then
                if(env_points%env_convective_flag(env_points%num_env_points))then
                   cz_in_envelope = .true.
-               endif
-            else if(pt%current_velocity.gt.0.0d0)then
+               end if
+            else if(pt%current_velocity > 0.0d0)then
                delta_radius_cz = exp10(env_points%env_log10_radius(env_points%num_env_points-1)) - &
                     exp10(env_points%env_log10_radius(env_points%num_env_points))
                taucz_env_accum = taucz_env_accum + delta_radius_cz/pt%current_velocity
-            endif
-         endif
+            end if
+         end if
 end subroutine store_envelope_point
 
 ! --------------------------------------------------------------- The
@@ -992,7 +994,7 @@ subroutine interpolate_envelope_vertex()
              call add_envint_event(events, envint_vertex, &
                   values=[vtx_logp(vertex_index), vtx_logt(vertex_index), &
                   vtx_logr(vertex_index), cfg%log_fit_point_mass_fraction])
-          endif
+          end if
 end subroutine interpolate_envelope_vertex
 
 ! ---------------------------------------------------------------
@@ -1004,7 +1006,7 @@ subroutine invert_envelope_points()
 ! log_fit_point_mass_fraction exactly max_log_fit_point_mass_fraction
 ! the envelope is integrated and must be reversed too; the F77 envint.f
 ! tested .LT., fixed 2026-10)
-      if(cfg%log_fit_point_mass_fraction.le.max_log_fit_point_mass_fraction)then
+      if(cfg%log_fit_point_mass_fraction <= max_log_fit_point_mass_fraction)then
          associate (n => env_points%num_env_points)
             env_points%env_log10_density(1:n) = env_points%env_log10_density(n:1:-1)
             env_points%env_log10_pressure(1:n) = env_points%env_log10_pressure(n:1:-1)
@@ -1026,7 +1028,7 @@ subroutine invert_envelope_points()
             env_points%env_specific_heat_cp(1:n) = env_points%env_specific_heat_cp(n:1:-1)
             env_points%env_ion_fraction(:,1:n) = env_points%env_ion_fraction(:,n:1:-1)
          end associate
-      endif
+      end if
 end subroutine invert_envelope_points
 
 
