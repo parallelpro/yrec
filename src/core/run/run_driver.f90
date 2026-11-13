@@ -5,6 +5,7 @@
 ! goes through the run cards (inside the Monte-Carlo loop, and driving
 ! the calibration loops), evolving each card's model with evolve_step.
 module run_driver
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use neutrino_flux_output, only: write_neutrino_flux_table
       use step_driver, only: evolve_step
       use run_setup, only: prepare_run
@@ -74,7 +75,7 @@ subroutine run_yrec(ierr)
            output_run_header, output_final_model_line
       use run_files, only: last_model_unit
       use model_files, only: write_mod_model
-      use physical_constants
+      use physical_constants, only: log10_radius_from_l_teff
       use yrec_reset, only: yrec_run_prologue
       use monte_carlo, only: first_mc_run, last_mc_run, &
            begin_monte_carlo_run, write_run_summaries
@@ -94,7 +95,7 @@ subroutine run_yrec(ierr)
       integer, parameter :: solar_calib_cards_per_cycle = 3
       logical :: runs_complete
       integer :: monte_carlo_run_number
-      double precision :: age_scale_factor
+      real(dp) :: age_scale_factor
       integer :: convergence_iterations
 ! Wall clock for the end-of-run summary line (terminal only).
       integer(kind=8) :: clock_start, clock_now, clock_rate
@@ -104,7 +105,7 @@ subroutine run_yrec(ierr)
       logical :: disable_structure_dt_limits
       integer :: i
       integer :: kind_card, model_iteration
-      double precision :: log_r_rsun, current_zx
+      real(dp) :: log_r_rsun, current_zx
 
       integer, intent(out) :: ierr
 ! The run's star (static with the other locals, allocated on the first
@@ -262,12 +263,12 @@ subroutine begin_calibration
          convergence_iterations = 1
       else
          convergence_iterations = 0
-      endif
+      end if
 ! Automatic calibration (DBG 12/94) of a star to a target L and a
 ! target Teff or radius.
       if (s%control%calibrate_star_flag) then
          call setup_star_calibration(s)
-      endif
+      end if
 end subroutine begin_calibration
 
 ! ---------------------------------------------------------------
@@ -285,7 +286,7 @@ subroutine end_of_card_calibration(runs_complete)
 ! with the Sun. log_r_rsun = log(R/Rsun), with R from
 ! L = 4 pi R^2 sigma Teff^4.
          if (s%control%calibrate_solar_model) then
-            if (mod(s%current_card,solar_calib_cards_per_cycle).eq.0) then
+            if (mod(s%current_card,solar_calib_cards_per_cycle) == 0) then
                log_r_rsun = log10_radius_from_l_teff(s%log_L_lsun,s%log_Teff, &
                     s%log10_solar_luminosity)-s%log10_solar_radius
 ! The surface Z/X, for the optional Z/X calibration (MHP 06/13).
@@ -303,15 +304,15 @@ subroutine end_of_card_calibration(runs_complete)
                   convergence_iterations = convergence_iterations + 1
 ! Give up when the counter reaches 15. It starts at 1, so this is
 ! after 14 unconverged triples.
-                  if (convergence_iterations.ge.15) then
+                  if (convergence_iterations >= 15) then
                      s%termination_reason = &
                           'solar calibration NOT converged after 14 cycles'
                      runs_complete = .true.
                      return
                   end if
                end if
-            endif
-         endif
+            end if
+         end if
 
 ! Star calibration: the final run to the interpolated age, armed by
 ! check_star_calibration, has finished on an even card, so no more runs
@@ -334,7 +335,7 @@ end subroutine end_of_card_calibration
 ! the entropy terms. Sets ierr on a configuration or model-read error.
 subroutine begin_kind_card
 ! compute_timestep's output this caller does not use
-      double precision :: chosen_dt
+      real(dp) :: chosen_dt
          s%current_card_envelope_x = s%card_initial_x(s%current_card)
          s%current_card_envelope_z = s%card_initial_z(s%current_card)
          s%mixing_length_alpha = s%card_mixing_length_alpha(s%current_card)
@@ -380,7 +381,7 @@ subroutine begin_kind_card
 ! core/diagnostics/neutrino_flux_output.f90).
       if (s%physics%compute_neutrino_fluxes) then
          call write_neutrino_flux_table(s)
-      endif
+      end if
 ! The stellar mass in solar units, for the pulsation output.
          s%pulsation_mass_msun=s%star_mass
 ! Record the starting base of the surface convection zone and zero the
@@ -398,8 +399,8 @@ subroutine begin_kind_card
           if (s%punch_pending_flag) then
              call write_mod_model(s, last_model_unit, replace=.true., ierr=ierr)
              if (ierr /= 0) return
-          endif
-       endif
+          end if
+       end if
 
 ! Locate the hydrogen-burning shell and the boundaries of the central
 ! and surface convection zones (if present).

@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------
 ! yrec_reset
 !----------------------------------------------------------------------
-! Added 2026 (phase five, step C -- docs/ROADMAP.md): the re-entrancy
+! The re-entrancy
 ! prologue. Fresh-process semantics for repeated run_yrec calls in one
 ! process. yrec_run_prologue gives run_yrec a star in its process-start
 ! state: a copy of star_template, a star that nothing writes (static
@@ -79,4 +79,8 @@ subroutine close_run_unit(unit)
 end subroutine close_run_unit
 end subroutine close_run_units
 
+! ---------------------------------------------------------------
+! Sources
+!   The re-entrancy prologue came with the embeddable engine (2026, phase
+!   five, step C; docs/ROADMAP.md).
 end module yrec_reset

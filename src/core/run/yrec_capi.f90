@@ -1,7 +1,7 @@
 !----------------------------------------------------------------------
 ! yrec_capi
 !----------------------------------------------------------------------
-! Added 2026 (libyrec milestone -- docs/ROADMAP.md). The C-interoperable
+! The C-interoperable
 ! surface of the embeddable engine, consumed by pyyrec (the ctypes
 ! binding in pyyrec/ at the repository root). One entry:
 !
@@ -95,4 +95,8 @@ contains
             end do
       end function c_string_value
 
+! ---------------------------------------------------------------
+! Sources
+!   The C entry came with the libyrec milestone (2026; docs/ROADMAP.md,
+!   phase five).
 end module yrec_capi

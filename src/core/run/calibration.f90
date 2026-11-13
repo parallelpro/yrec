@@ -6,8 +6,10 @@
 ! check after each run that declares convergence or sets up the next
 ! trial (check_solar_calibration, check_star_calibration).
 module calibration
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use star_info_lib, only: star_info
       use control_slots, only: i_target_x, i_target_z
+      use run_cards, only: card_evolve
       implicit none
       private
       public :: check_solar_calibration, check_star_calibration, setup_solar_calibration, setup_star_calibration, &
@@ -22,11 +24,16 @@ module calibration
 ! alpha (LLP 6/28/09), dimensionless. The comments give the fitted values
 ! and their RMS errors; the fit recorded for d log L/d alpha, +0.139, is
 ! ten times the value used.
-      double precision, parameter :: &
+      real(dp), parameter :: &
            dlogl_dx_fixed = -3.78d0, &          ! fit: -3.783, RMS error .070
            dlogr_dx_fixed = -0.89d0, &          ! fit: -0.890, RMS error .048
            dlogl_dalpha_fixed = 0.0139d0, &     ! fit as recorded: +0.139, RMS error .0022
            dlogr_dalpha_fixed = -0.050d0        ! fit: -0.0504, RMS error .0059
+
+! The settling card of each solar-calibration triple stops at this age
+! (times the Monte-Carlo age factor) [yr]; the star calibration's final
+! run converts its age at R* from Gyr [yr/Gyr].
+      real(dp), parameter :: settling_age_yr = 1.0e8_dp, years_per_gyr = 1.0e9_dp
 
 contains
 
@@ -72,33 +79,33 @@ subroutine check_solar_calibration(s, log_r_rsun, current_zx)
       implicit none
       type(star_info), intent(inout) :: s
 
-      double precision, intent(in) :: log_r_rsun
-      double precision, intent(in) :: current_zx
+      real(dp), intent(in) :: log_r_rsun
+      real(dp), intent(in) :: current_zx
 
 ! --- locals ---
       integer :: run_index
-      double precision :: log_l_lsun, log_zx_mismatch, delta_z
+      real(dp) :: log_l_lsun, log_zx_mismatch, delta_z
 
       log_l_lsun = s%log_L_lsun
       run_index = s%current_card
 
 ! Converged when L and R match the Sun (and Z/X its target, when that
 ! is calibrated too).
-      if(abs(log_l_lsun).lt.s%control%luminosity_tolerance .and. &
-           abs(log_r_rsun).lt.s%control%radius_tolerance)then
+      if(abs(log_l_lsun) < s%control%luminosity_tolerance .and. &
+           abs(log_r_rsun) < s%control%radius_tolerance)then
 ! The Z/X test.
-         if(s%control%calibrate_solar_zx .and.s%control%target_solar_zx.gt.0.0d0)then
+         if(s%control%calibrate_solar_zx .and.s%control%target_solar_zx > 0.0d0)then
             log_zx_mismatch = log10(current_zx)-log10(s%control%target_solar_zx)
-            if(abs(log_zx_mismatch).lt.s%control%zx_tolerance)then
+            if(abs(log_zx_mismatch) < s%control%zx_tolerance)then
                s%solar_calibration_converged = .true.
                return
-            endif
+            end if
          else
 ! A calibrated solar model: flag it and return.
             s%solar_calibration_converged = .true.
             return
-         endif
-      endif
+         end if
+      end if
 
 ! The fixed partial derivatives d log L/dX, d log R/dX, d log L/d alpha
 ! and d log R/d alpha, recorded for the Monte-Carlo summary.
@@ -133,7 +140,7 @@ subroutine check_solar_calibration(s, log_r_rsun, current_zx)
             s%card_initial_z(run_index+1) = s%card_rescale_targets(i_target_z,run_index+1)
             s%card_initial_z(run_index+2) = s%card_rescale_targets(i_target_z,run_index+1)
             s%card_initial_z(run_index+3) = s%card_rescale_targets(i_target_z,run_index+1)
-         endif
+         end if
          s%card_rescale_targets(i_target_x,run_index+1) = s%card_rescale_targets(i_target_x,run_index-2)+s%delta_x
          s%card_initial_x(run_index+1) = s%card_rescale_targets(i_target_x,run_index+1)
          s%card_initial_x(run_index+2) = s%card_rescale_targets(i_target_x,run_index+1)
@@ -149,7 +156,7 @@ subroutine check_solar_calibration(s, log_r_rsun, current_zx)
          if(s%control%calibrate_solar_zx)then
             call core_terminal_values([s%card_rescale_targets(i_target_z,run_index+1), &
                  s%card_rescale_targets(i_target_z,run_index-2), delta_z], text="New Z, Old Z, DZ: ")
-         endif
+         end if
          s%log_l_lsun_prev_check = log_l_lsun
          s%log_r_rsun_prev_check = log_r_rsun
 end subroutine check_solar_calibration
@@ -191,22 +198,22 @@ subroutine check_star_calibration(s)
 
       use core_messages, only: core_log, core_log_values, core_stdout, core_stdout_values, &
            message_length, unwritten_line
-      use physical_constants
+      use physical_constants, only: c4pi, csig
       use math_lib
       implicit none
       type(star_info), intent(inout) :: s
 
 ! locals
-      double precision :: log_l_lsun, log_teff, current_age
+      real(dp) :: log_l_lsun, log_teff, current_age
       integer :: run_index
-      double precision :: teff_current, r_rsun_current
-      double precision :: dlogl_dlogr, dage_dlogr
-      double precision :: new_x, prev_x, dx_dlogl
+      real(dp) :: teff_current, r_rsun_current
+      real(dp) :: dlogl_dr, dage_dr
+      real(dp) :: new_x, prev_x, dx_dlogl
       logical :: luminosity_matches
       character(len=message_length) :: lines(1)
 ! The step in X that seeds the second calibration run (the "Y=Y+0.01"
 ! of the messages below).
-      double precision, parameter :: x_calibration_step = 0.01d0
+      real(dp), parameter :: x_calibration_step = 0.01d0
 
 ! The quantities involved:
 !   star%star_found_flag                  true once a track passes
@@ -215,9 +222,7 @@ subroutine check_star_calibration(s)
 !                                         crossed R*
 !   control%target_luminosity_lsun           L*/Lsun, reached by adjusting X
 !   control%target_star_luminosity_tolerance the tolerance on L/Lsun at R*
-!   calibration_target_radius_rsun                R*/Rsun (linear, despite the
-!                                         log_r_* names of the model
-!                                         values)
+!   calibration_target_radius_rsun        R*/Rsun (linear)
 !   r_rsun_current                        R/Rsun of this model (linear)
 !   star%r_rsun_prev_model                 R/Rsun of the previous model
 !                                         (linear)
@@ -241,23 +246,23 @@ subroutine check_star_calibration(s)
       teff_current = exp10(log_teff)
       r_rsun_current = sqrt((exp10(log_l_lsun))*s%solar_luminosity_cgs/ &
            (c4pi*csig))/(teff_current*teff_current*s%solar_radius_cgs)
-      if(r_rsun_current.gt.s%r_rsun_prev_model) then
-         if(.not.(r_rsun_current.gt.s%calibration_target_radius_rsun.and. &
-              s%r_rsun_prev_model.le.s%calibration_target_radius_rsun)) then
+      if(r_rsun_current > s%r_rsun_prev_model) then
+         if(.not.(r_rsun_current > s%calibration_target_radius_rsun.and. &
+              s%r_rsun_prev_model <= s%calibration_target_radius_rsun)) then
               s%log_l_lsun_prev_model = log_l_lsun
               s%age_gyr_prev_model = current_age
               s%r_rsun_prev_model = r_rsun_current
               return
           end if
       else
-          if (.not.(r_rsun_current.lt.s%calibration_target_radius_rsun.and. &
-               s%r_rsun_prev_model.ge.s%calibration_target_radius_rsun)) then
+          if (.not.(r_rsun_current < s%calibration_target_radius_rsun.and. &
+               s%r_rsun_prev_model >= s%calibration_target_radius_rsun)) then
               s%log_l_lsun_prev_model = log_l_lsun
               s%age_gyr_prev_model = current_age
               s%r_rsun_prev_model = r_rsun_current
               return
            end if
-      endif
+      end if
 !
       lines = unwritten_line
       write(lines,*) ' Just passed R*'
@@ -271,22 +276,20 @@ subroutine check_star_calibration(s)
 ! interpolate log L and the age to R*, linearly in R/Rsun,
 !   log L(R*) = log L + (d log L/dR) (R* - R),
 !   age(R*)   = age + (d age/dR) (R* - R).
-! (Despite their names, dlogl_dlogr and dage_dlogr are derivatives with
-! respect to the linear R/Rsun.)
-      dlogl_dlogr = (log_l_lsun-s%log_l_lsun_prev_model)/ &
+      dlogl_dr = (log_l_lsun-s%log_l_lsun_prev_model)/ &
            (r_rsun_current-s%r_rsun_prev_model)
       s%log_l_lsun_at_target_radius = log_l_lsun + &
-           dlogl_dlogr*(s%calibration_target_radius_rsun-r_rsun_current)
-      dage_dlogr = (current_age-s%age_gyr_prev_model)/ &
+           dlogl_dr*(s%calibration_target_radius_rsun-r_rsun_current)
+      dage_dr = (current_age-s%age_gyr_prev_model)/ &
            (r_rsun_current-s%r_rsun_prev_model)
       s%age_gyr_at_target_radius = current_age + &
-           dage_dlogr*(s%calibration_target_radius_rsun-r_rsun_current)
+           dage_dr*(s%calibration_target_radius_rsun-r_rsun_current)
       call core_stdout_values([s%card_rescale_targets(i_target_x,run_index-1), &
            s%log_l_lsun_at_target_radius], text=' X, LogL/Lsun at R* =')
       call core_log_values([s%card_rescale_targets(i_target_x,run_index-1), &
            s%log_l_lsun_at_target_radius], text='#X, LogL/Lsun at R* =')
       luminosity_matches = abs(exp10(s%log_l_lsun_at_target_radius)-s%control%target_luminosity_lsun) &
-           .le. s%control%target_star_luminosity_tolerance
+ <= s%control%target_star_luminosity_tolerance
 ! No pair of cards follows this one (the run arrays end at num_cards):
 ! the calibration ends with this crossing, and its verdict.
       if (run_index + star_calib_cards_per_cycle > s%num_cards) then
@@ -305,9 +308,9 @@ subroutine check_star_calibration(s)
 ! yr).
          s%star_found_flag=.true.
        s%card_stops_active(run_index+1) = .true.
-       s%card_max_age_yr(run_index+1) = s%age_gyr_at_target_radius*1.0d9
+       s%card_max_age_yr(run_index+1) = s%age_gyr_at_target_radius*years_per_gyr
        s%card_stops_active(run_index+2) = .true.
-       s%card_max_age_yr(run_index+2) = s%age_gyr_at_target_radius*1.0d9
+       s%card_max_age_yr(run_index+2) = s%age_gyr_at_target_radius*years_per_gyr
        s%card_rescale_targets(i_target_x,run_index+1) = s%card_rescale_targets(i_target_x,run_index-1)
        s%card_initial_x(run_index+1) = s%card_rescale_targets(i_target_x,run_index+1)
        s%card_initial_x(run_index+2) = s%card_initial_x(run_index+1)
@@ -318,7 +321,7 @@ subroutine check_star_calibration(s)
            text='#Have hit R* & L*, prepare final run to age:')
          return
       else
-         if (run_index .eq. 2) then
+         if (run_index == 2) then
 ! First pass: save log L at R*, lower X by x_calibration_step (Y up by
 ! the same at fixed Z), and start the next run.
             s%log_l_lsun_at_target_radius_prev_run = s%log_l_lsun_at_target_radius
@@ -353,7 +356,7 @@ subroutine check_star_calibration(s)
           s%card_initial_x(run_index+1) = new_x
           s%card_initial_x(run_index+2) = new_x
        end if
-      endif
+      end if
 end subroutine check_star_calibration
 
 ! ---------------------------------------------------------------
@@ -389,7 +392,7 @@ subroutine setup_solar_calibration(s, age_scale_factor)
       implicit none
       type(star_info), intent(inout) :: s
 
-      double precision, intent(in) :: age_scale_factor
+      real(dp), intent(in) :: age_scale_factor
 ! --- locals ---
       integer :: i, j
 ! 48 cards: 16 three-card calibration cycles (the run arrays have
@@ -407,7 +410,7 @@ subroutine setup_solar_calibration(s, age_scale_factor)
          s%card_log_fit_point_mass_fraction(i) = s%card_log_fit_point_mass_fraction(1)
       end do
 ! The rescale cards repeat card 1.
-      do i = 4,46,3
+      do i = 4,num_calibration_runs-2,3
          s%card_kind(i) = s%card_kind(1)
          s%card_from_starting_model(i) = .true.
          s%card_num_models(i) = s%card_num_models(1)
@@ -421,13 +424,13 @@ subroutine setup_solar_calibration(s, age_scale_factor)
 ! Card 2 stops at 1e8 yr and card 3 at target_solar_age (legacy
 ! CALSOLAGE; MHP 06/13), both scaled by age_scale_factor, as are their
 ! timesteps.
-      s%card_max_age_yr(2) = 1.0d8*age_scale_factor
+      s%card_max_age_yr(2) = settling_age_yr*age_scale_factor
       s%card_fixed_timestep_yr(2) = s%card_fixed_timestep_yr(2)*age_scale_factor
       s%card_max_age_yr(3) = s%control%target_solar_age*age_scale_factor
       s%card_fixed_timestep_yr(3) = s%card_fixed_timestep_yr(3)*age_scale_factor
 ! The settling cards repeat card 2.
-      do i = 5,47,3
-         s%card_kind(i) = 1
+      do i = 5,num_calibration_runs-1,3
+         s%card_kind(i) = card_evolve
          s%card_from_starting_model(i) = .false.
          s%card_num_models(i) = s%card_num_models(2)
          s%card_max_age_yr(i) = s%card_max_age_yr(2)
@@ -437,7 +440,7 @@ subroutine setup_solar_calibration(s, age_scale_factor)
       end do
 ! The cards that evolve to the solar age repeat card 3.
       do i = 6,num_calibration_runs,3
-         s%card_kind(i) = 1
+         s%card_kind(i) = card_evolve
          s%card_from_starting_model(i) = .false.
          s%card_num_models(i) = s%card_num_models(3)
          s%card_max_age_yr(i) = s%card_max_age_yr(3)
@@ -478,7 +481,7 @@ subroutine setup_star_calibration(s)
 
       use control_slots, only: max_runs
       use core_messages, only: core_log_values, core_stdout_values
-      use physical_constants
+      use physical_constants, only: c4pi, csig
       use math_lib
       implicit none
       type(star_info), intent(inout) :: s
@@ -524,7 +527,7 @@ subroutine setup_star_calibration(s)
       end do
 ! The evolving cards repeat card 2.
       do i = 4,max_runs,2
-         s%card_kind(i) = 1
+         s%card_kind(i) = card_evolve
          s%card_from_starting_model(i) = .false.
          s%card_num_models(i) = s%card_num_models(2)
          s%card_max_age_yr(i) = s%card_max_age_yr(2)
