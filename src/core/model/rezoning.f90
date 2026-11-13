@@ -17,7 +17,8 @@ module rezoning
       use omega_profile, only: omega_from_j
       use moments_of_inertia, only: zone_moments_of_inertia
       use rotating_shape, only: rotation_shape_factors
-      use star_info_lib, only: i_eps_grav, i_eps_neu, i_h1, i_h2, i_metals, json
+      use star_info_lib, only: i_eps_grav, i_eps_neu, i_h1, i_h2, i_metals, json, n_species_basic, &
+           n_species_extended
       use control_slots, only: ichi_czbase_fine_width, ichi_dl_max, ichi_dm_max, &
            ichi_dm_min, ichi_dp_core_max, ichi_dp_czbase_max, ichi_dp_env_max, ichi_dx_max, &
            ichi_dz_max, ichi_flag_dw, ichi_flag_dx, ichi_flag_dz
@@ -124,9 +125,9 @@ subroutine rezone(s, ierr)
       allocate(rz)
 
       s%reset_triangle = .false.
-! The number of species carried: 11, or 15 with the extended composition.
-      rz%num_species_tracked = 11
-      if (s%physics%use_extended_composition) rz%num_species_tracked = 15
+! The number of species carried, with or without the extended composition.
+      rz%num_species_tracked = n_species_basic
+      if (s%physics%use_extended_composition) rz%num_species_tracked = n_species_extended
       call check_envelope_temperature_range(s, rz, ierr)
       if (ierr /= 0) return
       call flag_fixed_points(s, rz, ierr)

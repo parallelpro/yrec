@@ -63,7 +63,7 @@ contains
 !     surface_hydrogen_fraction, surface_metal_fraction, xa
 subroutine rescale_model(s, ierr)
       use physical_constants, only: ln10
-      use star_info_lib, only: i_h1
+      use star_info_lib, only: i_h1, i_he3, i_he4, i_metals
       use control_slots, only: itime_core_min
       use core_messages, only: core_log, core_stdout_values, message_length, unwritten_line
       use settings_install, only: install_surface_z_settings
@@ -94,7 +94,7 @@ subroutine rescale_model(s, ierr)
 
       call rescale_surface_x
       call rescale_interior_z
-      if(s%xa(1,1) > main_sequence_x_min) then
+      if(s%xa(i_h1,1) > main_sequence_x_min) then
 ! Main-sequence model: one species, and the mass.
          call rescale_one_species
          call rescale_main_sequence_mass
@@ -127,8 +127,8 @@ subroutine rescale_surface_x
          if(s%card_rescale_targets(i_target_x,run_index) <= 1.0d0) then
             x_rescale_factor = s%card_rescale_targets(i_target_x,run_index)/max(s%surface_hydrogen_fraction,1.0d-20)
             do zone_idx = 1,s%nz
-               s%xa(1,zone_idx) = min(s%card_rescale_targets(i_target_x,run_index), &
-                    s%xa(1,zone_idx)*x_rescale_factor)
+               s%xa(i_h1,zone_idx) = min(s%card_rescale_targets(i_target_x,run_index), &
+                    s%xa(i_h1,zone_idx)*x_rescale_factor)
             end do
             s%surface_hydrogen_fraction = s%card_rescale_targets(i_target_x,run_index)
             s%current_card_envelope_x = s%card_rescale_targets(i_target_x,run_index)
@@ -164,9 +164,9 @@ subroutine rescale_interior_z
          if(s%card_rescale_targets(i_target_z,run_index) <= 1.0d0) then
             delta_z = s%card_rescale_targets(i_target_z,run_index) - s%surface_metal_fraction
             do zone_idx = 1,s%nz
-               z_rescale_factor=max(0.d0,s%xa(3,zone_idx)+delta_z)/ &
-                    (s%xa(3,zone_idx)+z_floor)
-               s%xa(3,zone_idx) = max(0.0d0,s%xa(3,zone_idx)+delta_z)
+               z_rescale_factor=max(0.d0,s%xa(i_metals,zone_idx)+delta_z)/ &
+                    (s%xa(i_metals,zone_idx)+z_floor)
+               s%xa(i_metals,zone_idx) = max(0.0d0,s%xa(i_metals,zone_idx)+delta_z)
                do species_idx = 5,11
                   s%xa(species_idx,zone_idx) = s%xa(species_idx,zone_idx)*z_rescale_factor
                end do
@@ -207,7 +207,7 @@ subroutine rescale_one_species
 ! to about 1e-12 X.)
             species_target = s%physics%new_species_value
             if(s%physics%value_relative_to_h) species_target = &
-                 exp(ln10*(s%physics%new_species_value-log_abundance_scale_h))*s%xa(1,s%nz)
+                 exp(ln10*(s%physics%new_species_value-log_abundance_scale_h))*s%xa(i_h1,s%nz)
             if(species_target < 1.0d0) then
                do zone_idx = 1,s%nz
                   s%xa(s%physics%new_species_index,zone_idx) = species_target
@@ -436,7 +436,7 @@ end subroutine report_hb_masses
 ! Set every shell's Y from its new X, Z and He3: Y = 1 - X - Z - X(He3).
 subroutine set_helium_from_x_and_z
       do zone_idx = 1,s%nz
-         s%xa(2,zone_idx) = 1.0d0-s%xa(1,zone_idx)-s%xa(3,zone_idx)-s%xa(4,zone_idx)
+         s%xa(i_he4,zone_idx) = 1.0d0-s%xa(i_h1,zone_idx)-s%xa(i_metals,zone_idx)-s%xa(i_he3,zone_idx)
       end do
 end subroutine set_helium_from_x_and_z
 
@@ -458,17 +458,17 @@ subroutine ramp_interior_z
             do zone_idx = 1,s%nz
                mass_fraction_local = exp10(s%log_mass(zone_idx))/(s%star_mass*s%solar_mass_cgs)
                if (mass_fraction_local < s%card_z_ramp_inner_mass_fraction(run_index)) then
-                  z_rescale_factor = s%card_z_ramp_core_z(run_index)/(s%xa(3,zone_idx)+z_floor)
-                  s%xa(3,zone_idx) = s%card_z_ramp_core_z(run_index)
-                  s%xa(1, zone_idx) = 1.0d0-s%xa(3,zone_idx)-s%xa(4,zone_idx)-s%xa(2,zone_idx)
+                  z_rescale_factor = s%card_z_ramp_core_z(run_index)/(s%xa(i_metals,zone_idx)+z_floor)
+                  s%xa(i_metals,zone_idx) = s%card_z_ramp_core_z(run_index)
+                  s%xa(i_h1,zone_idx) = 1.0d0-s%xa(i_metals,zone_idx)-s%xa(i_he3,zone_idx)-s%xa(i_he4,zone_idx)
                   do species_idx = 5,11
                       s%xa(species_idx,zone_idx) = s%xa(species_idx,zone_idx)*z_rescale_factor
                   end do
                else if (mass_fraction_local < s%card_z_ramp_outer_mass_fraction(run_index)) then
                   z_ramp_value = (mass_fraction_local-s%card_z_ramp_inner_mass_fraction(run_index))*z_ramp_slope+s%card_z_ramp_core_z(run_index)
-                  z_rescale_factor = z_ramp_value/(s%xa(3,zone_idx)+z_floor)
-                  s%xa(3, zone_idx) = z_ramp_value
-                  s%xa(1, zone_idx) = 1.0d0-s%xa(3,zone_idx)-s%xa(4,zone_idx)-s%xa(2,zone_idx)
+                  z_rescale_factor = z_ramp_value/(s%xa(i_metals,zone_idx)+z_floor)
+                  s%xa(i_metals,zone_idx) = z_ramp_value
+                  s%xa(i_h1,zone_idx) = 1.0d0-s%xa(i_metals,zone_idx)-s%xa(i_he3,zone_idx)-s%xa(i_he4,zone_idx)
                   do species_idx = 5,11
                       s%xa(species_idx,zone_idx) = s%xa(species_idx,zone_idx)*z_rescale_factor
                   end do

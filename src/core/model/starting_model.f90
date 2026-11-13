@@ -426,11 +426,11 @@ subroutine check_mixture_homogeneity(s, sm)
       character(len=message_length) :: lines(4)
       sm%mixture_ok = .true.
       if (s%control%change_cno_mixture_active .or. s%control%change_isotope_ratios_active) then
-         do i = 1,15
+         do i = 1, n_species_extended
             sm%reference_composition(i)=s%xa(i,1)
          end do
          homogeneity: do j = 2,s%nz
-            do i = 1,15
+            do i = 1, n_species_extended
                fraction_diff = abs(s%xa(i,j)-sm%reference_composition(i))
                if (fraction_diff > homogeneity_tol) then
                   lines = unwritten_line
@@ -638,7 +638,7 @@ subroutine extend_core_toward_center(s, sm, ierr)
              s%logP(i+s%num_core_points_added) = s%logP(i)
              s%logT(i+s%num_core_points_added) = s%logT(i)
              s%convective_flag(i+s%num_core_points_added) = s%convective_flag(i)
-             do j=1, 15
+             do j = 1, n_species_extended
                 s%xa(j,i+s%num_core_points_added) = s%xa(j,i)
              end do
              s%omega(i+s%num_core_points_added) = s%omega(i)
@@ -688,7 +688,7 @@ subroutine extend_core_toward_center(s, sm, ierr)
                   actual_gradient*core_shell_spacing
 ! Omega and composition as at the innermost old point.
              s%omega(i) = s%omega(first_original_shell)
-             do j=1, 15
+             do j = 1, n_species_extended
                 s%xa(j,i) = s%xa(j,first_original_shell)
              end do
 ! The local density estimate, in place of an EOS call that did not
