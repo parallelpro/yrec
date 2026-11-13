@@ -30,7 +30,7 @@
 # those to an absolute bound it states and measured (abs_floor and
 # abs_tol in conftest.py: test_rotation.py, test_structure.py,
 # test_mass_change.py, test_regrid.py, test_henyey_elimination.py,
-# test_envelope_integration.py).
+# test_envelope_integration.py, test_timestep_limits.py).
 #
 # The test list and the sparse checkout below were derived by tracing
 # which files each test opens (2026-10-31; test_monte_carlo.py, added
@@ -144,6 +144,7 @@ jobs:
           test_rotation.py test_rotation_kernels.py test_element_diffusion.py
           test_convection.py test_triangle_fit.py test_mass_change.py
           test_henyey_elimination.py test_envelope_integration.py
+          test_timestep_limits.py
           test_regrid.py test_eos.py test_kap.py test_atm.py test_net.py
           test_other_energy.py test_error_exit.py test_reentry.py
           test_physics.py test_stop_conditions.py test_inlist_convert.py

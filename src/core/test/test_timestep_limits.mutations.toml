@@ -1,0 +1,242 @@
+# Mutations of test_timestep_limits: each check must print FAIL under a
+# mutation of the code it covers (core/README.md, the tests). Run, after
+# `make tests` in src/: python3 src/tools/mutate.py core --program
+# test_timestep_limits (src/tools/mutate.py describes this format and the
+# verdicts).
+program = "test_timestep_limits"
+timeout = 60
+
+[[mutation]]
+id = 'timestep-01'
+check = 'structure: off -> unlimited'
+file = 'core/step/timestep_limits.f90'
+old = 'if (.not. set%structure_limits_active) then'
+new = 'if (.false.) then'
+
+[[mutation]]
+id = 'timestep-02'
+check = 'structure: nothing changed -> the previous dt'
+file = 'core/step/timestep_limits.f90'
+old = 'if (dt_factor == 0.d0) dt_factor = 1.0d0'
+new = 'if (dt_factor == 0.d0) dt_factor = 1.1d0'
+
+[[mutation]]
+id = 'timestep-03'
+check = 'structure: f = dlog P/atime(dp)'
+file = 'core/step/timestep_limits.f90'
+old = 'dt_factor = max_change(1)/set%timestep_factors(itime_dp)'
+new = 'dt_factor = max_change(1)/set%timestep_factors(itime_dt)'
+
+[[mutation]]
+id = 'timestep-04'
+check = 'structure: f = dlog T/atime(dt), the largest change'
+file = 'core/step/timestep_limits.f90'
+old = 'if (max_change(2)/set%timestep_factors(itime_dt) > dt_factor) &'
+new = 'if (max_change(2)/set%timestep_factors(itime_dt) < dt_factor) &'
+
+[[mutation]]
+id = 'timestep-05'
+check = 'structure: f = dlog R/atime(dr)'
+file = 'core/step/timestep_limits.f90'
+old = '           dt_factor = max_change(3)/set%timestep_factors(itime_dr)'
+new = '           dt_factor = max_change(3)/set%timestep_factors(itime_dp)'
+
+[[mutation]]
+id = 'timestep-06'
+check = 'structure: f = (dL/mean L)/(2.3026 atime(dl))'
+file = 'core/step/timestep_limits.f90'
+old = 'ln10_ptime = 2.3026d0'
+new = 'ln10_ptime = 2.0d0'
+
+[[mutation]]
+id = 'timestep-07'
+check = "structure: the centre's L against L(2)"
+file = 'core/step/timestep_limits.f90'
+old = '(luminosity(2) + luminosity(1)))'
+new = '(luminosity(1) + luminosity(1)))'
+
+[[mutation]]
+id = 'timestep-08'
+check = 'structure: f clipped to a'
+file = 'core/step/timestep_limits.f90'
+old = 'if (clipped_factor > dt_factor_limit) clipped_factor = dt_factor_limit'
+new = 'if (.false.) clipped_factor = dt_factor_limit'
+
+[[mutation]]
+id = 'timestep-09'
+check = 'structure: f clipped to 1/a'
+file = 'core/step/timestep_limits.f90'
+old = 'if (clipped_factor < 1.0d0/dt_factor_limit) clipped_factor = 1.0d0/dt_factor_limit'
+new = 'if (.false.) clipped_factor = 1.0d0/dt_factor_limit'
+
+[[mutation]]
+id = 'timestep-10'
+check = 'structure: a limit below 1 s -> unlimited'
+file = 'core/step/timestep_limits.f90'
+old = 'if (dt < dt_floor) dt = dt_unlimited'
+new = 'if (dt < 0.1d0*dt_floor) dt = dt_unlimited'
+
+[[mutation]]
+id = 'timestep-11'
+check = 'omega: off -> unlimited, max_domega_frac kept'
+file = 'core/step/timestep_limits.f90'
+old = 'if (.not. set%rotation_active) return'
+new = 'if (.false.) return'
+
+[[mutation]]
+id = 'timestep-12'
+check = 'omega: max_domega_frac = max 2|w - w0|/(w + w0)'
+file = 'core/step/timestep_limits.f90'
+old = 'if (test_domega > max_domega_frac) max_domega_frac = test_domega'
+new = 'if (test_domega < max_domega_frac) max_domega_frac = test_domega'
+
+[[mutation]]
+id = 'timestep-13'
+check = 'omega: dt = dt_prev max_domega_global/max_domega_frac'
+file = 'core/step/timestep_limits.f90'
+old = 'dt_factor = max_domega_frac/set%max_domega_global'
+new = 'dt_factor = max_domega_frac*set%max_domega_global'
+
+[[mutation]]
+id = 'timestep-14'
+check = 'omega: no change -> unlimited'
+file = 'core/step/timestep_limits.f90'
+old = 'if (dt_factor == 0.d0) return'
+new = 'if (.false.) return'
+
+[[mutation]]
+id = 'timestep-15'
+check = 'hydrogen: L_H <= 1e-34 -> unlimited'
+file = 'core/step/timestep_limits.f90'
+old = 'if (hydrogen_luminosity <= min_burning_luminosity) return'
+new = 'if (.false.) return'
+
+[[mutation]]
+id = 'timestep-16'
+check = 'hydrogen: core E_H dX m_cc/(L_cc Lsun)'
+file = 'core/step/timestep_limits.f90'
+old = 'h_burn_energy_per_gram = 6.00d18'
+new = 'h_burn_energy_per_gram = 6.20d18'
+
+[[mutation]]
+id = 'timestep-17'
+check = 'hydrogen: core dX = atime(dx_core_frac) X_cc'
+file = 'core/step/timestep_limits.f90'
+old = 'set%timestep_factors(itime_dx_core_frac)*composition(i_h1,core_edge))'
+new = 'set%timestep_factors(itime_dx_core_frac)*composition(i_h1,1))'
+
+[[mutation]]
+id = 'timestep-18'
+check = 'hydrogen: shell E_H atime(dx_total) X_surf Msun/(L_H Lsun)'
+file = 'core/step/timestep_limits.f90'
+old = 'dt = h_burn_energy_per_gram*delta_x/hydrogen_luminosity'
+new = 'dt = h_burn_energy_per_gram*delta_x/(2.0d0*hydrogen_luminosity)'
+
+[[mutation]]
+id = 'timestep-19'
+check = 'helium: L_3alpha <= 1e-34 -> unlimited'
+file = 'core/step/timestep_limits.f90'
+old = 'if (triple_alpha_luminosity <= min_burning_luminosity) return'
+new = 'if (.false.) return'
+
+[[mutation]]
+id = 'timestep-20'
+check = 'helium: flash 1e15/eps_3alpha'
+file = 'core/step/timestep_limits.f90'
+old = 'flash_energy_per_gram = 1.0d15'
+new = 'flash_energy_per_gram = 1.1d15'
+
+[[mutation]]
+id = 'timestep-21'
+check = 'helium: flash rate floored at 1e-22'
+file = 'core/step/timestep_limits.f90'
+old = 'min_triple_alpha_rate = 1.0d-22'
+new = 'min_triple_alpha_rate = 1.0d-23'
+
+[[mutation]]
+id = 'timestep-22'
+check = 'helium: core E_He dY m_cc/(L_cc Lsun)'
+file = 'core/step/timestep_limits.f90'
+old = 'he_burn_energy_per_gram = 5.85d17'
+new = 'he_burn_energy_per_gram = 5.95d17'
+
+[[mutation]]
+id = 'timestep-23'
+check = 'helium: shell the smaller of the two limits'
+file = 'core/step/timestep_limits.f90'
+old = 'shell_zone = max(shell_bottom-1, 1)'
+new = 'shell_zone = max(shell_bottom, 1)'
+
+[[mutation]]
+id = 'timestep-24'
+check = 'helium: shell with L <= 0 -> unlimited'
+file = 'core/step/timestep_limits.f90'
+old = 'if (luminosity(shell_zone) > 0.0d0) then'
+new = 'if (.true.) then'
+
+[[mutation]]
+id = 'timestep-25'
+check = 'hottest_zone: the first largest log T'
+file = 'core/step/timestep_limits.f90'
+old = 'if (log_temperature(zone_idx) > max_temp) then'
+new = 'if (log_temperature(zone_idx) >= max_temp) then'
+
+[[mutation]]
+id = 'timestep-26'
+check = 'hr: off while the structure limits are on'
+file = 'core/step/timestep_limits.f90'
+old = 'if (.not. set%use_envelope_triangle_dt .or. set%structure_limits_active) return'
+new = 'if (.not. set%use_envelope_triangle_dt) return'
+
+[[mutation]]
+id = 'timestep-27'
+check = 'hr: off unless use_envelope_triangle_dt'
+file = 'core/step/timestep_limits.f90'
+old = 'if (.not. set%use_envelope_triangle_dt .or. set%structure_limits_active) return'
+new = 'if (set%structure_limits_active) return'
+
+[[mutation]]
+id = 'timestep-28'
+check = 'hr: f = dlog Teff/tri_delta_teffl'
+file = 'core/step/timestep_limits.f90'
+old = 'dt_factor = teffl_change/set%tri_delta_teffl'
+new = 'dt_factor = teffl_change/set%tri_delta_logl'
+
+[[mutation]]
+id = 'timestep-29'
+check = 'hr: f = dlog L/tri_delta_logl'
+file = 'core/step/timestep_limits.f90'
+old = 'if (logl_change/set%tri_delta_logl > dt_factor) dt_factor = logl_change/set%tri_delta_logl'
+new = 'if (logl_change/set%tri_delta_logl < dt_factor) dt_factor = logl_change/set%tri_delta_logl'
+
+[[mutation]]
+id = 'timestep-30'
+check = 'hr: nothing changed -> the previous dt'
+file = 'core/step/timestep_limits.f90'
+old = 'if (dt_factor == 0.0d0) dt_factor = 1.0d0'
+new = 'if (dt_factor == 0.0d0) dt_factor = 1.1d0'
+
+[[mutation]]
+id = 'timestep-31'
+check = 'tightest: the growth limit a dt_prev'
+file = 'core/step/timestep_limits.f90'
+old = 'dt = set%timestep_factors(itime_max_dt_frac)*previous_dt'
+new = 'dt = 2.5d0*previous_dt'
+
+[[mutation]]
+id = 'timestep-32'
+check = 'tightest: the smallest limit'
+file = 'core/step/timestep_limits.f90'
+old = 'dt = min(dt, minval(limits))'
+new = 'dt = min(dt, maxval(limits))'
+
+[[mutation]]
+id = 'timestep-33'
+check = 'tightest: dt_prev <= 1 s: the smallest limit alone'
+file = 'core/step/timestep_limits.f90'
+old = '''
+         dt = minval(limits)
+      end if'''
+new = '''
+         dt = maxval(limits)
+      end if'''

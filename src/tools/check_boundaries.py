@@ -187,6 +187,9 @@ STAR_BLIND_FILES = [
     # the mass change's masses, wind angular momentum and accreted
     # composition (2026-10, GUIDELINES star rule 6)
     "core/step/mass_change_kernel.f90",
+    # the timestep limits behind their settings record (round 2;
+    # test_timestep_limits)
+    "core/step/timestep_limits.f90",
     # the rezone's regridding arithmetic (2026-10, GUIDELINES star rule 6)
     "core/model/regridding.f90",
     "atm/t_tau_relations.f90",

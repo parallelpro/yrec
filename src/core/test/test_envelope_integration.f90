@@ -50,9 +50,10 @@
 !               error tolerance of zero) returns envelope_termination
 !               and an envint_bsstep_failed event with bsstep's status.
 !
-! Usage: test_envelope_integration DECK.inlist   (run with YREC_INPUT
+! Usage: test_envelope_integration [DECK.inlist]   (run with YREC_INPUT
 ! and YREC_START set and YREC_OUTPUT pointing at a directory the deck
-! may write to). Each check prints its value (1pe9.1) and ok or FAIL;
+! may write to; the deck defaults to core/test/test_structure_tams.inlist
+! from src/). Each check prints its value (1pe9.1) and ok or FAIL;
 ! any FAIL stops the program with status 1.
 program test_envelope_integration
       use, intrinsic :: iso_fortran_env, only: dp => real64
@@ -104,11 +105,14 @@ program test_envelope_integration
       character(len=512) :: deck
       integer :: ierr, nfail
 
-      if (command_argument_count() /= 1) then
-         write(*,'(a)') 'usage: test_envelope_integration DECK.inlist'
+      if (command_argument_count() > 1) then
+         write(*,'(a)') 'usage: test_envelope_integration [DECK.inlist]'
          stop 2
       end if
-      call get_command_argument(1, deck)
+! Without an argument, test_structure's TAMS deck, as from src/ (where
+! tools/coverage.py runs the test programs).
+      deck = 'core/test/test_structure_tams.inlist'
+      if (command_argument_count() == 1) call get_command_argument(1, deck)
       nfail = 0
       call load_deck(deck)
       call set_surface()
