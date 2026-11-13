@@ -1,0 +1,184 @@
+# Mutations of test_regrid: each check must print FAIL under a mutation of
+# the regridding kernel (core/model/regridding.f90). The check strings are
+# the report's labels with their two leading blanks. Run, after `make
+# tests` in src/: python3 src/tools/mutate.py core --program test_regrid
+# (src/tools/mutate.py describes this format and the verdicts).
+program = "test_regrid"
+timeout = 60
+
+[[mutation]]
+id = 'regrid-01'
+check = "  shell masses, old mesh: sum dm/M - 1"
+file = 'core/model/regridding.f90'
+old = '           0.5d0*(mass_prev+mass_curr)'
+new = '           0.5d0*(mass_prev+mass_prev)'
+
+[[mutation]]
+id = 'regrid-02'
+check = "  shell masses, new mesh: sum dm/M - 1"
+file = 'core/model/regridding.f90'
+old = '           0.5d0*(mass_prev+mass_curr)'
+new = '           0.5d0*(mass_prev+mass_prev)'
+
+[[mutation]]
+id = 'regrid-03'
+check = "  centre rule: dm_1 = (m_1 + m_2)/2"
+file = 'core/model/regridding.f90'
+old = '      mass_prev = - mass_curr'
+new = '      mass_prev = 0.0d0'
+
+[[mutation]]
+id = 'regrid-04'
+check = "  interior rule: dm_i = (m_i+1 - m_i-1)/2"
+file = 'core/model/regridding.f90'
+old = 'shell_mass(i-1) = 0.5d0*(mass_curr-mass_two_back)'
+new = 'shell_mass(i-1) = 0.5d0*(mass_curr-mass_prev)'
+
+[[mutation]]
+id = 'regrid-05'
+check = "  outer rule: dm_n = M - (m_n-1 + m_n)/2"
+file = 'core/model/regridding.f90'
+old = '           0.5d0*(mass_prev+mass_curr)'
+new = '           0.5d0*(mass_prev+mass_prev)'
+
+[[mutation]]
+id = 'regrid-06'
+check = "  structure: linear in log m reproduced"
+file = 'core/model/regridding.f90'
+old = '      if (ierr == 0) call regrid_profile(old_log_mass, old%log_radius, new_log_mass, &'
+new = '      if (ierr == 0) call regrid_profile(old_log_mass, old%log_pressure, new_log_mass, &'
+
+[[mutation]]
+id = 'regrid-07'
+check = "  composition: linear in log m reproduced"
+file = 'core/model/regridding.f90'
+old = '      do k = 1,size(old_xa,1)'
+new = '      do k = 2,size(old_xa,1)'
+
+[[mutation]]
+id = 'regrid-08'
+check = "  rotation: linear in log m reproduced"
+file = 'core/model/regridding.f90'
+old = '      call regrid_profile(old_log_mass, old%omega, new_log_mass, new%omega, ierr)'
+new = '      call regrid_profile(old_log_mass, old%ft, new_log_mass, new%omega, ierr)'
+
+[[mutation]]
+id = 'regrid-09'
+check = "  shared points keep their values (X, j)"
+file = 'core/model/regridding.f90'
+old = '      call osplin(new_log_mass, new_values, old_log_mass, old_values, &'
+new = '      call osplin(new_log_mass, new_values, old_log_mass, old_values*(1.0d0+1.0d-10), &'
+
+[[mutation]]
+id = 'regrid-10'
+check = "  mass of X: relative change"
+file = 'core/model/regridding.f90'
+old = '''
+         if (ierr /= 0) return
+      end do
+end subroutine regrid_composition'''
+new = '''
+         if (ierr /= 0) return
+      end do
+      new_xa = new_xa*1.001d0
+end subroutine regrid_composition'''
+
+[[mutation]]
+id = 'regrid-11'
+check = "  mass of Y: relative change"
+file = 'core/model/regridding.f90'
+old = '''
+         if (ierr /= 0) return
+      end do
+end subroutine regrid_composition'''
+new = '''
+         if (ierr /= 0) return
+      end do
+      new_xa = new_xa*1.001d0
+end subroutine regrid_composition'''
+
+[[mutation]]
+id = 'regrid-12'
+check = "  mass of Z: relative change"
+file = 'core/model/regridding.f90'
+old = '''
+         if (ierr /= 0) return
+      end do
+end subroutine regrid_composition'''
+new = '''
+         if (ierr /= 0) return
+      end do
+      new_xa = new_xa*1.001d0
+end subroutine regrid_composition'''
+
+[[mutation]]
+id = 'regrid-13'
+check = "  mass of He3: relative change"
+file = 'core/model/regridding.f90'
+old = '''
+         if (ierr /= 0) return
+      end do
+end subroutine regrid_composition'''
+new = '''
+         if (ierr /= 0) return
+      end do
+      new_xa = new_xa*1.001d0
+end subroutine regrid_composition'''
+
+[[mutation]]
+id = 'regrid-14'
+check = "  mass fractions outside their old range"
+file = 'core/model/regridding.f90'
+old = '''
+         if (ierr /= 0) return
+      end do
+end subroutine regrid_composition'''
+new = '''
+         if (ierr /= 0) return
+      end do
+      new_xa = new_xa*1.001d0
+end subroutine regrid_composition'''
+
+[[mutation]]
+id = 'regrid-15'
+check = "  max |X + Y + Z - 1| at the new points"
+file = 'core/model/regridding.f90'
+old = '''
+         if (ierr /= 0) return
+      end do
+end subroutine regrid_composition'''
+new = '''
+         if (ierr /= 0) return
+      end do
+      new_xa = new_xa*1.001d0
+end subroutine regrid_composition'''
+
+[[mutation]]
+id = 'regrid-16'
+check = "  J and E_rot totals = sum j dm, sum omega j dm/2"
+file = 'core/model/regridding.f90'
+old = 'rotational_ke(i) = 0.5d0*omega(i)*shell_angular_momentum'
+new = 'rotational_ke(i) = 0.25d0*omega(i)*shell_angular_momentum'
+
+[[mutation]]
+id = 'regrid-17'
+check = "  angular momentum J: relative change"
+file = 'core/model/regridding.f90'
+old = '      if (ierr == 0) call regrid_profile(old_log_mass, old%specific_angular_momentum, &'
+new = '      if (ierr == 0) call regrid_profile(old_log_mass, old%specific_angular_momentum*1.01d0, &'
+
+[[mutation]]
+id = 'regrid-18'
+check = "  rotational kinetic energy: relative change"
+file = 'core/model/regridding.f90'
+old = '      call regrid_profile(old_log_mass, old%omega, new_log_mass, new%omega, ierr)'
+new = '      call regrid_profile(old_log_mass, old%omega*1.01d0, new_log_mass, new%omega, ierr)'
+
+[[mutation]]
+id = 'regrid-19'
+check = "  a failed spline is osplin's code"
+file = 'core/model/regridding.f90'
+old = '           size(old_log_mass), size(new_log_mass), ierr)'
+new = '''
+           size(old_log_mass), size(new_log_mass), ierr)
+      ierr = 0'''

@@ -5,10 +5,13 @@
 ! git_hash_string (the build's commit, from the Makefile's GIT_HASH; the
 ! file is preprocessed), filled by set_version_strings at the start of
 ! run_yrec, printed in the controls read's banner (io/controls_reader.f90,
-! io/derived_controls.f90) and in the history header. (They were
-! physical_constants' until 2026-10-29, the former common/version/:
-! yrecver, githash.) A new commit recompiles this file only: the module's
-! interface does not change, so its users are not rebuilt.
+! io/derived_controls.f90) and in the history header. A new commit
+! recompiles this file only: the module's interface does not change, so
+! its users are not rebuilt.
+!
+! Sources
+!   The two strings were physical_constants' until 2026-10-29, and the
+!   F77's common/version/ (yrecver, githash) before that.
 #define YREC_VERSION '202602'
 
 #ifndef GIT_HASH

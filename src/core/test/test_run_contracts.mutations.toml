@@ -1,0 +1,175 @@
+# Mutations of test_run_contracts: each check must print FAIL under a
+# mutation of the code it covers (the star calibration's last card and
+# verdicts, the C entry's path limit and the units it closes). Run, after
+# `make tests` in src/: python3 src/tools/mutate.py core --program
+# test_run_contracts (src/tools/mutate.py describes this format and the
+# verdicts). The deck is the configuration matrix's shortest.
+program = "test_run_contracts"
+timeout = 300
+args = ["{repo}/examples/run_config_matrix/cm_env_overshoot.inlist"]
+
+[[mutation]]
+id = 'calibration-01'
+check = 'star calibration: a crossing on the last card with L off target: not converged'
+file = 'core/run/calibration.f90'
+old = 'if (run_index + star_calib_cards_per_cycle > s%num_cards) then'
+new = 'if (run_index + star_calib_cards_per_cycle > s%num_cards + star_calib_cards_per_cycle) then'
+
+[[mutation]]
+id = 'calibration-02'
+check = 'star calibration: a crossing on the last card with L on target: no final run'
+file = 'core/run/calibration.f90'
+old = '''
+         if (luminosity_matches) then
+            s%termination_reason = &'''
+new = '''
+         if (.not. luminosity_matches) then
+            s%termination_reason = &'''
+
+[[mutation]]
+id = 'calibration-03'
+check = 'star calibration: the last card ended without the star: not converged'
+file = 'core/run/calibration.f90'
+old = 'else if (s%current_card >= s%num_cards) then'
+new = 'else if (s%current_card > s%num_cards) then'
+
+[[mutation]]
+id = 'calibration-04'
+check = "star calibration: the final run's end is the converged verdict"
+file = 'core/run/calibration.f90'
+old = 'runs_complete = .true.'
+new = 'runs_complete = .false.'
+
+[[mutation]]
+id = 'calibration-05'
+check = "star calibration: no verdict after the final run's rescale card"
+file = 'core/run/calibration.f90'
+old = 'if (s%star_found_flag .and. mod(s%current_card, star_calib_cards_per_cycle) == 0) then'
+new = 'if (s%star_found_flag) then'
+
+[[mutation]]
+id = 'calibration-06'
+check = 'star calibration: no verdict on an even card before the last'
+file = 'core/run/calibration.f90'
+old = 'else if (s%current_card >= s%num_cards) then'
+new = 'else if (s%current_card >= s%num_cards - star_calib_cards_per_cycle) then'
+
+[[mutation]]
+id = 'calibration-07'
+check = "star calibration: a crossing before the last card sets the next pair's X"
+file = 'core/run/calibration.f90'
+old = 'if (run_index + star_calib_cards_per_cycle > s%num_cards) then'
+new = 'if (run_index + star_calib_cards_per_cycle >= s%num_cards) then'
+
+[[mutation]]
+id = 'calibration-08'
+check = 'star calibration: ... and leaves the end reason alone'
+file = 'core/run/calibration.f90'
+old = '''
+            write(s%termination_reason,'(a,i0,a)') &
+                 'star calibration NOT converged in ', s%num_cards, ' cards'
+         end if
+         return
+      end if
+'''
+new = '''
+            write(s%termination_reason,'(a,i0,a)') &
+                 'star calibration NOT converged in ', s%num_cards, ' cards'
+         end if
+         return
+      end if
+      s%termination_reason = 'star calibration pass'
+'''
+
+[[mutation]]
+id = 'calibration-09'
+check = 'star calibration: L on target before the last card arms the final run'
+file = 'core/run/calibration.f90'
+old = 's%card_stops_active(run_index+2) = .true.'
+new = 's%card_stops_active(run_index+2) = .false.'
+
+[[mutation]]
+id = 'capi-01'
+check = 'yrec_run: a control path over 256 characters is refused (status 1)'
+file = 'core/run/yrec_capi.f90'
+old = 'if (c_strlen(control_nml) > len(control_nml_override) .or. &'
+new = 'if (c_strlen(control_nml) > len(control_nml_override) + 1 .or. &'
+
+[[mutation]]
+id = 'capi-02'
+check = 'yrec_run: a physics path over 256 characters is refused (status 1)'
+file = 'core/run/yrec_capi.f90'
+old = 'c_strlen(physics_nml) > len(physics_nml_override)) then'
+new = 'c_strlen(physics_nml) > len(physics_nml_override) + 1) then'
+
+[[mutation]]
+id = 'capi-03'
+check = 'yrec_run: a path of exactly 256 characters runs (status 0)'
+file = 'core/run/yrec_capi.f90'
+old = 'c_strlen(control_nml) > len(control_nml_override) .or. &'
+new = 'c_strlen(control_nml) >= len(control_nml_override) .or. &'
+
+[[mutation]]
+id = 'capi-04'
+check = "yrec_run: the host's unit stays open after a call"
+file = 'core/run/yrec_capi.f90'
+old = '''
+            call close_run_units
+'''
+new = '''
+            block
+               integer :: u
+               do u = 7, 99
+                  close(u)
+               end do
+            end block
+'''
+
+[[mutation]]
+id = 'capi-05'
+check = 'yrec_run: a missing deck returns a positive status'
+file = 'core/run/yrec_capi.f90'
+old = 'yrec_run = int(ierr, c_int)'
+new = 'yrec_run = 0_c_int'
+
+[[mutation]]
+id = 'capi-06'
+check = "yrec_run: ... and the host's unit is still open"
+file = 'core/run/yrec_capi.f90'
+old = '''
+            call close_run_units
+'''
+new = '''
+            block
+               integer :: u
+               do u = 7, 99
+                  close(u)
+               end do
+            end block
+'''
+
+[[mutation]]
+id = 'reset-01'
+check = "yrec_run_prologue: the host's unit stays open at a re-entry"
+file = 'core/run/yrec_reset.f90'
+old = '''
+         call close_run_units
+'''
+new = '''
+         block
+            integer :: u
+            do u = 7, 99
+               close(u)
+            end do
+         end block
+'''
+
+[[mutation]]
+id = 'reset-02'
+check = "yrec_run: the run's log and final-model units are closed after it"
+file = 'core/run/yrec_reset.f90'
+old = '''
+      call close_run_unit(run_log_unit)
+'''
+new = '''
+'''

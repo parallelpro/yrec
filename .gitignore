@@ -31,6 +31,8 @@ src/test_mass_change
 src/test_henyey_elimination
 src/test_envelope_integration
 src/test_timestep_limits
+src/test_run_contracts
+src/test_model_kernels
 src/test_regrid
 src/test_controls
 src/test_io

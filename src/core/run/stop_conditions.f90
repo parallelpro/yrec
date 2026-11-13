@@ -1,39 +1,35 @@
 !----------------------------------------------------------------------
 ! stop_conditions
 !----------------------------------------------------------------------
-! New (2026, core/ readability phase 2). The single home for the
-! driver-level stop machinery that was previously duplicated between
-! run_driver (run_yrec) and step_driver (evolve_step):
-!
+! The run's stops, in one place:
 !  * the step_status protocol constants (evolve_step's contract with
 !    run_yrec's model loop);
-!  * the end-age predicates -- the "within 1 year of the target age"
-!    convention existed as four hand-written copies in evolve_step;
-!  * the central-abundance stop table (D / X / Y): the trigger check
-!    (evolve_step, once per converged model) and the start-of-run
-!    disarm pass (run_yrec) are two walks over the same three rows.
-!    Keeping them as one table closes the door on the copy-paste bug
-!    fixed in phase 1, where the disarm branch for hydrogen negated
-!    the DEUTERIUM threshold and printed the deuterium values (a
-!    defect inherited from the original F77).
+!  * the end age (reached_end_age: within 1 year of the card's target);
+!  * the central-abundance stops (D, X, Y): one table, which both the
+!    per-model check (abundance_stop_triggered) and the start-of-card
+!    disarm pass (init_stop_conditions) walk;
+!  * the structure limits (log L, Teff, log g, nu_max, an upper and a
+!    lower limit each, per card);
+!  * the star calibration's target radius (check_star_calibration);
+!  * the configuration and NaN checks (check_rotation_initialised,
+!    converged_model_is_nan).
+! run_yrec calls init_stop_conditions once per card, right after the
+! starting model is read; evolve_step calls check_stop_conditions once
+! per converged model, after the model is written. A new stop is a
+! further check inside check_stop_conditions, with its control's
+! registry row, not a new public entry (core/README.md, "Add a stop
+! condition").
 !
-! Protocol (2026 single-entry redesign): run_yrec calls
-! init_stop_conditions once per kind card, right after the starting
-! model is read; evolve_step calls check_stop_conditions once per
-! converged model, after the model is written. New stop options
-! (2026: the log_L/Teff/log_g/nu_max structure limits below are the
-! first) belong as further checks inside check_stop_conditions plus
-! their registry rows -- not as new public entries.
-!
-! The three threshold arrays stay separate namelist-bound variables
-! in controls_buffer (central_deuterium_stop / central_hydrogen_stop /
-! central_helium_stop); stop_value/set_stop_value select by row. A
-! stop is configured when its threshold is positive; disarming
-! negates it (the historical convention -- every check tests .gt.0).
+! The abundance stops' thresholds are three controls
+! (central_deuterium_stop, central_hydrogen_stop, central_helium_stop),
+! which stop_value and set_stop_value select by row. A stop is
+! configured when its threshold is positive; disarming negates it.
 module stop_conditions
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use calibration, only: check_star_calibration
+      use run_cards, only: card_rescale
       use star_info_lib, only: i_h1, i_h2, i_he4, star_info
-      use run_messages, only: run_log_unit
+      use core_messages, only: core_stdout, core_stdout_and_log, message_length, unwritten_line
       use math_lib
       implicit none
       private
@@ -64,19 +60,20 @@ contains
 subroutine check_rotation_initialised(s, ierr)
       type(star_info), intent(inout) :: s
       integer, intent(inout) :: ierr
-      if ((s%omega(1) .eq. 0) .and. (s%physics%rotation_active)) then
+      character(len=message_length) :: lines(1)
+      if ((s%omega(1) == 0) .and. (s%physics%rotation_active)) then
 1611      format('LROT set to TRUE, but OMEGA(1) = 0. Stopping.', &
                  ' Initialize rotation rates or set LROT to', &
                  ' FALSE.')
-          print 1611
-          ! 2026 (phase five, step B): configuration error returns to the
-          ! CLI wrapper (which stops) instead of stopping here.
+          lines = unwritten_line
+          write(lines,1611)
+          call core_stdout(lines)
           ierr = 1
-      endif
+      end if
 end subroutine check_rotation_initialised
 
 ! ---------------------------------------------------------------
-! 2026 (bugsweep Batch 3): NaN guard. Nothing in the solver tests
+! The NaN guard. Nothing in the solver tests
 ! for NaN, and a NaN structure passes every convergence test (all
 ! comparisons are false), so a run that went non-finite (the
 ! zahb->tahb dt = 0 case before the heburn fix) kept "converging",
@@ -91,6 +88,7 @@ logical function converged_model_is_nan(s)
       type(star_info), intent(inout) :: s
       integer :: nz, k
       character(len=24) :: what
+      character(len=message_length) :: lines(1)
 
       converged_model_is_nan = .true.
       nz = s%nz
@@ -113,8 +111,9 @@ logical function converged_model_is_nan(s)
          if (what == ' ') converged_model_is_nan = .false.
       end if
       if (converged_model_is_nan) then
-         write(*,10) trim(what), s%model_number + 1
-         write(run_log_unit,10) trim(what), s%model_number + 1
+         lines = unwritten_line
+         write(lines,10) trim(what), s%model_number + 1
+         call core_stdout_and_log(lines)
          s%termination_reason = 'NaN in '//trim(what)
       end if
    10 format(1x,'ERROR: NaN in ',a,' after model ',i0,' converged; stopping')
@@ -129,10 +128,9 @@ end function converged_model_is_nan
 ! check_star_calibration protocol: iteration 1 only primes
 ! previous-model state, so the calibration comparison starts at
 ! iteration 2).
-!   star reads: age_gyr, card_kind, card_max_age_yr,
-!     control%calibrate_star_flag, current_card,
-!     just_passed_target_radius_flag, log_L_lsun, log_Teff,
-!     star_found_flag, termination_reason
+!   star reads: card_kind, card_max_age_yr, control%calibrate_star_flag,
+!     current_card, just_passed_target_radius_flag, star_found_flag,
+!     termination_reason
 !   star writes: none
 subroutine check_stop_conditions(s, model_iteration, step_status)
       type(star_info), intent(inout) :: s
@@ -141,7 +139,7 @@ subroutine check_stop_conditions(s, model_iteration, step_status)
 
       step_status = step_continue
 
-      if (reached_end_age(s, s%current_card)) then
+      if (reached_end_age(s)) then
          write(s%termination_reason,'(a,es10.3,a)') &
               'target age reached (', &
               s%card_max_age_yr(s%current_card), ' yr)'
@@ -149,29 +147,29 @@ subroutine check_stop_conditions(s, model_iteration, step_status)
          return
       end if
 
-      if (abundance_stop_triggered(s, s%current_card)) then
+      if (abundance_stop_triggered(s)) then
          step_status = step_kind_card_done
          return
       end if
 
-! Structure limits (2026): log_L / Teff / log g / nu_max
+! Structure limits: log_L / Teff / log g / nu_max
 ! against the current kind card's *_upper_limit(nk) /
 ! *_lower_limit(nk) values -- per-card arrays like the other
 ! stopping criteria (a limit at its +-1d99 sentinel is off). Not
 ! checked on pure-rescale relax cards, where the structure is
 ! mid-relaxation.
-      if (s%card_kind(s%current_card) /= 2) then
+      if (s%card_kind(s%current_card) /= card_rescale) then
          if (structure_limit_stop_triggered(s)) then
             step_status = step_kind_card_done
             return
          end if
       end if
 
-! TEST IF MODEL IS NEAR DESIRED Teff AND L. IF NOT RESCALE AND TRY AGAIN.
+! The star calibration: has the track crossed the target radius R*? If
+! so, the run goes on to the next pair of cards (check_star_calibration).
       if (s%control%calibrate_star_flag .and. .not. s%star_found_flag) then
-         if (mod(s%current_card,2).eq.0 .and. model_iteration.ne.1) then
-            call check_star_calibration(s, s%log_L_lsun, s%log_Teff, &
-                 s%age_gyr, s%current_card)
+         if (mod(s%current_card,2) == 0 .and. model_iteration /= 1) then
+            call check_star_calibration(s)
             if (s%just_passed_target_radius_flag) then
                step_status = step_leave_run_loop
             end if
@@ -197,11 +195,12 @@ logical function structure_limit_stop_triggered(s)
       integer, parameter :: nlim = 4
 ! a limit at its +-1d99 sentinel is off: the test below is against
 ! this slightly smaller magnitude
-      double precision, parameter :: limit_active_below = 0.9d99
+      real(dp), parameter :: limit_active_below = 0.9d99
       character(len=7), parameter :: qname(nlim) = &
            ['log_L  ', 'Teff   ', 'log_g  ', 'nu_max ']
-      double precision :: qval(nlim), qup(nlim), qlo(nlim)
+      real(dp) :: qval(nlim), qup(nlim), qlo(nlim)
       integer :: k
+      character(len=message_length) :: lines(1)
 
       nk = s%current_card
       qval = [s%log_L_lsun, exp10(s%log_Teff), s%log_g_surface, &
@@ -214,18 +213,18 @@ logical function structure_limit_stop_triggered(s)
       structure_limit_stop_triggered = .false.
       do k = 1, nlim
          if (qup(k) < limit_active_below .and. qval(k) > qup(k)) then
-            write(*,10) trim(qname(k)), qval(k), 'above', &
+            lines = unwritten_line
+            write(lines,10) trim(qname(k)), qval(k), 'above', &
                  trim(qname(k))//'_upper_limit', qup(k)
-            write(run_log_unit,10) trim(qname(k)), qval(k), 'above', &
-                 trim(qname(k))//'_upper_limit', qup(k)
+            call core_stdout_and_log(lines)
             s%termination_reason = &
                  trim(qname(k))//' above '//trim(qname(k))//'_upper_limit'
             structure_limit_stop_triggered = .true.
          else if (qlo(k) > -limit_active_below .and. qval(k) < qlo(k)) then
-            write(*,10) trim(qname(k)), qval(k), 'below', &
+            lines = unwritten_line
+            write(lines,10) trim(qname(k)), qval(k), 'below', &
                  trim(qname(k))//'_lower_limit', qlo(k)
-            write(run_log_unit,10) trim(qname(k)), qval(k), 'below', &
-                 trim(qname(k))//'_lower_limit', qlo(k)
+            call core_stdout_and_log(lines)
             s%termination_reason = &
                  trim(qname(k))//' below '//trim(qname(k))//'_lower_limit'
             structure_limit_stop_triggered = .true.
@@ -235,36 +234,41 @@ logical function structure_limit_stop_triggered(s)
 end function structure_limit_stop_triggered
 
 ! ---------------------------------------------------------------
-! The current age is at (within 1 year of) the kind card's target
+! The current age is at (within 1 year of) the current card's target
 ! end age. Also used directly by evolve_step BEFORE the model is
 ! written, to keep the final model's saved timestep from being
 ! zeroed (that use runs earlier than check_stop_conditions can).
-!   star reads: age_gyr, card_max_age_yr, card_stops_active
+!   star reads: age_gyr, card_max_age_yr, card_stops_active,
+!     current_card
 !   star writes: none
-logical function reached_end_age(s, nk)
+logical function reached_end_age(s)
       type(star_info), intent(inout) :: s
-      integer, intent(in) :: nk
+      integer :: nk
+      nk = s%current_card
       reached_end_age = s%card_stops_active(nk) .and. &
-           s%card_max_age_yr(nk).gt.0.0d0 .and. &
-           (s%card_max_age_yr(nk)-s%age_gyr*1.0d9).le.1.0d0
+           s%card_max_age_yr(nk) > 0.0d0 .and. &
+           (s%card_max_age_yr(nk)-s%age_gyr*1.0d9) <= 1.0d0
 end function reached_end_age
 
 ! ---------------------------------------------------------------
 ! Post-step trigger check: has any configured central-abundance stop
 ! been crossed? Prints the historical CENTRAL <el> message per hit.
-!   star reads: card_stops_active, xa
+!   star reads: card_stops_active, current_card, xa
 !   star writes: termination_reason
-logical function abundance_stop_triggered(s, nk)
+logical function abundance_stop_triggered(s)
       type(star_info), intent(inout) :: s
-      integer, intent(in) :: nk
-      integer :: k
+      integer :: k, nk
+      character(len=message_length) :: lines(1)
+      nk = s%current_card
       abundance_stop_triggered = .false.
       do k = 1, nstops
-         if (s%card_stops_active(nk) .and. stop_value(s, k,nk).gt.0.0d0 .and. &
-             s%xa(stop_species(k),1).lt.stop_value(s, k,nk)) then
-            write(*,'(A,E12.4,A,E12.4)') 'CENTRAL '//stop_letter(k)//' ', &
+         if (s%card_stops_active(nk) .and. stop_value(s, k,nk) > 0.0d0 .and. &
+             s%xa(stop_species(k),1) < stop_value(s, k,nk)) then
+            lines = unwritten_line
+            write(lines,'(A,E12.4,A,E12.4)') 'CENTRAL '//stop_letter(k)//' ', &
                  s%xa(stop_species(k),1), ' BELOW STOP VALUE ', &
                  stop_value(s, k,nk)
+            call core_stdout(lines)
             s%termination_reason = &
                  'central '//stop_letter(k)//' below stop value'
             abundance_stop_triggered = .true.
@@ -279,27 +283,26 @@ end function abundance_stop_triggered
 ! with the historical STARTING <el> ... STOP DISABLED message to the
 ! terminal and the run log. The message reports the disarmed
 ! (negative) threshold, as the original did.
-!   star reads: card_stops_active, xa
+!   star reads: card_stops_active, current_card, xa
 !   star writes: termination_reason
-subroutine init_stop_conditions(s, nk)
+subroutine init_stop_conditions(s)
       type(star_info), intent(inout) :: s
-      integer, intent(in) :: nk
-      integer :: k
+      integer :: k, nk
+      character(len=message_length) :: lines(1)
+      nk = s%current_card
 ! default end-of-card reason; overridden by whichever stop fires
 ! (read by run_log's end-of-run summary)
       s%termination_reason = 'model budget exhausted'
       if (.not. s%card_stops_active(nk)) return
       do k = 1, nstops
-         if (stop_value(s, k,nk).gt.0.0d0 .and. &
-             s%xa(stop_species(k),1).lt.stop_value(s, k,nk)) then
+         if (stop_value(s, k,nk) > 0.0d0 .and. &
+             s%xa(stop_species(k),1) < stop_value(s, k,nk)) then
             call set_stop_value(s, k, nk, -stop_value(s, k,nk))
-            write(*,'(A,E12.4,A,E12.4,A)') 'STARTING '//stop_letter(k)//' ', &
+            lines = unwritten_line
+            write(lines,'(A,E12.4,A,E12.4,A)') 'STARTING '//stop_letter(k)//' ', &
                  s%xa(stop_species(k),1), ' BELOW STOP VALUE ', &
                  stop_value(s, k,nk), ' STOP DISABLED.'
-            write(run_log_unit,'(A,E12.4,A,E12.4,A)') &
-                 'STARTING '//stop_letter(k)//' ', &
-                 s%xa(stop_species(k),1), ' BELOW STOP VALUE ', &
-                 stop_value(s, k,nk), ' STOP DISABLED.'
+            call core_stdout_and_log(lines)
          end if
       end do
 end subroutine init_stop_conditions
@@ -308,7 +311,7 @@ end subroutine init_stop_conditions
 !   star reads: card_central_deuterium_stop, card_central_helium_stop,
 !     card_central_hydrogen_stop
 !   star writes: none
-double precision function stop_value(s, k, nk)
+real(dp) function stop_value(s, k, nk)
       type(star_info), intent(inout) :: s
       integer, intent(in) :: k, nk
       select case (k)
@@ -324,7 +327,7 @@ end function stop_value
 subroutine set_stop_value(s, k, nk, val)
       type(star_info), intent(inout) :: s
       integer, intent(in) :: k, nk
-      double precision, intent(in) :: val
+      real(dp), intent(in) :: val
       select case (k)
       case (1);      s%card_central_deuterium_stop(nk) = val
       case (2);      s%card_central_hydrogen_stop(nk) = val
@@ -332,4 +335,16 @@ subroutine set_stop_value(s, k, nk, val)
       end select
 end subroutine set_stop_value
 
+! ---------------------------------------------------------------
+! Sources
+!   The stops were duplicated between run_yrec and evolve_step until the
+!   2026 readability work gathered them here: the end-age test existed as
+!   four copies in evolve_step, and the abundance table removed the F77's
+!   copy-paste bug, in which the disarm branch for hydrogen negated the
+!   deuterium threshold and printed the deuterium values. The single-entry
+!   protocol, the structure limits and the configuration error returned
+!   through ierr (instead of a stop) are from 2026; the NaN guard is the
+!   bug sweep's (Batch 3): a run that went non-finite (the zahb->tahb
+!   dt = 0 case before the heburn fix) used to converge on NaN to the end
+!   of its budget and exit 0.
 end module stop_conditions

@@ -507,10 +507,10 @@ module star_info_lib
             integer :: model_number
 ! age of the model [Gyr]; step_driver, model_files. In .mod.
             real(dp) :: age_gyr
-! total mass M [Msun]; starting_model, mass_change, model_files. In .mod;
+! total mass M [Msun]; model_rescaling, mass_change, model_files. In .mod;
 ! MESA's history name, without the _msun suffix.
             real(dp) :: star_mass
-! log10 of the total mass M [log10 g]; starting_model, mass_change,
+! log10 of the total mass M [log10 g]; model_rescaling, mass_change,
 ! model_files. In .mod.
             real(dp) :: log_total_mass
 ! log10 of the luminosity at the fitting point, L(nz) [log10 Lsun];
@@ -597,10 +597,10 @@ module star_info_lib
 ! surface_boundary, model_files
             real(dp) :: fit_point_logR(3)
 ! which triangle vertex stored stored_envelope_state (0: none) [-];
-! step_driver, run_driver
+! starting_model, surface_boundary
             integer :: stored_vertex_index
-! orientation (+1 or -1) of the envelope-fit triangle [-]; step_driver,
-! run_driver
+! orientation (+1 or -1) of the envelope-fit triangle [-];
+! starting_model, surface_boundary
             real(dp) :: triangle_orientation
 
 ! ==== Rotation state ===================================================
@@ -645,12 +645,12 @@ module star_info_lib
 ! every structure solve; henyey_iterate's omega_from_j holds those zones
 ! in solid-body rotation during the Newton iterations.
             logical :: am_transport_convective_flag(json)
-! total angular momentum J of the star [g cm^2/s]; step_driver,
-! run_driver, evolve_rotation. Zeroed at each card start, then totalled by
+! total angular momentum J of the star [g cm^2/s]; envelope_rebuild,
+! evolve_rotation, rezoning, run_driver, starting_model. Zeroed at each card start, then totalled by
 ! the model read and every rezone.
             real(dp) :: total_angular_momentum
-! total rotational kinetic energy [erg]; step_driver, run_driver,
-! evolve_rotation
+! total rotational kinetic energy [erg]; envelope_rebuild,
+! evolve_rotation, rezoning, run_driver, starting_model
             real(dp) :: total_rotational_ke
 
 ! ==== Regions of the current model =====================================
@@ -660,12 +660,12 @@ module star_info_lib
 ! that needs them (the composition step, the rezone, after convergence).
 
 ! outermost point of the convective core (1: none) [-]; step_driver,
-! rezoning, run_driver. Set by the composition step's predictor pass, the
+! rezoning, shell_boundaries. Set by the composition step's predictor pass, the
 ! rezone, burn_light_elements and, after convergence,
 ! locate_shell_boundaries.
             integer :: core_cz_top_index
 ! innermost point of the surface convection zone (nz: none) [-];
-! step_driver, rezoning, run_driver. Set as core_cz_top_index is.
+! step_driver, rezoning, shell_boundaries. Set as core_cz_top_index is.
             integer :: envelope_cz_bottom_index
 ! first point of the overshoot region below the surface convection zone
 ! (-1: none) [-]; composition_step, rezoning, starting_model,
@@ -682,15 +682,15 @@ module star_info_lib
 ! Rewritten by every composition-step pass and by burn_light_elements.
             integer :: mixed_zone_bounds(max_convective_zones,2)
 ! the model burns hydrogen in a shell rather than in the core [logical];
-! step_driver, run_driver
+! shell_boundaries
             logical :: has_h_shell
 ! first point of the H-burning shell, where X > physics%timestep_factors(1) [-];
-! step_driver, run_driver. Valid when has_h_shell.
+! shell_boundaries. Valid when has_h_shell.
             integer :: h_shell_bot_index
-! first point where X exceeds half its surface value [-]; step_driver,
-! run_driver. Valid when has_h_shell.
+! first point where X exceeds half its surface value [-];
+! shell_boundaries. Valid when has_h_shell.
             integer :: h_shell_mid_index
-! last point of the H-burning shell [-]; step_driver, run_driver. Valid
+! last point of the H-burning shell [-]; shell_boundaries. Valid
 ! when has_h_shell.
             integer :: h_shell_top_index
 
@@ -707,14 +707,16 @@ module star_info_lib
             integer :: num_rotation_structure_passes
 
 ! timestep of the step being taken (the next step's after
-! compute_timestep) [s]; step_driver, run_driver, mass_change. Negative
+! compute_timestep) [s]; mass_change, starting_model, step_driver,
+! timestep_control. Negative
 ! means solve without aging (a rescale or relaxation); made positive
 ! after convergence.
             real(dp) :: dt
 ! copy of dt: when the end-age stop clips the next timestep to zero, the
 ! timestep just taken is restored from it [s]; step_driver, run_driver
             real(dp) :: dt_saved
-! dt in years [yr]; step_driver, run_driver. In .mod.
+! dt in years [yr]; starting_model, step_driver, timestep_control. In
+! .mod.
             real(dp) :: timestep_yr
 ! largest fractional change of omega over the step [-]; step_driver,
 ! timestep_control. Written by compute_timestep and evolve_angular_momentum.
@@ -726,12 +728,12 @@ module star_info_lib
 ! starting model [logical]; run_driver, step_driver
             logical :: punch_pending_flag
 ! build a new envelope-fit triangle at the next solve [logical];
-! step_driver, run_driver, mass_change. Set by a model read, the mass
+! step_driver, starting_model, mass_change. Set by a model read, the mass
 ! change, the envelope rebuild or physics%new_triangle_init_flag; cleared by
 ! compute_surface_boundary.
             logical :: recompute_envelope_triangle
 ! the rezone moved the outer point: redo the triangle at level 2
-! [logical]; step_driver, run_driver
+! [logical]; rezoning, run_driver, surface_boundary
             logical :: reset_triangle
 
 ! ==== Step snapshot ====================================================
@@ -1157,7 +1159,7 @@ module star_info_lib
 ! mass of the surface convection zone [Msun]; observables
             real(dp) :: envelope_mass_msun
 ! radius of the base of the surface convection zone [Rsun]; observables,
-! starting_model. Written twice per model: by locate_surface_cz_base,
+! turnover_timescale. Written twice per model: by locate_surface_cz_base,
 ! then by the turnover-time walk.
             real(dp) :: envelope_radius_rsun
 ! mass of the convective core [Msun]; observables. 0 without one.

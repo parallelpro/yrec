@@ -64,18 +64,15 @@ contains
 !     envelope_cz_bottom_index_start, envelope_overshoot_bottom_index,
 !     envelope_overshoot_depth_end, envelope_overshoot_depth_start,
 !     envelope_overshoot_top_index, eps_grav, eta_squared, fp_rot,
-!     ft_rot, h_shell_bot_index, h_shell_mid_index, h_shell_top_index,
-!     has_h_shell, j_rot, j_rot_iteration_start,
-!     kinetic_energy_rot_start, log_pressure_delta, log_Teff_start,
-!     log_temperature_delta, logP, logP_start, logR, logR_start,
-!     logRho_start, logT, logT_start, luminosity_lsun,
-!     luminosity_lsun_start, max_domega_frac, mean_gravity, mean_radius,
-!     mixed_zone_bounds, model_diverged_flag, model_number,
-!     newton_correction_factor, num_rotation_structure_passes,
-!     punch_pending_flag, recompute_envelope_triangle, reset_triangle,
-!     stored_vertex_index, surface_luminosity_lsun_start, timestep_yr,
-!     total_angular_momentum, total_rotational_ke, triangle_orientation,
-!     xa, xa_iteration_start, xa_start
+!     ft_rot, j_rot, j_rot_iteration_start, kinetic_energy_rot_start,
+!     log_pressure_delta, log_Teff_start, log_temperature_delta, logP,
+!     logP_start, logR, logR_start, logRho_start, logT, logT_start,
+!     luminosity_lsun, luminosity_lsun_start, max_domega_frac,
+!     mean_gravity, mean_radius, mixed_zone_bounds, model_diverged_flag,
+!     model_number, newton_correction_factor,
+!     num_rotation_structure_passes, punch_pending_flag,
+!     recompute_envelope_triangle, surface_luminosity_lsun_start,
+!     timestep_yr, xa, xa_iteration_start, xa_start
 subroutine evolve_step(s, output, model_iteration, step_status, ierr)
       use timestep_control, only: compute_timestep
       use evolve_rotation, only: evolve_angular_momentum
@@ -162,9 +159,7 @@ subroutine evolve_step(s, output, model_iteration, step_status, ierr)
       end if
 ! Locate the hydrogen-burning shell and the edges of the convective core
 ! and of the surface convection zone, where they exist.
-       call locate_shell_boundaries(s, s%xa,s%luminosity_lsun,s%convective_flag,s%nz, &
-              s%core_cz_top_index,s%envelope_cz_bottom_index,s%h_shell_bot_index,s%h_shell_top_index,s%h_shell_mid_index, &
-              s%has_h_shell)
+       call locate_shell_boundaries(s)
 ! Burn Li6, Li7 and Be9 on the converged model (burn_light_elements,
 ! below).
          call burn_light_elements
@@ -192,7 +187,7 @@ subroutine evolve_step(s, output, model_iteration, step_status, ierr)
 ! Other stops keep the new timestep. (The floor read 1e-3*dage years,
 ! dage taken as years, until 2026-10, as in main.f.)
        if (s%card_stops_active(s%current_card) .and. s%card_max_age_yr(s%current_card) > 0.0D0) then
-          if (reached_end_age(s, s%current_card)) then
+          if (reached_end_age(s)) then
              s%dt = max(s%dt_saved,1.0D-3*s%age_gyr*1.0D9*seconds_per_year)
              s%timestep_yr = s%dt/seconds_per_year
           else
@@ -244,11 +239,7 @@ end subroutine update_output_flags_for_step
 ! on last_model_unit when the flag is set.
 subroutine reload_model_if_diverged
             if (s%model_diverged_flag) then
-             call read_starting_model(s, s%timestep_yr, s%dt, chosen_dt, &
-                  s%triangle_orientation, ikut_flag, s%stored_vertex_index, &
-                  s%model_diverged_flag, s%recompute_envelope_triangle, s%current_card, &
-                  s%total_angular_momentum, &
-                  s%total_rotational_ke, convective_velocity, ierr)
+             call read_starting_model(s, ierr)
              if (ierr /= 0) return
              call check_rotation_initialised(s, ierr)
              if (ierr /= 0) return
@@ -314,9 +305,7 @@ subroutine rezone_or_snapshot
       use math_lib
 ! Rezone the new model, except with the helium-flash option.
           if (.not.s%physics%helium_flash_active) then
-             call rezone(s, s%stored_vertex_index, s%reset_triangle, s%h_shell_bot_index, &
-                  s%has_h_shell, s%total_angular_momentum, &
-                  s%total_rotational_ke, ierr)
+             call rezone(s, ierr)
              if (ierr /= 0) return
 ! The base zone of the surface convection zone, where deuterium burning
 ! is capped (compute_zone_energy, compute_burn_rates).

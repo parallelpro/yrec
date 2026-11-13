@@ -10,11 +10,75 @@
 ! in regridding.f90; rezone gathers its inputs from the star and stores
 ! its results.
 module rezoning
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use shell_physics, only: compute_shell_physics
       use star_info_lib, only: star_info
+      use am_regions, only: am_convective_regions
+      use omega_profile, only: omega_from_j
+      use moments_of_inertia, only: zone_moments_of_inertia
+      use rotating_shape, only: rotation_shape_factors
+      use star_info_lib, only: i_eps_grav, i_eps_neu, i_h1, i_h2, i_metals, json, n_species_basic, &
+           n_species_extended
+      use control_slots, only: ichi_czbase_fine_width, ichi_dl_max, ichi_dm_max, &
+           ichi_dm_min, ichi_dp_core_max, ichi_dp_czbase_max, ichi_dp_env_max, ichi_dx_max, &
+           ichi_dz_max, ichi_flag_dw, ichi_flag_dx, ichi_flag_dz
+      use settings_install, only: install_surface_x_settings
+      use run_messages, only: solver_diagnostics
+      use core_messages, only: core_log, core_report, core_stdout, message_length, unwritten_line
+      use physical_constants, only: cc23, ln10
+      use numerics_lib, only: natural_spline, splint, numerics_status_text
+      use regridding, only: structure_profiles, rotation_profiles, &
+           compute_shell_masses, regrid_profile, regrid_composition, &
+           regrid_structure, regrid_rotation, compute_angular_momentum_totals
       implicit none
       private
       public :: rezone
+
+! The most points flag_fixed_points keeps (append_flag_point guards
+! every append; one slot stays for the star%nz terminator).
+      integer, parameter :: max_flag_points = 100
+
+! A spacing limit at or below spacing_limit_off is off [X, Z]; the
+! start-of-step deuterium rates are regridded only while the surface
+! deuterium is at least deuterium_regrid_min [mass fraction] (O6).
+      real(dp), parameter :: spacing_limit_off = 1.0D-15, deuterium_regrid_min = 1.0D-14
+
+! The rezone's state, which its steps pass on to each other:
+!   flag_point(1:flag_count)  the points the rezone keeps and does not
+!                             smooth across (flag_fixed_points), ending
+!                             with star%nz;
+!   flag_overflow_warned      append_flag_point has reported a dropped
+!                             point in this rezone;
+!   point_spacing_max         the largest steps in log P, L, X and Z
+!                             between new points (seed_new_point_run);
+!   chi                       the running sum of the normalized changes of
+!                             log m, L and log P from shell to shell (MHP
+!                             7/02), which sets the spacing;
+!   new_log_mass(1:new_num_zones)  the new mesh in log m (legacy HSS),
+!                             adopted as star%log_mass by
+!                             transfer_new_points;
+!   x_new, z_new              X and Z splined onto the new points;
+!   ft_old, fp_old            the shape factors splined onto the new mesh,
+!                             which transfer_new_points adopts;
+!   old_point_count, new_point_count  the old and the new number of points;
+!   num_species_tracked       the species carried: 11, or 15 with the
+!                             extended composition.
+      type :: rezone_state
+         integer :: flag_point(max_flag_points) = 0
+         integer :: flag_count = 0
+         logical :: flag_overflow_warned = .false.
+         real(dp) :: point_spacing_max(4) = 0.0d0
+         real(dp) :: chi(json) = 0.0d0
+         real(dp) :: new_log_mass(json) = 0.0d0
+         integer :: new_num_zones = 0
+         real(dp) :: x_new(json) = 0.0d0
+         real(dp) :: z_new(json) = 0.0d0
+         real(dp) :: ft_old(json) = 0.0d0
+         real(dp) :: fp_old(json) = 0.0d0
+         integer :: old_point_count = 0
+         integer :: new_point_count = 0
+         integer :: num_species_tracked = 0
+      end type rezone_state
 
 contains
 
@@ -38,176 +102,89 @@ contains
 !      mesh and its shell masses set (the regridding kernels); for
 !      rotating models omega re-derived from j and the total angular
 !      momentum and rotational kinetic energy re-totalled.
-! envelope_store_index: the envelope-triangle vertex whose integration
-! stored its state where T reached envelope_store_log_temperature (0 for
-! none), used when a point is added at the surface. point_reset_flag: set
-! when outer points were deleted or added. h_shell_bot_index,
-! h_shell_active: the base of the H-burning shell and whether there is
-! one. total_angular_momentum, total_rotational_ke: re-totalled on the
-! new mesh (rotating models). ierr /= 0 on failure.
-!   star reads: conv_vel, cp, disk_gate_age_gyr, dlnrho_dlnt,
-!     eps_channels, eps_total, fit_point_logP, fit_point_logR, grada,
-!     gradr, gradT, kinematic_viscosity, log_Teff, log_total_mass, mu,
-!     opacity_zone, physics%chi_grid_scale,
-!     physics%envelope_overshoot_active, physics%rezone_env_logt0,
-!     physics%rezone_env_logt1, physics%rotation_active,
-!     physics%use_extended_composition, stored_envelope_state,
-!     thermal_diffusivity
-!   star writes: am_transport_convective_flag, conv_vel_start,
-!     convective_flag, convective_flag_start, core_cz_top_index,
-!     cp_start, deuterium_burning_rate_start, dln_luminosity_dt,
-!     dlnrho_dlnt_start, dlog_pressure_dt, dlog_radius_dt,
-!     dlog_temperature_dt, dm, envelope_cz_bottom_index,
-!     envelope_overshoot_bottom_index, envelope_overshoot_top_index,
-!     eps_plus_neu_grav_start, eps_total_start, eta_squared,
-!     eta_squared_start, fp_rot, ft_rot, grada_start, gradr_start,
-!     gradT_start, i_rot, j_rot, j_rot_start, kinematic_viscosity_start,
-!     kinetic_energy_rot, log_fit_point_mass_fraction, log_mass,
-!     log_Teff_start, logP, logP_start, logR, logR_start, logRho,
-!     logRho_start, logT, logT_start, luminosity_lsun,
-!     luminosity_lsun_start, m, mean_gravity, mean_gravity_start,
-!     mean_radius, mean_radius_start, mu_start, nz, omega, omega_start,
-!     opacity_zone_start, surface_hydrogen_fraction,
-!     surface_luminosity_lsun_start, surface_metal_fraction,
-!     thermal_diffusivity_start, xa, xa_start
-subroutine rezone(s, envelope_store_index, point_reset_flag, &
-     h_shell_bot_index, h_shell_active, total_angular_momentum, &
-     total_rotational_ke, ierr)
-      use am_regions, only: am_convective_regions
-      use omega_profile, only: omega_from_j
-      use moments_of_inertia, only: zone_moments_of_inertia
-      use rotating_shape, only: rotation_shape_factors
-      use star_info_lib, only: i_eps_grav, i_eps_neu, i_h1, i_h2, i_metals, json
-      use control_slots, only: ichi_czbase_fine_width, ichi_dl_max, ichi_dm_max, &
-           ichi_dm_min, ichi_dp_core_max, ichi_dp_czbase_max, ichi_dp_env_max, ichi_dx_max, &
-           ichi_dz_max, ichi_flag_dw, ichi_flag_dx, ichi_flag_dz
-      use settings_install, only: install_surface_x_settings
-      use run_messages, only: run_log_unit, terminal_unit, solver_diagnostics
-      use physical_constants
-      use numerics_lib, only: natural_spline, splint, numerics_status_text
-      use regridding, only: structure_profiles, rotation_profiles, &
-           compute_shell_masses, regrid_profile, regrid_composition, &
-           regrid_structure, regrid_rotation, compute_angular_momentum_totals
-
+! From the star: stored_vertex_index, the envelope-triangle vertex whose
+! integration stored its state where T reached
+! envelope_store_log_temperature (0 for none), used when a point is
+! added at the surface; h_shell_bot_index and has_h_shell, the base of
+! the H-burning shell and whether there is one. To the star:
+! reset_triangle, set when outer points were deleted or added;
+! total_angular_momentum and total_rotational_ke, re-totalled on the new
+! mesh (rotating models). ierr /= 0 on failure.
+!   star reads: physics%use_extended_composition
+!   star writes: reset_triangle
+!   star reads: none
+!   star writes: none
+subroutine rezone(s, ierr)
       implicit none
       type(star_info), intent(inout) :: s
-      integer :: jerr_gate
-
-      integer, intent(in) :: envelope_store_index
-      logical, intent(out) :: point_reset_flag
-      integer, intent(in) :: h_shell_bot_index
-      logical, intent(in) :: h_shell_active
-      double precision, intent(inout) :: total_angular_momentum, &
-           total_rotational_ke
-
-      double precision :: point_spacing_max(4)
-! flag_point(1:flag_count): the flagged points, at most max_flag_points.
-! append_flag_point guards every append (2026 audit fix: the legacy code
-! guarded only the gradient scan, so the appends outside it could write
-! past the array).
-      integer, parameter :: max_flag_points = 100
-      integer :: flag_point(max_flag_points)
-      logical :: flag_overflow_warned
-! ft_old, fp_old: the shape factors splined onto the new mesh, which
-! transfer_new_points adopts.
-      double precision :: ft_old(json), fp_old(json)
-      integer :: radiative_zone_bounds(13,2), convective_zone_bounds(12,2)
-      double precision :: z_new(json), x_new(json)
-! spline_x, spline_y, spline_second_deriv: a spline table and its second
-! derivatives. chi (MHP 7/02): the running sum of the normalized changes
-! of log m, L and log P from shell to shell, which sets the spacing.
-      double precision :: spline_x(json), spline_y(json), chi(json), &
-           spline_second_deriv(json)
-! new_log_mass: the new mesh in log m (legacy HSS), built in
-! assign_new_points and adopted as star%log_mass in transfer_new_points.
-! compact_log_mass: the buffer of drop_crowded_points. regrid_out: the
-! regridded field of regrid_in_place. (The legacy code kept these, and
-! the copy of the field it splined, in a star member since removed,
-! logRho_start, logP_start and logT_start; every element is written here
-! before it is read.)
-      double precision :: new_log_mass(json), compact_log_mass(json), &
-           regrid_out(json)
-      integer :: gradient_flag_index(json)
-      integer :: num_species_tracked, i, j, k
-      integer :: flag_count
-      double precision :: pressure_test, dp_scale
-      integer :: new_num_zones, working_num_zones, num_new_points
-      double precision :: delta_x_over_max, delta_z_over_max, &
-           point_insert_spacing
-      double precision :: mass_scale, luminosity_scale
-      double precision :: dchi
-      double precision :: chi_prev
-      integer :: point_prev_index
-      double precision :: delta_chi
-      integer :: segment_point_count
-      double precision :: spline_eval_x, spline_eval_y
-      integer :: gradient_flag_count
-      double precision :: luminosity_max
-      double precision :: log_omega_top, log_omega_bot
-      integer :: overshoot_base_zone, fine_zone_base
-      logical :: sort_done
-      integer :: temp_swap
-      integer :: old_point_count, new_point_count
-      integer :: zone_index
-      double precision :: sum_angular_momentum, sum_rotational_ke
-! The theta term's locals, commented out with the advection-diffusion
-! transport (see rerun_physics_on_new_grid).
-!      double precision :: delta_radius, delta_omega, omega_mid, log_factor
-      integer :: radiative_zone_begin, radiative_zone_end
-      integer :: num_radiative_zones, num_convective_zones
-
-      ! jerr: the error code of compute_shell_physics, passed on in ierr.
-      integer :: jerr
-
       integer, intent(out) :: ierr
+! the rezone's state, from the flagged points to the new mesh
+      type(rezone_state), allocatable :: rz
 
       ierr = 0
+      allocate(rz)
 
-      point_reset_flag = .false.
-! The number of species carried: 11, or 15 with the extended composition.
-      num_species_tracked = 11
-      if (s%physics%use_extended_composition) num_species_tracked = 15
-      call check_envelope_temperature_range
+      s%reset_triangle = .false.
+! The number of species carried, with or without the extended composition.
+      rz%num_species_tracked = n_species_basic
+      if (s%physics%use_extended_composition) rz%num_species_tracked = n_species_extended
+      call check_envelope_temperature_range(s, rz, ierr)
       if (ierr /= 0) return
-      call flag_fixed_points
+      call flag_fixed_points(s, rz, ierr)
       if (ierr /= 0) return
-      call assign_new_points
+      call assign_new_points(s, rz, ierr)
       if (ierr /= 0) return
-      call locate_new_cz_edges
+      call locate_new_cz_edges(s, rz)
       if (ierr /= 0) return
-      call interpolate_onto_new_grid
+      call interpolate_onto_new_grid(s, rz, ierr)
       if (ierr /= 0) return
 
       return
 
-contains
+end subroutine rezone
+
+
 
 ! ---------------------------------------------------------------
 ! Keep the outermost Henyey point inside the envelope temperature window
 ! tenv0 < log T < tenv1. If it is cooler than tenv0, the outer points
 ! down to the first one hotter than tenv0 are deleted; if it is hotter
 ! than tenv1 and a stored envelope state exists, one point is added
-! outside it. Either sets point_reset_flag (and star%log_fit_point_mass_fraction); ierr if the
+! outside it. Either sets star%reset_triangle (and star%log_fit_point_mass_fraction); ierr if the
 ! whole model is cooler than tenv0.
-subroutine check_envelope_temperature_range
+!   star reads: fit_point_logP, fit_point_logR, log_total_mass,
+!     physics%rezone_env_logt0, physics%rezone_env_logt1,
+!     stored_envelope_state, stored_vertex_index
+!   star writes: log_fit_point_mass_fraction, log_mass, logP, logR,
+!     logRho, logT, luminosity_lsun, nz, reset_triangle, xa
+subroutine check_envelope_temperature_range(s, rz, ierr)
+      type(star_info), intent(inout) :: s
+      type(rezone_state), intent(inout) :: rz
+      integer, intent(inout) :: ierr
+      integer :: i
+      integer :: j
+      character(len=message_length) :: lines(4)
 ! The outer point is cooler than tenv0: delete points down to the first
 ! one hotter than tenv0.
-      if (s%logT(s%nz).lt.s%physics%rezone_env_logt0) then
+      if (s%logT(s%nz) < s%physics%rezone_env_logt0) then
        do i = s%nz-1,1,-1
-          if (s%logT(i).gt.s%physics%rezone_env_logt0) then
-             write(run_log_unit,10) s%nz,i
+          if (s%logT(i) > s%physics%rezone_env_logt0) then
+             lines = unwritten_line
+             write(lines,10) s%nz,i
+             call core_log(lines)
    10     format(' OUTER POINTS DELETED OLD M =',I5,'  NEW M =',I5)
              s%nz = i
              s%log_fit_point_mass_fraction = s%log_mass(s%nz) - s%log_total_mass
-             point_reset_flag = .true.
+             s%reset_triangle = .true.
              exit
-          endif
+          end if
        end do
        if (i < (1)) then
 ! The whole model is cooler than tenv0 (unlikely): stop with ierr, which
 ! run_yrec returns and the command-line wrapper stops on.
-       write(run_log_unit,30)
-       write(terminal_unit,30)
+       lines = unwritten_line
+       write(lines,30)
+       call core_report(lines)
    30    format(1X,39('>'),40('<')/1X,'ERROR IN HPOINT'/ &
      1X,'MAX. STAR T LESS THAN MINIMUM ENVELOPE T.RUN STOPPED')
        ierr = 1
@@ -218,93 +195,164 @@ subroutine check_envelope_temperature_range
 ! log P and log R by the stored state's offsets from the fitting point,
 ! with Delta log T = Delta log P/4, L and the composition copied, and
 ! log rho = log P - log T - 8 (a rough ideal-gas estimate).
-      else if (s%logT(s%nz).gt.s%physics%rezone_env_logt1.and. &
-           envelope_store_index.ne.0) then
+      else if (s%logT(s%nz) > s%physics%rezone_env_logt1.and. &
+           s%stored_vertex_index /= 0) then
        s%nz = s%nz + 1
        s%log_fit_point_mass_fraction = s%stored_envelope_state(4)
        s%log_mass(s%nz) = s%log_total_mass + s%log_fit_point_mass_fraction
        s%logP(s%nz) = s%logP(s%nz-1) + &
-            (s%stored_envelope_state(1) - s%fit_point_logP(envelope_store_index))
+            (s%stored_envelope_state(1) - s%fit_point_logP(s%stored_vertex_index))
        s%logT(s%nz) = s%logT(s%nz-1) + &
             (s%stored_envelope_state(1) - &
-            s%fit_point_logP(envelope_store_index))*0.250D0
+            s%fit_point_logP(s%stored_vertex_index))*0.250D0
        s%logR(s%nz) = s%logR(s%nz-1) + &
-            (s%stored_envelope_state(3) - s%fit_point_logR(envelope_store_index))
+            (s%stored_envelope_state(3) - s%fit_point_logR(s%stored_vertex_index))
        s%luminosity_lsun(s%nz) = s%luminosity_lsun(s%nz-1)
-       do i = 1,num_species_tracked
+       do i = 1,rz%num_species_tracked
           s%xa(i,s%nz) = s%xa(i,s%nz-1)
        end do
        s%logRho(s%nz) = s%logP(s%nz) - &
             s%logT(s%nz) - 8.0D0
        j = s%nz - 1
-       write(run_log_unit,60) j,s%log_mass(j),s%logP(j), &
+       lines = unwritten_line
+       write(lines,60) j,s%log_mass(j),s%logP(j), &
             s%logT(j),s%logR(j),s%nz,s%log_mass(s%nz), &
             s%logP(s%nz),s%logT(s%nz), &
             s%logR(s%nz)
+       call core_log(lines)
    60    format(' OUTER POINT ADDED',I5,F15.10,'  PTR',3F10.6)
-       point_reset_flag = .true.
-      endif
+       s%reset_triangle = .true.
+      end if
 end subroutine check_envelope_temperature_range
 
+
 ! ---------------------------------------------------------------
-! Flag the points the rezone keeps and does not smooth across: the edges
-! of the convective core and of the surface convection zone, the point
-! below the H-burning shell, shells where X or Z jumps by more than
-! flag_dx or flag_dz (or, rotating models, log omega by more than
-! flag_dw), the overshoot base and the base of the finely zoned region
-! below the surface convection zone. The list ends with star%nz and is
-! sorted and free of duplicates.
-subroutine flag_fixed_points
-      use math_lib
-      use, intrinsic :: iso_fortran_env, only: dp => real64
-      use convection_lib, only: envelope_overshoot_depth
-      real(dp) :: overshoot_depth, overshoot_base_radius
-      flag_count = 1
-      flag_overflow_warned = .false.
+! Flag the points the rezone keeps and does not smooth across, one
+! criterion per step, each adding its points with append_flag_point:
+!   flag_convection_zone_edges  the edges of the convective core and of
+!                               the surface convection zone;
+!   flag_h_shell_base           the point below the H-burning shell;
+!   flag_jumps                  shells where X or Z jumps by more than
+!                               flag_dx or flag_dz, or (rotating models)
+!                               log omega by more than flag_dw;
+!   flag_envelope_bases         the overshoot base and the base of the
+!                               finely zoned region below the surface
+!                               convection zone, when flag_jumps left
+!                               room in the list.
+! sort_flag_points then ends the list with star%nz, sorted and free of
+! duplicates. A new criterion is a step of the same form, called before
+! sort_flag_points (core/README.md, "Add a mesh criterion"). The list
+! holds max_flag_points; append_flag_point drops what does not fit.
+!   star reads: none
+!   star writes: none
+subroutine flag_fixed_points(s, rz, ierr)
+      type(star_info), intent(inout) :: s
+      type(rezone_state), intent(inout) :: rz
+      integer, intent(inout) :: ierr
+      logical :: list_full
+
+      rz%flag_count = 1
+      rz%flag_overflow_warned = .false.
+      call flag_convection_zone_edges(s, rz)
+      call flag_h_shell_base(s, rz)
+      call flag_jumps(s, rz, list_full)
+      if (.not. list_full) then
+         call flag_envelope_bases(s, rz, ierr)
+         if (ierr /= 0) return
+      end if
+      call sort_flag_points(s, rz)
+end subroutine flag_fixed_points
+
+! ---------------------------------------------------------------
 ! The edges of the central and surface convection zones.
-      if (s%core_cz_top_index.gt.1) then
-       call append_flag_point(s%core_cz_top_index)
-      endif
-      if (s%envelope_cz_bottom_index.lt.s%nz .and. &
-           s%envelope_cz_bottom_index.gt.1) then
-       call append_flag_point(s%envelope_cz_bottom_index)
-      endif
+!   star reads: core_cz_top_index, envelope_cz_bottom_index, nz
+!   star writes: none
+subroutine flag_convection_zone_edges(s, rz)
+      type(star_info), intent(inout) :: s
+      type(rezone_state), intent(inout) :: rz
+      if (s%core_cz_top_index > 1) then
+       call append_flag_point(rz, s%core_cz_top_index)
+      end if
+      if (s%envelope_cz_bottom_index < s%nz .and. &
+           s%envelope_cz_bottom_index > 1) then
+       call append_flag_point(rz, s%envelope_cz_bottom_index)
+      end if
+end subroutine flag_convection_zone_edges
+
+! ---------------------------------------------------------------
 ! The point just below the H-burning shell.
-      if (h_shell_active.and.h_shell_bot_index.gt.1) then
-       call append_flag_point(h_shell_bot_index - 1)
-      endif
+!   star reads: h_shell_bot_index, has_h_shell
+!   star writes: none
+subroutine flag_h_shell_base(s, rz)
+      type(star_info), intent(inout) :: s
+      type(rezone_state), intent(inout) :: rz
+      if (s%has_h_shell.and.s%h_shell_bot_index > 1) then
+       call append_flag_point(rz, s%h_shell_bot_index - 1)
+      end if
+end subroutine flag_h_shell_base
+
+! ---------------------------------------------------------------
+! A jump in X between neighbouring shells, else a jump in Z, else
+! (rotating models) a jump in log omega. list_full: the scan stopped
+! because the list filled up.
+!   star reads: nz, omega, physics%chi_grid_scale,
+!     physics%rotation_active, xa
+!   star writes: none
+subroutine flag_jumps(s, rz, list_full)
+      use math_lib
+      type(star_info), intent(inout) :: s
+      type(rezone_state), intent(inout) :: rz
+      logical, intent(out) :: list_full
+      integer :: i
+      real(dp) :: log_omega_top, log_omega_bot
       do i = 2,s%nz
 ! A jump in X between neighbouring shells,
-       if (dabs(s%xa(i_h1,i)-s%xa(i_h1,i-1)).gt.s%physics%chi_grid_scale(ichi_flag_dx)) then
-          call append_flag_point(i)
+       if (abs(s%xa(i_h1,i)-s%xa(i_h1,i-1)) > s%physics%chi_grid_scale(ichi_flag_dx)) then
+          call append_flag_point(rz, i)
 ! else a jump in Z,
-       else if (dabs(s%xa(i_metals,i)-s%xa(i_metals,i-1)).gt. &
+       else if (abs(s%xa(i_metals,i)-s%xa(i_metals,i-1)) > &
             s%physics%chi_grid_scale(ichi_flag_dz)) then
-          call append_flag_point(i)
+          call append_flag_point(rz, i)
 ! else (rotating models) a jump in log omega.
        else if (s%physics%rotation_active) then
           log_omega_top = log10(s%omega(i))
           log_omega_bot = log10(s%omega(i-1))
-          if (dabs(log_omega_top-log_omega_bot).gt.s%physics%chi_grid_scale(ichi_flag_dw)) then
-             call append_flag_point(i)
-          endif
-       endif
+          if (abs(log_omega_top-log_omega_bot) > s%physics%chi_grid_scale(ichi_flag_dw)) then
+             call append_flag_point(rz, i)
+          end if
+       end if
 ! Stop scanning once the list is full (append_flag_point warns on the
 ! first rejected append; one slot stays reserved for the star%nz
 ! terminator).
-       if (flag_count.ge.max_flag_points) exit
+       if (rz%flag_count >= max_flag_points) exit
       end do
-! The overshoot-base and fine-zone-base flags are added only when the
-! scan above ran to completion (i = nz+1), i.e. the list is not full.
-! Without a surface convection zone, or in a fully convective star,
-! there is nothing to flag. (The legacy per-region log P limits PMAX1 to
-! PMAX5 computed here were never read; the live ones are in
-! accumulate_chi_spacing.)
-      if (i > (s%nz)) then
+      list_full = i <= s%nz
+end subroutine flag_jumps
+
+! ---------------------------------------------------------------
+! The overshoot base and the base of the finely zoned region below the
+! surface convection zone. Without a surface convection zone, or in a
+! fully convective star, there is nothing to flag. (The legacy
+! per-region log P limits PMAX1 to PMAX5 computed here were never read;
+! the live ones are in accumulate_chi_spacing.) ierr from
+! envelope_overshoot_depth.
+!   star reads: convective_flag, envelope_cz_bottom_index, log_mass,
+!     logP, logR, logRho, logT, nz, physics%chi_grid_scale,
+!     physics%envelope_overshoot_active, xa
+!   star writes: none
+subroutine flag_envelope_bases(s, rz, ierr)
+      use math_lib
+      use, intrinsic :: iso_fortran_env, only: dp => real64
+      use convection_lib, only: envelope_overshoot_depth
+      type(star_info), intent(inout) :: s
+      type(rezone_state), intent(inout) :: rz
+      integer, intent(inout) :: ierr
+      integer :: overshoot_base_zone, fine_zone_base
+      real(dp) :: overshoot_depth, overshoot_base_radius
       if (.not.s%convective_flag(s%nz)) then
        overshoot_base_zone = s%nz
        fine_zone_base = s%nz
-      else if (s%envelope_cz_bottom_index.eq.1) then
+      else if (s%envelope_cz_bottom_index == 1) then
        overshoot_base_zone = 1
        fine_zone_base = 1
       else
@@ -320,123 +368,160 @@ subroutine flag_fixed_points
           if (ierr /= 0) return
           overshoot_base_radius = exp(ln10*s%logR(s%envelope_cz_bottom_index)) - overshoot_depth
           do overshoot_base_zone = s%envelope_cz_bottom_index-1,1,-1
-             if (exp(ln10*s%logR(overshoot_base_zone)).lt.overshoot_base_radius) exit
+             if (exp(ln10*s%logR(overshoot_base_zone)) < overshoot_base_radius) exit
           end do
             overshoot_base_zone = overshoot_base_zone + 1
-            if (overshoot_base_zone.gt.1) then
-               call append_flag_point(overshoot_base_zone)
-            endif
-       endif
-       if (s%physics%chi_grid_scale(ichi_czbase_fine_width).eq.0.0D0) then
+            if (overshoot_base_zone > 1) then
+               call append_flag_point(rz, overshoot_base_zone)
+            end if
+       end if
+       if (s%physics%chi_grid_scale(ichi_czbase_fine_width) == 0.0D0) then
           fine_zone_base = overshoot_base_zone
        else
 ! The base of the finely zoned region: the deepest point with
 ! log P - log P(czb) <= tol_czbase_fine_width, flagged when it differs
 ! from the overshoot base.
-          if (overshoot_base_zone.eq.1) then
+          if (overshoot_base_zone == 1) then
              fine_zone_base = 1
           else
           do fine_zone_base = overshoot_base_zone-1,1,-1
              if (s%logP(fine_zone_base) - &
-                  s%logP(s%envelope_cz_bottom_index).gt.s%physics%chi_grid_scale(ichi_czbase_fine_width)) &
+                  s%logP(s%envelope_cz_bottom_index) > s%physics%chi_grid_scale(ichi_czbase_fine_width)) &
                   exit
           end do
             fine_zone_base = fine_zone_base + 1
-          if (fine_zone_base.ne.overshoot_base_zone) then
-            if (fine_zone_base.gt.1) then
-               call append_flag_point(fine_zone_base)
-            endif
+          if (fine_zone_base /= overshoot_base_zone) then
+            if (fine_zone_base > 1) then
+               call append_flag_point(rz, fine_zone_base)
+            end if
           end if
           end if
-       endif
-      endif
+       end if
       end if
+end subroutine flag_envelope_bases
+
+! ---------------------------------------------------------------
+! End the flagged points with star%nz, sort them into ascending order
+! (bubble sort) and remove the duplicates; with the solver diagnostics
+! on, list them in the run log.
+!   star reads: nz
+!   star writes: none
+subroutine sort_flag_points(s, rz)
+      type(star_info), intent(inout) :: s
+      type(rezone_state), intent(inout) :: rz
+      integer :: i, j
+      logical :: sort_done
+      integer :: temp_swap
+      character(len=message_length), allocatable :: flag_lines(:)
 ! append_flag_point keeps flag_count <= max_flag_points, so the
 ! terminator is always in bounds.
-      flag_point(flag_count) = s%nz
+      rz%flag_point(rz%flag_count) = s%nz
 ! Sort the flagged points into ascending order (bubble sort).
-      if (flag_count.ne.1) then
+      if (rz%flag_count /= 1) then
       do
       sort_done = .true.
-      do i = 1,flag_count-1
-       if (flag_point(i+1).lt.flag_point(i)) then
-          temp_swap = flag_point(i)
-          flag_point(i) = flag_point(i+1)
-          flag_point(i+1) = temp_swap
+      do i = 1,rz%flag_count-1
+       if (rz%flag_point(i+1) < rz%flag_point(i)) then
+          temp_swap = rz%flag_point(i)
+          rz%flag_point(i) = rz%flag_point(i+1)
+          rz%flag_point(i+1) = temp_swap
           sort_done = .false.
-       endif
+       end if
       end do
       if (sort_done) exit
       end do
 ! Remove the duplicates.
       i = 2
       do
-      if (flag_point(i).eq.flag_point(i-1)) then
-       if (i.lt.flag_count) then
-          do j = i,flag_count-1
-             flag_point(j) = flag_point(j+1)
+      if (rz%flag_point(i) == rz%flag_point(i-1)) then
+       if (i < rz%flag_count) then
+          do j = i,rz%flag_count-1
+             rz%flag_point(j) = rz%flag_point(j+1)
           end do
-       endif
-       flag_count = flag_count - 1
-      endif
+       end if
+       rz%flag_count = rz%flag_count - 1
+      end if
       i = i + 1
-      if (i.gt.flag_count) exit
+      if (i > rz%flag_count) exit
       end do
       end if
       if (solver_diagnostics()) then
-         write(run_log_unit,185) (flag_point(j),j=1,flag_count)
+         allocate(flag_lines(rz%flag_count/20 + 1))
+         flag_lines = unwritten_line
+         write(flag_lines,185) (rz%flag_point(j),j=1,rz%flag_count)
+         call core_log(flag_lines)
       end if
   185 format(1X,'FLAG-POINTS',20I4)
-end subroutine flag_fixed_points
+end subroutine sort_flag_points
+
 
 ! ---------------------------------------------------------------
 ! Append zone to the flagged points, unless that would leave no room for
 ! the star%nz terminator; the first dropped append of a rezone is
 ! reported in the run log.
-subroutine append_flag_point(zone)
+subroutine append_flag_point(rz, zone)
+      type(rezone_state), intent(inout) :: rz
+      character(len=message_length) :: lines(4)
       integer, intent(in) :: zone
-      if (flag_count .gt. max_flag_points - 1) then
-         if (.not. flag_overflow_warned) then
-            write(run_log_unit,110) max_flag_points
+      if (rz%flag_count > max_flag_points - 1) then
+         if (.not. rz%flag_overflow_warned) then
+            lines = unwritten_line
+            write(lines,110) max_flag_points
+            call core_log(lines)
   110       format(1X,'MORE THAN ',i4,' FLAG POINTS - REST DROPPED')
-            flag_overflow_warned = .true.
+            rz%flag_overflow_warned = .true.
          end if
          return
       end if
-      flag_point(flag_count) = zone
-      flag_count = flag_count + 1
+      rz%flag_point(rz%flag_count) = zone
+      rz%flag_count = rz%flag_count + 1
 end subroutine append_flag_point
+
 
 ! ---------------------------------------------------------------
 ! Build the new mesh new_log_mass(1:new_num_zones): points evenly spaced
 ! in chi between the flagged points, more points where X rises or Z
 ! falls outward too steeply, and points closer than tol_dm_min in log m
 ! dropped. ierr past json points or on a spline failure.
-subroutine assign_new_points
+!   star reads: none
+!   star writes: none
+subroutine assign_new_points(s, rz, ierr)
       use math_lib
-      call seed_new_point_run
-      call accumulate_chi_spacing
-      call place_points_along_chi
+      type(star_info), intent(inout) :: s
+      type(rezone_state), intent(inout) :: rz
+      integer, intent(inout) :: ierr
+      call seed_new_point_run(s, rz)
+      call accumulate_chi_spacing(s, rz)
+      call place_points_along_chi(s, rz, ierr)
       if (ierr /= 0) return
-      call add_points_for_x_jumps
+      call add_points_for_x_jumps(s, rz, ierr)
       if (ierr /= 0) return
-      call add_points_for_z_jumps
+      call add_points_for_z_jumps(s, rz, ierr)
       if (ierr /= 0) return
-      call drop_crowded_points
+      call drop_crowded_points(s, rz)
 end subroutine assign_new_points
+
 
 ! ---------------------------------------------------------------
 ! Start the new mesh at the centre, save the start-of-step Teff and
 ! surface L (for the HR-motion timestep limit), and set the maximum spacings
 ! point_spacing_max in log P, L, X and Z, the L one scaled by the largest
 ! L in the model.
-subroutine seed_new_point_run
+!   star reads: log_mass, log_Teff, logP, luminosity_lsun, nz,
+!     physics%chi_grid_scale, xa
+!   star writes: log_Teff_start, logP_start, luminosity_lsun_start,
+!     surface_luminosity_lsun_start
+subroutine seed_new_point_run(s, rz)
+      type(star_info), intent(inout) :: s
+      type(rezone_state), intent(inout) :: rz
+      integer :: i
+      real(dp) :: luminosity_max
 ! The centre point stays where it is.
-      new_log_mass(1) = s%log_mass(1)
+      rz%new_log_mass(1) = s%log_mass(1)
       s%logP_start(1) = s%logP(1)
       s%luminosity_lsun_start(1) = s%luminosity_lsun(1)
-      x_new(1) = s%xa(i_h1,1)
-      z_new(1) = s%xa(i_metals,1)
+      rz%x_new(1) = s%xa(i_h1,1)
+      rz%z_new(1) = s%xa(i_metals,1)
       luminosity_max = s%luminosity_lsun(s%nz)
 ! The start-of-step log Teff (JVS 04/14) and surface L, saved before the
 ! rezone moves the points.
@@ -444,15 +529,16 @@ subroutine seed_new_point_run
       s%surface_luminosity_lsun_start = s%luminosity_lsun(s%nz)
 ! luminosity_max: the largest L in the model.
       do i = s%nz-1,1,-1
-         if (s%luminosity_lsun(i).gt.luminosity_max) then
+         if (s%luminosity_lsun(i) > luminosity_max) then
             luminosity_max = s%luminosity_lsun(i)
-         endif
+         end if
       end do
-      point_spacing_max(1) = s%physics%chi_grid_scale(ichi_dp_env_max)
-      point_spacing_max(2) = s%physics%chi_grid_scale(ichi_dl_max)*luminosity_max
-      point_spacing_max(3) = s%physics%chi_grid_scale(ichi_dx_max)
-      point_spacing_max(4) = s%physics%chi_grid_scale(ichi_dz_max)
+      rz%point_spacing_max(1) = s%physics%chi_grid_scale(ichi_dp_env_max)
+      rz%point_spacing_max(2) = s%physics%chi_grid_scale(ichi_dl_max)*luminosity_max
+      rz%point_spacing_max(3) = s%physics%chi_grid_scale(ichi_dx_max)
+      rz%point_spacing_max(4) = s%physics%chi_grid_scale(ichi_dz_max)
 end subroutine seed_new_point_run
+
 
 ! ---------------------------------------------------------------
 ! Accumulate chi, the running sum of the normalized changes from shell
@@ -465,33 +551,45 @@ end subroutine seed_new_point_run
 ! surface convection zone's base (czb), tol_dp_core_max deeper, and
 ! tol_dp_env_max above (in the convection zone). A unit step in chi is
 ! the largest step allowed between points.
-subroutine accumulate_chi_spacing
+!   star reads: envelope_cz_bottom_index, log_mass, logP,
+!     luminosity_lsun, nz, physics%chi_grid_scale
+!   star writes: none
+subroutine accumulate_chi_spacing(s, rz)
+      type(star_info), intent(inout) :: s
+      type(rezone_state), intent(inout) :: rz
+      integer :: j
+      real(dp) :: pressure_test
+      real(dp) :: dp_scale
+      real(dp) :: mass_scale
+      real(dp) :: luminosity_scale
+      real(dp) :: dchi
       mass_scale = s%physics%chi_grid_scale(ichi_dm_max)
-      luminosity_scale = point_spacing_max(2)
-      chi(1) = 1.0D0
+      luminosity_scale = rz%point_spacing_max(2)
+      rz%chi(1) = 1.0D0
       do j = 2, s%nz
          pressure_test = s%logP(j) - s%logP(s%envelope_cz_bottom_index)
-         if (abs(pressure_test).lt.s%physics%chi_grid_scale(ichi_czbase_fine_width)) then
+         if (abs(pressure_test) < s%physics%chi_grid_scale(ichi_czbase_fine_width)) then
 ! The finely zoned region around the convection-zone base.
             dp_scale = s%physics%chi_grid_scale(ichi_dp_czbase_max)
-         else if (pressure_test.gt.s%physics%chi_grid_scale(ichi_czbase_fine_width)) then
+         else if (pressure_test > s%physics%chi_grid_scale(ichi_czbase_fine_width)) then
 ! Below it, in the radiative interior.
             dp_scale = s%physics%chi_grid_scale(ichi_dp_core_max)
          else
 ! Above it, in the surface convection zone.
             dp_scale = s%physics%chi_grid_scale(ichi_dp_env_max)
-         endif
-         if (s%luminosity_lsun(j).gt.s%luminosity_lsun(j-1)) then
+         end if
+         if (s%luminosity_lsun(j) > s%luminosity_lsun(j-1)) then
             dchi = (s%log_mass(j)-s%log_mass(j-1))/mass_scale + &
                  (s%luminosity_lsun(j)-s%luminosity_lsun(j-1))/luminosity_scale - &
                  (s%logP(j)-s%logP(j-1))/dp_scale
          else
             dchi = (s%log_mass(j)-s%log_mass(j-1))/mass_scale - &
                  (s%logP(j)-s%logP(j-1))/dp_scale
-         endif
-         chi(j) = chi(j-1)+dchi
+         end if
+         rz%chi(j) = rz%chi(j-1)+dchi
       end do
 end subroutine accumulate_chi_spacing
+
 
 ! ---------------------------------------------------------------
 ! Place the new points evenly in chi between successive flagged points,
@@ -499,28 +597,49 @@ end subroutine accumulate_chi_spacing
 ! one, reading log m off a natural cubic spline of log m against chi.
 ! The flagged points themselves are kept (the spline passes through its
 ! knots). ierr past json points or on a spline failure.
-subroutine place_points_along_chi
+!   star reads: log_mass, nz
+!   star writes: none
+subroutine place_points_along_chi(s, rz, ierr)
+      type(star_info), intent(inout) :: s
+      type(rezone_state), intent(inout) :: rz
+      integer, intent(inout) :: ierr
+      integer :: jerr_gate
+      real(dp) :: spline_x(json)
+      real(dp) :: spline_y(json)
+      real(dp) :: spline_second_deriv(json)
+      integer :: i
+      integer :: j
+      real(dp) :: dchi
+      real(dp) :: chi_prev
+      integer :: point_prev_index
+      real(dp) :: delta_chi
+      integer :: segment_point_count
+      real(dp) :: spline_eval_x
+      real(dp) :: spline_eval_y
+      character(len=message_length) :: lines(4)
       do j = 1,s%nz
-         spline_x(j) = chi(j)
+         spline_x(j) = rz%chi(j)
          spline_y(j) = s%log_mass(j)
       end do
 ! The spline of log m against chi.
       call natural_spline(spline_x,spline_y,s%nz,spline_second_deriv)
-      chi_prev = chi(1)
+      chi_prev = rz%chi(1)
       point_prev_index = 1
-      new_num_zones = 1
-      do i = 1,flag_count
-         delta_chi = chi(flag_point(i))-chi_prev
+      rz%new_num_zones = 1
+      do i = 1,rz%flag_count
+         delta_chi = rz%chi(rz%flag_point(i))-chi_prev
          segment_point_count = int(delta_chi)+1
-         if (new_num_zones+segment_point_count.gt.json) then
+         if (rz%new_num_zones+segment_point_count > json) then
 ! More points than the arrays hold: stop with ierr.
-            write(*,101) new_num_zones+segment_point_count,json
+            lines = unwritten_line
+            write(lines,101) rz%new_num_zones+segment_point_count,json
+            call core_stdout(lines)
  101        format(' DESIRED NUMBER OF POINTS ',I6,'EXCEEEDS JSON ', &
      I6/' RUN STOPPED')
             ierr = 1
             return
-         endif
-         dchi = delta_chi/dfloat(segment_point_count)
+         end if
+         dchi = delta_chi/dble(segment_point_count)
 ! The new points of this segment.
          do j = point_prev_index+1,point_prev_index+segment_point_count
             spline_eval_x = chi_prev + dchi
@@ -528,83 +647,112 @@ subroutine place_points_along_chi
                  spline_second_deriv, spline_eval_x, spline_eval_y, jerr_gate)
             ! A spline failure returns through ierr, after its message.
             if (jerr_gate /= 0) then
-               write(run_log_unit,*) 'splint: '//numerics_status_text(jerr_gate)
+               lines = unwritten_line
+               write(lines,*) 'splint: '//numerics_status_text(jerr_gate)
+               call core_log(lines)
                ierr = jerr_gate
                return
             end if
-            new_log_mass(j) = spline_eval_y
+            rz%new_log_mass(j) = spline_eval_y
             chi_prev = spline_eval_x
          end do
-         new_num_zones = new_num_zones + segment_point_count
-         point_prev_index = new_num_zones
+         rz%new_num_zones = rz%new_num_zones + segment_point_count
+         point_prev_index = rz%new_num_zones
       end do
 end subroutine place_points_along_chi
+
 
 ! ---------------------------------------------------------------
 ! Interpolate X onto the new points (x_new) and, where X rises outward
 ! by more than tol_dx_max between two new points, insert
 ! int(Delta X/tol_dx_max) points evenly in log m between them. Skipped
 ! when tol_dx_max is zero; ierr on a spline failure.
-subroutine add_points_for_x_jumps
+!   star reads: log_mass, nz, xa
+!   star writes: none
+subroutine add_points_for_x_jumps(s, rz, ierr)
+      type(star_info), intent(inout) :: s
+      type(rezone_state), intent(inout) :: rz
+      integer, intent(inout) :: ierr
+      integer :: jerr_gate
+      real(dp) :: spline_x(json)
+      real(dp) :: spline_y(json)
+      real(dp) :: spline_second_deriv(json)
+      integer :: gradient_flag_index(json)
+      integer :: i
+      integer :: j
+      integer :: k
+      integer :: working_num_zones
+      integer :: num_new_points
+      real(dp) :: delta_x_over_max
+      real(dp) :: point_insert_spacing
+      real(dp) :: spline_eval_x
+      real(dp) :: spline_eval_y
+      integer :: gradient_flag_count
+      character(len=message_length) :: lines(4)
       do j = 1,s%nz
          spline_x(j) = s%log_mass(j)
          spline_y(j) = s%xa(i_h1,j)
       end do
 ! The spline of X against log m, evaluated at the new points.
       call natural_spline(spline_x,spline_y,s%nz,spline_second_deriv)
-      do i = 2,new_num_zones
-         spline_eval_x = new_log_mass(i)
+      do i = 2,rz%new_num_zones
+         spline_eval_x = rz%new_log_mass(i)
          call splint(spline_x, spline_y, s%nz, spline_second_deriv, &
               spline_eval_x, spline_eval_y, jerr_gate)
          if (jerr_gate /= 0) then
-            write(run_log_unit,*) 'splint: '//numerics_status_text(jerr_gate)
+            lines = unwritten_line
+            write(lines,*) 'splint: '//numerics_status_text(jerr_gate)
+            call core_log(lines)
             ierr = jerr_gate
             return
          end if
-         x_new(i) = spline_eval_y
+         rz%x_new(i) = spline_eval_y
       end do
 ! Skip when tol_dx_max (legacy HPMAX(3)) is zero.
-      if (point_spacing_max(3).gt.1.0D-15) then
+      if (rz%point_spacing_max(3) > spacing_limit_off) then
 ! The intervals where X rises outward by more than tol_dx_max, collected
 ! outermost first, so that each insertion below shifts only points
 ! outside the intervals still to be filled.
       gradient_flag_count = 0
-      do j = new_num_zones,2,-1
-         if (x_new(j)-x_new(j-1).gt.point_spacing_max(3)) then
+      do j = rz%new_num_zones,2,-1
+         if (rz%x_new(j)-rz%x_new(j-1) > rz%point_spacing_max(3)) then
             gradient_flag_count = gradient_flag_count + 1
             gradient_flag_index(gradient_flag_count) = j
-         endif
+         end if
       end do
-      if (gradient_flag_count.ne.0) then
-      working_num_zones = new_num_zones
+      if (gradient_flag_count /= 0) then
+      working_num_zones = rz%new_num_zones
       do i = 1,gradient_flag_count
          j = gradient_flag_index(i)
-         delta_x_over_max = (x_new(j) - x_new(j-1))/point_spacing_max(3)
+         delta_x_over_max = (rz%x_new(j) - rz%x_new(j-1))/rz%point_spacing_max(3)
 ! The number of points to insert. Shift the points from j outward up by
 ! num_new_points, then fill the interval below j evenly in log m.
          num_new_points = int(delta_x_over_max)
-         point_insert_spacing = (new_log_mass(j)-new_log_mass(j-1))/ &
-              dfloat(num_new_points+1)
+         point_insert_spacing = (rz%new_log_mass(j)-rz%new_log_mass(j-1))/ &
+              dble(num_new_points+1)
 ! More points than the arrays hold: stop with ierr, as
 ! place_points_along_chi does (no check here before 2026-10).
-         if (working_num_zones+num_new_points.gt.json) then
-            write(*,'(a,i6,a,i6)') ' DESIRED NUMBER OF POINTS ', &
+         if (working_num_zones+num_new_points > json) then
+            lines = unwritten_line
+            write(lines,'(a,i6,a,i6)') ' DESIRED NUMBER OF POINTS ', &
                  working_num_zones+num_new_points, ' EXCEEDS JSON ', json
+            call core_stdout(lines)
             ierr = 1
             return
          end if
          do k = working_num_zones+num_new_points,j+num_new_points,-1
-            new_log_mass(k) = new_log_mass(k-num_new_points)
+            rz%new_log_mass(k) = rz%new_log_mass(k-num_new_points)
          end do
          do k = j + num_new_points -1, j -1, -1
-            new_log_mass(k) = new_log_mass(k+1) - point_insert_spacing
+            rz%new_log_mass(k) = rz%new_log_mass(k+1) - point_insert_spacing
          end do
          working_num_zones = working_num_zones + num_new_points
       end do
-      new_num_zones = working_num_zones
+      rz%new_num_zones = working_num_zones
       end if
       end if
 end subroutine add_points_for_x_jumps
+
 
 ! ---------------------------------------------------------------
 ! Interpolate Z onto the new points (z_new) and, where Z falls outward
@@ -612,85 +760,119 @@ end subroutine add_points_for_x_jumps
 ! int(Delta Z/tol_dz_max) points evenly in log m between them, as
 ! add_points_for_x_jumps does for X. Skipped when tol_dz_max is zero;
 ! ierr on a spline failure.
-subroutine add_points_for_z_jumps
+!   star reads: log_mass, nz, xa
+!   star writes: none
+subroutine add_points_for_z_jumps(s, rz, ierr)
+      type(star_info), intent(inout) :: s
+      type(rezone_state), intent(inout) :: rz
+      integer, intent(inout) :: ierr
+      integer :: jerr_gate
+      real(dp) :: spline_x(json)
+      real(dp) :: spline_y(json)
+      real(dp) :: spline_second_deriv(json)
+      integer :: gradient_flag_index(json)
+      integer :: i
+      integer :: j
+      integer :: k
+      integer :: working_num_zones
+      integer :: num_new_points
+      real(dp) :: delta_z_over_max
+      real(dp) :: point_insert_spacing
+      real(dp) :: spline_eval_x
+      real(dp) :: spline_eval_y
+      integer :: gradient_flag_count
+      character(len=message_length) :: lines(4)
       do j = 1,s%nz
          spline_x(j) = s%log_mass(j)
          spline_y(j) = s%xa(i_metals,j)
       end do
 ! The spline of Z against log m, evaluated at the new points.
       call natural_spline(spline_x,spline_y,s%nz,spline_second_deriv)
-      do i = 2,new_num_zones
-         spline_eval_x = new_log_mass(i)
+      do i = 2,rz%new_num_zones
+         spline_eval_x = rz%new_log_mass(i)
          call splint(spline_x, spline_y, s%nz, spline_second_deriv, &
               spline_eval_x, spline_eval_y, jerr_gate)
          if (jerr_gate /= 0) then
-            write(run_log_unit,*) 'splint: '//numerics_status_text(jerr_gate)
+            lines = unwritten_line
+            write(lines,*) 'splint: '//numerics_status_text(jerr_gate)
+            call core_log(lines)
             ierr = jerr_gate
             return
          end if
-         z_new(i) = spline_eval_y
+         rz%z_new(i) = spline_eval_y
       end do
 ! Skip when tol_dz_max (legacy HPMAX(4)) is zero; otherwise collect the
 ! intervals where Z falls outward by more than tol_dz_max, outermost
 ! first.
-      if (point_spacing_max(4).gt.1.0D-15) then
+      if (rz%point_spacing_max(4) > spacing_limit_off) then
       gradient_flag_count = 0
-      do j = new_num_zones,2,-1
-         if (z_new(j-1)-z_new(j).gt.point_spacing_max(4)) then
+      do j = rz%new_num_zones,2,-1
+         if (rz%z_new(j-1)-rz%z_new(j) > rz%point_spacing_max(4)) then
             gradient_flag_count = gradient_flag_count + 1
             gradient_flag_index(gradient_flag_count) = j
-         endif
+         end if
       end do
-      if (gradient_flag_count.ne.0) then
-      working_num_zones = new_num_zones
+      if (gradient_flag_count /= 0) then
+      working_num_zones = rz%new_num_zones
       do i = 1,gradient_flag_count
          j = gradient_flag_index(i)
-         delta_z_over_max = (z_new(j-1) - z_new(j))/point_spacing_max(4)
+         delta_z_over_max = (rz%z_new(j-1) - rz%z_new(j))/rz%point_spacing_max(4)
 ! The number of points to insert; shift and fill as for X.
          num_new_points = int(delta_z_over_max)
-         point_insert_spacing = (new_log_mass(j)-new_log_mass(j-1))/ &
-              dfloat(num_new_points+1)
+         point_insert_spacing = (rz%new_log_mass(j)-rz%new_log_mass(j-1))/ &
+              dble(num_new_points+1)
 ! More points than the arrays hold: stop with ierr, as
 ! place_points_along_chi does (no check here before 2026-10).
-         if (working_num_zones+num_new_points.gt.json) then
-            write(*,'(a,i6,a,i6)') ' DESIRED NUMBER OF POINTS ', &
+         if (working_num_zones+num_new_points > json) then
+            lines = unwritten_line
+            write(lines,'(a,i6,a,i6)') ' DESIRED NUMBER OF POINTS ', &
                  working_num_zones+num_new_points, ' EXCEEDS JSON ', json
+            call core_stdout(lines)
             ierr = 1
             return
          end if
          do k = working_num_zones+num_new_points,j+num_new_points,-1
-            new_log_mass(k) = new_log_mass(k-num_new_points)
+            rz%new_log_mass(k) = rz%new_log_mass(k-num_new_points)
          end do
          do k = j + num_new_points -1, j -1, -1
-            new_log_mass(k) = new_log_mass(k+1) - point_insert_spacing
+            rz%new_log_mass(k) = rz%new_log_mass(k+1) - point_insert_spacing
          end do
          working_num_zones = working_num_zones + num_new_points
       end do
-      new_num_zones = working_num_zones
+      rz%new_num_zones = working_num_zones
       end if
       end if
 end subroutine add_points_for_z_jumps
+
 
 ! ---------------------------------------------------------------
 ! Drop the new points that lie within tol_dm_min in log m of the last
 ! point kept; the first and last points are always kept. The mesh is
 ! compacted through compact_log_mass, then copied back.
-subroutine drop_crowded_points
+!   star reads: physics%chi_grid_scale
+!   star writes: none
+subroutine drop_crowded_points(s, rz)
+      type(star_info), intent(inout) :: s
+      type(rezone_state), intent(inout) :: rz
+      real(dp) :: compact_log_mass(json)
+      integer :: j
+      integer :: k
       j = 1
-      compact_log_mass(j) = new_log_mass(j)
-      do k = 2,new_num_zones-1
-       if (new_log_mass(k) - compact_log_mass(j).gt.s%physics%chi_grid_scale(ichi_dm_min)) then
+      compact_log_mass(j) = rz%new_log_mass(j)
+      do k = 2,rz%new_num_zones-1
+       if (rz%new_log_mass(k) - compact_log_mass(j) > s%physics%chi_grid_scale(ichi_dm_min)) then
           j = j + 1
-          compact_log_mass(j) = new_log_mass(k)
-       endif
+          compact_log_mass(j) = rz%new_log_mass(k)
+       end if
       end do
       j = j + 1
-      compact_log_mass(j) = new_log_mass(new_num_zones)
-      new_num_zones = j
-      do j = 2,new_num_zones
-       new_log_mass(j) = compact_log_mass(j)
+      compact_log_mass(j) = rz%new_log_mass(rz%new_num_zones)
+      rz%new_num_zones = j
+      do j = 2,rz%new_num_zones
+       rz%new_log_mass(j) = compact_log_mass(j)
       end do
 end subroutine drop_crowded_points
+
 
 ! ---------------------------------------------------------------
 ! Locate the edges of the convection zones on the new mesh: the
@@ -699,46 +881,56 @@ end subroutine drop_crowded_points
 ! point at or outside the old base. Then set convective_flag on the new
 ! points: convective in the core and the envelope zone, radiative
 ! between.
-subroutine locate_new_cz_edges
-      if (s%core_cz_top_index.gt.1) then
-       do j = 2,new_num_zones
-          if (new_log_mass(j).gt.s%log_mass(s%core_cz_top_index)) exit
+!   star reads: log_mass, nz
+!   star writes: convective_flag, core_cz_top_index,
+!     envelope_cz_bottom_index
+subroutine locate_new_cz_edges(s, rz)
+      type(star_info), intent(inout) :: s
+      type(rezone_state), intent(inout) :: rz
+      integer :: i
+      integer :: j
+      integer :: radiative_zone_begin
+      integer :: radiative_zone_end
+      if (s%core_cz_top_index > 1) then
+       do j = 2,rz%new_num_zones
+          if (rz%new_log_mass(j) > s%log_mass(s%core_cz_top_index)) exit
        end do
          s%core_cz_top_index = j - 1
       else
        s%core_cz_top_index = 1
-      endif
-      if (s%envelope_cz_bottom_index.lt.s%nz) then
-       do j = new_num_zones-1,1,-1
-          if (new_log_mass(j).lt.s%log_mass(s%envelope_cz_bottom_index)) &
+      end if
+      if (s%envelope_cz_bottom_index < s%nz) then
+       do j = rz%new_num_zones-1,1,-1
+          if (rz%new_log_mass(j) < s%log_mass(s%envelope_cz_bottom_index)) &
                exit
        end do
          s%envelope_cz_bottom_index = j + 1
       else
-       s%envelope_cz_bottom_index = new_num_zones
-      endif
-      if (s%core_cz_top_index.gt.1) then
+       s%envelope_cz_bottom_index = rz%new_num_zones
+      end if
+      if (s%core_cz_top_index > 1) then
        do i = 1,s%core_cz_top_index
           s%convective_flag(i) = .true.
        end do
        radiative_zone_begin = s%core_cz_top_index + 1
       else
        radiative_zone_begin = 1
-      endif
-      if (s%envelope_cz_bottom_index.lt.new_num_zones) then
-       do i = s%envelope_cz_bottom_index,new_num_zones
+      end if
+      if (s%envelope_cz_bottom_index < rz%new_num_zones) then
+       do i = s%envelope_cz_bottom_index,rz%new_num_zones
           s%convective_flag(i) = .true.
        end do
        radiative_zone_end = s%envelope_cz_bottom_index - 1
       else
-       radiative_zone_end = new_num_zones
-      endif
-      if (radiative_zone_end.ge.1 .and. radiative_zone_begin.le.new_num_zones) then
+       radiative_zone_end = rz%new_num_zones
+      end if
+      if (radiative_zone_end >= 1 .and. radiative_zone_begin <= rz%new_num_zones) then
       do j = radiative_zone_begin,radiative_zone_end
        s%convective_flag(j) = .false.
       end do
       end if
 end subroutine locate_new_cz_edges
+
 
 ! ---------------------------------------------------------------
 ! Move the model onto the new mesh: spline the composition, structure
@@ -748,73 +940,89 @@ end subroutine locate_new_cz_edges
 ! rotating models re-spin and re-total the angular momentum; re-run the
 ! shell physics where the transport needs it; and rebuild the surface
 ! opacity tables if the surface X moved.
-subroutine interpolate_onto_new_grid
+!   star reads: physics%rotation_active
+!   star writes: none
+subroutine interpolate_onto_new_grid(s, rz, ierr)
       use math_lib
-      call regrid_composition_terms
-      if (ierr == 0) call regrid_structure_variables
-      if (ierr == 0) call regrid_rotation_variables
-      if (ierr == 0) call regrid_start_of_step_eps
+      type(star_info), intent(inout) :: s
+      type(rezone_state), intent(inout) :: rz
+      integer, intent(inout) :: ierr
+      character(len=message_length) :: lines(4)
+      call regrid_composition_terms(s, rz, ierr)
+      if (ierr == 0) call regrid_structure_variables(s, rz, ierr)
+      if (ierr == 0) call regrid_rotation_variables(s, rz, ierr)
+      if (ierr == 0) call regrid_start_of_step_eps(s, rz, ierr)
       if (ierr /= 0) then
 ! osplin could not regrid a profile (the regridding kernels' status):
 ! the run stops with ierr, as for the other rezoning failures.
-         write(run_log_unit,'(a)') ' rezone: osplin: '//numerics_status_text(ierr)
-         write(terminal_unit,'(a)') ' rezone: osplin: '//numerics_status_text(ierr)
+         lines = unwritten_line
+         write(lines,'(a)') ' rezone: osplin: '//numerics_status_text(ierr)
+         call core_report(lines)
          return
       end if
-      call transfer_new_points
-      call set_new_shell_masses
+      call transfer_new_points(s, rz)
+      call set_new_shell_masses(s)
       if (s%physics%rotation_active) then
-       call respin_on_new_grid
+       call respin_on_new_grid(s, ierr)
        if (ierr /= 0) return
-       call retally_angular_momentum
-      endif
-      call rerun_physics_on_new_grid
+       call retally_angular_momentum(s)
+      end if
+      call rerun_physics_on_new_grid(s, ierr)
       if (ierr /= 0) return
-      call refresh_surface_opacity
+      call refresh_surface_opacity(s, ierr)
 end subroutine interpolate_onto_new_grid
+
 
 ! ---------------------------------------------------------------
 ! Set the old and new point counts, and spline the entropy terms, every
 ! species (now and at the start of the step) and, when the surface
 ! deuterium is above 1e-14, the start-of-step deuterium burning rate
 ! onto the new points.
-subroutine regrid_composition_terms
+!   star reads: log_mass, nz, physics%use_extended_composition
+!   star writes: deuterium_burning_rate_start, dln_luminosity_dt,
+!     dlog_pressure_dt, dlog_radius_dt, dlog_temperature_dt, xa,
+!     xa_start
+subroutine regrid_composition_terms(s, rz, ierr)
+      type(star_info), intent(inout) :: s
+      type(rezone_state), intent(inout) :: rz
+      integer, intent(inout) :: ierr
 ! regridded_xa: the species tracked at the new points, before they
 ! replace star%xa and star%xa_start.
-      double precision, allocatable :: regridded_xa(:,:)
+      real(dp), allocatable :: regridded_xa(:,:)
 ! Each field is splined from the old points (star%log_mass,
 ! old_point_count of them) to the new ones (new_log_mass,
 ! new_point_count); regrid_in_place overwrites the field it is given.
-      old_point_count = s%nz
-      new_point_count = new_num_zones
+      rz%old_point_count = s%nz
+      rz%new_point_count = rz%new_num_zones
 ! The entropy terms (7/91).
-      call regrid_in_place(s%dlog_temperature_dt)
-      call regrid_in_place(s%dlog_pressure_dt)
-      call regrid_in_place(s%dln_luminosity_dt)
-      call regrid_in_place(s%dlog_radius_dt)
+      call regrid_in_place(s, rz, ierr, s%dlog_temperature_dt)
+      call regrid_in_place(s, rz, ierr, s%dlog_pressure_dt)
+      call regrid_in_place(s, rz, ierr, s%dln_luminosity_dt)
+      call regrid_in_place(s, rz, ierr, s%dlog_radius_dt)
       if (ierr /= 0) return
-      allocate(regridded_xa(num_species_tracked,new_point_count))
-      call regrid_composition(s%log_mass(1:old_point_count), &
-           s%xa(1:num_species_tracked,1:old_point_count), &
-           new_log_mass(1:new_point_count), regridded_xa, ierr)
+      allocate(regridded_xa(rz%num_species_tracked,rz%new_point_count))
+      call regrid_composition(s%log_mass(1:rz%old_point_count), &
+           s%xa(1:rz%num_species_tracked,1:rz%old_point_count), &
+           rz%new_log_mass(1:rz%new_point_count), regridded_xa, ierr)
       if (ierr /= 0) return
-      s%xa(1:num_species_tracked,1:new_point_count) = regridded_xa
+      s%xa(1:rz%num_species_tracked,1:rz%new_point_count) = regridded_xa
 ! xa_start (legacy HCOMPP), the composition at the start of the step, is
 ! needed for composition diffusion in rotating models.
-      call regrid_composition(s%log_mass(1:old_point_count), &
-           s%xa_start(1:num_species_tracked,1:old_point_count), &
-           new_log_mass(1:new_point_count), regridded_xa, ierr)
+      call regrid_composition(s%log_mass(1:rz%old_point_count), &
+           s%xa_start(1:rz%num_species_tracked,1:rz%old_point_count), &
+           rz%new_log_mass(1:rz%new_point_count), regridded_xa, ierr)
       if (ierr /= 0) return
-      s%xa_start(1:num_species_tracked,1:new_point_count) = regridded_xa
+      s%xa_start(1:rz%num_species_tracked,1:rz%new_point_count) = regridded_xa
 ! The start-of-step deuterium burning rate, when the surface deuterium
 ! is above 1e-14 (MHP 05/02). (star%nz is still the old point count
 ! here: when the mesh grew, this is the regridded deuterium at that
 ! index, below the new surface.)
       if (s%physics%use_extended_composition .and. &
-           s%xa(i_h2,s%nz).ge.1.0D-14) then
-         call regrid_in_place(s%deuterium_burning_rate_start)
-      endif
+           s%xa(i_h2,s%nz) >= deuterium_regrid_min) then
+         call regrid_in_place(s, rz, ierr, s%deuterium_burning_rate_start)
+      end if
 end subroutine regrid_composition_terms
+
 
 ! ---------------------------------------------------------------
 ! Spline log P, log R, L, log T and log rho onto the new points, into the
@@ -823,49 +1031,64 @@ end subroutine regrid_composition_terms
 ! model on the new mesh (what rezone_or_snapshot stores explicitly when
 ! it does not rezone), which timestep_limit_structure,
 ! mid_timestep_model, burn_step and convection_geometry read.
-subroutine regrid_structure_variables
+!   star reads: log_mass, logP, logR, logRho, logT, luminosity_lsun
+!   star writes: logP_start, logR_start, logRho_start, logT_start,
+!     luminosity_lsun_start
+subroutine regrid_structure_variables(s, rz, ierr)
+      type(star_info), intent(inout) :: s
+      type(rezone_state), intent(inout) :: rz
+      integer, intent(inout) :: ierr
       type(structure_profiles) :: regridded
-      call regrid_structure(s%log_mass(1:old_point_count), &
-           structure_profiles(log_pressure=s%logP(1:old_point_count), &
-                log_radius=s%logR(1:old_point_count), &
-                luminosity_lsun=s%luminosity_lsun(1:old_point_count), &
-                log_temperature=s%logT(1:old_point_count), &
-                log_density=s%logRho(1:old_point_count)), &
-           new_log_mass(1:new_point_count), regridded, ierr)
+      call regrid_structure(s%log_mass(1:rz%old_point_count), &
+           structure_profiles(log_pressure=s%logP(1:rz%old_point_count), &
+                log_radius=s%logR(1:rz%old_point_count), &
+                luminosity_lsun=s%luminosity_lsun(1:rz%old_point_count), &
+                log_temperature=s%logT(1:rz%old_point_count), &
+                log_density=s%logRho(1:rz%old_point_count)), &
+           rz%new_log_mass(1:rz%new_point_count), regridded, ierr)
       if (ierr /= 0) return
-      s%logP_start(1:new_point_count) = regridded%log_pressure
-      s%logR_start(1:new_point_count) = regridded%log_radius
-      s%luminosity_lsun_start(1:new_point_count) = regridded%luminosity_lsun
-      s%logT_start(1:new_point_count) = regridded%log_temperature
-      s%logRho_start(1:new_point_count) = regridded%log_density
+      s%logP_start(1:rz%new_point_count) = regridded%log_pressure
+      s%logR_start(1:rz%new_point_count) = regridded%log_radius
+      s%luminosity_lsun_start(1:rz%new_point_count) = regridded%luminosity_lsun
+      s%logT_start(1:rz%new_point_count) = regridded%log_temperature
+      s%logRho_start(1:rz%new_point_count) = regridded%log_density
 end subroutine regrid_structure_variables
+
 
 ! ---------------------------------------------------------------
 ! For rotating models, spline omega, the specific angular momentum j,
 ! the shape factors fp and ft, r0 and eta2 onto the new points, into the
 ! *_start arrays (and fp_old, ft_old) that transfer_new_points adopts.
-subroutine regrid_rotation_variables
+!   star reads: eta_squared, fp_rot, ft_rot, j_rot, log_mass,
+!     mean_radius, omega, physics%rotation_active
+!   star writes: eta_squared_start, j_rot_start, mean_radius_start,
+!     omega_start
+subroutine regrid_rotation_variables(s, rz, ierr)
+      type(star_info), intent(inout) :: s
+      type(rezone_state), intent(inout) :: rz
+      integer, intent(inout) :: ierr
       type(rotation_profiles) :: regridded
       if (s%physics%rotation_active) then
-         call regrid_rotation(s%log_mass(1:old_point_count), &
-              rotation_profiles(omega=s%omega(1:old_point_count), &
-                   specific_angular_momentum=s%j_rot(1:old_point_count), &
-                   fp=s%fp_rot(1:old_point_count), &
-                   ft=s%ft_rot(1:old_point_count), &
-                   mean_radius=s%mean_radius(1:old_point_count), &
-                   eta_squared=s%eta_squared(1:old_point_count)), &
-              new_log_mass(1:new_point_count), regridded, ierr)
+         call regrid_rotation(s%log_mass(1:rz%old_point_count), &
+              rotation_profiles(omega=s%omega(1:rz%old_point_count), &
+                   specific_angular_momentum=s%j_rot(1:rz%old_point_count), &
+                   fp=s%fp_rot(1:rz%old_point_count), &
+                   ft=s%ft_rot(1:rz%old_point_count), &
+                   mean_radius=s%mean_radius(1:rz%old_point_count), &
+                   eta_squared=s%eta_squared(1:rz%old_point_count)), &
+              rz%new_log_mass(1:rz%new_point_count), regridded, ierr)
          if (ierr /= 0) return
-         s%omega_start(1:new_point_count) = regridded%omega
-         s%j_rot_start(1:new_point_count) = &
+         s%omega_start(1:rz%new_point_count) = regridded%omega
+         s%j_rot_start(1:rz%new_point_count) = &
               regridded%specific_angular_momentum
-         fp_old(1:new_point_count) = regridded%fp
-         ft_old(1:new_point_count) = regridded%ft
-         s%mean_radius_start(1:new_point_count) = regridded%mean_radius
-         s%eta_squared_start(1:new_point_count) = regridded%eta_squared
-      endif
+         rz%fp_old(1:rz%new_point_count) = regridded%fp
+         rz%ft_old(1:rz%new_point_count) = regridded%ft
+         s%mean_radius_start(1:rz%new_point_count) = regridded%mean_radius
+         s%eta_squared_start(1:rz%new_point_count) = regridded%eta_squared
+      end if
 
 end subroutine regrid_rotation_variables
+
 
 ! ---------------------------------------------------------------
 ! For rotating models (or the extended composition with envelope
@@ -876,29 +1099,48 @@ end subroutine regrid_rotation_variables
 ! transfer_new_points, while star%log_mass is still the old mesh. (2026
 ! fix, bugsweep sec-11: hpoint.f did this after the transfer, against
 ! the new mesh, so the values were misplaced on every rotating rezone.)
-subroutine regrid_start_of_step_eps
+!   star reads: eps_channels, eps_total, log_mass, nz,
+!     physics%envelope_overshoot_active, physics%rotation_active,
+!     physics%use_extended_composition
+!   star writes: eps_plus_neu_grav_start, eps_total_start
+subroutine regrid_start_of_step_eps(s, rz, ierr)
+      type(star_info), intent(inout) :: s
+      type(rezone_state), intent(inout) :: rz
+      integer, intent(inout) :: ierr
+      real(dp) :: spline_y(json)
+      integer :: zone_index
       if (s%physics%rotation_active .or. (s%physics%use_extended_composition .and. &
            s%physics%envelope_overshoot_active)) then
-         call regrid_profile(s%log_mass(1:old_point_count), &
-              s%eps_total(1:old_point_count), new_log_mass(1:new_point_count), &
-              s%eps_total_start(1:new_point_count), ierr)
+         call regrid_profile(s%log_mass(1:rz%old_point_count), &
+              s%eps_total(1:rz%old_point_count), rz%new_log_mass(1:rz%new_point_count), &
+              s%eps_total_start(1:rz%new_point_count), ierr)
          if (ierr /= 0) return
          do zone_index = 1,s%nz
             spline_y(zone_index) = s%eps_total(zone_index)+s%eps_channels(i_eps_neu,zone_index)+ &
                  s%eps_channels(i_eps_grav,zone_index)
          end do
-         call regrid_profile(s%log_mass(1:old_point_count), &
-              spline_y(1:old_point_count), new_log_mass(1:new_point_count), &
-              s%eps_plus_neu_grav_start(1:new_point_count), ierr)
-      endif
+         call regrid_profile(s%log_mass(1:rz%old_point_count), &
+              spline_y(1:rz%old_point_count), rz%new_log_mass(1:rz%new_point_count), &
+              s%eps_plus_neu_grav_start(1:rz%new_point_count), ierr)
+      end if
 end subroutine regrid_start_of_step_eps
+
 
 ! ---------------------------------------------------------------
 ! Adopt the new points: the new mesh and the splined structure and
 ! rotation variables become the model, with the new point count.
-subroutine transfer_new_points
-      do j = 1,new_num_zones
-       s%log_mass(j) = new_log_mass(j)
+!   star reads: eta_squared_start, j_rot_start, logP_start, logR_start,
+!     logRho_start, logT_start, luminosity_lsun_start,
+!     mean_radius_start, omega_start, physics%rotation_active
+!   star writes: eta_squared, fp_rot, ft_rot, j_rot, log_mass, logP,
+!     logR, logRho, logT, luminosity_lsun, mean_radius, nz, omega
+subroutine transfer_new_points(s, rz)
+      type(star_info), intent(inout) :: s
+      type(rezone_state), intent(inout) :: rz
+      integer :: j
+      character(len=message_length) :: lines(4)
+      do j = 1,rz%new_num_zones
+       s%log_mass(j) = rz%new_log_mass(j)
        s%logP(j) = s%logP_start(j)
        s%logT(j) = s%logT_start(j)
        s%logR(j) = s%logR_start(j)
@@ -906,21 +1148,24 @@ subroutine transfer_new_points
        s%logRho(j) = s%logRho_start(j)
       end do
       if (s%physics%rotation_active) then
-       do j = 1, new_num_zones
+       do j = 1, rz%new_num_zones
           s%j_rot(j) = s%j_rot_start(j)
           s%omega(j) = s%omega_start(j)
-          s%fp_rot(j) = fp_old(j)
-          s%ft_rot(j) = ft_old(j)
+          s%fp_rot(j) = rz%fp_old(j)
+          s%ft_rot(j) = rz%ft_old(j)
           s%eta_squared(j) = s%eta_squared_start(j)
           s%mean_radius(j) = s%mean_radius_start(j)
        end do
-      endif
+      end if
       if (solver_diagnostics()) then
-         write(run_log_unit,1020) s%nz,new_num_zones
+         lines = unwritten_line
+         write(lines,1020) s%nz,rz%new_num_zones
+         call core_log(lines)
       end if
  1020 format(' POINTS  OLD',I5,'   NEW',I5)
-      s%nz = new_num_zones
+      s%nz = rz%new_num_zones
 end subroutine transfer_new_points
+
 
 ! ---------------------------------------------------------------
 ! Set the point masses m_i = 10^(log m_i) and the mass weights
@@ -930,20 +1175,37 @@ end subroutine transfer_new_points
 ! the midpoints on either side of point i (from the centre for i = 1),
 ! and dm_nz includes the envelope above the outer point
 ! (M = 10^log_total_mass).
-subroutine set_new_shell_masses
+!   star reads: log_mass, log_total_mass, nz
+!   star writes: dm, m
+subroutine set_new_shell_masses(s)
+      type(star_info), intent(inout) :: s
       call compute_shell_masses(s%log_mass(1:s%nz), s%log_total_mass, &
            s%m(1:s%nz), s%dm(1:s%nz))
 end subroutine set_new_shell_masses
+
 
 ! ---------------------------------------------------------------
 ! Rotating models: on the new mesh, rebuild the moments of inertia, the
 ! convection regions for angular momentum transport, omega from the
 ! splined specific angular momentum j, and the shape factors; ierr from
 ! the regions or the shape factors.
-subroutine respin_on_new_grid
+!   star reads: disk_gate_age_gyr, dm, log_mass, logP, logR, logRho,
+!     logT, nz, xa
+!   star writes: am_transport_convective_flag, convective_flag,
+!     envelope_overshoot_bottom_index, envelope_overshoot_top_index,
+!     eta_squared, fp_rot, ft_rot, i_rot, j_rot, mean_gravity,
+!     mean_radius, omega
+subroutine respin_on_new_grid(s, ierr)
       use math_lib
+      type(star_info), intent(inout) :: s
+      integer, intent(inout) :: ierr
+      integer :: radiative_zone_bounds(13,2)
+      integer :: convective_zone_bounds(12,2)
+      integer :: i
+      integer :: num_radiative_zones
+      integer :: num_convective_zones
 ! di_domega of omega_from_j, which this caller does not use
-      double precision :: qiw(json)
+      real(dp) :: qiw(json)
 ! First guess at the moments of inertia, I_i = (2/3) dm_i r_i^2
 ! (spherical shells).
        do i=1,s%nz
@@ -977,25 +1239,39 @@ subroutine respin_on_new_grid
             s%omega,s%mean_radius,s%i_rot,qiw)
 end subroutine respin_on_new_grid
 
+
 ! ---------------------------------------------------------------
 ! Rotating models: re-total the angular momentum and the rotational
 ! kinetic energy on the new mesh (compute_angular_momentum_totals),
 !   J = sum_i j_i dm_i,   E_rot = sum_i (1/2) omega_i j_i dm_i,
 ! and store the rotation state as the start of the step.
-subroutine retally_angular_momentum
+!   star reads: convective_flag, dm, eta_squared, j_rot, mean_gravity,
+!     mean_radius, nz, omega
+!   star writes: convective_flag_start, eta_squared_start, j_rot_start,
+!     kinetic_energy_rot, mean_gravity_start, mean_radius_start,
+!     omega_start, total_angular_momentum, total_rotational_ke
+subroutine retally_angular_momentum(s)
+      type(star_info), intent(inout) :: s
+      integer :: i
+      real(dp) :: sum_angular_momentum
+      real(dp) :: sum_rotational_ke
+      character(len=message_length) :: lines(4)
        call compute_angular_momentum_totals(s%j_rot(1:s%nz), &
             s%omega(1:s%nz), s%dm(1:s%nz), &
             s%kinetic_energy_rot(1:s%nz), sum_angular_momentum, &
             sum_rotational_ke)
 ! The totals before and after the rezone, a solver diagnostic.
-       if (solver_diagnostics()) &
-            write(run_log_unit,1120)total_angular_momentum, &
-            sum_angular_momentum,total_rotational_ke,sum_rotational_ke
+       if (solver_diagnostics()) then
+          lines = unwritten_line
+          write(lines,1120)s%total_angular_momentum, &
+               sum_angular_momentum,s%total_rotational_ke,sum_rotational_ke
+          call core_log(lines)
+       end if
  1120    format(1X,'TOTAL J OF STAR - PREVIOUS ',1PE21.13,' NEW ', &
      1PE21.13/' TOTAL ROTATIONAL K.E. OF STAR-PREVIOUS ',1PE21.13, &
      ' NEW ',1PE21.13)
-       total_angular_momentum = sum_angular_momentum
-       total_rotational_ke = sum_rotational_ke
+       s%total_angular_momentum = sum_angular_momentum
+       s%total_rotational_ke = sum_rotational_ke
 ! The start-of-step rotation state, for the angular momentum transport.
        do i = 1,s%nz
           s%omega_start(i) = s%omega(i)
@@ -1009,6 +1285,7 @@ subroutine retally_angular_momentum
        end do
 end subroutine retally_angular_momentum
 
+
 ! ---------------------------------------------------------------
 ! For rotating models, or with the extended composition and envelope
 ! overshoot, re-run the shell physics on the new points and store the
@@ -1017,7 +1294,18 @@ end subroutine retally_angular_momentum
 ! base of the overshoot region of pre-main-sequence models can be located
 ! accurately (MHP 9/91); even without diffusion, the new physics locates
 ! the convection-zone edges accurately.
-subroutine rerun_physics_on_new_grid
+!   star reads: conv_vel, cp, dlnrho_dlnt, grada, gradr, gradT,
+!     kinematic_viscosity, mu, nz, opacity_zone,
+!     physics%envelope_overshoot_active, physics%rotation_active,
+!     physics%use_extended_composition, thermal_diffusivity
+!   star writes: conv_vel_start, cp_start, dlnrho_dlnt_start,
+!     grada_start, gradr_start, gradT_start, kinematic_viscosity_start,
+!     mu_start, opacity_zone_start, thermal_diffusivity_start
+subroutine rerun_physics_on_new_grid(s, ierr)
+      type(star_info), intent(inout) :: s
+      integer, intent(inout) :: ierr
+      integer :: zone_index
+      integer :: jerr
       if (s%physics%rotation_active .or. (s%physics%use_extended_composition .and. &
            s%physics%envelope_overshoot_active)) then
        call compute_shell_physics(s, jerr)
@@ -1045,26 +1333,22 @@ subroutine rerun_physics_on_new_grid
 ! del_grad_diff_interface,
 ! which rotation_stability_setup overwrites before anything reads it.)
          end do
-! The theta term of the advection-diffusion transport on the new mesh,
-!   theta_i = r^4/(G m) omega d omega/dr   (r, m, omega: means of i-1, i)
-! (MHP 6/02), commented out with that transport (2026-10-12).
-!         do i = 2,star%nz
-!            delta_radius = exp(ln10*star%logR(i))-exp(ln10*star%logR(i-1))
-!            delta_omega = star%omega(i) - star%omega(i-1)
-!            omega_mid = 0.5D0*(star%omega(i)+star%omega(i-1))
-!            log_factor = 2.0D0*(star%logR(i)+star%logR(i-1))-0.5D0* &
-!     (star%log_mass(i)+star%log_mass(i-1))-cgl
-!            rot_scr%theta_rezoned(i) = exp(ln10*log_factor)*omega_mid*delta_omega/delta_radius
-!         end do
-      endif
+! (The advection-diffusion transport's theta term on the new mesh is in
+! model/retired/rezoning_theta_term.f90.txt.)
+      end if
 end subroutine rerun_physics_on_new_grid
+
 
 ! ---------------------------------------------------------------
 ! Rebuild the surface opacity tables (for the new surface X and Z) when
 ! the surface X has moved by more than 1e-8 since they were built
 ! (settings_install's install_surface_x_settings).
-subroutine refresh_surface_opacity
-      if (dabs(s%surface_hydrogen_fraction-s%xa(i_h1,s%nz)).gt.1.0D-8) then
+!   star reads: nz, xa
+!   star writes: surface_hydrogen_fraction, surface_metal_fraction
+subroutine refresh_surface_opacity(s, ierr)
+      type(star_info), intent(inout) :: s
+      integer, intent(inout) :: ierr
+      if (abs(s%surface_hydrogen_fraction-s%xa(i_h1,s%nz)) > 1.0D-8) then
                s%surface_hydrogen_fraction = s%xa(i_h1,s%nz)
                s%surface_metal_fraction = s%xa(i_metals,s%nz)
                call install_surface_x_settings(s%surface_hydrogen_fraction, ierr)
@@ -1072,6 +1356,7 @@ subroutine refresh_surface_opacity
 
       end if
 end subroutine refresh_surface_opacity
+
 
 !----------------------------------------------------------------------
 ! regrid_in_place
@@ -1082,15 +1367,20 @@ end subroutine refresh_surface_opacity
 ! the result until the old values have been read (the legacy HTO). After
 ! a failure (rezone's ierr set) it does nothing, so that a run of calls
 ! stops at the first.
-subroutine regrid_in_place(field)
-      double precision, intent(inout) :: field(:)
+!   star reads: log_mass
+!   star writes: none
+subroutine regrid_in_place(s, rz, ierr, field)
+      type(star_info), intent(inout) :: s
+      type(rezone_state), intent(inout) :: rz
+      integer, intent(inout) :: ierr
+      real(dp) :: regrid_out(json)
+      real(dp), intent(inout) :: field(:)
 
       if (ierr /= 0) return
-      call regrid_profile(s%log_mass(1:old_point_count), field(1:old_point_count), &
-           new_log_mass(1:new_point_count), regrid_out(1:new_point_count), ierr)
-      if (ierr == 0) field(1:new_point_count) = regrid_out(1:new_point_count)
+      call regrid_profile(s%log_mass(1:rz%old_point_count), field(1:rz%old_point_count), &
+           rz%new_log_mass(1:rz%new_point_count), regrid_out(1:rz%new_point_count), ierr)
+      if (ierr == 0) field(1:rz%new_point_count) = regrid_out(1:rz%new_point_count)
 end subroutine regrid_in_place
 
-end subroutine rezone
 
 end module rezoning

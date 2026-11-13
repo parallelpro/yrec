@@ -1,0 +1,28 @@
+! ---------------------------------------------------------------------
+! Retired from core/model/rezoning.f90 (moved here on 2026-11-12).
+!
+! The theta term of the advection-diffusion transport of angular
+! momentum (Maeder & Zahn 1998; MHP 6/02), recomputed on the new mesh at
+! the end of the rezone, in rerun_physics_on_new_grid's rotating branch,
+! after the start-of-step copies' loop:
+!   theta_i = r^4/(G m) omega d omega/dr   (r, m, omega: means of i-1, i)
+! It was commented out with that transport on 2026-10-12, and stored into
+! the rotation scratch's theta_rezoned, which no live code reads (see
+! rotation/retired/advection_diffusion.f90.txt for the transport itself).
+!
+! To revive it: put the loop back at the end of rerun_physics_on_new_grid's
+! `if (s%physics%rotation_active)` branch, with `star` read as `s`, the
+! locals
+!      real(dp) :: delta_radius, delta_omega, omega_mid, log_factor
+!      integer :: i
+! declared there, cgl (physical_constants) in scope, and theta_rezoned
+! restored in the rotation scratch (rotation/rotation_scratch_lib.f90).
+! ---------------------------------------------------------------------
+         do i = 2,star%nz
+            delta_radius = exp(ln10*star%logR(i))-exp(ln10*star%logR(i-1))
+            delta_omega = star%omega(i) - star%omega(i-1)
+            omega_mid = 0.5D0*(star%omega(i)+star%omega(i-1))
+            log_factor = 2.0D0*(star%logR(i)+star%logR(i-1))-0.5D0* &
+     (star%log_mass(i)+star%log_mass(i-1))-cgl
+            rot_scr%theta_rezoned(i) = exp(ln10*log_factor)*omega_mid*delta_omega/delta_radius
+         end do

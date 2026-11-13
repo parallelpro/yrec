@@ -24,10 +24,12 @@
 ! examples/run_config_matrix/cm_monte_carlo.inlist makes one Monte-Carlo
 ! run, with the sample file mc_input.dat beside it.
 module monte_carlo
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use star_info_lib, only: json, i_h1, i_he4, i_metals, i_lum_grav, &
            max_mc_runs, star_info
       use control_slots, only: i_target_x, i_target_z
-      use run_messages, only: run_log_unit, terminal_unit
+      use run_messages, only: run_log_unit
+      use core_messages, only: core_terminal_values
       use run_files, only: last_model_unit, starting_model_unit, &
            dynamics_unit, mc_summary_unit, mc_model_unit
       use model_files, only: write_mod_model
@@ -78,12 +80,12 @@ subroutine setup_monte_carlo_runs(s)
                  s%mc_samples%settling_z_factor(i),s%mc_samples%luminosity_factor(i), &
                  s%mc_samples%age_factor(i)
  1511       format(7X,1P7E10.3/E9.3)
-            write(terminal_unit,*)i,s%mc_samples%s11_factor(i),s%mc_samples%s33_factor(i), &
+            call core_terminal_values([s%mc_samples%s11_factor(i),s%mc_samples%s33_factor(i), &
                  s%mc_samples%s34_factor(i),s%mc_samples%s17_factor(i),s%mc_samples%metal_to_h_ratio(i), &
                  s%mc_samples%settling_z_factor(i),s%mc_samples%luminosity_factor(i), &
-                 s%mc_samples%age_factor(i)
+                 s%mc_samples%age_factor(i)], int_value=i)
          end do
-      endif
+      end if
 end subroutine setup_monte_carlo_runs
 
 ! ---------------------------------------------------------------
@@ -114,7 +116,7 @@ subroutine begin_monte_carlo_run(s, monte_carlo_run_number, &
       use controls_sync, only: arm_run_copies
       type(star_info), intent(inout) :: s
       integer, intent(in) :: monte_carlo_run_number
-      double precision, intent(out) :: age_scale_factor
+      real(dp), intent(out) :: age_scale_factor
       call arm_run_copies(s)
       call clear_previous_run_state(s)
       call apply_monte_carlo_parameters(s, monte_carlo_run_number, &
@@ -166,23 +168,25 @@ end subroutine clear_previous_run_state
 subroutine apply_monte_carlo_parameters(s, monte_carlo_run_number, &
      age_scale_factor)
       use math_lib
-      use physical_constants
+      use physical_constants, only: ln10
       use net_lib, only: r_pp, r_he3he3, r_he3he4, xs_be7p
       type(star_info), intent(inout) :: s
       integer, intent(in) :: monte_carlo_run_number
-      double precision, intent(out) :: age_scale_factor
+      real(dp), intent(out) :: age_scale_factor
 ! The ratios of the Bahcall & Pinsonneault (1996) S0 values to the
 ! code's reference ones, for the four sampled reactions. (The original
 ! data statement also had 0.992 for N14 + p and 0.1625 for hep, which
 ! are not sampled.) The literals are default (single-precision) reals on
 ! purpose: they reproduce the original data statement's values exactly,
 ! and appending d0 would shift them in the 8th decimal.
-      double precision, parameter :: bp96_pp_factor = 0.9558, &
+      real(dp), parameter :: bp96_pp_factor = 0.9558, &
            bp96_he3he3_factor = 0.9690, bp96_he3he4_factor = 0.9712, &
            bp96_be7p_factor = 0.92088
 ! The base solar luminosity in erg/s (MHP 3/96), which
 ! luminosity_factor scales.
-      double precision, parameter :: reference_solar_luminosity = 3.844D33
+      real(dp), parameter :: reference_solar_luminosity = 3.844D33
+! Cards 2 and 3's stop ages [yr] (below).
+      real(dp), parameter :: mc_settling_age_yr = 1.0D8, mc_solar_age_yr = 4.57D9
 
       if (s%physics%monte_carlo_active) then
          s%cross_section_scale_in_use(r_pp) = s%mc_samples%s11_factor(monte_carlo_run_number)*bp96_pp_factor
@@ -207,11 +211,11 @@ subroutine apply_monte_carlo_parameters(s, monte_carlo_run_number, &
 ! 4.568e9 yr and runs with 1e8, stopping at its 10 models first).
 ! Whether they stay is the authors' decision (docs/bug_sweep.md
 ! section 13).
-         s%card_max_age_yr(2)=1.0D8
-         s%card_max_age_yr(3)=4.57D9
+         s%card_max_age_yr(2) = mc_settling_age_yr
+         s%card_max_age_yr(3) = mc_solar_age_yr
       else
          age_scale_factor = 1.0D0
-      endif
+      end if
 end subroutine apply_monte_carlo_parameters
 
 ! ---------------------------------------------------------------
@@ -238,12 +242,12 @@ subroutine write_run_summaries(s, monte_carlo_run_number, &
      convergence_iterations, log_r_rsun, ierr)
       type(star_info), intent(inout) :: s
       integer, intent(in) :: monte_carlo_run_number, convergence_iterations
-      double precision, intent(in) :: log_r_rsun
+      real(dp), intent(in) :: log_r_rsun
       integer, intent(inout) :: ierr
 
 ! A Monte-Carlo run that failed to converge: rewind the output units
 ! and write the model with its cycle count.
-      if (s%physics%monte_carlo_active .and. convergence_iterations.ge.11 .and. .not.s%solar_calibration_converged) then
+      if (s%physics%monte_carlo_active .and. convergence_iterations >= 11 .and. .not.s%solar_calibration_converged) then
          rewind(last_model_unit)
          rewind(starting_model_unit)
          rewind(run_log_unit)
@@ -256,8 +260,8 @@ subroutine write_run_summaries(s, monte_carlo_run_number, &
          if (s%physics%monte_carlo_active) then
             call write_monte_carlo_model(s, log_r_rsun, convergence_iterations, &
                  s%current_card, monte_carlo_run_number, ierr)
-         endif
-      endif
+         end if
+      end if
 end subroutine write_run_summaries
 
 ! ---------------------------------------------------------------
@@ -283,7 +287,7 @@ subroutine write_monte_carlo_model(s, local_log_radius, &
      convergence_iterations, run_index, monte_carlo_run_number, ierr)
       use math_lib
       type(star_info), intent(inout) :: s
-      double precision, intent(in) :: local_log_radius
+      real(dp), intent(in) :: local_log_radius
       integer, intent(in) :: convergence_iterations, run_index, &
            monte_carlo_run_number
 ! a failed write of the model (write_mod_model) or of the summary
@@ -292,7 +296,7 @@ subroutine write_monte_carlo_model(s, local_log_radius, &
 ! --- locals ---
       integer :: iwrite, j, ios
       character(len=256) :: msg
-      double precision :: surface_z_over_x, tcen, pcen, dcen, yini, zini
+      real(dp) :: surface_z_over_x, tcen, pcen, dcen, yini, zini
 
 ! Append the last converged model to monte_carlo_unit2 (legacy IMONTE2).
       iwrite = mc_model_unit

@@ -27,15 +27,17 @@
 ! and the driver that called them reports through these routes
 ! (GUIDELINES "Code style" 7; tools/check_boundaries.py's no-I/O check).
 module core_messages
-      use, intrinsic :: iso_fortran_env, only: output_unit
+      use, intrinsic :: iso_fortran_env, only: dp => real64, output_unit
       use run_messages, only: run_log_unit, terminal_unit
       implicit none
       private
       public :: core_report, core_terminal, core_log, core_stdout, &
            core_stdout_and_log
-! envelope/, structure/ and step/ (E)
+! envelope/, structure/ and step/
       public :: log_envelope_start_retry, log_mixed_zone_bounds, &
            rewind_core_log
+! model/, run/ and diagnostics/
+      public :: core_terminal_values, core_log_values, core_stdout_values
 
 ! The length of one message line. A line may hold a path of up to 256
 ! characters and its context.
@@ -107,6 +109,49 @@ end subroutine rewind_core_log
 ! ---------------------------------------------------------------
 ! The messages of model/, run/ and diagnostics/ that have a
 ! procedure of their own.
+
+! A line as list-directed output writes it, write(unit,*) text,
+! int_value, values: the text (when given), then the integer (when
+! given), then the values. List-directed output leaves blanks after a
+! value it writes in F form, which the routes' trimmed lines would drop;
+! these keep the line as it was. To the terminal, the run log or
+! standard output.
+subroutine core_terminal_values(values, text, int_value)
+      real(dp), intent(in) :: values(:)
+      character(len=*), intent(in), optional :: text
+      integer, intent(in), optional :: int_value
+      call write_core_values(terminal_unit, values, text, int_value)
+end subroutine core_terminal_values
+
+subroutine core_log_values(values, text, int_value)
+      real(dp), intent(in) :: values(:)
+      character(len=*), intent(in), optional :: text
+      integer, intent(in), optional :: int_value
+      call write_core_values(run_log_unit, values, text, int_value)
+end subroutine core_log_values
+
+subroutine core_stdout_values(values, text, int_value)
+      real(dp), intent(in) :: values(:)
+      character(len=*), intent(in), optional :: text
+      integer, intent(in), optional :: int_value
+      call write_core_values(output_unit, values, text, int_value)
+end subroutine core_stdout_values
+
+subroutine write_core_values(unit, values, text, int_value)
+      integer, intent(in) :: unit
+      real(dp), intent(in) :: values(:)
+      character(len=*), intent(in), optional :: text
+      integer, intent(in), optional :: int_value
+      if (present(text) .and. present(int_value)) then
+         write(unit,*) text, int_value, values
+      else if (present(text)) then
+         write(unit,*) text, values
+      else if (present(int_value)) then
+         write(unit,*) int_value, values
+      else
+         write(unit,*) values
+      end if
+end subroutine write_core_values
 
 ! ---------------------------------------------------------------
 subroutine write_core_lines(unit, lines)

@@ -6,6 +6,7 @@
 ! gathers the points, and turnover_from_interior_new finds the zone and
 ! times it.
 module turnover_timescale
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use star_info_lib, only: star_info
       implicit none
       private
@@ -18,8 +19,8 @@ contains
 !----------------------------------------------------------------------
 ! The convective turnover timescale star%convective_turnover_timescale
 ! (s), one pressure scale height above the base of the surface
-! convection zone, and radius_at_bcz, the radius of that base (Rsun; 0
-! without a surface convection zone). It reads the stitched model
+! convection zone, and star%envelope_radius_rsun, the radius of that
+! base (Rsun; 0 without a surface convection zone). It reads the stitched model
 ! (core/diagnostics/stitched_model.f90), the converged interior followed
 ! by the fixed-step envelope integration, built once per step in
 ! evolve_step before compute_observables, and walks it as one structure
@@ -29,24 +30,23 @@ contains
 ! the values stored at the end of the previous step (the _prev copies).
 ! Called by read_starting_model and compute_observables.
 !   star reads: convective_flag, logP, nz, solar_mass_cgs, stitched
-!   star writes: convective_turnover_timescale
-subroutine compute_turnover_timescale(s, radius_at_bcz, ierr)
+!   star writes: convective_turnover_timescale, envelope_radius_rsun
+subroutine compute_turnover_timescale(s, ierr)
       use stitched_model, only: &
            ip_mass, ip_logR, ip_logRho, ip_logP, ip_mixing_type, ip_gradr, &
            ip_grada, ip_conv_vel
       use star_info_lib, only: json
-      use physical_constants
+      use physical_constants, only: cgl, ln10
       use math_lib
       implicit none
       type(star_info), intent(inout) :: s
 
-      double precision, intent(out) :: radius_at_bcz
       integer, intent(out) :: ierr
 
-      double precision :: combined_radius(json), combined_pressure(json), &
+      real(dp) :: combined_radius(json), combined_pressure(json), &
            combined_density(json), combined_mass(json), &
            combined_gravity(json), combined_velocity(json)
-      double precision :: combined_grad1(json), combined_grad2(json)
+      real(dp) :: combined_grad1(json), combined_grad2(json)
       logical :: combined_convective_flag(json)
       integer :: j, num_points
 
@@ -65,7 +65,7 @@ subroutine compute_turnover_timescale(s, radius_at_bcz, ierr)
       do j = s%nz-1, 1, -1
          if (.not. s%convective_flag(j)) exit
       end do
-      if (s%logP(j+1) - s%logP(s%nz) .lt. 1.0d0) then
+      if (s%logP(j+1) - s%logP(s%nz) < 1.0d0) then
          num_points = min(s%stitched%n_ie, json)
       else
          num_points = s%nz
@@ -82,13 +82,13 @@ subroutine compute_turnover_timescale(s, radius_at_bcz, ierr)
          combined_velocity(j) = s%stitched%prof(ip_conv_vel,j)
          combined_grad1(j) = s%stitched%prof(ip_gradr,j)
          combined_grad2(j) = s%stitched%prof(ip_grada,j)
-         combined_convective_flag(j) = s%stitched%prof(ip_mixing_type,j) .ne. 0.0d0
+         combined_convective_flag(j) = s%stitched%prof(ip_mixing_type,j) /= 0.0d0
       end do
 
       call turnover_from_interior_new(s, combined_mass, combined_convective_flag, &
            combined_radius, combined_pressure, combined_density, &
            combined_gravity, num_points, s%nz, combined_velocity, &
-           combined_grad1, combined_grad2, radius_at_bcz, ierr)
+           combined_grad1, combined_grad2, s%envelope_radius_rsun, ierr)
       if (ierr /= 0) return
 
       return
@@ -120,25 +120,25 @@ subroutine turnover_from_interior_new(s, shell_mass, convective_flag, log10_radi
      adiabatic_gradient, radius_at_bcz, ierr)
       use math_lib
       use numerics_lib, only: natural_spline, splint, numerics_status_text
-      use run_messages, only: run_log_unit
+      use core_messages, only: core_log, message_length, unwritten_line
       use convection_geometry, only: cz_base_fraction
       use physical_constants, only: ln10
       use star_info_lib, only: json
       type(star_info), intent(inout) :: s
 
-      double precision, intent(in) :: shell_mass(json)
-      logical, intent(in) :: convective_flag(json)
-      double precision, intent(inout) :: log10_radius(json), &
-           log10_pressure(json), log10_density(json), local_gravity(json)
+      real(dp), intent(in) :: shell_mass(:)
+      logical, intent(in) :: convective_flag(:)
+      real(dp), intent(inout) :: log10_radius(:), &
+           log10_pressure(:), log10_density(:), local_gravity(:)
       integer, intent(in) :: num_points, num_interior_points
-      double precision, intent(in) :: convective_velocity(json)
-      double precision, intent(in) :: radiative_gradient(json), &
-           adiabatic_gradient(json)
-      double precision, intent(out) :: radius_at_bcz
+      real(dp), intent(in) :: convective_velocity(:)
+      real(dp), intent(in) :: radiative_gradient(:), &
+           adiabatic_gradient(:)
+      real(dp), intent(out) :: radius_at_bcz
       integer, intent(inout) :: ierr
 ! --- locals ---
 ! The nodes and values of the four-point cubic splines.
-      double precision :: spline_x_delta(4), spline_x_radius(4), &
+      real(dp) :: spline_x_delta(4), spline_x_radius(4), &
            spline_y_velocity(4), spline_y_pscale(4), &
            spline_deriv(4)
       logical :: fully_convective_flag, surface_cz_deep_enough
@@ -146,12 +146,12 @@ subroutine turnover_from_interior_new(s, shell_mass, convective_flag, log10_radi
       logical :: in_radiative_zone
       integer :: core_cz_top_index, cz_base_index, upper_cz_base_index, &
            index_gap, cz_top_index
-      double precision :: mass_at_cz_top, mass_at_cz_bottom
-      double precision :: dd2, dd1, interp_fraction
-      double precision :: pressure_scale_height2, radius_test2, val_test
-      double precision :: pressure_scale_height1, radius_test1
-      double precision :: pressure_scale_height, convective_velocity_bcz
-      double precision :: radius_top_cz, cz_width, radius_test
+      real(dp) :: mass_at_cz_top, mass_at_cz_bottom
+      real(dp) :: dd2, dd1, interp_fraction
+      real(dp) :: pressure_scale_height2, radius_test2, val_test
+      real(dp) :: pressure_scale_height1, radius_test1
+      real(dp) :: pressure_scale_height, convective_velocity_bcz
+      real(dp) :: radius_top_cz, cz_width, radius_test
       logical :: spline_taucz_done
 
 ! The extent of the surface convection zone. The search runs outward
@@ -168,7 +168,7 @@ subroutine turnover_from_interior_new(s, shell_mass, convective_flag, log10_radi
       call scan_for_cz_base_from_below()
 ! A scan that runs off the top finds either a fully convective star or
 ! a radiative envelope (perhaps over a convective core).
-      if (i .gt. num_points .and. in_radiative_zone) then ! radiative envelope
+      if (i > num_points .and. in_radiative_zone) then ! radiative envelope
          fully_convective_flag = .false.
          surface_cz_deep_enough = .false.
          cz_base_index = num_points
@@ -182,13 +182,13 @@ subroutine turnover_from_interior_new(s, shell_mass, convective_flag, log10_radi
 ! few convective shells just above the core (less than one dex in
 ! pressure from the core's top) are skipped. The guard on positive
 ! indices avoids a runtime error (KC 2025-05-30).
-      if (cz_base_index .gt. 0 .and. core_cz_top_index .gt. 0) then
-         if (num_points.ne.num_interior_points .and. &
-              log10_pressure(core_cz_top_index)-log10_pressure(cz_base_index).lt.1) then
+      if (cz_base_index > 0 .and. core_cz_top_index > 0) then
+         if (num_points /= num_interior_points .and. &
+              log10_pressure(core_cz_top_index)-log10_pressure(cz_base_index) < 1) then
             search_start_index = cz_base_index+1
             cycle search
-         endif
-      endif
+         end if
+      end if
 ! The zone must be at least three shells thick; a thinner one is likely
 ! a single convective shell deep in the interior, and the search
 ! restarts above it.
@@ -198,9 +198,9 @@ subroutine turnover_from_interior_new(s, shell_mass, convective_flag, log10_radi
             search_start_index = cz_base_index+1
          else
             search_start_index = cz_base_index+2
-         endif
+         end if
          cycle search
-      endif
+      end if
       call assess_surface_cz_depth()
       end if
 
@@ -212,7 +212,7 @@ subroutine turnover_from_interior_new(s, shell_mass, convective_flag, log10_radi
 !        Several cells in a mostly radiative envelope, or no spline
 !        result, take the bottom cell's crossing time.
          spline_taucz_done = .false.
-         if (index_gap.eq.0) then
+         if (index_gap == 0) then
             call time_scale_height_above_base()
             if (ierr /= 0) return
          end if
@@ -225,13 +225,13 @@ subroutine turnover_from_interior_new(s, shell_mass, convective_flag, log10_radi
       else
          s%convective_turnover_timescale = 0.0d0
          radius_at_bcz = 0.0
-      endif
+      end if
 !     A timescale above 1e20 s means the zone found lies deep in the
 !     interior: search again above its base.
-      if (s%convective_turnover_timescale.gt.1.0d20) then
+      if (s%convective_turnover_timescale > 1.0d20) then
          search_start_index = cz_base_index + 1
          cycle search
-      endif
+      end if
       exit search
       end do search
       return
@@ -250,7 +250,7 @@ subroutine scan_for_cz_base_from_below()
          if (.not.in_radiative_zone.and..not.convective_flag(i)) then
             core_cz_top_index = i-1
             in_radiative_zone = .true.
-         endif
+         end if
          if (in_radiative_zone.and.convective_flag(i)) exit
       end do
 end subroutine scan_for_cz_base_from_below
@@ -261,7 +261,7 @@ end subroutine scan_for_cz_base_from_below
 ! surface down), and the index gap between them. A fully convective star
 ! has both at the center.
 subroutine find_cz_bases()
-      if (i .gt. num_points) then ! fully convective
+      if (i > num_points) then ! fully convective
          fully_convective_flag = .true.
          surface_cz_deep_enough = .true.
          i = 1
@@ -274,7 +274,7 @@ subroutine find_cz_bases()
       do j = num_points-1,1,-1
          if (convective_flag(j+1) .and. .not.convective_flag(j)) exit
       end do
-      endif
+      end if
       cz_base_index = i
       upper_cz_base_index = j + 1
       index_gap = upper_cz_base_index-cz_base_index
@@ -286,26 +286,26 @@ end subroutine find_cz_bases
 subroutine assess_surface_cz_depth()
 ! On an interior-only walk, take the uppermost zone's base and treat the
 ! zone as unique.
-      if (index_gap.ne.0.and.num_points.eq.num_interior_points) then
+      if (index_gap /= 0.and.num_points == num_interior_points) then
          cz_base_index = upper_cz_base_index
          index_gap = 0
-      endif
+      end if
 ! The masses at the top of the uppermost convection zone (the outermost
 ! point) and at its base (midway between the base point and the one
 ! below).
       mass_at_cz_top = shell_mass(num_points)
-      if (upper_cz_base_index.gt.1) then
+      if (upper_cz_base_index > 1) then
          mass_at_cz_bottom = 0.5d0*(shell_mass(upper_cz_base_index)+shell_mass(upper_cz_base_index-1))
       else
          mass_at_cz_bottom = 0.0d0
-      endif
+      end if
 ! surface_cz_deep_enough (legacy LCZSUR): a surface convection zone deep
 ! enough for angular-momentum loss exists; the threshold is any mass.
-      if ((mass_at_cz_top-mass_at_cz_bottom)/s%solar_mass_cgs.gt.0.0d0) then
+      if ((mass_at_cz_top-mass_at_cz_bottom)/s%solar_mass_cgs > 0.0d0) then
          surface_cz_deep_enough = .true.
       else
          surface_cz_deep_enough= .false.
-      endif
+      end if
 end subroutine assess_surface_cz_depth
 
 ! ---------------------------------------------------------------
@@ -326,7 +326,7 @@ subroutine locate_cz_base_radius()
          interp_fraction = cz_base_fraction(dd2, dd1)
          radius_at_bcz = log10_radius(cz_base_index-1)+interp_fraction* &
               (log10_radius(cz_base_index)-log10_radius(cz_base_index-1))
-      endif
+      end if
       radius_at_bcz = exp(ln10*radius_at_bcz)
 end subroutine locate_cz_base_radius
 
@@ -335,12 +335,13 @@ end subroutine locate_cz_base_radius
 ! tau = H_p/v_c, with H_p = P/(rho g) and v_c splined at the point where
 ! r - r_bcz = H_p.
 subroutine time_scale_height_above_base()
+      character(len=message_length) :: lines(1)
 ! H_p at the base point, and its distance above the base minus H_p.
       pressure_scale_height2 = exp(ln10*(log10_pressure(cz_base_index)- &
            log10_density(cz_base_index)))/local_gravity(cz_base_index)
       radius_test2 = exp(ln10*log10_radius(cz_base_index))-radius_at_bcz
       val_test = radius_test2 - pressure_scale_height2
-      if (val_test.gt.0.0) then
+      if (val_test > 0.0) then
 ! The innermost convective point already lies more than H_p above the
 ! base: take H_p/v_c there. This leaves spline_taucz_done false, so
 ! time_bottom_cell_crossing runs next and overwrites the result.
@@ -356,11 +357,11 @@ subroutine time_scale_height_above_base()
             radius_test2 = exp(ln10*log10_radius(k))-radius_at_bcz
             val_test = radius_test2 - pressure_scale_height2
 !              The first point where r - r_bcz exceeds the local H_p.
-            if (val_test.gt.0.0) then
+            if (val_test > 0.0) then
 !                 Shift the stencil outward when k is the second
 !                 convective point, so that it stays above the base.
                kk = k
-               if (k.eq.cz_base_index+1) kk = k+1
+               if (k == cz_base_index+1) kk = k+1
 !                 Keep the four points kk-2..kk+1 inside the model
 !                 (a zone in the top shells would reach past it).
                kk = max(3, min(kk, num_points-1))
@@ -381,7 +382,9 @@ subroutine time_scale_height_above_base()
                call natural_spline(spline_x_delta, spline_y_velocity, 4, spline_deriv)
                call splint(spline_x_delta, spline_y_velocity, 4, spline_deriv,0.0d0,convective_velocity_bcz, ierr)
                if (ierr /= 0) then
-                  write(run_log_unit,*) 'splint: '//numerics_status_text(ierr)
+                  lines = unwritten_line
+                  write(lines,*) 'splint: '//numerics_status_text(ierr)
+                  call core_log(lines)
                   return
                end if
                spline_y_pscale(1) = exp(ln10*(log10_pressure(kk-2)-log10_density(kk-2)))/local_gravity(kk-2)
@@ -391,29 +394,32 @@ subroutine time_scale_height_above_base()
                call natural_spline(spline_x_delta, spline_y_pscale, 4, spline_deriv)
                call splint(spline_x_delta, spline_y_pscale, 4, spline_deriv,0.0d0,pressure_scale_height, ierr)
                if (ierr /= 0) then
-                  write(run_log_unit,*) 'splint: '//numerics_status_text(ierr)
+                  lines = unwritten_line
+                  write(lines,*) 'splint: '//numerics_status_text(ierr)
+                  call core_log(lines)
                   return
                end if
 ! tau = H_p/v_c.
                s%convective_turnover_timescale = pressure_scale_height/convective_velocity_bcz
                spline_taucz_done = .true.
                exit
-            endif
+            end if
          end do
-      endif
+      end if
 end subroutine time_scale_height_above_base
 
 ! ---------------------------------------------------------------
 ! Without that spline: the crossing time of the bottom convection cell,
 ! tau = width/v_c, with v_c splined at the cell's middle.
 subroutine time_bottom_cell_crossing()
+      character(len=message_length) :: lines(1)
 ! Reached when one H_p above the base lies outside the star, when
 ! several convection cells sit in the radiative envelope, or when the
 ! innermost point already lay above one H_p. First the cell's upper
 ! edge: the last convective point before a radiative one.
       do k = cz_base_index,num_points-1,1
          if (.not.convective_flag(k))exit
-      enddo
+      end do
       cz_top_index = k-1
 ! The top of the cell by linear interpolation in log r to the zero of
 ! gradr - grada.
@@ -427,13 +433,13 @@ subroutine time_bottom_cell_crossing()
 ! The first point above the cell's middle, r_bcz + width/2.
       radius_test = log10(radius_at_bcz + 0.5*cz_width)
       do k = cz_base_index,cz_top_index+1,1
-         if (log10_radius(k).gt.radius_test) exit
-      enddo
+         if (log10_radius(k) > radius_test) exit
+      end do
       radius_test = exp(ln10*radius_test)
 !           Shift the stencil outward when k is the second convective
 !           point, so that it stays above the base.
       kk = k
-      if (k.eq.cz_base_index+1) kk = k+1
+      if (k == cz_base_index+1) kk = k+1
 ! Keep the four points kk-2..kk+1 inside the model.
       kk = max(3, min(kk, num_points-1))
 ! v_c at the middle by a natural cubic spline in r through four points.
@@ -448,7 +454,9 @@ subroutine time_bottom_cell_crossing()
       call natural_spline(spline_x_radius, spline_y_velocity, 4, spline_deriv)
       call splint(spline_x_radius, spline_y_velocity, 4, spline_deriv,radius_test,convective_velocity_bcz, ierr)
       if (ierr /= 0) then
-         write(run_log_unit,*) 'splint: '//numerics_status_text(ierr)
+         lines = unwritten_line
+         write(lines,*) 'splint: '//numerics_status_text(ierr)
+         call core_log(lines)
          return
       end if
 ! tau = width/v_c.

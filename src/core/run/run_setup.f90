@@ -85,7 +85,7 @@ end subroutine set_run_plan_envelope_z
 !     solar_radius_cgs
 subroutine set_up_constants_and_tables(s, ierr)
       use settings_install, only: install_run_settings
-      use physical_constants
+      use physical_constants, only: cgl, ln10, log10_newton_g
       use math_lib
       implicit none
       type(star_info), intent(inout) :: s

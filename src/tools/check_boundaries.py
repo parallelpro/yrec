@@ -1237,6 +1237,16 @@ KERNEL_FILES = [
     "atm/t_tau_relations.f90",
     "atm/tables/kurucz_atmosphere.f90",
     "atm/tables/allard_atmosphere.f90",
+    # core's model/, run/ and diagnostics/ (round 2, agent M): the
+    # computations whose messages go through core_messages -- the shell
+    # boundaries, the rescaling, the calibrations' checks, the observables,
+    # the turnover time and the stitched model
+    "core/model/shell_boundaries.f90",
+    "core/model/model_rescaling.f90",
+    "core/run/calibration.f90",
+    "core/diagnostics/observables.f90",
+    "core/diagnostics/turnover_timescale.f90",
+    "core/diagnostics/stitched_model.f90",
 ]
 
 # Today's covered files that still print, read tables or stop, each with

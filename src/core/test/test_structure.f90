@@ -149,11 +149,7 @@ subroutine load_deck_model(path)
       star%requested_log_fit_point_mass_fraction = star%card_log_fit_point_mass_fraction(1)
       star%total_angular_momentum = 0.0d0
       star%total_rotational_ke = 0.0d0
-      call read_starting_model(star, star%timestep_yr, star%dt, chosen_dt, star%triangle_orientation, &
-           ikut_flag, star%stored_vertex_index, star%model_diverged_flag, &
-           star%recompute_envelope_triangle, star%current_card, &
-           star%total_angular_momentum, star%total_rotational_ke, &
-           convective_velocity, ierr)
+      call read_starting_model(star, ierr)
       if (ierr /= 0) call die('read_starting_model')
 end subroutine load_deck_model
 
