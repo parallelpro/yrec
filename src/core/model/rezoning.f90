@@ -38,21 +38,22 @@ contains
 !      mesh and its shell masses set (the regridding kernels); for
 !      rotating models omega re-derived from j and the total angular
 !      momentum and rotational kinetic energy re-totalled.
-! envelope_store_index: the envelope-triangle vertex whose integration
-! stored its state where T reached envelope_store_log_temperature (0 for
-! none), used when a point is added at the surface. point_reset_flag: set
-! when outer points were deleted or added. h_shell_bot_index,
-! h_shell_active: the base of the H-burning shell and whether there is
-! one. total_angular_momentum, total_rotational_ke: re-totalled on the
-! new mesh (rotating models). ierr /= 0 on failure.
+! From the star: stored_vertex_index, the envelope-triangle vertex whose
+! integration stored its state where T reached
+! envelope_store_log_temperature (0 for none), used when a point is
+! added at the surface; h_shell_bot_index and has_h_shell, the base of
+! the H-burning shell and whether there is one. To the star:
+! reset_triangle, set when outer points were deleted or added;
+! total_angular_momentum and total_rotational_ke, re-totalled on the new
+! mesh (rotating models). ierr /= 0 on failure.
 !   star reads: conv_vel, cp, disk_gate_age_gyr, dlnrho_dlnt,
 !     eps_channels, eps_total, fit_point_logP, fit_point_logR, grada,
-!     gradr, gradT, kinematic_viscosity, log_Teff, log_total_mass, mu,
-!     opacity_zone, physics%chi_grid_scale,
-!     physics%envelope_overshoot_active, physics%rezone_env_logt0,
-!     physics%rezone_env_logt1, physics%rotation_active,
-!     physics%use_extended_composition, stored_envelope_state,
-!     thermal_diffusivity
+!     gradr, gradT, h_shell_bot_index, has_h_shell, kinematic_viscosity,
+!     log_Teff, log_total_mass, mu, opacity_zone,
+!     physics%chi_grid_scale, physics%envelope_overshoot_active,
+!     physics%rezone_env_logt0, physics%rezone_env_logt1,
+!     physics%rotation_active, physics%use_extended_composition,
+!     stored_envelope_state, stored_vertex_index, thermal_diffusivity
 !   star writes: am_transport_convective_flag, conv_vel_start,
 !     convective_flag, convective_flag_start, core_cz_top_index,
 !     cp_start, deuterium_burning_rate_start, dln_luminosity_dt,
@@ -67,12 +68,11 @@ contains
 !     logRho_start, logT, logT_start, luminosity_lsun,
 !     luminosity_lsun_start, m, mean_gravity, mean_gravity_start,
 !     mean_radius, mean_radius_start, mu_start, nz, omega, omega_start,
-!     opacity_zone_start, surface_hydrogen_fraction,
+!     opacity_zone_start, reset_triangle, surface_hydrogen_fraction,
 !     surface_luminosity_lsun_start, surface_metal_fraction,
-!     thermal_diffusivity_start, xa, xa_start
-subroutine rezone(s, envelope_store_index, point_reset_flag, &
-     h_shell_bot_index, h_shell_active, total_angular_momentum, &
-     total_rotational_ke, ierr)
+!     thermal_diffusivity_start, total_angular_momentum,
+!     total_rotational_ke, xa, xa_start
+subroutine rezone(s, ierr)
       use am_regions, only: am_convective_regions
       use omega_profile, only: omega_from_j
       use moments_of_inertia, only: zone_moments_of_inertia
@@ -93,13 +93,6 @@ subroutine rezone(s, envelope_store_index, point_reset_flag, &
       implicit none
       type(star_info), intent(inout) :: s
       integer :: jerr_gate
-
-      integer, intent(in) :: envelope_store_index
-      logical, intent(out) :: point_reset_flag
-      integer, intent(in) :: h_shell_bot_index
-      logical, intent(in) :: h_shell_active
-      double precision, intent(inout) :: total_angular_momentum, &
-           total_rotational_ke
 
       double precision :: point_spacing_max(4)
 ! flag_point(1:flag_count): the flagged points, at most max_flag_points.
@@ -164,7 +157,7 @@ subroutine rezone(s, envelope_store_index, point_reset_flag, &
 
       ierr = 0
 
-      point_reset_flag = .false.
+      s%reset_triangle = .false.
 ! The number of species carried: 11, or 15 with the extended composition.
       num_species_tracked = 11
       if (s%physics%use_extended_composition) num_species_tracked = 15
@@ -188,7 +181,7 @@ contains
 ! tenv0 < log T < tenv1. If it is cooler than tenv0, the outer points
 ! down to the first one hotter than tenv0 are deleted; if it is hotter
 ! than tenv1 and a stored envelope state exists, one point is added
-! outside it. Either sets point_reset_flag (and star%log_fit_point_mass_fraction); ierr if the
+! outside it. Either sets star%reset_triangle (and star%log_fit_point_mass_fraction); ierr if the
 ! whole model is cooler than tenv0.
 subroutine check_envelope_temperature_range
       character(len=message_length) :: lines(4)
@@ -203,7 +196,7 @@ subroutine check_envelope_temperature_range
    10     format(' OUTER POINTS DELETED OLD M =',I5,'  NEW M =',I5)
              s%nz = i
              s%log_fit_point_mass_fraction = s%log_mass(s%nz) - s%log_total_mass
-             point_reset_flag = .true.
+             s%reset_triangle = .true.
              exit
           endif
        end do
@@ -224,22 +217,21 @@ subroutine check_envelope_temperature_range
 ! with Delta log T = Delta log P/4, L and the composition copied, and
 ! log rho = log P - log T - 8 (a rough ideal-gas estimate).
       else if (s%logT(s%nz).gt.s%physics%rezone_env_logt1.and. &
-           envelope_store_index.ne.0) then
+           s%stored_vertex_index.ne.0) then
        s%nz = s%nz + 1
        s%log_fit_point_mass_fraction = s%stored_envelope_state(4)
        s%log_mass(s%nz) = s%log_total_mass + s%log_fit_point_mass_fraction
        s%logP(s%nz) = s%logP(s%nz-1) + &
-            (s%stored_envelope_state(1) - s%fit_point_logP(envelope_store_index))
+            (s%stored_envelope_state(1) - s%fit_point_logP(s%stored_vertex_index))
        s%logT(s%nz) = s%logT(s%nz-1) + &
             (s%stored_envelope_state(1) - &
-            s%fit_point_logP(envelope_store_index))*0.250D0
+            s%fit_point_logP(s%stored_vertex_index))*0.250D0
        s%logR(s%nz) = s%logR(s%nz-1) + &
-            (s%stored_envelope_state(3) - s%fit_point_logR(envelope_store_index))
+            (s%stored_envelope_state(3) - s%fit_point_logR(s%stored_vertex_index))
        s%luminosity_lsun(s%nz) = s%luminosity_lsun(s%nz-1)
        do i = 1,num_species_tracked
           s%xa(i,s%nz) = s%xa(i,s%nz-1)
        end do
-       call core_log(lines)
        s%logRho(s%nz) = s%logP(s%nz) - &
             s%logT(s%nz) - 8.0D0
        j = s%nz - 1
@@ -248,8 +240,9 @@ subroutine check_envelope_temperature_range
             s%logT(j),s%logR(j),s%nz,s%log_mass(s%nz), &
             s%logP(s%nz),s%logT(s%nz), &
             s%logR(s%nz)
+       call core_log(lines)
    60    format(' OUTER POINT ADDED',I5,F15.10,'  PTR',3F10.6)
-       point_reset_flag = .true.
+       s%reset_triangle = .true.
       endif
 end subroutine check_envelope_temperature_range
 
@@ -278,8 +271,8 @@ subroutine flag_fixed_points
        call append_flag_point(s%envelope_cz_bottom_index)
       endif
 ! The point just below the H-burning shell.
-      if (h_shell_active.and.h_shell_bot_index.gt.1) then
-       call append_flag_point(h_shell_bot_index - 1)
+      if (s%has_h_shell.and.s%h_shell_bot_index.gt.1) then
+       call append_flag_point(s%h_shell_bot_index - 1)
       endif
       do i = 2,s%nz
 ! A jump in X between neighbouring shells,
@@ -605,7 +598,6 @@ subroutine add_points_for_x_jumps
 ! The number of points to insert. Shift the points from j outward up by
 ! num_new_points, then fill the interval below j evenly in log m.
          num_new_points = int(delta_x_over_max)
-            call core_stdout(lines)
          point_insert_spacing = (new_log_mass(j)-new_log_mass(j-1))/ &
               dfloat(num_new_points+1)
 ! More points than the arrays hold: stop with ierr, as
@@ -614,6 +606,7 @@ subroutine add_points_for_x_jumps
             lines = unwritten_line
             write(lines,'(a,i6,a,i6)') ' DESIRED NUMBER OF POINTS ', &
                  working_num_zones+num_new_points, ' EXCEEDS JSON ', json
+            call core_stdout(lines)
             ierr = 1
             return
          end if
@@ -675,7 +668,6 @@ subroutine add_points_for_z_jumps
          delta_z_over_max = (z_new(j-1) - z_new(j))/point_spacing_max(4)
 ! The number of points to insert; shift and fill as for X.
          num_new_points = int(delta_z_over_max)
-            call core_stdout(lines)
          point_insert_spacing = (new_log_mass(j)-new_log_mass(j-1))/ &
               dfloat(num_new_points+1)
 ! More points than the arrays hold: stop with ierr, as
@@ -684,6 +676,7 @@ subroutine add_points_for_z_jumps
             lines = unwritten_line
             write(lines,'(a,i6,a,i6)') ' DESIRED NUMBER OF POINTS ', &
                  working_num_zones+num_new_points, ' EXCEEDS JSON ', json
+            call core_stdout(lines)
             ierr = 1
             return
          end if
@@ -1025,15 +1018,15 @@ subroutine retally_angular_momentum
 ! The totals before and after the rezone, a solver diagnostic.
        if (solver_diagnostics()) then
           lines = unwritten_line
-          write(lines,1120)total_angular_momentum, &
-               sum_angular_momentum,total_rotational_ke,sum_rotational_ke
+          write(lines,1120)s%total_angular_momentum, &
+               sum_angular_momentum,s%total_rotational_ke,sum_rotational_ke
           call core_log(lines)
        end if
  1120    format(1X,'TOTAL J OF STAR - PREVIOUS ',1PE21.13,' NEW ', &
      1PE21.13/' TOTAL ROTATIONAL K.E. OF STAR-PREVIOUS ',1PE21.13, &
      ' NEW ',1PE21.13)
-       total_angular_momentum = sum_angular_momentum
-       total_rotational_ke = sum_rotational_ke
+       s%total_angular_momentum = sum_angular_momentum
+       s%total_rotational_ke = sum_rotational_ke
 ! The start-of-step rotation state, for the angular momentum transport.
        do i = 1,s%nz
           s%omega_start(i) = s%omega(i)

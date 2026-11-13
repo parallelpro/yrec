@@ -18,8 +18,8 @@ contains
 !----------------------------------------------------------------------
 ! read_starting_model (legacy starin)
 !----------------------------------------------------------------------
-! Sets up the starting model of run card run_index, at the start of
-! every card, in named steps:
+! Sets up the starting model of run card run_index (the star's
+! current_card), at the start of every card, in named steps:
 !   acquire_starting_model      read the model file (.mod, YREC7 or
 !                               MODEL2 layout) when card_from_starting_model is
 !                               set, else reuse the model in memory;
@@ -36,15 +36,15 @@ contains
 ! Then shell_physics, am_convective_regions and
 ! compute_turnover_timescale give the gradients, opacities, convection
 ! zones and turnover time of the starting model.
-! Called with model_failed_flag set (a step failed to converge), it
-! only stops the run with ierr = 1.
+! Called with the star's model_diverged_flag set (a step failed to
+! converge), it only stops the run with ierr = 1.
 !
-! Arguments: timestep_yr, delta_time (s) and delta_time_abs = |delta_time|
-! come from the model file; triangle_orientation is set to 1 after every
-! read (reset_state_after_read), as the F77 STARIN set FTRI = 1, whatever
-! orientation the file's envelope records give; envelope_recomputed_flag
-! is set when the envelope must be recomputed; total_angular_momentum
-! and total_rotational_ke return the rotating model's totals.
+! What it sets on the star besides the model: timestep_yr and dt (s)
+! from the model file; triangle_orientation, set to 1 after every read
+! (reset_state_after_read), as the F77 STARIN set FTRI = 1, whatever
+! orientation the file's envelope records give; recompute_envelope_triangle,
+! set when the envelope must be recomputed; and total_angular_momentum and
+! total_rotational_ke, the rotating model's totals.
 !
 ! Naming: the star% arrays use henyey_iterate's names (luminosity_lsun
 ! is the linear L/Lsun; m is the unlogged mass coordinate and dm the
@@ -61,33 +61,32 @@ contains
 !     control%target_carbon_cno_fraction,
 !     control%target_nitrogen_cno_fraction,
 !     control%target_oxygen_cno_fraction, convective_turnover_timescale,
-!     envelope_cz_bottom_index, fit_point_move_requested,
-!     log10_solar_luminosity, log_L_lsun, log_Teff, mixing_length_alpha,
-!     model_number, photosphere_logP, physics%chi_grid_scale,
+!     current_card, envelope_cz_bottom_index, fit_point_move_requested,
+!     log10_solar_luminosity, log_L_lsun, log_Teff, log_total_mass,
+!     mixing_length_alpha, model_diverged_flag, model_number,
+!     photosphere_logP, physics%chi_grid_scale,
 !     physics%extend_core_inward, physics%initial_omega,
 !     physics%mixture_weights_seed, physics%rotation_active,
 !     physics%set_initial_omega, physics%spot_filling_factor,
 !     physics%spot_temp_contrast, physics%use_extended_composition
 !   star writes: am_transport_convective_flag, convective_flag,
-!     convective_turnover_timescale_prev, core_mass_reduction, dm,
+!     convective_turnover_timescale_prev, core_mass_reduction, dm, dt,
 !     env_points, envelope_he3_fraction, envelope_helium_fraction,
 !     envelope_hydrogen_fraction, envelope_inverse_atomic_weight,
 !     envelope_metal_fraction, envelope_metals_no_cno,
 !     envelope_number_fractions, envelope_overshoot_bottom_index,
-!     envelope_overshoot_top_index, envelope_radius_rsun, eta_squared,
-!     fp_rot, ft_rot, i_rot, j_rot, kinetic_energy_rot,
-!     log_fit_point_mass_fraction, log_mass, log_Teff_start,
-!     log_total_mass, logP, logP_start, logR, logR_start, logRho, logT,
+!     envelope_overshoot_top_index, eta_squared, fp_rot, ft_rot, i_rot,
+!     j_rot, kinetic_energy_rot, log_fit_point_mass_fraction, log_mass,
+!     log_Teff_start, logP, logP_start, logR, logR_start, logRho, logT,
 !     logT_start, luminosity_lsun, luminosity_lsun_start, m,
 !     mean_gravity, mean_radius, num_core_points_added, nz, omega,
-!     omega_start, photosphere_logP_prev,
-!     requested_log_fit_point_mass_fraction, star_mass,
+!     omega_start, photosphere_logP_prev, recompute_envelope_triangle,
+!     requested_log_fit_point_mass_fraction, stored_vertex_index,
 !     substep_time_fraction, surface_hydrogen_fraction,
-!     surface_luminosity_lsun_start, surface_metal_fraction, xa
-subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
-     triangle_orientation, ikut_flag, stored_vertex_index, model_failed_flag, &
-     envelope_recomputed_flag, run_index, &
-     total_angular_momentum, total_rotational_ke, convective_velocity, ierr)
+!     surface_luminosity_lsun_start, surface_metal_fraction,
+!     timestep_yr, total_angular_momentum, total_rotational_ke,
+!     triangle_orientation, xa
+subroutine read_starting_model(s, ierr)
       use am_regions, only: am_convective_regions
       use moments_of_inertia, only: zone_moments_of_inertia
       use rotating_shape, only: rotation_shape_factors
@@ -114,17 +113,10 @@ subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
       type(star_info), intent(inout) :: s
       integer :: jerr_atm
 
-      double precision, intent(inout) :: timestep_yr
-      double precision, intent(inout) :: delta_time, delta_time_abs
-      double precision, intent(inout) :: triangle_orientation
-      integer, intent(out) :: ikut_flag
-      integer, intent(inout) :: stored_vertex_index
-      logical, intent(in) :: model_failed_flag
-      logical, intent(inout) :: envelope_recomputed_flag
-      integer, intent(in) :: run_index
-      double precision, intent(inout) :: total_angular_momentum, &
-           total_rotational_ke
-      double precision, intent(out) :: convective_velocity
+! the card (the star's current_card), and the convective velocity of
+! the new last shell (set_new_last_shell_convection)
+      integer :: run_index
+      double precision :: convective_velocity
 ! the surface mixture, from the controls' weights to X_i/A_i (first card)
       double precision :: species_mix_weights(n_mix_species)
 
@@ -197,10 +189,11 @@ subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
       integer, intent(out) :: ierr
 
       ierr = 0
+      run_index = s%current_card
 
 ! model_failed_flag (legacy LARGE) means the last model failed to
 ! converge: stop the run.
-      if (model_failed_flag) then
+      if (s%model_diverged_flag) then
           lines = unwritten_line
           write(lines,1000)
           call core_log(lines)
@@ -217,7 +210,6 @@ subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
       endif
 
 ! The model file is on run_files' starting_model_unit (legacy IFIRST).
-      ikut_flag = 0
       iread = starting_model_unit
 
 ! Initial value: no convective velocity.
@@ -261,7 +253,7 @@ subroutine read_starting_model(s, timestep_yr, delta_time, delta_time_abs, &
 ! between the step-start copies (*_prev) and the current values.
       call build_stitched_model(s, ierr)
       if (ierr /= 0) return
-      call compute_turnover_timescale(s, s%envelope_radius_rsun, ierr)
+      call compute_turnover_timescale(s, ierr)
       if (ierr /= 0) return
       s%convective_turnover_timescale_prev = s%convective_turnover_timescale
       s%photosphere_logP_prev = s%photosphere_logP
@@ -360,9 +352,8 @@ subroutine read_starting_model_file
       endif
 
 ! The timestep in s, and the log total mass.
-      timestep_yr = header%timestep_yr
-      delta_time = seconds_per_year*timestep_yr
-      delta_time_abs = dabs(delta_time)
+      s%timestep_yr = header%timestep_yr
+      s%dt = seconds_per_year*s%timestep_yr
 end subroutine read_starting_model_file
 
 ! ---------------------------------------------------------------
@@ -398,11 +389,11 @@ end subroutine check_model_against_controls
 ! Reset the store and trial-sign flags, require a fresh envelope, and
 ! take the surface X and Z from the outermost interior point.
 subroutine reset_state_after_read
-      stored_vertex_index = 0
-      triangle_orientation = 1.0d0
+      s%stored_vertex_index = 0
+      s%triangle_orientation = 1.0d0
 ! Recompute the envelope: the envelope triangle stored with the model
 ! may not be reliable.
-       envelope_recomputed_flag = .true.
+       s%recompute_envelope_triangle = .true.
 
 
 ! surface_hydrogen_fraction, surface_metal_fraction: the outermost point's X, Z.
@@ -680,9 +671,7 @@ subroutine rescale_and_refit_envelope
       use math_lib
       character(len=message_length) :: lines(4)
 
-      if (s%card_kind(run_index).ne.1) call rescale_model(s, s%luminosity_lsun, &
-           s%xa,s%log_mass,s%log_total_mass,s%nz,run_index, &
-           s%star_mass,s%convective_flag, ierr)
+      if (s%card_kind(run_index).ne.1) call rescale_model(s, ierr)
       if (ierr /= 0) return
 
 ! A once-through loop: exit leaves the envelope change early.
@@ -716,7 +705,7 @@ subroutine rescale_and_refit_envelope
           call append_envelope_as_shells
           if (ierr /= 0) return
        endif
-       envelope_recomputed_flag = .true.
+       s%recompute_envelope_triangle = .true.
        lines = unwritten_line
        write(lines,597)old_senv,s%log_fit_point_mass_fraction
        call core_log(lines)
@@ -1016,14 +1005,14 @@ subroutine initialize_rotation_state
           rotational_ke_sum = rotational_ke_sum + s%kinetic_energy_rot(i)
        end do
        lines = unwritten_line
-       write(lines,560)total_angular_momentum, &
-            angular_momentum_sum,total_rotational_ke,rotational_ke_sum
+       write(lines,560)s%total_angular_momentum, &
+            angular_momentum_sum,s%total_rotational_ke,rotational_ke_sum
        call core_log(lines)
  560     format(1x,'TOTAL J OF STAR - PREVIOUS ',1pe21.13,' NEW ', &
               1pe21.13/1x,'TOTAL ROTATIONAL K.E. OF STAR - PREVIOUS ', &
               1pe21.13,' NEW ',1pe21.13)
-       total_angular_momentum = angular_momentum_sum
-       total_rotational_ke = rotational_ke_sum
+       s%total_angular_momentum = angular_momentum_sum
+       s%total_rotational_ke = rotational_ke_sum
       endif
 end subroutine initialize_rotation_state
 

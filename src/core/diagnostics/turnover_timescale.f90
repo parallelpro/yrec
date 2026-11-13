@@ -18,8 +18,8 @@ contains
 !----------------------------------------------------------------------
 ! The convective turnover timescale star%convective_turnover_timescale
 ! (s), one pressure scale height above the base of the surface
-! convection zone, and radius_at_bcz, the radius of that base (Rsun; 0
-! without a surface convection zone). It reads the stitched model
+! convection zone, and star%envelope_radius_rsun, the radius of that
+! base (Rsun; 0 without a surface convection zone). It reads the stitched model
 ! (core/diagnostics/stitched_model.f90), the converged interior followed
 ! by the fixed-step envelope integration, built once per step in
 ! evolve_step before compute_observables, and walks it as one structure
@@ -29,8 +29,8 @@ contains
 ! the values stored at the end of the previous step (the _prev copies).
 ! Called by read_starting_model and compute_observables.
 !   star reads: convective_flag, logP, nz, solar_mass_cgs, stitched
-!   star writes: convective_turnover_timescale
-subroutine compute_turnover_timescale(s, radius_at_bcz, ierr)
+!   star writes: convective_turnover_timescale, envelope_radius_rsun
+subroutine compute_turnover_timescale(s, ierr)
       use stitched_model, only: &
            ip_mass, ip_logR, ip_logRho, ip_logP, ip_mixing_type, ip_gradr, &
            ip_grada, ip_conv_vel
@@ -40,7 +40,6 @@ subroutine compute_turnover_timescale(s, radius_at_bcz, ierr)
       implicit none
       type(star_info), intent(inout) :: s
 
-      double precision, intent(out) :: radius_at_bcz
       integer, intent(out) :: ierr
 
       double precision :: combined_radius(json), combined_pressure(json), &
@@ -88,7 +87,7 @@ subroutine compute_turnover_timescale(s, radius_at_bcz, ierr)
       call turnover_from_interior_new(s, combined_mass, combined_convective_flag, &
            combined_radius, combined_pressure, combined_density, &
            combined_gravity, num_points, s%nz, combined_velocity, &
-           combined_grad1, combined_grad2, radius_at_bcz, ierr)
+           combined_grad1, combined_grad2, s%envelope_radius_rsun, ierr)
       if (ierr /= 0) return
 
       return

@@ -1,137 +1,134 @@
 !----------------------------------------------------------------------
 ! shell_boundaries
 !----------------------------------------------------------------------
-! Where the model's regions are (locate_shell_boundaries): the outer
-! edge of a convective core, the inner edge of the surface convection
-! zone, and the beginning, middle and end of a hydrogen-burning shell.
+! Where the model's regions are: the outer edge of a convective core,
+! the inner edge of the surface convection zone, and the beginning,
+! middle and end of a hydrogen-burning shell.
+!   find_shell_boundaries     the kernel: the profiles of X, L and the
+!                             convective flag in, the zone indices out
+!                             (no star);
+!   locate_shell_boundaries   the driver: the kernel on the star's model,
+!                             its results stored on the star.
+! model_rescaling calls the kernel on the model it is rescaling.
 module shell_boundaries
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use star_info_lib, only: star_info
       implicit none
       private
-      public :: locate_shell_boundaries
+      public :: locate_shell_boundaries, find_shell_boundaries
 
 contains
 
 ! ---------------------------------------------------------------
-!----------------------------------------------------------------------
-! findsh
-!----------------------------------------------------------------------
-! Modernized (free-form, readable names) 2026 as part of the YREC
-! readability refactor. Logic and numerics are unchanged from the
-! original findsh.f; only variable names, source form, and comment
-! style were updated. Validated against the Stage 0 regression suite
-! (examples/run_standard_solar_model).
-!
-! SR findsh locates the outer edge of a central convection zone and
-! the inner edge of a surface c.z. It also locates the beginning,
-! center, and end of a hydrogen-burning shell if applicable.
-! ** to be added **
-! locating the exact edges of central and surface c.z.'s and adding
-! points at the edges.
-!
-! input variables:
-! declared:
-!   composition : run of mass fraction of the various chemical species.
-!   luminosity : run of luminosity as a function of mass (solar units).
-!   is_convective : flag set t if a shell is convective.
-!   num_points : number of points in the model.
-! star%physics:
-!   atime(1) : user parameter; if x < atime(1) then the program considers
-!        the star to have a hydrogen-burning shell rather than a hydrogen-
-!        burning core.
-! local variables :
-!   luminosity_change_tol : the outer edge of the h-burning shell is defined
-!        as the point where the change in luminosity from one shell to the
-!        next is less than luminosity_change_tol.
-!   hydrogen_surface_tol : the outer edge of the h-burning shell is reached
-!        when x differs from the surface value by less than
-!        hydrogen_surface_tol regardless of the luminosity test.
-!
-! output variables :
-!   core_edge : outermost point in the convective core (1=no convective core)
-!   envelope_edge : innermost point in the surface c.z. (m=no surface c.z.)
-!   has_h_shell : flag set t if the program considers the model to have a
-!        hydrogen-burning shell.
-!   if has_h_shell=t then the following are computed :
-!   shell_begin : first shell with x > atime(1).
-!   shell_mid : first shell where x exceeds 1/2 the surface value.
-!   shell_end : last shell where l(i)-l(i-1) > luminosity_change_tol*l(num_points)
-!        or x is within hydrogen_surface_tol of the surface value.
-!   star reads: physics%timestep_factors
-!   star writes: none
-subroutine locate_shell_boundaries(s, composition, luminosity, is_convective, num_points, &
-     core_edge, envelope_edge, shell_begin, shell_end, shell_mid, &
-     has_h_shell)
-      use star_info_lib, only: json
+! The star's convective core, surface convection zone and hydrogen
+! shell (find_shell_boundaries on the model's X, L/Lsun and convective
+! flags; the shell's threshold is timestep_factors(itime_core_min)).
+!   star reads: convective_flag, luminosity_lsun, nz,
+!     physics%timestep_factors, xa
+!   star writes: core_cz_top_index, envelope_cz_bottom_index,
+!     h_shell_bot_index, h_shell_mid_index, h_shell_top_index,
+!     has_h_shell
+subroutine locate_shell_boundaries(s)
+      use star_info_lib, only: i_h1
       use control_slots, only: itime_core_min
-      implicit none
       type(star_info), intent(inout) :: s
 
-      double precision, intent(in) :: composition(15,json), luminosity(json)
-      logical, intent(in) :: is_convective(json)
+      call find_shell_boundaries(s%xa(i_h1,:), s%luminosity_lsun, s%convective_flag, s%nz, &
+           s%physics%timestep_factors(itime_core_min), s%core_cz_top_index, &
+           s%envelope_cz_bottom_index, s%h_shell_bot_index, s%h_shell_top_index, &
+           s%h_shell_mid_index, s%has_h_shell)
+end subroutine locate_shell_boundaries
+
+! ---------------------------------------------------------------
+! The region boundaries of a model of num_points points (1 at the
+! centre), from its hydrogen mass fraction h1, its luminosity (any
+! unit) and its convective flags:
+!   core_edge      the outermost point of the convective core (1 when
+!                  there is none);
+!   envelope_edge  the innermost point of the surface convection zone
+!                  (num_points when there is none);
+!   has_h_shell    whether the model burns hydrogen in a shell, that is,
+!                  whether the central X is at most x_core_min;
+! and, when it does (1 otherwise):
+!   shell_begin    one past the last point, counted from the centre,
+!                  with X <= x_core_min;
+!   shell_mid      one past the last point with X <= x_core_min or X at
+!                  most half the surface X;
+!   shell_end      the first point beyond those where
+!                  L(i) - L(i-1) < 1e-5 L(num_points), or where X is
+!                  within 1e-5 of the surface X (num_points if none).
+! A fully convective model (envelope_edge = 1) has core_edge = 1: the
+! nuclear timestep reads core_edge, and a convective core reaching the
+! surface would distort it.
+pure subroutine find_shell_boundaries(h1, luminosity, is_convective, num_points, &
+     x_core_min, core_edge, envelope_edge, shell_begin, shell_end, shell_mid, &
+     has_h_shell)
+      real(dp), intent(in) :: h1(:), luminosity(:)
+      logical, intent(in) :: is_convective(:)
       integer, intent(in) :: num_points
+      real(dp), intent(in) :: x_core_min
       integer, intent(out) :: core_edge, envelope_edge, shell_begin, &
            shell_end, shell_mid
       logical, intent(out) :: has_h_shell
 
-      double precision, parameter :: luminosity_change_tol = 1.0d-5, &
-           hydrogen_surface_tol = 1.0d-5
-      double precision :: half_surface_x, luminosity_end_threshold
+! The end of the shell: the luminosity's step falls below this fraction
+! of the surface luminosity, or X comes this close to the surface X.
+      real(dp), parameter :: luminosity_change_tol = 1.0e-5_dp, &
+           hydrogen_surface_tol = 1.0e-5_dp
+      real(dp) :: half_surface_x, luminosity_end_threshold
       integer :: i
-!ccc h-shell values
+
+! The hydrogen shell.
       shell_begin = 1
       shell_mid = 1
       shell_end = 1
       has_h_shell = .false.
-!  if central x below threshold then calculate h shell values
-      if(composition(1,1).le.s%physics%timestep_factors(itime_core_min)) then
-       has_h_shell = .true.
-       half_surface_x = 0.50d0*composition(1,num_points)
-       luminosity_end_threshold = luminosity_change_tol*luminosity(num_points)
-!  find beginning(shell_begin), middle(shell_mid) and end(shell_end) of h shell
-       do i = 1,num_points
-!          IF(HCOMP(1,I).LE.1.0D-10) THEN  ! Changed after discussion with Marc
-          if(composition(1,i).le.s%physics%timestep_factors(itime_core_min)) then ! to force consistency with above LLP 9/24/08
-             shell_begin = shell_begin+1
-             shell_mid = shell_mid+1
-          else if(composition(1,i).le.half_surface_x) then
-             shell_mid = shell_mid+1
-          else if(luminosity(i) - luminosity(i-1).lt.luminosity_end_threshold) then
-!               write(*,*)'luminosity criteria'
-             exit
-          else if(composition(1,num_points) - composition(1,i).lt.hydrogen_surface_tol) then
-!               write(*,*)'composition criteria'
-             exit
-          endif
-       end do
-       if (i > num_points) then
-       i = num_points
-       end if
+      if (h1(1) <= x_core_min) then
+         has_h_shell = .true.
+         half_surface_x = 0.5_dp*h1(num_points)
+         luminosity_end_threshold = luminosity_change_tol*luminosity(num_points)
+         do i = 1, num_points
+            if (h1(i) <= x_core_min) then
+               shell_begin = shell_begin + 1
+               shell_mid = shell_mid + 1
+            else if (h1(i) <= half_surface_x) then
+               shell_mid = shell_mid + 1
+            else if (luminosity(i) - luminosity(i-1) < luminosity_end_threshold) then
+               exit
+            else if (h1(num_points) - h1(i) < hydrogen_surface_tol) then
+               exit
+            end if
+         end do
+         if (i > num_points) then
+            i = num_points
+         end if
          shell_end = i
-      endif
-!ccc find boundary of central convection zone.
-      do i = 1,num_points
-       if(.not.is_convective(i)) exit
+      end if
+! The edge of the convective core.
+      do i = 1, num_points
+         if (.not. is_convective(i)) exit
       end do
-      if(i.gt.1) then
-       core_edge = i-1
+      if (i > 1) then
+         core_edge = i - 1
       else
-       core_edge = 1
-      endif
-!ccc find boundary of surface c.z.
-      do i = num_points,1,-1
-       if(.not.is_convective(i)) exit
+         core_edge = 1
+      end if
+! The base of the surface convection zone.
+      do i = num_points, 1, -1
+         if (.not. is_convective(i)) exit
       end do
-      if(i.lt.num_points) then
-       envelope_edge = i+1
+      if (i < num_points) then
+         envelope_edge = i + 1
       else
-       envelope_edge = num_points
-      endif
-!  for a fully convective star (envelope_edge=1),turn the convective core off(core_edge=1).
-!  this is done because core_edge is used in computing the nuclear timestep,
-!  and putting it at the surface does strange things.
-      if(envelope_edge.eq.1) core_edge = 1
-      return
-end subroutine locate_shell_boundaries
+         envelope_edge = num_points
+      end if
+      if (envelope_edge == 1) core_edge = 1
+end subroutine find_shell_boundaries
 
+! ---------------------------------------------------------------
+! Sources
+!   F77 FINDSH (git show 6cd56739:src/findsh.f). The shell's beginning
+!   is tested against timestep_factors(itime_core_min), the threshold of
+!   the core-burning criterion, rather than X <= 1e-10, for consistency
+!   with that criterion (LLP 9/24/08).
 end module shell_boundaries

@@ -134,10 +134,9 @@ end function converged_model_is_nan
 ! check_star_calibration protocol: iteration 1 only primes
 ! previous-model state, so the calibration comparison starts at
 ! iteration 2).
-!   star reads: age_gyr, card_kind, card_max_age_yr,
-!     control%calibrate_star_flag, current_card,
-!     just_passed_target_radius_flag, log_L_lsun, log_Teff,
-!     star_found_flag, termination_reason
+!   star reads: card_kind, card_max_age_yr, control%calibrate_star_flag,
+!     current_card, just_passed_target_radius_flag, star_found_flag,
+!     termination_reason
 !   star writes: none
 subroutine check_stop_conditions(s, model_iteration, step_status)
       type(star_info), intent(inout) :: s
@@ -146,7 +145,7 @@ subroutine check_stop_conditions(s, model_iteration, step_status)
 
       step_status = step_continue
 
-      if (reached_end_age(s, s%current_card)) then
+      if (reached_end_age(s)) then
          write(s%termination_reason,'(a,es10.3,a)') &
               'target age reached (', &
               s%card_max_age_yr(s%current_card), ' yr)'
@@ -154,7 +153,7 @@ subroutine check_stop_conditions(s, model_iteration, step_status)
          return
       end if
 
-      if (abundance_stop_triggered(s, s%current_card)) then
+      if (abundance_stop_triggered(s)) then
          step_status = step_kind_card_done
          return
       end if
@@ -175,8 +174,7 @@ subroutine check_stop_conditions(s, model_iteration, step_status)
 ! TEST IF MODEL IS NEAR DESIRED Teff AND L. IF NOT RESCALE AND TRY AGAIN.
       if (s%control%calibrate_star_flag .and. .not. s%star_found_flag) then
          if (mod(s%current_card,2).eq.0 .and. model_iteration.ne.1) then
-            call check_star_calibration(s, s%log_L_lsun, s%log_Teff, &
-                 s%age_gyr, s%current_card)
+            call check_star_calibration(s)
             if (s%just_passed_target_radius_flag) then
                step_status = step_leave_run_loop
             end if
@@ -241,15 +239,17 @@ logical function structure_limit_stop_triggered(s)
 end function structure_limit_stop_triggered
 
 ! ---------------------------------------------------------------
-! The current age is at (within 1 year of) the kind card's target
+! The current age is at (within 1 year of) the current card's target
 ! end age. Also used directly by evolve_step BEFORE the model is
 ! written, to keep the final model's saved timestep from being
 ! zeroed (that use runs earlier than check_stop_conditions can).
-!   star reads: age_gyr, card_max_age_yr, card_stops_active
+!   star reads: age_gyr, card_max_age_yr, card_stops_active,
+!     current_card
 !   star writes: none
-logical function reached_end_age(s, nk)
+logical function reached_end_age(s)
       type(star_info), intent(inout) :: s
-      integer, intent(in) :: nk
+      integer :: nk
+      nk = s%current_card
       reached_end_age = s%card_stops_active(nk) .and. &
            s%card_max_age_yr(nk).gt.0.0d0 .and. &
            (s%card_max_age_yr(nk)-s%age_gyr*1.0d9).le.1.0d0
@@ -258,13 +258,13 @@ end function reached_end_age
 ! ---------------------------------------------------------------
 ! Post-step trigger check: has any configured central-abundance stop
 ! been crossed? Prints the historical CENTRAL <el> message per hit.
-!   star reads: card_stops_active, xa
+!   star reads: card_stops_active, current_card, xa
 !   star writes: termination_reason
-logical function abundance_stop_triggered(s, nk)
+logical function abundance_stop_triggered(s)
       type(star_info), intent(inout) :: s
-      integer, intent(in) :: nk
-      integer :: k
+      integer :: k, nk
       character(len=message_length) :: lines(1)
+      nk = s%current_card
       abundance_stop_triggered = .false.
       do k = 1, nstops
          if (s%card_stops_active(nk) .and. stop_value(s, k,nk).gt.0.0d0 .and. &
@@ -288,13 +288,13 @@ end function abundance_stop_triggered
 ! with the historical STARTING <el> ... STOP DISABLED message to the
 ! terminal and the run log. The message reports the disarmed
 ! (negative) threshold, as the original did.
-!   star reads: card_stops_active, xa
+!   star reads: card_stops_active, current_card, xa
 !   star writes: termination_reason
-subroutine init_stop_conditions(s, nk)
+subroutine init_stop_conditions(s)
       type(star_info), intent(inout) :: s
-      integer, intent(in) :: nk
-      integer :: k
+      integer :: k, nk
       character(len=message_length) :: lines(1)
+      nk = s%current_card
 ! default end-of-card reason; overridden by whichever stop fires
 ! (read by run_log's end-of-run summary)
       s%termination_reason = 'model budget exhausted'

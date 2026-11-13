@@ -277,11 +277,11 @@ end subroutine locate_surface_cz_base
 ! also overwrites star%envelope_radius_rsun with its own base radius.
 !   star reads: convective_turnover_timescale, photosphere_logP
 !   star writes: convective_turnover_timescale_prev,
-!     envelope_radius_rsun, photosphere_logP_prev
+!     photosphere_logP_prev
 subroutine refresh_turnover_timescale(s, ierr)
       type(star_info), intent(inout) :: s
       integer, intent(out) :: ierr
-      call compute_turnover_timescale(s, s%envelope_radius_rsun, ierr)
+      call compute_turnover_timescale(s, ierr)
       s%convective_turnover_timescale_prev = &
            s%convective_turnover_timescale
       s%photosphere_logP_prev = s%photosphere_logP

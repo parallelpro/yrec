@@ -720,19 +720,18 @@ end subroutine atmosphere_value
 !     opacity_zone, pulse_deps_dlnrho, pulse_deps_dlnt,
 !     pulse_dlnkap_dlnrho, pulse_dlnkap_dlnt, pulse_dlnrho_dlnt,
 !     pulse_electron_mean_weight_inverse, pulse_specific_heat,
-!     solar_luminosity_cgs, stitched, xa
-!   star writes: none
-subroutine build_pulse_points(s, pts)
+!     solar_luminosity_cgs, xa
+!   star writes: stitched
+subroutine build_pulse_points(s)
       use math_lib
       use star_info_lib, only: i_eps_grav, i_h1, i_metals
       type(star_info), intent(inout) :: s
-      real(dp), intent(out) :: pts(n_pulse_cols, s%stitched%n_ext)
       integer :: j, i, k
       real(dp) :: r, m, P, T, rho, delta, nab, nab_ad, grav
 
       do j = 1, s%stitched%n_ext
          i = s%stitched%index(j)
-         pts(:,j) = 0.0d0
+         s%stitched%pulse(:,j) = 0.0d0
          select case (s%stitched%region(j))
          case (region_interior)
             call gather_interior_point()
@@ -759,9 +758,9 @@ subroutine gather_interior_point()
       delta = -s%pulse_dlnrho_dlnt(i)
       nab = s%gradT(i)
       nab_ad = s%grada(i)
-      pts(ipul_L,j) = s%luminosity_lsun(i)*s%solar_luminosity_cgs
-      pts(ipul_gamma1,j) = s%adiabatic_index_gamma1(i)
-      pts(ipul_kap,j) = s%opacity_zone(i)
+      s%stitched%pulse(ipul_L,j) = s%luminosity_lsun(i)*s%solar_luminosity_cgs
+      s%stitched%pulse(ipul_gamma1,j) = s%adiabatic_index_gamma1(i)
+      s%stitched%pulse(ipul_kap,j) = s%opacity_zone(i)
 ! GSM/GYRE convention (MESA pulse_gyre.f90): kap_kap_T = kap*dlnkap/dlnT
 ! (the absolute derivative dkap/dlnT), NOT the bare log-derivative;
 ! likewise eps_eps_T = eps*dlneps/dlnT = deps/dlnT. Only nonadiabatic
@@ -771,21 +770,21 @@ subroutine gather_interior_point()
 ! (nuclear_energy's deps_nuc_*: eps_nuc's, without the thermal neutrino
 ! loss, as MESA writes eps_nuc with d_epsnuc_dlnT and d_epsnuc_dlnd), so
 ! they are written as they are (Sources, 4).
-      pts(ipul_kap_kap_T,j) = s%opacity_zone(i)*s%pulse_dlnkap_dlnt(i)
-      pts(ipul_kap_kap_rho,j) = s%opacity_zone(i)*s%pulse_dlnkap_dlnrho(i)
-      pts(ipul_eps,j) = s%eps_total(i)
-      pts(ipul_eps_eps_T,j) = s%pulse_deps_dlnt(i)
-      pts(ipul_eps_eps_rho,j) = s%pulse_deps_dlnrho(i)
-      pts(ipul_omega,j) = s%omega(i)
-      pts(ipul_cp,j) = s%pulse_specific_heat(i)
+      s%stitched%pulse(ipul_kap_kap_T,j) = s%opacity_zone(i)*s%pulse_dlnkap_dlnt(i)
+      s%stitched%pulse(ipul_kap_kap_rho,j) = s%opacity_zone(i)*s%pulse_dlnkap_dlnrho(i)
+      s%stitched%pulse(ipul_eps,j) = s%eps_total(i)
+      s%stitched%pulse(ipul_eps_eps_T,j) = s%pulse_deps_dlnt(i)
+      s%stitched%pulse(ipul_eps_eps_rho,j) = s%pulse_deps_dlnrho(i)
+      s%stitched%pulse(ipul_omega,j) = s%omega(i)
+      s%stitched%pulse(ipul_cp,j) = s%pulse_specific_heat(i)
 ! (the array holds 1/mu_e, which FGONG's var(14) wants)
-      pts(ipul_mu_e_inv,j) = s%pulse_electron_mean_weight_inverse(i)
-      pts(ipul_h1,j) = s%xa(i_h1,i)
-      pts(ipul_z,j) = s%xa(i_metals,i)
+      s%stitched%pulse(ipul_mu_e_inv,j) = s%pulse_electron_mean_weight_inverse(i)
+      s%stitched%pulse(ipul_h1,j) = s%xa(i_h1,i)
+      s%stitched%pulse(ipul_z,j) = s%xa(i_metals,i)
       do k = 1, n_pulse_species
-         pts(ipul_species_base+k,j) = s%xa(species_slot(k),i)
+         s%stitched%pulse(ipul_species_base+k,j) = s%xa(species_slot(k),i)
       end do
-      pts(ipul_eps_grav,j) = s%eps_channels(i_eps_grav,i)
+      s%stitched%pulse(ipul_eps_grav,j) = s%eps_channels(i_eps_grav,i)
 end subroutine gather_interior_point
 
 ! ---------------------------------------------------------------
@@ -804,19 +803,19 @@ subroutine gather_envelope_point()
 ! (Sources, 5).
       nab = s%env_points%env_gradients(3,i)
       nab_ad = s%env_points%env_gradients(2,i)
-      pts(ipul_L,j) = s%env_points%env_luminosity(i)*s%solar_luminosity_cgs
-      pts(ipul_gamma1,j) = s%env_points%env_gamma1(i)
-      pts(ipul_kap,j) = s%env_points%env_opacity(i)
+      s%stitched%pulse(ipul_L,j) = s%env_points%env_luminosity(i)*s%solar_luminosity_cgs
+      s%stitched%pulse(ipul_gamma1,j) = s%env_points%env_gamma1(i)
+      s%stitched%pulse(ipul_kap,j) = s%env_points%env_opacity(i)
 ! absolute derivatives kap*dlnkap/dln{T,rho}, the GSM/GYRE convention
 ! used for the interior above
-      pts(ipul_kap_kap_T,j) = s%env_points%env_opacity(i)*s%env_points%env_dlnkap_dlnt(i)
-      pts(ipul_kap_kap_rho,j) = s%env_points%env_opacity(i)*s%env_points%env_dlnkap_dlnrho(i)
-      pts(ipul_omega,j) = s%omega(s%nz)
-      pts(ipul_cp,j) = s%env_points%env_specific_heat_cp(i)
-      pts(ipul_h1,j) = s%env_points%env_hydrogen_fraction(i)
-      pts(ipul_z,j) = s%env_points%env_metal_fraction(i)
+      s%stitched%pulse(ipul_kap_kap_T,j) = s%env_points%env_opacity(i)*s%env_points%env_dlnkap_dlnt(i)
+      s%stitched%pulse(ipul_kap_kap_rho,j) = s%env_points%env_opacity(i)*s%env_points%env_dlnkap_dlnrho(i)
+      s%stitched%pulse(ipul_omega,j) = s%omega(s%nz)
+      s%stitched%pulse(ipul_cp,j) = s%env_points%env_specific_heat_cp(i)
+      s%stitched%pulse(ipul_h1,j) = s%env_points%env_hydrogen_fraction(i)
+      s%stitched%pulse(ipul_z,j) = s%env_points%env_metal_fraction(i)
       do k = 1, n_pulse_species
-         pts(ipul_species_base+k,j) = s%xa(species_slot(k),s%nz)
+         s%stitched%pulse(ipul_species_base+k,j) = s%xa(species_slot(k),s%nz)
       end do
 end subroutine gather_envelope_point
 
@@ -832,17 +831,17 @@ subroutine gather_atmosphere_point()
       delta = -s%atm_points%atmo_dlnrho_dlnt(i)
       nab = s%atm_points%atmo_gradients(2,i)
       nab_ad = s%atm_points%atmo_gradients(3,i)
-      pts(ipul_L,j) = exp(ln10*s%log_L_lsun)*s%solar_luminosity_cgs
-      pts(ipul_gamma1,j) = s%atm_points%atmo_gamma1(i)
-      pts(ipul_kap,j) = s%atm_points%atmo_opacity(i)
-      pts(ipul_kap_kap_T,j) = s%atm_points%atmo_opacity(i)*s%atm_points%atmo_dlnkap_dlnt(i)
-      pts(ipul_kap_kap_rho,j) = s%atm_points%atmo_opacity(i)*s%atm_points%atmo_dlnkap_dlnrho(i)
-      pts(ipul_omega,j) = s%omega(s%nz)
-      pts(ipul_cp,j) = s%atm_points%atmo_specific_heat_cp(i)
-      pts(ipul_h1,j) = s%xa(i_h1,s%nz)
-      pts(ipul_z,j) = s%xa(i_metals,s%nz)
+      s%stitched%pulse(ipul_L,j) = exp(ln10*s%log_L_lsun)*s%solar_luminosity_cgs
+      s%stitched%pulse(ipul_gamma1,j) = s%atm_points%atmo_gamma1(i)
+      s%stitched%pulse(ipul_kap,j) = s%atm_points%atmo_opacity(i)
+      s%stitched%pulse(ipul_kap_kap_T,j) = s%atm_points%atmo_opacity(i)*s%atm_points%atmo_dlnkap_dlnt(i)
+      s%stitched%pulse(ipul_kap_kap_rho,j) = s%atm_points%atmo_opacity(i)*s%atm_points%atmo_dlnkap_dlnrho(i)
+      s%stitched%pulse(ipul_omega,j) = s%omega(s%nz)
+      s%stitched%pulse(ipul_cp,j) = s%atm_points%atmo_specific_heat_cp(i)
+      s%stitched%pulse(ipul_h1,j) = s%xa(i_h1,s%nz)
+      s%stitched%pulse(ipul_z,j) = s%xa(i_metals,s%nz)
       do k = 1, n_pulse_species
-         pts(ipul_species_base+k,j) = s%xa(species_slot(k),s%nz)
+         s%stitched%pulse(ipul_species_base+k,j) = s%xa(species_slot(k),s%nz)
       end do
 end subroutine gather_atmosphere_point
 
@@ -850,17 +849,17 @@ end subroutine gather_atmosphere_point
 ! The columns every region fills alike: r, m, P, T, rho, the gradients,
 ! delta, and the pointwise thermal N^2.
 subroutine store_common_columns()
-      pts(ipul_r,j) = r
-      pts(ipul_m,j) = m
-      pts(ipul_P,j) = P
-      pts(ipul_T,j) = T
-      pts(ipul_rho,j) = rho
-      pts(ipul_grad,j) = nab
-      pts(ipul_grada,j) = nab_ad
-      pts(ipul_delta,j) = delta
+      s%stitched%pulse(ipul_r,j) = r
+      s%stitched%pulse(ipul_m,j) = m
+      s%stitched%pulse(ipul_P,j) = P
+      s%stitched%pulse(ipul_T,j) = T
+      s%stitched%pulse(ipul_rho,j) = rho
+      s%stitched%pulse(ipul_grad,j) = nab
+      s%stitched%pulse(ipul_grada,j) = nab_ad
+      s%stitched%pulse(ipul_delta,j) = delta
       if (r > 0.0d0) then
          grav = local_gravity_cgs(m, r)
-         pts(ipul_N2,j) = grav*grav*(rho/P)*delta*(nab_ad - nab)
+         s%stitched%pulse(ipul_N2,j) = grav*grav*(rho/P)*delta*(nab_ad - nab)
       end if
 end subroutine store_common_columns
 
@@ -891,19 +890,19 @@ subroutine difference_brunt_n2()
 ! radiative side and is kept -- it is physics, not noise.
 ! Endpoints copy their neighbor, matching compute_seismic_columns.
       do j = 2, s%stitched%n_ext - 1
-         if (pts(ipul_N2,j) >= 0.0d0 .and. &
-              pts(ipul_r,j) > 0.0d0 .and. pts(ipul_r,j+1) > pts(ipul_r,j-1) .and. &
-              pts(ipul_gamma1,j) > 0.0d0) then
-            grav = local_gravity_cgs(pts(ipul_m,j), pts(ipul_r,j))
-            pts(ipul_N2,j) = grav*( &
-                 (log(pts(ipul_P,j+1)) - log(pts(ipul_P,j-1)))/pts(ipul_gamma1,j) - &
-                 (log(pts(ipul_rho,j+1)) - log(pts(ipul_rho,j-1))) ) / &
-                 (pts(ipul_r,j+1) - pts(ipul_r,j-1))
+         if (s%stitched%pulse(ipul_N2,j) >= 0.0d0 .and. &
+              s%stitched%pulse(ipul_r,j) > 0.0d0 .and. s%stitched%pulse(ipul_r,j+1) > s%stitched%pulse(ipul_r,j-1) .and. &
+              s%stitched%pulse(ipul_gamma1,j) > 0.0d0) then
+            grav = local_gravity_cgs(s%stitched%pulse(ipul_m,j), s%stitched%pulse(ipul_r,j))
+            s%stitched%pulse(ipul_N2,j) = grav*( &
+                 (log(s%stitched%pulse(ipul_P,j+1)) - log(s%stitched%pulse(ipul_P,j-1)))/s%stitched%pulse(ipul_gamma1,j) - &
+                 (log(s%stitched%pulse(ipul_rho,j+1)) - log(s%stitched%pulse(ipul_rho,j-1))) ) / &
+                 (s%stitched%pulse(ipul_r,j+1) - s%stitched%pulse(ipul_r,j-1))
          end if
       end do
       if (s%stitched%n_ext >= 2) then
-         pts(ipul_N2,1) = pts(ipul_N2,2)
-         pts(ipul_N2,s%stitched%n_ext) = pts(ipul_N2,s%stitched%n_ext-1)
+         s%stitched%pulse(ipul_N2,1) = s%stitched%pulse(ipul_N2,2)
+         s%stitched%pulse(ipul_N2,s%stitched%n_ext) = s%stitched%pulse(ipul_N2,s%stitched%n_ext-1)
       end if
 end subroutine difference_brunt_n2
 
@@ -928,10 +927,10 @@ end function species_slot
 !   star writes: stitched
 subroutine fill_stitched_arrays(s, ierr)
       use core_messages, only: core_report, message_length
-      character(len=message_length) :: lines(1)
       type(star_info), intent(inout) :: s
       integer, intent(out) :: ierr
       type(output_column) :: cols(n_prof_cols)
+      character(len=message_length) :: lines(1)
       integer :: j, icol
       real(dp) :: value
       logical :: found
@@ -953,7 +952,7 @@ subroutine fill_stitched_arrays(s, ierr)
             s%stitched%prof(icol, j) = value
          end do
       end do
-      call build_pulse_points(s, s%stitched%pulse)
+      call build_pulse_points(s)
 end subroutine fill_stitched_arrays
 
 ! The name of a region of the extended grid, for messages.

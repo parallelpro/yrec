@@ -507,10 +507,10 @@ module star_info_lib
             integer :: model_number
 ! age of the model [Gyr]; step_driver, model_files. In .mod.
             real(dp) :: age_gyr
-! total mass M [Msun]; starting_model, mass_change, model_files. In .mod;
+! total mass M [Msun]; model_rescaling, mass_change, model_files. In .mod;
 ! MESA's history name, without the _msun suffix.
             real(dp) :: star_mass
-! log10 of the total mass M [log10 g]; starting_model, mass_change,
+! log10 of the total mass M [log10 g]; model_rescaling, mass_change,
 ! model_files. In .mod.
             real(dp) :: log_total_mass
 ! log10 of the luminosity at the fitting point, L(nz) [log10 Lsun];
@@ -597,10 +597,10 @@ module star_info_lib
 ! henyey_iteration, model_files
             real(dp) :: fit_point_logR(3)
 ! which triangle vertex stored stored_envelope_state (0: none) [-];
-! step_driver, run_driver
+! step_driver, starting_model
             integer :: stored_vertex_index
 ! orientation (+1 or -1) of the envelope-fit triangle [-]; step_driver,
-! run_driver
+! starting_model
             real(dp) :: triangle_orientation
 
 ! ==== Rotation state ===================================================
@@ -660,12 +660,12 @@ module star_info_lib
 ! that needs them (the composition step, the rezone, after convergence).
 
 ! outermost point of the convective core (1: none) [-]; step_driver,
-! rezoning, run_driver. Set by the composition step's predictor pass, the
+! rezoning, shell_boundaries. Set by the composition step's predictor pass, the
 ! rezone, burn_light_elements and, after convergence,
 ! locate_shell_boundaries.
             integer :: core_cz_top_index
 ! innermost point of the surface convection zone (nz: none) [-];
-! step_driver, rezoning, run_driver. Set as core_cz_top_index is.
+! step_driver, rezoning, shell_boundaries. Set as core_cz_top_index is.
             integer :: envelope_cz_bottom_index
 ! first point of the overshoot region below the surface convection zone
 ! (-1: none) [-]; composition_step, rezoning, starting_model,
@@ -682,15 +682,15 @@ module star_info_lib
 ! Rewritten by every composition-step pass and by burn_light_elements.
             integer :: mixed_zone_bounds(max_convective_zones,2)
 ! the model burns hydrogen in a shell rather than in the core [logical];
-! step_driver, run_driver
+! shell_boundaries
             logical :: has_h_shell
 ! first point of the H-burning shell, where X > physics%timestep_factors(1) [-];
-! step_driver, run_driver. Valid when has_h_shell.
+! shell_boundaries. Valid when has_h_shell.
             integer :: h_shell_bot_index
-! first point where X exceeds half its surface value [-]; step_driver,
-! run_driver. Valid when has_h_shell.
+! first point where X exceeds half its surface value [-];
+! shell_boundaries. Valid when has_h_shell.
             integer :: h_shell_mid_index
-! last point of the H-burning shell [-]; step_driver, run_driver. Valid
+! last point of the H-burning shell [-]; shell_boundaries. Valid
 ! when has_h_shell.
             integer :: h_shell_top_index
 
@@ -726,7 +726,7 @@ module star_info_lib
 ! starting model [logical]; run_driver, step_driver
             logical :: punch_pending_flag
 ! build a new envelope-fit triangle at the next solve [logical];
-! step_driver, run_driver, mass_change. Set by a model read, the mass
+! step_driver, starting_model, mass_change. Set by a model read, the mass
 ! change, the envelope rebuild or physics%new_triangle_init_flag; cleared by
 ! compute_surface_boundary.
             logical :: recompute_envelope_triangle
@@ -1157,7 +1157,7 @@ module star_info_lib
 ! mass of the surface convection zone [Msun]; observables
             real(dp) :: envelope_mass_msun
 ! radius of the base of the surface convection zone [Rsun]; observables,
-! starting_model. Written twice per model: by locate_surface_cz_base,
+! turnover_timescale. Written twice per model: by locate_surface_cz_base,
 ! then by the turnover-time walk.
             real(dp) :: envelope_radius_rsun
 ! mass of the convective core [Msun]; observables. 0 without one.

@@ -53,30 +53,34 @@ contains
 ! The current guess is read from run_index-2 (this triple's rescale
 ! card), and the corrected one is written into run_index+1 .. +3.
 !
-! Inputs: log_l_lsun = log(L/Lsun) and log_r_rsun = log(R/Rsun) of the
-! model (both zero for the Sun), run_index = current_card, and current_zx, the
-! surface Z/X.
+! Inputs: log_r_rsun = log(R/Rsun) of the model (zero for the Sun),
+! with log(L/Lsun) the star's log_L_lsun, and current_zx, the surface
+! Z/X; run_index is the star's current_card.
 !   star reads: control%calibrate_solar_zx,
 !     control%luminosity_tolerance, control%radius_tolerance,
-!     control%target_solar_zx, control%zx_tolerance
+!     control%target_solar_zx, control%zx_tolerance, current_card,
+!     log_L_lsun
 !   star writes: card_initial_x, card_initial_z,
 !     card_mixing_length_alpha, card_rescale_targets, delta_alpha,
 !     delta_x, dlum_dalpha, dlum_dx, drad_dalpha, drad_dx,
 !     log_l_lsun_prev_check, log_r_rsun_prev_check,
 !     solar_calibration_converged
-subroutine check_solar_calibration(s, log_l_lsun, log_r_rsun, run_index, current_zx)
+subroutine check_solar_calibration(s, log_r_rsun, current_zx)
 
       use core_messages, only: core_terminal_values
       use math_lib
       implicit none
       type(star_info), intent(inout) :: s
 
-      double precision, intent(in) :: log_l_lsun, log_r_rsun
-      integer, intent(in) :: run_index
+      double precision, intent(in) :: log_r_rsun
       double precision, intent(in) :: current_zx
 
 ! --- locals ---
-      double precision :: log_zx_mismatch, delta_z
+      integer :: run_index
+      double precision :: log_l_lsun, log_zx_mismatch, delta_z
+
+      log_l_lsun = s%log_L_lsun
+      run_index = s%current_card
 
 ! Converged when L and R match the Sun (and Z/X its target, when that
 ! is calibrated too).
@@ -170,17 +174,20 @@ end subroutine check_solar_calibration
 ! num_cards = max_runs) sets up nothing: the calibration ends there, and
 ! termination_reason gives its verdict (R* and L* reached with no card
 ! left for the final run, or not converged).
-!   star reads: calibration_target_radius_rsun,
+! The model is the star's: log_L_lsun, log_Teff, age_gyr (Gyr), on the
+! card current_card (run_index below).
+!   star reads: age_gyr, calibration_target_radius_rsun,
 !     control%target_luminosity_lsun,
-!     control%target_star_luminosity_tolerance, num_cards,
-!     solar_luminosity_cgs, solar_radius_cgs
+!     control%target_star_luminosity_tolerance, current_card,
+!     log_L_lsun, log_Teff, num_cards, solar_luminosity_cgs,
+!     solar_radius_cgs
 !   star writes: age_gyr_at_target_radius, age_gyr_prev_model,
 !     card_initial_x, card_max_age_yr, card_rescale_targets,
 !     card_stops_active, just_passed_target_radius_flag,
 !     log_l_lsun_at_target_radius, log_l_lsun_at_target_radius_prev_run,
 !     log_l_lsun_prev_model, r_rsun_prev_model, star_found_flag,
 !     termination_reason
-subroutine check_star_calibration(s, log_l_lsun, log_teff, current_age, run_index)
+subroutine check_star_calibration(s)
 
       use core_messages, only: core_log, core_log_values, core_stdout, core_stdout_values, &
            message_length, unwritten_line
@@ -189,10 +196,9 @@ subroutine check_star_calibration(s, log_l_lsun, log_teff, current_age, run_inde
       implicit none
       type(star_info), intent(inout) :: s
 
-      double precision, intent(in) :: log_l_lsun, log_teff, current_age
-      integer, intent(in) :: run_index
-
 ! locals
+      double precision :: log_l_lsun, log_teff, current_age
+      integer :: run_index
       double precision :: teff_current, r_rsun_current
       double precision :: dlogl_dlogr, dage_dlogr
       double precision :: new_x, prev_x, dx_dlogl
@@ -227,6 +233,10 @@ subroutine check_star_calibration(s, log_l_lsun, log_teff, current_age, run_inde
 !
 ! Has the track crossed R*? R/Rsun = sqrt(L/(4 pi sigma))/(Teff^2 Rsun).
 ! If it has not, store this model's L, age and R and return.
+      log_l_lsun = s%log_L_lsun
+      log_teff = s%log_Teff
+      current_age = s%age_gyr
+      run_index = s%current_card
       s%just_passed_target_radius_flag=.false.
       teff_current = exp10(log_teff)
       r_rsun_current = sqrt((exp10(log_l_lsun))*s%solar_luminosity_cgs/ &

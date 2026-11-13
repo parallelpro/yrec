@@ -160,8 +160,14 @@ subroutine cross_target_radius(s, log_l, run_index)
       type(star_info), intent(inout) :: s
       double precision, intent(in) :: log_l
       integer, intent(in) :: run_index
-      call check_star_calibration(s, log_l, log_teff_at(s, log_l, 0.99d0), 1.0d0, run_index)
-      call check_star_calibration(s, log_l, log_teff_at(s, log_l, 1.01d0), 2.0d0, run_index)
+      s%current_card = run_index
+      s%log_L_lsun = log_l
+      s%log_Teff = log_teff_at(s, log_l, 0.99d0)
+      s%age_gyr = 1.0d0
+      call check_star_calibration(s)
+      s%log_Teff = log_teff_at(s, log_l, 1.01d0)
+      s%age_gyr = 2.0d0
+      call check_star_calibration(s)
 end subroutine cross_target_radius
 
 ! log Teff of a model of log(L/Lsun) = log_l and R/Rsun = r_rsun, from

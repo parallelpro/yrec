@@ -46,7 +46,8 @@ contains
 !     card_initial_z, card_log_fit_point_mass_fraction,
 !     card_mixing_length_alpha, card_moves_fit_point, card_num_models,
 !     control%calibrate_solar_model, control%calibrate_star_flag,
-!     control%set_initial_model_number, convective_flag,
+!     control%set_initial_model_number, core_cz_top_index,
+!     envelope_cz_bottom_index, h_shell_bot_index, h_shell_mid_index,
 !     log10_solar_luminosity, log10_solar_radius, log_L_lsun, log_Teff,
 !     logP, logR, logRho, logT, luminosity_breakdown_lsun,
 !     luminosity_lsun, m, num_cards, nz, omega, physics%atm_choice,
@@ -54,19 +55,15 @@ contains
 !     physics%helium_flash_active, physics%use_structure_dt_limits,
 !     solar_calibration_converged, star_mass, xa
 !   star writes: atm_choice_in_use, convective_turnover_timescale,
-!     core_cz_top_index, current_card, current_card_envelope_x,
-!     current_card_envelope_z, dln_luminosity_dt, dlog_pressure_dt,
-!     dlog_radius_dt, dlog_temperature_dt, dt, dt_saved,
-!     envelope_cz_bottom_index, envelope_cz_bottom_index_start,
-!     fit_point_move_requested, h_shell_bot_index, h_shell_mid_index,
-!     h_shell_top_index, has_h_shell, max_domega_frac,
-!     mixing_length_alpha, model_diverged_flag, model_number,
-!     pulsation_mass_msun, punch_pending_flag,
-!     recompute_envelope_triangle,
-!     requested_log_fit_point_mass_fraction, reset_triangle,
-!     settling_active, stored_vertex_index, structure_dt_limits_active,
+!     current_card, current_card_envelope_x, current_card_envelope_z,
+!     dln_luminosity_dt, dlog_pressure_dt, dlog_radius_dt,
+!     dlog_temperature_dt, dt, dt_saved, envelope_cz_bottom_index_start,
+!     fit_point_move_requested, max_domega_frac, mixing_length_alpha,
+!     model_diverged_flag, model_number, pulsation_mass_msun,
+!     punch_pending_flag, requested_log_fit_point_mass_fraction,
+!     reset_triangle, settling_active, structure_dt_limits_active,
 !     termination_reason, timestep_yr, total_angular_momentum,
-!     total_rotational_ke, triangle_orientation
+!     total_rotational_ke
 subroutine run_yrec(ierr)
       use timestep_control, only: compute_timestep
       use yrec_version, only: set_version_strings
@@ -293,7 +290,7 @@ subroutine end_of_card_calibration(runs_complete)
                     s%log10_solar_luminosity)-s%log10_solar_radius
 ! The surface Z/X, for the optional Z/X calibration (MHP 06/13).
                current_zx = s%xa(i_metals,s%nz)/s%xa(i_h1,s%nz)
-               call check_solar_calibration(s, s%log_L_lsun,log_r_rsun,s%current_card,current_zx)
+               call check_solar_calibration(s, log_r_rsun, current_zx)
 ! the next cycle starts from the deck's latch and atmosphere
                s%structure_dt_limits_active = s%physics%use_structure_dt_limits
                s%atm_choice_in_use = s%physics%atm_choice
@@ -336,10 +333,8 @@ end subroutine end_of_card_calibration
 ! and the convection-zone edges; estimate the first timestep; and zero
 ! the entropy terms. Sets ierr on a configuration or model-read error.
 subroutine begin_kind_card
-! read_starting_model's and compute_timestep's outputs this caller
-! does not use
-      double precision :: chosen_dt, convective_velocity
-      integer :: ikut_flag
+! compute_timestep's output this caller does not use
+      double precision :: chosen_dt
          s%current_card_envelope_x = s%card_initial_x(s%current_card)
          s%current_card_envelope_z = s%card_initial_z(s%current_card)
          s%mixing_length_alpha = s%card_mixing_length_alpha(s%current_card)
@@ -359,11 +354,7 @@ subroutine begin_kind_card
          s%total_rotational_ke = 0.0D0
 ! Read the starting model, or reuse the one in memory, and rescale it
 ! if the card asks for that.
-       call read_starting_model(s, s%timestep_yr, s%dt, chosen_dt, s%triangle_orientation, &
-            ikut_flag, s%stored_vertex_index, s%model_diverged_flag, &
-            s%recompute_envelope_triangle, s%current_card, &
-            s%total_angular_momentum, s%total_rotational_ke, &
-            convective_velocity, ierr)
+       call read_starting_model(s, ierr)
        if (ierr /= 0) return
 
 ! A fresh starting-model load restarts the model counter, so the
@@ -383,7 +374,7 @@ subroutine begin_kind_card
 ! Disarm the stop conditions whose thresholds the starting model has
 ! already passed (e.g. a central-abundance stop already below its
 ! target) (MHP 10/24).
-         call init_stop_conditions(s, s%current_card)
+         call init_stop_conditions(s)
 ! Optional diagnostic: the per-shell neutrino-flux table of each card's
 ! starting model (compute_neutrino_fluxes, legacy LNUTAB;
 ! core/diagnostics/neutrino_flux_output.f90).
@@ -412,9 +403,7 @@ subroutine begin_kind_card
 
 ! Locate the hydrogen-burning shell and the boundaries of the central
 ! and surface convection zones (if present).
-         call locate_shell_boundaries(s, s%xa,s%luminosity_lsun,s%convective_flag,s%nz, &
-              s%core_cz_top_index,s%envelope_cz_bottom_index,s%h_shell_bot_index, &
-              s%h_shell_top_index,s%h_shell_mid_index,s%has_h_shell)
+         call locate_shell_boundaries(s)
 ! Estimate the first timestep of the card.
        disable_structure_dt_limits = .false.
        call compute_timestep(s, s%dt,chosen_dt,s%nz,s%logRho,s%luminosity_lsun, &
