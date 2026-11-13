@@ -1,0 +1,112 @@
+# Mutations of test_triangle_fit: each family of checks must print FAIL
+# under a mutation of the code it covers (core/README.md, the tests). Run,
+# after `make tests` in src/: python3 src/tools/mutate.py core --program
+# test_triangle_fit (src/tools/mutate.py describes this format and the
+# verdicts).
+program = "test_triangle_fit"
+timeout = 60
+
+[[mutation]]
+id = 'triangle-01'
+check = '  A (start triangle, Sun): log R plane at the vertices'
+file = 'core/structure/triangle_fit.f90'
+old = 'coeffs(1) = (vtx_log_r(3)-vtx_log_r(1)-temp1*(vtx_log_r(2)-vtx_log_r(1)))*temp2'
+new = 'coeffs(1) = (vtx_log_r(3)-vtx_log_r(1)-temp1*(vtx_log_r(2)-vtx_log_r(1)))*temp2*1.001d0'
+
+[[mutation]]
+id = 'triangle-02'
+check = '  A (start triangle, Sun): log L plane at the vertices'
+file = 'core/structure/triangle_fit.f90'
+old = 'coeffs(4) = (vtx_log_l(3)-vtx_log_l(1)-temp1*(vtx_log_l(2)-vtx_log_l(1)))*temp2'
+new = 'coeffs(4) = (vtx_log_l(3)-vtx_log_l(1)-temp1*(vtx_log_l(2)-vtx_log_l(1)))*temp2*1.001d0'
+
+[[mutation]]
+id = 'triangle-03'
+check = '  A (start triangle, Sun): log Teff plane at the vertices'
+file = 'core/structure/triangle_fit.f90'
+old = 'coeffs(9) = vtx_log_teff(1) - coeffs(7)*vtx_log_p(1) - coeffs(8)*vtx_log_t(1)'
+new = 'coeffs(9) = vtx_log_teff(1) - coeffs(7)*vtx_log_p(1) + coeffs(8)*vtx_log_t(1)'
+
+[[mutation]]
+id = 'triangle-04'
+check = '  B (giant, clockwise): log R plane at interior points'
+file = 'core/structure/triangle_fit.f90'
+old = 'coeffs(3) = vtx_log_r(1) - coeffs(1)*vtx_log_p(1) - coeffs(2)*vtx_log_t(1)'
+new = 'coeffs(3) = vtx_log_r(1) - coeffs(1)*vtx_log_p(1) + coeffs(2)*vtx_log_t(1)'
+
+[[mutation]]
+id = 'triangle-05'
+check = '  C (scalene): slopes against the inverse map'
+file = 'core/structure/triangle_fit.f90'
+old = 'coeffs(2) = (vtx_log_r(2)-vtx_log_r(1)-coeffs(1)*(vtx_log_p(2)-vtx_log_p(1)))*temp'
+new = 'coeffs(2) = (vtx_log_r(2)-vtx_log_r(1)+coeffs(1)*(vtx_log_p(2)-vtx_log_p(1)))*temp'
+
+[[mutation]]
+id = 'triangle-06'
+check = '  C: log R plane through arbitrary values at the vertices'
+file = 'core/structure/triangle_fit.f90'
+old = 'coeffs(1) = (vtx_log_r(3)-vtx_log_r(1)-temp1*(vtx_log_r(2)-vtx_log_r(1)))*temp2'
+new = 'coeffs(1) = (vtx_log_r(3)-vtx_log_r(1)-temp1*(vtx_log_r(2)-vtx_log_r(1)))*temp2*1.001d0'
+
+[[mutation]]
+id = 'triangle-07'
+check = '  collinear (log P, log T): the fit refuses (ierr)'
+file = 'core/structure/triangle_fit.f90'
+old = 'if (abs(pivot2) <= min_relative_pivot* &'
+new = 'if (abs(pivot2) < 0.0d0*min_relative_pivot* &'
+
+[[mutation]]
+id = 'triangle-08'
+check = '  T_2 = T_1, plane exists: the fit refuses (ierr)'
+file = 'core/structure/triangle_fit.f90'
+old = 'if (abs(vtx_log_t(2)-vtx_log_t(1)) <= min_relative_pivot* &'
+new = 'if (abs(vtx_log_t(2)-vtx_log_t(1)) < 0.0d0*min_relative_pivot* &'
+
+[[mutation]]
+id = 'triangle-09'
+check = '  ccw, inside -> 0'
+file = 'core/structure/triangle_fit.f90'
+old = 'side = orientation*((vtx_log_l(i2)-vtx_log_l(i3))'
+new = 'side = -orientation*((vtx_log_l(i2)-vtx_log_l(i3))'
+
+[[mutation]]
+id = 'triangle-10'
+check = '  ccw, on edge 1-2 -> 0'
+file = 'core/structure/triangle_fit.f90'
+old = 'log_teff, log_l).lt.-tolerance) then'
+new = 'log_teff, log_l).le.-tolerance) then'
+
+[[mutation]]
+id = 'triangle-11'
+check = '  ccw, (same, tolerance 2^-45) -> 0'
+file = 'core/structure/triangle_fit.f90'
+old = 'log_teff, log_l).lt.-tolerance) then'
+new = 'log_teff, log_l).lt.tolerance) then'
+
+[[mutation]]
+id = 'triangle-12'
+check = '  start triangle, vertex 3: half turn = mirror image'
+file = 'core/structure/triangle_fit.f90'
+old = 'vtx_log_teff(2) = vtx_log_teff(1) + delta_log_teff'
+new = 'vtx_log_teff(2) = vtx_log_teff(1) + 1.1d0*delta_log_teff'
+
+[[mutation]]
+id = 'triangle-13'
+check = '  track of 40 models: inside at every model'
+file = 'core/structure/triangle_fit.f90'
+old = 'orientation = -orientation'
+new = 'orientation = orientation'
+
+[[mutation]]
+id = 'triangle-14'
+check = '  orientation against the vertices: reflections tried'
+file = 'core/structure/triangle_fit.f90'
+old = 'log_teff, log_l).lt.-tolerance) then'
+new = 'log_teff, log_l).lt.-1.0d99) then'
+
+[[mutation]]
+id = 'triangle-15'
+check = '  zero area: the walk gives up (ierr) after max_reflections'
+file = 'core/structure/triangle_fit.f90'
+old = 'if (n_reflections == max_reflections) then'
+new = 'if (n_reflections == 2*max_reflections) then'

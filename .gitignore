@@ -28,6 +28,8 @@ src/test_convection
 src/test_structure
 src/test_triangle_fit
 src/test_mass_change
+src/test_henyey_elimination
+src/test_envelope_integration
 src/test_regrid
 src/test_controls
 src/test_io

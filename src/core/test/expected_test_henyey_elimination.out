@@ -1,0 +1,18 @@
+test_henyey_elimination report
+-- solve
+N = 2: no error                                            0.0E+00  ok
+N = 2: corrections = dense solve                           2.6E-16  ok
+N = 2: residual maxima = max |F_k|                         0.0E+00  ok
+N = 3: no error                                            0.0E+00  ok
+N = 3: corrections = dense solve                           2.7E-16  ok
+N = 3: residual maxima = max |F_k|                         0.0E+00  ok
+N = 40: no error                                           0.0E+00  ok
+N = 40: corrections = dense solve                          7.2E-15  ok
+N = 40: residual maxima = max |F_k|                        0.0E+00  ok
+-- singular
+eliminate: zero radius pivot                               1.0E+00  ok
+eliminate: zero temperature pivot                          1.0E+00  ok
+eliminate: zero pressure pivot                             1.0E+00  ok
+solve: zero dlog P pivot                                   1.0E+00  ok
+solve: zero dlog T pivot                                   1.0E+00  ok
+test_henyey_elimination: done

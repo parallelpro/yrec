@@ -54,7 +54,8 @@ contains
 !     pulse_specific_heat
 subroutine compute_henyey_coefficients(s, delta_time, saha_iterations, &
      envelope_zone_index, ierr)
-      use henyey_elimination
+      use henyey_elimination, only: eliminate_star_shell_pair
+      use core_messages, only: core_report, message_length, unwritten_line
       use shell_equations, only: henyey_shell_terms, shell_state, &
            structure_settings, shell_diagnostics, evaluate_shell_equations
       use star_info_lib, only: i_eps_grav, i_eps_neu, i_h1, i_lum_grav, &
@@ -101,6 +102,7 @@ subroutine compute_henyey_coefficients(s, delta_time, saha_iterations, &
        call store_shell_structure()
        call add_shell_energy_budget()
        call eliminate_shell_pair()
+       if (ierr /= 0) return
        call store_zone_energy_channels()
        call store_zone_thermodynamics()
        call store_pulse_derivatives()
@@ -220,7 +222,11 @@ end subroutine add_shell_energy_budget
 subroutine eliminate_shell_pair()
          if (im.gt.1) then
             im1 = im
-            call henyey_eliminate(s, im1, prev, cur)
+            call eliminate_star_shell_pair(s, im1, prev, cur, ierr)
+            if (ierr /= 0) then
+               call report_zero_pivot(im1)
+               return
+            end if
          else
 ! The central boundary conditions, rows 3 and 4 at shell 1 in the form
 ! of henyey_elimination.f90,
@@ -242,6 +248,18 @@ subroutine eliminate_shell_pair()
 ! Carry this shell's terms into the next pair's elimination.
          prev = cur
 end subroutine eliminate_shell_pair
+
+! ---------------------------------------------------------------
+! A zero pivot in the elimination of the pair (shell - 1, shell): to
+! the terminal and the run log; the run stops.
+subroutine report_zero_pivot(shell)
+      integer, intent(in) :: shell
+      character(len=message_length) :: lines(1)
+      lines = unwritten_line
+      write(lines(1),'(a,i0,a,i0,a)') ' henyey_eliminate: a zero pivot in the pair of shells ', &
+           shell - 1, ' and ', shell, '; run stopped'
+      call core_report(lines)
+end subroutine report_zero_pivot
 
 ! ---------------------------------------------------------------
 ! Store the shell's energy generation for output, for every model:

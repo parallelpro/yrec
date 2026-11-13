@@ -445,10 +445,10 @@ core/step/shell_physics.o: convection_lib.mod eos_lib.mod kap_lib.mod math_lib.m
 core/step/step_driver.o: burn_step.mod composition_step.mod convection_lib.mod core_messages.mod envelope_rebuild.mod evolve_rotation.mod henyey_iteration.mod mass_change.mod math_lib.mod observables.mod physical_constants.mod rezoning.mod rotating_shape.mod shell_boundaries.mod star_info_lib.mod starting_model.mod stitched_model.mod stop_conditions.mod timestep_control.mod yrec_output.mod
 core/step/timestep_control.o: burn_step.mod control_slots.mod core_messages.mod math_lib.mod net_lib.mod physical_constants.mod star_info_lib.mod
 core/structure/energy_sources.o: composition_layout.mod core_messages.mod
-core/structure/henyey_elimination.o: physical_constants.mod shell_equations.mod star_info_lib.mod
+core/structure/henyey_elimination.o: numerics_lib.mod physical_constants.mod shell_equations.mod star_info_lib.mod
 core/structure/henyey_iteration.o: core_messages.mod energy_sources.mod henyey_elimination.mod math_lib.mod omega_profile.mod physical_constants.mod rotating_shape.mod run_messages.mod star_info_lib.mod structure_equations.mod surface_boundary.mod
 core/structure/shell_equations.o: composition_layout.mod convection_lib.mod energy_sources.mod eos_lib.mod kap_lib.mod math_lib.mod net_lib.mod physical_constants.mod
-core/structure/structure_equations.o: eos_lib.mod henyey_elimination.mod kap_lib.mod math_lib.mod net_lib.mod physical_constants.mod shell_equations.mod star_info_lib.mod
+core/structure/structure_equations.o: core_messages.mod eos_lib.mod henyey_elimination.mod kap_lib.mod math_lib.mod net_lib.mod physical_constants.mod shell_equations.mod star_info_lib.mod
 core/structure/surface_boundary.o: atm_lib.mod core_messages.mod envelope_integration.mod math_lib.mod physical_constants.mod run_messages.mod star_info_lib.mod triangle_fit.mod
 core/test/test_envelope_integration.o: atm_lib.mod composition_layout.mod controls_reader.mod convection_lib.mod convection_settings_builder.mod envelope_integrands.mod envelope_integration_kernel.mod envelope_points.mod numerics_lib.mod physical_constants.mod run_files.mod run_setup.mod star_info_lib.mod
 core/test/test_henyey_elimination.o: henyey_elimination.mod numerics_lib.mod physical_constants.mod shell_equations.mod

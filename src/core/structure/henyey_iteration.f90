@@ -204,7 +204,13 @@ subroutine henyey_iterate(s, delta_time, max_iterations, converged, &
        if (converged) return
        call form_surface_bc_rows()
 ! Solve for the corrections; they replace the residuals in elim_rhs.
-       call henyey_solve(s%nz,s%elim_coeff,s%elim_rhs,s%surface_bc)
+       call henyey_solve(s%nz,s%elim_coeff,s%elim_rhs,s%surface_bc,ierr)
+       if (ierr /= 0) then
+          lines = unwritten_line
+          lines(1) = ' henyey_solve: a zero pivot in the surface boundary system; run stopped'
+          call core_report(lines)
+          return
+       end if
        call find_largest_corrections()
        call test_henyey_convergence()
        call set_henyey_correction_factor()

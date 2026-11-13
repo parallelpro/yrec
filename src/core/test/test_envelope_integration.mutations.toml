@@ -1,0 +1,270 @@
+# Mutations of test_envelope_integration: each check must print FAIL under
+# a mutation of the code it covers (core/README.md, the tests). Run, after
+# `make tests` in src/: python3 src/tools/mutate.py core --program
+# test_envelope_integration (src/tools/mutate.py describes this format and
+# the verdicts). The program reads the TAMS deck of test_structure.
+program = "test_envelope_integration"
+timeout = 120
+args = ["{repo}/src/core/test/test_structure_tams.inlist"]
+
+[env]
+YREC_OUTPUT = "output"
+
+[[mutation]]
+id = 'envelope-01'
+check = 'atmosphere: dlog P/dlog tau = g tau/(kappa P)'
+file = 'core/envelope/envelope_integrands.f90'
+old = 'dydx(1) = effective_gravity*optical_depth/ &'
+new = 'dydx(1) = effective_gravity*sqrt(optical_depth)/ &'
+
+[[mutation]]
+id = 'envelope-02'
+check = 'atmosphere: T^4 = (3/4) Teff^4 (tau + 2/3)'
+file = 'core/envelope/envelope_integrands.f90'
+old = 'log10_temperature = ttau_log10_temperature(optical_depth, &'
+new = 'log10_temperature = ttau_log10_temperature(2.0d0*optical_depth, &'
+
+[[mutation]]
+id = 'envelope-03'
+check = 'envelope: dlog m/dlog P = -4 pi r^4 P/(G m^2)'
+file = 'core/envelope/envelope_integrands.f90'
+old = 'c4pil+4.0d0*log10_radius'
+new = 'c4pil+3.0d0*log10_radius'
+
+[[mutation]]
+id = 'envelope-04'
+check = 'envelope: dlog r/dlog P = -r P/(G m rho)'
+file = 'core/envelope/envelope_integrands.f90'
+old = 'dydx(3) = -exp(ln10*(log10_pressure+log10_radius-'
+new = 'dydx(3) = -exp(ln10*(log10_pressure+2.0d0*log10_radius-'
+
+[[mutation]]
+id = 'envelope-05'
+check = 'envelope: dlog T/dlog P = grad'
+file = 'core/envelope/envelope_integrands.f90'
+old = 'dydx(2) = actual_gradient'
+new = 'dydx(2) = 0.9d0*actual_gradient'
+
+[[mutation]]
+id = 'envelope-06'
+check = 'ierr = 0'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = 'integer, parameter :: maxstp = 2000'
+new = 'integer, parameter :: maxstp = 20'
+
+[[mutation]]
+id = 'envelope-07'
+check = 'events: atmosphere done, vertex, envelope done'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = 'call add_envint_event(events, envint_envelope_done, &'
+new = 'call add_envint_event(events, envint_atmosphere_done, &'
+
+[[mutation]]
+id = 'envelope-08'
+check = 'not switched to gray'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = 'switched_to_gray = .false.'
+new = 'switched_to_gray = .true.'
+
+[[mutation]]
+id = 'envelope-09'
+check = 'photosphere at tau = 2/3'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = 'x_limit = ttau_photosphere_x_limit(cfg%atm_choice)'
+new = 'x_limit = ttau_photosphere_x_limit(cfg%atm_choice) + 0.01d0'
+
+[[mutation]]
+id = 'envelope-10'
+check = 'T = Teff at the photosphere'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = 'x_limit = ttau_photosphere_x_limit(cfg%atm_choice)'
+new = 'x_limit = ttau_photosphere_x_limit(cfg%atm_choice) + 0.01d0'
+
+[[mutation]]
+id = 'envelope-11'
+check = "photospheric P = the last atmosphere point's"
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = 'log10_photo_pressure = atm_point%log10_pressure'
+new = 'log10_photo_pressure = atm_point%log10_temperature'
+
+[[mutation]]
+id = 'envelope-12'
+check = 'envelope ends at the fitting mass'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = 'if(dabs(mass_diff_remaining).le.step_tolerance)then'
+new = 'if(dabs(mass_diff_remaining).le.1.0d3*step_tolerance)then'
+
+[[mutation]]
+id = 'envelope-13'
+check = 'the vertex event holds the vertex'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = 'values=[vtx_logp(vertex_index), vtx_logt(vertex_index), &'
+new = 'values=[vtx_logt(vertex_index), vtx_logp(vertex_index), &'
+
+[[mutation]]
+id = 'envelope-14'
+check = 'atmosphere steps = RK4 (log P)'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = '       call compute_atmosphere_derivs(indep_var,y,dydx,pressure_rotation_factor, &'
+new = '       call compute_atmosphere_derivs(indep_var+1.0d-3,y,dydx,pressure_rotation_factor, &'
+
+[[mutation]]
+id = 'envelope-15'
+check = 'envelope steps = RK4 (log m, log T, log r)'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = '       call compute_envelope_derivs(indep_var,y,dydx,luminosity_linear,pressure_rotation_factor, &'
+new = '       call compute_envelope_derivs(indep_var+1.0d-3,y,dydx,luminosity_linear,pressure_rotation_factor, &'
+
+[[mutation]]
+id = 'envelope-16'
+check = 'vertex = interpolation to the fitting mass'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = 'vtx_logp(vertex_index) = indep_var + interp_weight*(x_start - indep_var)'
+new = 'vtx_logp(vertex_index) = x_start + interp_weight*(x_start - indep_var)'
+
+[[mutation]]
+id = 'envelope-17'
+check = 'thin: ierr = 0, no envelope points'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = 'if(cfg%log_fit_point_mass_fraction.gt.max_log_fit_point_mass_fraction) then'
+new = 'if(cfg%log_fit_point_mass_fraction.gt.0.0d0) then'
+
+[[mutation]]
+id = 'envelope-18'
+check = 'thin: vertex = the surface point'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = '''
+          vtx_logr(vertex_index) = log10_radius
+'''
+new = '''
+          vtx_logr(vertex_index) = log10_radius + 1.0d-9
+'''
+
+[[mutation]]
+id = 'envelope-19'
+check = 'retry: an envint_start_retry event first'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = 'call add_envint_event(events, envint_start_retry, &'
+new = 'call add_envint_event(events, envint_atmosphere_done, &'
+
+[[mutation]]
+id = 'envelope-20'
+check = 'retry: its start lies past the photosphere'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = 'values=[indep_var, x_limit])'
+new = 'values=[x_limit, indep_var])'
+
+[[mutation]]
+id = 'envelope-21'
+check = 'retry: then the integration succeeds'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = 'atm_density_guess = atm_density_guess / 10d0'
+new = 'atm_density_guess = atm_density_guess / 1.0d0'
+
+[[mutation]]
+id = 'envelope-22'
+check = 'atmosphere maxstp: ierr = 1, its event last'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = 'call add_envint_event(events, envint_atmosphere_maxstp)'
+new = 'continue'
+
+[[mutation]]
+id = 'envelope-23'
+check = 'atmosphere maxstp: no photospheric pressure'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = 'log10_photo_pressure = -1.0d99'
+new = 'log10_photo_pressure = 0.0d0'
+
+[[mutation]]
+id = 'envelope-24'
+check = 'envelope maxstp: ierr = 1, its event last'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = 'call add_envint_event(events, envint_envelope_maxstp)'
+new = 'call add_envint_event(events, envint_atmosphere_maxstp)'
+
+[[mutation]]
+id = 'envelope-25'
+check = 'envelope maxstp: the photosphere was reached'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = 'log10_photo_pressure = atm_point%log10_pressure'
+new = 'log10_photo_pressure = atm_point%log10_temperature'
+
+[[mutation]]
+id = 'envelope-26'
+check = 'bsstep limits: ierr = numerics_bad_input'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = '''
+! each is an event, for the driver's message.
+       if (jerr == numerics_bad_input) then
+          call add_envint_event(events, envint_bsstep_limits, &
+               counts=[cfg%max_stage_index, cfg%extrap_order])
+          ierr = jerr'''
+new = '''
+! each is an event, for the driver's message.
+       if (jerr == numerics_bad_input) then
+          call add_envint_event(events, envint_bsstep_limits, &
+               counts=[cfg%max_stage_index, cfg%extrap_order])
+          ierr = 1'''
+
+[[mutation]]
+id = 'envelope-27'
+check = 'bsstep limits: the event holds imax, nuse'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = '''
+! each is an event, for the driver's message.
+       if (jerr == numerics_bad_input) then
+          call add_envint_event(events, envint_bsstep_limits, &
+               counts=[cfg%max_stage_index, cfg%extrap_order])'''
+new = '''
+! each is an event, for the driver's message.
+       if (jerr == numerics_bad_input) then
+          call add_envint_event(events, envint_bsstep_limits, &
+               counts=[cfg%extrap_order, cfg%max_stage_index])'''
+
+[[mutation]]
+id = 'envelope-28'
+check = 'step underflow: ierr = envelope_termination'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = '''
+! each is an event, for the driver's message.
+       if (jerr == numerics_bad_input) then
+          call add_envint_event(events, envint_bsstep_limits, &
+               counts=[cfg%max_stage_index, cfg%extrap_order])
+          ierr = jerr
+          return
+       else if (jerr /= 0) then
+          call add_envint_event(events, envint_bsstep_failed, counts=[jerr])
+          ierr = envelope_termination'''
+new = '''
+! each is an event, for the driver's message.
+       if (jerr == numerics_bad_input) then
+          call add_envint_event(events, envint_bsstep_limits, &
+               counts=[cfg%max_stage_index, cfg%extrap_order])
+          ierr = jerr
+          return
+       else if (jerr /= 0) then
+          call add_envint_event(events, envint_bsstep_failed, counts=[jerr])
+          ierr = 1'''
+
+[[mutation]]
+id = 'envelope-29'
+check = "step underflow: the event holds bsstep's status"
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = '''
+! each is an event, for the driver's message.
+       if (jerr == numerics_bad_input) then
+          call add_envint_event(events, envint_bsstep_limits, &
+               counts=[cfg%max_stage_index, cfg%extrap_order])
+          ierr = jerr
+          return
+       else if (jerr /= 0) then
+          call add_envint_event(events, envint_bsstep_failed, counts=[jerr])'''
+new = '''
+! each is an event, for the driver's message.
+       if (jerr == numerics_bad_input) then
+          call add_envint_event(events, envint_bsstep_limits, &
+               counts=[cfg%max_stage_index, cfg%extrap_order])
+          ierr = jerr
+          return
+       else if (jerr /= 0) then
+          call add_envint_event(events, envint_bsstep_failed, counts=[0])'''
