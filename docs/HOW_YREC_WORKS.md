@@ -289,7 +289,7 @@ McAllister–Roulier `choose/cases/spline` machinery,
 ## 3. Order of operations within one timestep
 
 `evolve_step` (`core/step/step_driver.f90`; stages 0-4 run inside the
-`retry_step` loop, then 5-12 once; current names, legacy in parentheses):
+`retry_step` loop, then 5-13 once; current names, legacy in parentheses):
 
 ```
  0. reload_model_if_diverged: if the last attempt
@@ -344,11 +344,12 @@ McAllister–Roulier `choose/cases/spline` machinery,
                                                        -> timestep_limit_*
  9. Assemble the stitched full-star model            build_stitched_model
 10. Observables computed into star_info              compute_observables
-                                                       (update_output_diagnostics), incl.
+                                                       (update_output_diagnostics)
+11. Turnover time, and its copies for the next step  refresh_turnover_timescale:
                                                        compute_turnover_timescale (gettau)
-11. Output: history / profiles / pulse files         output_write_model (yrec_output;
+12. Output: history / profiles / pulse files         output_write_model (yrec_output;
                                                        legacy wrtout retired)
-12. Stop conditions (age, abundances, radius)        check_stop_conditions
+13. Stop conditions (age, abundances, radius)        check_stop_conditions
 ```
 
 Convergence-of-splitting: because composition moved before structure,

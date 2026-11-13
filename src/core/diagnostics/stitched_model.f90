@@ -18,7 +18,8 @@
 ! kind) is here, next to the values (interior_value, envelope_value,
 ! atmosphere_value). The io writers only read these arrays; nothing in
 ! the output path integrates or stitches anything. compute_observables
-! reads them too (the turnover time, the seismic observables).
+! (the seismic observables) and the step's turnover refresh
+! (compute_turnover_timescale) read them too.
 module stitched_model
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use physical_constants, only: cgl, gas_constant, ln10
