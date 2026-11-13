@@ -4535,9 +4535,12 @@ a B list instead.
   diagnostics feed no physics; core/README.md to the standard, both
   agents' text merged and checked against the code; core's B list
   (`B_LIST_CORE.md`); bug_sweep (M268, M269, M271 and M272 fixed, each B
-  item's measurement, section 17's M309-M314; 383 items, 262 fixed and
-  121 open); this section; TARGET_ARCHITECTURE's Phase 2 status and its
-  eos and kap rows.
+  item's measurement, section 17's M309-M314); this section;
+  TARGET_ARCHITECTURE's Phase 2 status and its eos and kap rows; and a
+  last Kind A commit for M314 and M274's last two comments
+  (begin_kind_card's unused local, the headers of yrec_reset and
+  check_stop_conditions, test_reentry.py's docstring), after which
+  bug_sweep holds 383 items, 264 fixed and 119 open.
 
 **Verified.**
 - Each agent: `compare_decks --set all` RESULT ALL IDENTICAL with 35
@@ -4642,7 +4645,7 @@ the measure; no deck asks for the neutrino table.
     criteria have no unit test (they read the star; the recipe checks
     them through FLAG-POINTS and the pins); the deck-level tests
     (test_reentry, test_stop_conditions, test_monte_carlo, test_pyyrec)
-    have no manifests; M274's two comments and M314;
+    have no manifests;
   - extensibility: TARGET_ARCHITECTURE §4.5a's energy-source items (the
     built-in terms as entries, a warning for a source above the fitting
     point).

@@ -327,8 +327,6 @@ end subroutine end_of_card_calibration
 ! and the convection-zone edges; estimate the first timestep; and zero
 ! the entropy terms. Sets ierr on a configuration or model-read error.
 subroutine begin_kind_card
-! compute_timestep's output this caller does not use
-      real(dp) :: chosen_dt
          s%current_card_envelope_x = s%card_initial_x(s%current_card)
          s%current_card_envelope_z = s%card_initial_z(s%current_card)
          s%mixing_length_alpha = s%card_mixing_length_alpha(s%current_card)

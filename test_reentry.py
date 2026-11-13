@@ -11,11 +11,9 @@ Uses the solar noGS/norot case (~18 s), which terminates NORMALLY
 (run count exhausted), converted to a single new-style inlist at
 test time (tools/upgrade_inlist.py, as test_mesa_baselines does) --
 the legacy .nml1/.nml2 pair is kept only as the converter's fixture.
-The m0030 case cannot serve here: it historically ends via the
-BSSTEP numerics stop, which kills the process mid-call -- the
-documented residual (numerics gates are opt-in) means such cases are
-not re-enterable until their callers pass ierr. Local test: needs
-the full input/ tree (not in CI's sparse checkout).
+No numerics routine stops the process: bsstep returns a status, which
+run_yrec returns to its caller. Local test: needs the full input/ tree
+(not in CI's sparse checkout).
 """
 import os
 import pathlib

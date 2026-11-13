@@ -7,10 +7,9 @@
 ! state: a copy of star_template, a star that nothing writes (static
 ! storage, so zero-initialized plus the type's declaration defaults --
 ! exactly what a module-level star was at process start). At every entry
-! after the first it also tells the step/diagnostics routines to
-! re-initialize their SAVEd locals and closes the units the last run
-! left open (close_run_units: the run log and the final model, not a
-! host program's units). The controls need
+! after the first it also closes the units the last run left open
+! (close_run_units: the run log and the final model, not a host
+! program's units). The controls need
 ! no snapshot: read_controls resets s%control and s%physics to their
 ! defaults and re-seeds
 ! the namelist buffer before every read. Physics-domain table state is
