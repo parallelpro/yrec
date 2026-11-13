@@ -47,7 +47,9 @@
 !               failed. Bulirsch-Stoer limits out of range (nuse = 1)
 !               return numerics_bad_input and an envint_bsstep_limits
 !               event with imax and nuse. A step that underflows (an
-!               error tolerance of zero) returns envelope_termination
+!               error tolerance of zero, with the IEEE divide-by-zero and
+!               invalid traps of a devel build held off for that one
+!               integration) returns envelope_termination
 !               and an envint_bsstep_failed event with bsstep's status.
 !
 ! Usage: test_envelope_integration [DECK.inlist]   (run with YREC_INPUT
@@ -533,8 +535,12 @@ end subroutine check_start_retry
 ! ---------------------------------------------------------------
 ! The error contracts.
 subroutine check_errors()
+      use, intrinsic :: ieee_exceptions, only: ieee_get_halting_mode, &
+           ieee_set_halting_mode, ieee_support_halting, ieee_set_flag, &
+           ieee_divide_by_zero, ieee_invalid
       type(envint_config) :: cfg
       integer :: last
+      logical :: halt_zero, halt_invalid
 
       cfg = base_cfg
       cfg%atm_step_begin = 1.0e-6_dp
@@ -569,9 +575,26 @@ subroutine check_errors()
            real(events%event(events%num_events)%counts(2), dp), &
            all(events%event(events%num_events)%counts == [cfg%max_stage_index, 1]))
 
+! A zero error tolerance: bsstep divides the error estimate by it, so
+! no stage is accepted and the step underflows. The division raises IEEE
+! divide-by-zero (invalid for 0/0); a build that traps them (make
+! devel_tests, -ffpe-trap) would stop there, so they do not halt during
+! this one integration, and their flags are cleared after it.
       cfg = base_cfg
       cfg%atm_error_tol = 0.0_dp
+      call ieee_get_halting_mode(ieee_divide_by_zero, halt_zero)
+      call ieee_get_halting_mode(ieee_invalid, halt_invalid)
+      if (ieee_support_halting(ieee_divide_by_zero)) &
+           call ieee_set_halting_mode(ieee_divide_by_zero, .false.)
+      if (ieee_support_halting(ieee_invalid)) &
+           call ieee_set_halting_mode(ieee_invalid, .false.)
       call integrate(cfg)
+      call ieee_set_flag(ieee_divide_by_zero, .false.)
+      call ieee_set_flag(ieee_invalid, .false.)
+      if (ieee_support_halting(ieee_divide_by_zero)) &
+           call ieee_set_halting_mode(ieee_divide_by_zero, halt_zero)
+      if (ieee_support_halting(ieee_invalid)) &
+           call ieee_set_halting_mode(ieee_invalid, halt_invalid)
       last = event_kind(events%num_events)
       call report('step underflow: ierr = envelope_termination', real(ierr, dp), &
            ierr == envelope_termination .and. last == envint_bsstep_failed)
