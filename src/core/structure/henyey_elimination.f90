@@ -65,6 +65,8 @@ module henyey_elimination
       use shell_equations, only: henyey_shell_terms
       use star_info_lib, only: star_info
       implicit none
+      private
+      public :: henyey_eliminate, henyey_solve
 
 contains
 

@@ -17,6 +17,9 @@
 module envelope_integration
       use star_info_lib, only: star_info
       implicit none
+      private
+      public :: atm_get, fixed_envint_step, surface_log10_radius_cm, &
+           ambient_log10_teff
 
 ! 2026 W2: fixed Bulirsch-Stoer step-size triple (begin/min/max) a
 ! driver can hand atm_get in place of the controls' {atm,env}_step_*
@@ -110,7 +113,8 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
 ! zero-valued scratch here. atm_steps/env_steps, when present,
 ! replace the controls' {atm,env}_step_* triples for this call only
 ! (the drivers that used to overwrite and restore the controls).
-      use envelope_integration_kernel
+      use envelope_integration_kernel, only: envint_config, envint_events, &
+           integrate_envelope_atmosphere
       use physical_constants, only: cgl
       use atm_lib, only: hsra_t_tau_offset
       implicit none

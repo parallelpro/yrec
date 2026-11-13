@@ -38,6 +38,8 @@ module envelope_integration_kernel
            point_physics
       use numerics_lib, only: ode_system
       implicit none
+      private
+      public :: integrate_envelope_atmosphere
 
 ! The kernel's settings: the atmosphere choice; the Bulirsch-Stoer step
 ! sizes (begin, min, max, in log tau and in log P) and the error
