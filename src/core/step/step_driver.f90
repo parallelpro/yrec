@@ -43,12 +43,9 @@ contains
 !   ierr /= 0                          error; run_yrec returns it to the
 !                                      caller
 !
-! The blanket save is deliberate: these locals were statics of the legacy
-! main program, and several carry state from one step to the next (the
-! convergence bookkeeping, the surface convection zone's base zone of the
-! previous step). The reset block below (evolve_step_reset_pending)
-! clears them for a second run in the same process, alongside
-! evolve_state.
+! Nothing is carried from one step to the next in the locals: every
+! local is assigned in the call before it is read, and what outlives
+! the step is in the star.
 !   star reads: card_kind, card_max_age_yr, card_stops_active,
 !     control%rewind_short_file, current_card, grada, gradr, log_L_lsun,
 !     log_Teff, log_total_mass, luminosity_breakdown_lsun, omega,
@@ -84,7 +81,7 @@ subroutine evolve_step(s, output, model_iteration, step_status, ierr)
       use evolve_rotation, only: evolve_angular_momentum
       use rotating_shape, only: rotation_shape_factors
 
-      use star_info_lib, only: evolve_step_reset_pending, i_h1, i_h2, &
+      use star_info_lib, only: i_h1, i_h2, &
            max_convective_zones, max_radiative_zones, &
            i_he4, n_species_basic, n_species_extended
       use run_messages, only: run_log_unit
@@ -133,37 +130,8 @@ subroutine evolve_step(s, output, model_iteration, step_status, ierr)
 ! limits off (log Tc > 7.1 with L_grav < 0); the driver then clears
 ! star%structure_dt_limits_active.
       logical :: disable_structure_dt_limits
-      save
-   ! INTENTIONAL: cross-step driver state (see the header); reset via
-   ! evolve_step_reset_pending
       step_status = step_continue
       ierr = 0
-
-! On a second run_yrec call in the same process, put the saved locals
-! back to their process-start value (zero). yrec_reset sets the flag; a
-! fresh process never sees it, so the first run is untouched.
-      if (evolve_step_reset_pending) then
-         delta_lum_step = 0.0d0
-         delta_pressure_step = 0.0d0
-         delta_radius_step = 0.0d0
-         delta_temp_step = 0.0d0
-         target_envelope_mass = 0.0d0
-         envelope_cz_zone_end = 0
-         envelope_cz_zone_prev = 0
-         iteration_level = 0
-         iterations_done = 0
-         max_iterations = 0
-         num_mixed_zones = 0
-         num_mixed_zones_no_overshoot = 0
-         num_radiative_zones = 0
-         num_species = 0
-         converged = .false.
-         evolve_model_flag = .false.
-         new_atmosphere_fit_needed = .false.
-         recompute_surface_bc = .false.
-         wind_loss_active = .false.
-         evolve_step_reset_pending = .false.
-      end if
 
 ! The stages are the internal procedures below. Each sets ierr on an
 ! error, checked after each call; a diverged solve sets

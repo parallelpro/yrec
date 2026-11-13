@@ -185,6 +185,9 @@ subroutine henyey_iterate(s, delta_time, max_iterations, converged, &
       integer :: jerr
 
       ierr = 0
+! Set on every path: the early return below and an error return leave
+! it false, as do the passes until test_henyey_convergence sets it.
+      corrections_too_large = .false.
       underrelax_ramp_active = s%physics%solver_underrelax_start.gt.0.0d0
 ! If the model converged at the previous level and the envelope triangle
 ! was checked without any new envelope, there is nothing to correct.
