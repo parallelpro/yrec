@@ -142,7 +142,7 @@ Answered by the owner on 2026-11-11 (round 1B's B lists, approved with their rec
 | O3 | Low-mass convergence (0.03, 0.05, 0.1 Msun) | Yes | Open (core's B list item 23: later) |
 | O4 | Starting model's stitched atmosphere reads out of bounds | No (2025/2026) | Fixed in round 2B (2026-11-13); byte-identical |
 | O5 | Accretion entropy term at levels 1-2 (latent) | No (2026) | Fixed in round 2B (2026-11-13); byte-identical |
-| O6 | Rezone's deuterium gate reads the old surface index | Yes | Open; core's B list item 3, measured (A byte-identical) |
+| O6 | Rezone's deuterium gate reads the old surface index | Yes | Open in part: A (the gate on the new surface) fixed in round 2B (2026-11-13), byte-identical; B (the regrid unconditional) with M176's part B |
 | O7 | Accretion mixing assumes a uniform convection zone | Yes | Open; core's B list item 19 |
 | O8 | Li/Be rate store zeroes both rate sets | Yes | Open; core's B list item 21 |
 | O9 | Surface ⁷Li noise floor of ~0.005 dex | Yes | Open; core's B list item 22 |
@@ -1303,7 +1303,7 @@ These are found, recorded and left as they are, because each fix changes results
 
 ### O6. The rezone's deuterium gate reads the pre-rezone surface index
 
-- **Status:** open.
+- **Status:** open in part. Part A, the gate on the new surface, fixed in round 2B (2026-11-13, core's B list item 3; byte-identical). Part B, the start rate regridded unconditionally, stays open: it goes with M176's part B, in a round that reseeds every deck (the owner's decision of 2026-11-13).
 - **In the original F77?** Yes. HPOINT tests `HCOMP(12,M)` after regridding, but before `M` becomes the new point count (that happens at hpoint.f:678; [hpoint.f:591-602](https://github.com/parallelpro/yrec/blob/6cd56739/src/hpoint.f#L591-L602)):
   ```fortran
         IF(LEXCOM .AND. HCOMP(12,M).GE.1.0D-14)THEN
@@ -1317,6 +1317,7 @@ These are found, recorded and left as they are, because each fix changes results
 - **Expected behaviour, and why:** every per-zone array that survives the rezone must be moved onto the new mesh.
 - **Proposed fix:** test the new surface and regrid the rate unconditionally. The expected drift is at round-off or none.
 - **Round 2 (2026-11-12/13):** core's B list (`audit/module-evaluation-7-2026-11-10/B_LIST_CORE.md`, item 3), measured in round 2 (scratch, `--set all`): A, the gate on the new surface (`s%xa(i_h2,new_point_count)`), ALL IDENTICAL, 35 pins; B, the start rates regridded unconditionally, 18 decks and 5 pins move, first visible change 1e-9 in 8 of them and the end states at the decks' noise (Test_solarGS98_difrotmixper18p4d0p1 855 to 854 models, log L -3.4e-5). Recommended: A now, B with M176's part B.
+- **What we did:** round 2B (2026-11-13), part A: `regrid_composition_terms` gates the start-of-step deuterium rate's regrid on the deuterium at the new surface, `s%xa(i_h2, rz%new_point_count)` (xa holds the regridded species there; `s%nz` is still the old count). Measured on the 56-deck set and the 35 pins: ALL IDENTICAL, as the scratch trial found (in no deck does the old index's deuterium lie on the other side of 1e-14 from the new surface's). No test: the gate differs only where the surface deuterium crosses 1e-14 on a rezone that changes the point count, which no test program sets up cheaply (the rezone needs a whole model). Part B stays open (Status).
 
 ### O7. Accretion mixing assumes a uniform convection zone, and the step uses two definitions of M_cz
 
