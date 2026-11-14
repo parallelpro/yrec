@@ -396,15 +396,9 @@ module star_info_lib
 ! mass_change, controls_sync. From physics%use_mass_accretion; switched off
 ! for the rest of the run when the disk is exhausted.
             logical :: mass_change_active
-! the core extension's mass factor: the factor by which the innermost
-! mass is reduced, then the log10 mass shift N dlogm the extension made
-! [-]; starting_model, controls_sync. From
-! physics%core_mass_reduction_factor. A second extension in one run (a later
-! card read from file) starts from the shift, as found.
-            real(dp) :: core_mass_reduction
 ! the number of points the core extension added [-]; starting_model,
 ! controls_sync. From physics%num_core_shells_added; the extension
-! recomputes it from core_mass_reduction.
+! recomputes it from physics%core_mass_reduction_factor.
             integer :: num_core_points_added
 ! the star calibration's target Teff [K]; calibration, controls_sync.
 ! From control%target_teff; setup_star_calibration computes it from the

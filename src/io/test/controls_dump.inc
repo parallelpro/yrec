@@ -584,7 +584,6 @@ subroutine dump_controls(star, u)
       do i1 = 1, 50
       write(u,'(a," = ",es25.17e3)') 'star%card_central_helium_stop('//itoa(i1)//')', star%card_central_helium_stop(i1)
       end do
-      write(u,'(a," = ",es25.17e3)') 'star%core_mass_reduction', star%core_mass_reduction
       write(u,'(a," = ",es25.17e3)') 'star%settling_z_factor_in_use', star%settling_z_factor_in_use
       write(u,'(a," = ",i0)') 'star%num_rotation_structure_passes', star%num_rotation_structure_passes
       write(u,'(a," = ",i0)') 'star%atm_choice_in_use', star%atm_choice_in_use

@@ -98,7 +98,7 @@ end subroutine setup_monte_carlo_runs
 ! stops init_stop_conditions disarmed, the solar calibration's
 ! age-scaled fixed timesteps and laid-out cycles, the structure-timestep
 ! and mass-change latches, the atmosphere the surface boundary switched
-! to, the core extension's factor. The other state found so far that a run
+! to, the core extension's point count. The other state found so far that a run
 ! leaves on the star and the next would read before writing it is
 ! cleared (clear_previous_run_state). Then the run's samples are applied
 ! (apply_monte_carlo_parameters). On the first run the re-arm and the

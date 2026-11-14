@@ -156,7 +156,7 @@ physics	fc	real	mixing_velocity_scale	live		mixing_velocity_scale	physics		run		
 physics	fo	real	coupling_factor	live		coupling_factor	buffer		none		
 physics	fmu	real	mu_gradient_scale	unused		mu_gradient_scale	buffer		none		
 physics	fes	real	es_velocity_scale	live		es_velocity_scale	physics		run		rotation_settings%velocity_scale(i_mech_eddington_sweet)
-physics	fcore	real	core_mass_reduction_factor	live		core_mass_reduction_factor	physics	core_mass_reduction	run		
+physics	fcore	real	core_mass_reduction_factor	live		core_mass_reduction_factor	physics		run		
 physics	fgsf	real	gsf_velocity_scale	live		gsf_velocity_scale	physics		run		rotation_settings%velocity_scale(i_mech_gsf)
 physics	fss	real	secular_shear_velocity_scale	live		secular_shear_velocity_scale	physics		run		rotation_settings%velocity_scale(i_mech_shear)
 physics	fesc	real	es_mixing_scale	live		es_mixing_scale	physics		run		rotation_settings%mixing_scale(i_mech_eddington_sweet)

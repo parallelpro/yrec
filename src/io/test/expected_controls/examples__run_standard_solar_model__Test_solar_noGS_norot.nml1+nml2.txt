@@ -207,7 +207,6 @@ star%card_initial_x(1) =  7.19620000000000037E-001
 star%card_initial_x(2) =  7.19620000000000037E-001
 star%card_initial_z(1) =  1.64919999999999997E-002
 star%card_initial_z(2) =  1.64919999999999997E-002
-star%core_mass_reduction =  1.00000000000000000E+001
 star%num_core_points_added = 40
 star%card_stops_active(2) = T
 star%card_rescale_targets(1,1) =  1.00000000000000000E+000

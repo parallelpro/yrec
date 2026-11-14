@@ -573,8 +573,8 @@ end subroutine set_isotope_ratios
 ! It is done on every card that reads its model from file, not only the
 ! first, so that auto-calibrated solar models keep the change (MHP 9/14).
 !   star reads: card_from_starting_model, physics%chi_grid_scale,
-!     physics%extend_core_inward
-!   star writes: convective_flag, core_mass_reduction, log_mass, logP,
+!     physics%core_mass_reduction_factor, physics%extend_core_inward
+!   star writes: convective_flag, log_mass, logP,
 !     logR, logRho, logT, luminosity_lsun, num_core_points_added, nz,
 !     omega, xa
 subroutine extend_core_toward_center(s, sm, ierr)
@@ -596,14 +596,12 @@ subroutine extend_core_toward_center(s, sm, ierr)
       character(len=message_length) :: lines(4)
 
       if (s%physics%extend_core_inward .and. s%card_from_starting_model(sm%run_index)) then
-! The innermost mass is to drop by the factor core_mass_reduction_factor
-! (legacy FCORE): that takes N = int(log10(factor)/dlogm) + 1 steps
-! (num_core_points_added, legacy MCORE). core_mass_reduction is then
-! overwritten with the log10 shift N dlogm actually made.
-          s%num_core_points_added = int(log10(s%core_mass_reduction)/ &
+! The innermost mass is to drop by the deck's factor
+! core_mass_reduction_factor (legacy FCORE): that takes
+! N = int(log10(factor)/dlogm) + 1 steps (num_core_points_added, legacy
+! MCORE), the same N on every extension of the run (M126).
+          s%num_core_points_added = int(log10(s%physics%core_mass_reduction_factor)/ &
                s%physics%chi_grid_scale(ichi_dm_max))+1
-          s%core_mass_reduction = dble(s%num_core_points_added)* &
-               s%physics%chi_grid_scale(ichi_dm_max)
           num_shells_extended = s%nz + s%num_core_points_added
 ! Too many points for the json-point arrays: the run stops with ierr
 ! (starin printed RUN TERMINATED but went on writing past json; fixed
