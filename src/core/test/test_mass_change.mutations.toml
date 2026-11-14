@@ -4,7 +4,9 @@
 # test_mass_change (src/tools/mutate.py describes this format and the
 # verdicts). mass_change-06 is bc874267 reverted (a convection zone that
 # reaches the centre), mass_change-09 91a6b567's measurement of J_cz on
-# the masses after the change.
+# the masses after the change, mass_change-13 the uniform zone that
+# mixing used to assume (O7: the base shell's X for the whole zone), and
+# mass_change-14 the compression's M_cz without the base shell.
 program = "test_mass_change"
 timeout = 60
 
@@ -12,8 +14,12 @@ timeout = 60
 id = 'mass_change-01'
 check = '  M_cz = convection_zone_mass'
 file = 'core/step/mass_change_kernel.f90'
-old = 'cz_mass = m(nz) - m(jenv)'
-new = 'cz_mass = m(nz) - m(jenv+1)'
+old = '''
+      do zone_idx = 1, size(zone_dm)
+         cz_mass = cz_mass + zone_dm(zone_idx)'''
+new = '''
+      do zone_idx = 2, size(zone_dm)
+         cz_mass = cz_mass + zone_dm(zone_idx)'''
 
 [[mutation]]
 id = 'mass_change-02'
@@ -98,3 +104,17 @@ check = '  sum of X dm = old + X_acc dM, o18'
 file = 'core/step/mass_change_kernel.f90'
 old = 'do species_idx = 1, n_species_basic'
 new = 'do species_idx = 1, n_species_basic - 1'
+
+[[mutation]]
+id = 'mass_change-13'
+check = '  sum of X dm = old + X_acc dM, h1'
+file = 'core/step/mass_change_kernel.f90'
+old = 'species_mass = species_mass + xa(species_idx,zone_idx)*zone_dm(zone_idx)'
+new = 'species_mass = species_mass + xa(species_idx,1)*zone_dm(zone_idx)'
+
+[[mutation]]
+id = 'mass_change-14'
+check = '  m(k > jenv) - m(jenv) scale by (M_cz+dM)/M_cz'
+file = 'core/step/mass_change_kernel.f90'
+old = 'cz_mass = convection_zone_mass(dm(jenv:nz))'
+new = 'cz_mass = convection_zone_mass(dm(jenv+1:nz))'

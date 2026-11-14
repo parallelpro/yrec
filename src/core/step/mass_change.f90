@@ -182,14 +182,11 @@ subroutine measure_convective_envelope()
          s%convective_turnover_timescale = 0.0d0
          s%envelope_cz_bottom_index_start = nz
       end if
-! The mass of the convective envelope, sum of dm(jenv..nz) (MHP 8/10).
-! dm(nz) reaches the total mass, so this includes the mass outside the
-! fitting point, despite the name.
-      cz_total_mass_below_fitting = 0.0d0
-      do zone_idx = jenv, nz
-         cz_total_mass_below_fitting = cz_total_mass_below_fitting+ &
-              s%dm(zone_idx)
-      end do
+! The mass of the convective envelope, M_cz = sum of dm(jenv..nz)
+! (convection_zone_mass; MHP 8/10), the step's one M_cz. dm(nz) reaches
+! the total mass, so this includes the mass outside the fitting point,
+! despite the name.
+      cz_total_mass_below_fitting = convection_zone_mass(s%dm(jenv:nz))
 end subroutine measure_convective_envelope
 
 ! ---------------------------------------------------------------
@@ -345,8 +342,10 @@ end subroutine change_mass
 ! mass_loss_rate_msun_yr (Msun/yr, positive for accretion),
 ! accretion_specific_energy and mean_thermal_energy (the energies per
 ! gram of the accreted matter and of the convection zone),
-! cz_total_mass_below_fitting (the convective envelope's mass) and
-! envelope_specific_entropy (its mean specific entropy, zero at present).
+! cz_total_mass_below_fitting (the convective envelope's mass M_cz, sum
+! of its shell masses: the step's timestep limit, entropy shift,
+! compression and mixing all take it) and envelope_specific_entropy
+! (its mean specific entropy, zero at present).
 ! Outputs: old_log_envelope_mass_fraction = log10(m(nz)/M) before the
 ! change; disk_exhausted, true when the disk-locking age was reached
 ! (the timestep is clipped to land on it); ierr = 1 when the envelope
@@ -377,7 +376,6 @@ subroutine apply_mass_change(s, total_radius_cm, mass_loss_rate_msun_yr, &
       integer, intent(out) :: ierr
       integer :: nz, jenv, zone_idx
       real(dp) :: mass_loss_rate_cgs
-      real(dp) :: cz_mass_grams
       real(dp) :: timestep_limit_total_mass, timestep_limit_cz_mass, &
            timestep_limit
       real(dp) :: timestep_limit_envelope
@@ -407,7 +405,7 @@ subroutine apply_mass_change(s, total_radius_cm, mass_loss_rate_msun_yr, &
 ! The magnitude of the rate, in g/s.
       mass_loss_rate_cgs = abs(mass_loss_rate_msun_yr)*s%solar_mass_cgs/ &
            seconds_per_year
-      call weigh_surface_convection_zone()
+      call require_zone_below_surface()
       if (ierr /= 0) return
       call limit_mass_change_timestep()
 ! The mass change of the step, dM = Mdot dt, in g (negative for loss).
@@ -426,20 +424,16 @@ subroutine apply_mass_change(s, total_radius_cm, mass_loss_rate_msun_yr, &
 contains
 
 ! ---------------------------------------------------------------
-! The mass of the surface convection zone below the fitting point
-! (convection_zone_mass); ierr = 1 when the envelope boundary is the
-! surface zone.
-subroutine weigh_surface_convection_zone()
+! ierr = 1 when the envelope boundary is the surface zone.
+subroutine require_zone_below_surface()
       character(len=message_length) :: lines(1)
       if(jenv == nz) then
          lines = unwritten_line
          lines(1) = ' mdot: envelope boundary at the surface (911)'
          call core_stdout(lines)
          ierr = 1
-         return
       end if
-      cz_mass_grams = convection_zone_mass(jenv, s%m(1:nz))
-end subroutine weigh_surface_convection_zone
+end subroutine require_zone_below_surface
 
 ! ---------------------------------------------------------------
 ! Limits the timestep for the mass change (ftotdmdt, fczdmdt, half the
@@ -454,7 +448,8 @@ subroutine limit_mass_change_timestep()
       if(mass_loss_rate_cgs > 0.0d0)then
          timestep_limit_total_mass = s%physics%accretion_total_fraction*s%star_mass*s%solar_mass_cgs/ &
               mass_loss_rate_cgs
-         timestep_limit_cz_mass = s%physics%accretion_cz_fraction*cz_mass_grams/mass_loss_rate_cgs
+         timestep_limit_cz_mass = s%physics%accretion_cz_fraction*cz_total_mass_below_fitting/ &
+              mass_loss_rate_cgs
          timestep_limit = min(timestep_limit_total_mass,timestep_limit_cz_mass)
 ! Nor by more than half the mass outside the fitting point (the outer
 ! zone), (M - m(nz))/2, for loss and accretion alike.
@@ -505,7 +500,7 @@ subroutine adjust_cz_for_accreted_entropy()
               local_pressure)
          mean_molecular_weight_local = local_pressure*local_beta/ &
               (local_density*local_temperature)
-         delta_log_specific_entropy = (delta_mass_cgs/cz_mass_grams)* &
+         delta_log_specific_entropy = (delta_mass_cgs/cz_total_mass_below_fitting)* &
               envelope_specific_entropy/mean_molecular_weight_local
 ! The mass term d ln M = ln((M_cz + dM)/M_cz) is deliberately left out.
          delta_ln_mass = 0.0d0
@@ -542,11 +537,10 @@ end subroutine adjust_cz_for_accreted_entropy
 ! (change_shell_masses: with mass loss the zone-center masses compress
 ! about the zone's base; the shell masses dm, the last reaching the new
 ! total) and log_fit_point_mass_fraction; the surface boundary condition
-! is to be recomputed. With a wind that carries angular momentum, the
-! zone's shell masses before the change are kept for spin_down_cz_by_wind.
+! is to be recomputed. The zone's shell masses before the change are
+! kept for spin_down_cz_by_wind and mix_in_accreted_composition.
 subroutine update_masses()
-      if(wind_carries_angular_momentum) &
-           cz_shell_masses_before = s%dm(jenv:nz)
+      cz_shell_masses_before = s%dm(jenv:nz)
 ! The new total mass, in Msun (star_mass) and as log10 M in g
 ! (log_total_mass).
       s%star_mass = s%star_mass + delta_mass_cgs/s%solar_mass_cgs
@@ -598,11 +592,12 @@ end subroutine report_new_mass
 
 ! ---------------------------------------------------------------
 ! With accretion: the accreted composition mixed into the convection
-! zone (mix_accreted_composition, with M_cz = cz_total_mass_below_fitting
-! and X_acc = accreted_composition), and the accreted mass recorded.
+! zone (mix_accreted_composition, on the zone's shell masses before the
+! change, with X_acc = accreted_composition), and the accreted mass
+! recorded.
 subroutine mix_in_accreted_composition()
       if(delta_mass_cgs > 0.0d0)then
-         call mix_accreted_composition(cz_total_mass_below_fitting, &
+         call mix_accreted_composition(cz_shell_masses_before, &
               delta_mass_cgs, s%physics%accreted_composition, &
               s%xa(:,jenv:nz))
          s%accreted_mass = delta_mass_cgs

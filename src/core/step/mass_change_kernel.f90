@@ -38,21 +38,21 @@ contains
 !----------------------------------------------------------------------
 ! convection_zone_mass
 !----------------------------------------------------------------------
-! The mass of the surface convection zone below the fitting point,
-! M_cz = m(nz) - m(jenv) (g), or m(nz) when the zone reaches the center
-! (jenv = 1). m: the zone-center masses of shells 1..nz.
-pure function convection_zone_mass(jenv, m) result(cz_mass)
-      integer, intent(in) :: jenv
-      real(dp), intent(in) :: m(:)
+! The mass of the surface convection zone, M_cz = sum of its shell
+! masses dm (g), summed from its base up: zone_dm = dm(jenv:nz). The
+! last shell reaches the total mass, so M_cz includes the mass outside
+! the fitting point; with jenv = 1 it is the star's mass. The step's one
+! M_cz: its timestep limit, the accretion's entropy shift and energy
+! means, the compression and the mixing all take it.
+pure function convection_zone_mass(zone_dm) result(cz_mass)
+      real(dp), intent(in) :: zone_dm(:)
       real(dp) :: cz_mass
-      integer :: nz
+      integer :: zone_idx
 
-      nz = size(m)
-      if (jenv > 1) then
-         cz_mass = m(nz) - m(jenv)
-      else
-         cz_mass = m(nz)
-      end if
+      cz_mass = 0.0d0
+      do zone_idx = 1, size(zone_dm)
+         cz_mass = cz_mass + zone_dm(zone_idx)
+      end do
 end function convection_zone_mass
 
 !----------------------------------------------------------------------
@@ -65,8 +65,10 @@ end function convection_zone_mass
 !   - With mass loss, the zone-center masses above the base (and their
 !     logs) compress about m(jenv):
 !       m(k) = m(jenv) + f (m(k) - m(jenv))  for k > jenv,
-!     with f = (M_cz + dM)/M_cz and M_cz = convection_zone_mass. Accreted
-!     mass is not spread over the zones; it lands in dm(nz).
+!     with f = (M_cz + dM)/M_cz and M_cz = convection_zone_mass of the
+!     shell masses dm(jenv..nz) on entry; the last shell, reaching the
+!     new total, takes the rest of dM. Accreted mass is not spread over
+!     the zones; it lands in dm(nz).
 !   - The zone's shell masses are half the span between the neighbouring
 !     zone centers, the last shell reaching the total mass:
 !       dm(k) = (m(k+1) - m(k-1))/2,  dm(nz) = M + dM - (m(nz) + m(nz-1))/2.
@@ -83,7 +85,7 @@ pure subroutine change_shell_masses(jenv, delta_mass, total_mass, m, &
 
       nz = size(m)
       if (delta_mass < 0.0d0) then
-         cz_mass = convection_zone_mass(jenv, m)
+         cz_mass = convection_zone_mass(dm(jenv:nz))
          mass_scale_factor = (cz_mass + delta_mass)/cz_mass
          do zone_idx = jenv+1, nz
             m(zone_idx) = m(jenv) + mass_scale_factor*(m(zone_idx) - m(jenv))
@@ -182,26 +184,32 @@ end function zone_angular_momentum
 ! mix_accreted_composition
 !----------------------------------------------------------------------
 ! The accreted matter, delta_mass = dM > 0 (g) of composition
-! x_accreted, mixed into the convection zone of mass cz_mass = M_cz (g,
-! the sum of its shell masses before the change). xa is the zone's
-! composition (species, shells jenv..nz); the zone is taken to be mixed
-! already, so its base column stands for it. For each of the basic
-! species (composition_layout's slots 1..n_species_basic), in every
-! shell of the zone,
-!   X = (X(jenv) M_cz + X_acc dM)/(M_cz + dM).
+! x_accreted, mixed into the convection zone. zone_dm and xa are the
+! zone's shell masses before the change (g) and its composition
+! (species, shells jenv..nz). For each of the basic species
+! (composition_layout's slots 1..n_species_basic), in every shell of the
+! zone,
+!   X = (sum of X dm + X_acc dM)/(M_cz + dM),  M_cz = sum of dm
+! (convection_zone_mass), so the zone's mass of each species grows by
+! X_acc dM exactly, whether or not the zone was uniform.
 ! The light elements of the extended set are not mixed here: burn_step
 ! takes the accreted gas's share of them as it burns them
 ! (surface_accretion_now, burn_li_be).
-pure subroutine mix_accreted_composition(cz_mass, delta_mass, &
+pure subroutine mix_accreted_composition(zone_dm, delta_mass, &
      x_accreted, xa)
-      real(dp), intent(in) :: cz_mass, delta_mass
+      real(dp), intent(in) :: zone_dm(:), delta_mass
       real(dp), intent(in) :: x_accreted(:)
       real(dp), intent(inout) :: xa(:,:)
       integer :: species_idx, zone_idx
-      real(dp) :: mixed_abundance
+      real(dp) :: cz_mass, species_mass, mixed_abundance
 
+      cz_mass = convection_zone_mass(zone_dm)
       do species_idx = 1, n_species_basic
-         mixed_abundance = (xa(species_idx,1)*cz_mass + &
+         species_mass = 0.0d0
+         do zone_idx = 1, size(zone_dm)
+            species_mass = species_mass + xa(species_idx,zone_idx)*zone_dm(zone_idx)
+         end do
+         mixed_abundance = (species_mass + &
               x_accreted(species_idx)*delta_mass)/(delta_mass + cz_mass)
          do zone_idx = 1, size(xa,2)
             xa(species_idx,zone_idx) = mixed_abundance
