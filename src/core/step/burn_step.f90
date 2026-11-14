@@ -349,8 +349,9 @@ end subroutine burn_li_be
 ! the saved start-of-step model (star%logRho_start, logT_start, xa_start)
 ! into star%rate_*_start; otherwise of the model in the arguments into
 ! star%rate_*. The loop stops at the first shell cooler than log T = 6 in
-! both the argument model and the start-of-step one; from there out both
-! sets are zeroed. (Fixed 2026-10: the legacy callers passed the 1/2 flag
+! both the argument model and the start-of-step one; from there out the
+! set the call fills is zeroed, and the other set is left as its own
+! call stored it. (Fixed 2026-10: the legacy callers passed the 1/2 flag
 ! the wrong way round, so both sets came from the start-of-step model.)
 !   star reads: logRho_start, logT_start, xa_start
 !   star writes: rate_be9, rate_be9_start, rate_li6, rate_li6_start,
@@ -393,12 +394,15 @@ subroutine store_li_be_rates(s, composition, log_density, log_temperature, &
             s%rate_be9(zone_idx) = be9_rate*rhox
          end if
       end do
-      s%rate_li6(zone_idx:num_zones) = 0.0d0
-      s%rate_li7(zone_idx:num_zones) = 0.0d0
-      s%rate_be9(zone_idx:num_zones) = 0.0d0
-      s%rate_li6_start(zone_idx:num_zones) = 0.0d0
-      s%rate_li7_start(zone_idx:num_zones) = 0.0d0
-      s%rate_be9_start(zone_idx:num_zones) = 0.0d0
+      if (start_of_step) then
+         s%rate_li6_start(zone_idx:num_zones) = 0.0d0
+         s%rate_li7_start(zone_idx:num_zones) = 0.0d0
+         s%rate_be9_start(zone_idx:num_zones) = 0.0d0
+      else
+         s%rate_li6(zone_idx:num_zones) = 0.0d0
+         s%rate_li7(zone_idx:num_zones) = 0.0d0
+         s%rate_be9(zone_idx:num_zones) = 0.0d0
+      end if
 end subroutine store_li_be_rates
 
 !----------------------------------------------------------------------
