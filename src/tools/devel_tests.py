@@ -59,7 +59,7 @@ CASES = [
     ("test_timestep_limits", "test_timestep_limits", [], {}, None),
     ("test_model_kernels", "test_model_kernels", [], {}, None),
     ("test_run_contracts", "test_run_contracts",
-     ["{repo}/examples/run_config_matrix/cm_env_overshoot.inlist"], {}, None),
+     ["{repo}/examples/run_config_matrix/cm_base.inlist"], {}, None),
     ("test_structure[tams]", "test_structure",
      ["{repo}/src/core/test/test_structure_tams.inlist", "3e-3"], {"YREC_OUTPUT": "output"}, None),
     ("test_structure[yale]", "test_structure",

@@ -4,10 +4,10 @@
 # units it closes). Run, after
 # `make tests` in src/: python3 src/tools/mutate.py core --program
 # test_run_contracts (src/tools/mutate.py describes this format and the
-# verdicts). The deck is the configuration matrix's shortest.
+# verdicts). The deck is a short one of the configuration matrix's.
 program = "test_run_contracts"
 timeout = 300
-args = ["{repo}/examples/run_config_matrix/cm_env_overshoot.inlist"]
+args = ["{repo}/examples/run_config_matrix/cm_base.inlist"]
 
 [[mutation]]
 id = 'calibration-01'

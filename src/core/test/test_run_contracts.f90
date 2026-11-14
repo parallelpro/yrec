@@ -32,7 +32,7 @@
 !
 ! Usage: test_run_contracts DECK, with DECK an absolute path to a short
 ! deck (test_run_contracts.py passes the configuration matrix's
-! cm_env_overshoot.inlist), run from a directory with an empty output/
+! cm_base.inlist), run from a directory with an empty output/
 ! and YREC_INPUT and YREC_START set. The 256-character paths are DECK
 ! with "./" components after its leading "/". Prints one line per check
 ! and exits with status 1 when one fails.
