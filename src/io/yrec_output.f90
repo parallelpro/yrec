@@ -218,11 +218,15 @@ subroutine output_write_model(s, output, ierr)
       call write_mod_model(s, last_model_unit, replace=.true., ierr=ierr)
       if (ierr /= 0) return
 
-! the interval GYRE file (independent of write_pulse_flag)
-      if (s%control%pulse_gyre_interval > 0 .and. &
-          mod(s%model_number,s%control%pulse_gyre_interval) == 0) &
-           call write_interior_gyre(s, output, ierr)
-      if (ierr /= 0) return
+! the interval GYRE file (independent of write_pulse_flag). Two tests,
+! not one: Fortran's .and. need not skip its second operand, and at -O0
+! gfortran computes the mod first, which traps on x86 for the default
+! interval 0 (M318).
+      if (s%control%pulse_gyre_interval > 0) then
+         if (mod(s%model_number,s%control%pulse_gyre_interval) == 0) &
+              call write_interior_gyre(s, output, ierr)
+         if (ierr /= 0) return
+      end if
       call check_run_log(ierr)
 end subroutine output_write_model
 

@@ -4744,7 +4744,11 @@ convection; core, kap and convection), nothing survived; devel_tests, 0
 cases failed; the release rebuild; and the MESA baselines reseeded,
 checked (2 passed) and identical to the agent's. After the CI failure
 on 9059d0b1 (below), CI's two jobs were run from a local sparse clone:
-97 passed and 1 skipped, and devel_tests 0 failed.
+97 passed and 1 skipped, and devel_tests 0 failed. On the push
+(f0ed5045, CI run 43630095755) build-and-test and solar-regression
+passed, and devel-tests stopped in test_run_contracts, which O4's fix
+had brought back into the battery: M318, an integer mod by 0 that traps
+on x86 only, fixed after the round.
 
 **Learned.**
 - A reworded statement in a file that a mutation manifest names breaks
@@ -4758,6 +4762,12 @@ on 9059d0b1 (below), CI's two jobs were run from a local sparse clone:
 - A test that opens a new input file needs its line in both of CI's
   sparse-checkout lists (c690b498 added two Kurucz tables that test_atm
   had read since round 1).
+- The local devel battery runs on macOS/arm64, where floating-point
+  traps fire (as SIGILL) but an integer division by 0 gives 0 and
+  traps nothing; on CI's x86 Linux it raises SIGFPE. A case taken out of
+  devel_tests' known failures on a local run is confirmed only by CI's
+  devel job (M318). gfortran's integer-divide-by-zero sanitizer does not
+  instrument Fortran, so no local build can stand in for it.
 
 **What is left.**
 - Open by decision: O6's and M176's parts B (with a round that reseeds
@@ -4770,5 +4780,6 @@ on 9059d0b1 (below), CI's two jobs were run from a local sparse clone:
 - M112's rest: core's list-directed run-log lines and the other
   packages' message modules still write the run log directly.
 - **The eighth evaluation** (PLAN.md section 9).
-- **The push**: yrec-next was pushed through 9059d0b1 on 2026-11-13;
-  c690b498 and the two merges wait for the owner's word.
+- **The push**: yrec-next was pushed through 9059d0b1 on 2026-11-13
+  and through f0ed5045 on 2026-11-14; M318's fix waits for the owner's
+  word.
