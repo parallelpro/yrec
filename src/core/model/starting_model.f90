@@ -57,6 +57,9 @@ module starting_model
 !   old_last_shell, old_senv, target_log_mass_at_fit
 !                          the envelope refit's old last shell, old
 !                          fitting mass and target log m;
+!   fit_shell_index        a deeper refit's shell below the new fitting
+!                          mass (find_shell_below_new_fit; 0 when the
+!                          fitting mass lies inside the innermost shell);
 !   convective_velocity    the convective velocity of the new last shell
 !                          (set_new_last_shell_convection).
       type :: starting_model_state
@@ -70,6 +73,7 @@ module starting_model
          integer :: old_last_shell = 0
          real(dp) :: old_senv = 0.0d0
          real(dp) :: target_log_mass_at_fit = 0.0d0
+         integer :: fit_shell_index = 0
          real(dp) :: convective_velocity = 0.0d0
       end type starting_model_state
 
@@ -729,7 +733,6 @@ subroutine rescale_and_refit_envelope(s, sm, ierr)
       type(star_info), intent(inout) :: s
       type(starting_model_state), intent(inout) :: sm
       integer, intent(inout) :: ierr
-      integer :: i
       character(len=message_length) :: lines(4)
 
       if (s%card_kind(sm%run_index) /= card_evolve) call rescale_model(s, ierr)
@@ -747,7 +750,7 @@ subroutine rescale_and_refit_envelope(s, sm, ierr)
        if (s%requested_log_fit_point_mass_fraction < s%log_fit_point_mass_fraction) then
 ! The new envelope is deeper than the old one.
           call find_shell_below_new_fit(s, sm)
-          if (i < (1)) then
+          if (sm%fit_shell_index < 1) then
 ! The requested fitting mass lies inside the innermost shell: report
 ! it and leave the envelope mass unchanged.
           lines = unwritten_line
@@ -817,6 +820,7 @@ subroutine find_shell_below_new_fit(s, sm)
           do i = s%nz-1,1,-1
              if (s%log_mass(i) < sm%target_log_mass_at_fit) exit
           end do
+          sm%fit_shell_index = i
 end subroutine find_shell_below_new_fit
 
 
@@ -838,6 +842,7 @@ subroutine interpolate_new_fitting_point(s, sm)
       integer :: i
       integer :: j
       real(dp) :: interior_interp_fraction
+            i = sm%fit_shell_index
             s%nz = i + 1
           s%log_fit_point_mass_fraction = s%requested_log_fit_point_mass_fraction
           interior_interp_fraction = (sm%target_log_mass_at_fit-s%log_mass(i))/ &
@@ -900,6 +905,7 @@ subroutine set_new_last_shell_convection(s, sm, ierr)
       real(dp) :: dgrad_dr_component
       logical :: is_convective
       integer :: jerr
+          i = sm%fit_shell_index
           if (s%convective_flag(i).and.s%convective_flag(i+1)) then
              s%convective_flag(s%nz) = .true.
           else if (.not.s%convective_flag(i).and. .not.s%convective_flag(i+1)) &
