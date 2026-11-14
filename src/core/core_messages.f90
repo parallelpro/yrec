@@ -15,7 +15,12 @@
 !                      to standard output and to the run log.
 ! The terminal and the run log are run_messages' terminal_unit and
 ! run_log_unit. Before io assigns them they are standard error, as for
-! every domain's messages.
+! every domain's messages. The routes' run-log lines go through
+! run_messages' log_line, which writes a line when the run log is open
+! and keeps it for the log until then (M112); the *_values routes and
+! the two procedures of envelope/, structure/ and step/ below write the
+! run log's unit directly (list-directed and formatted lines whose
+! trailing blanks they keep).
 !
 ! The caller formats the message into an array of lines with an
 ! internal write (one record per element), after setting every element
@@ -28,7 +33,7 @@
 ! (GUIDELINES "Code style" 7; tools/check_boundaries.py's no-I/O check).
 module core_messages
       use, intrinsic :: iso_fortran_env, only: dp => real64, output_unit
-      use run_messages, only: run_log_unit, terminal_unit
+      use run_messages, only: run_log_unit, terminal_unit, log_line
       implicit none
       private
       public :: core_report, core_terminal, core_log, core_stdout, &
@@ -49,7 +54,7 @@ contains
 subroutine core_report(lines)
       character(len=*), intent(in) :: lines(:)
       call write_core_lines(terminal_unit, lines)
-      call write_core_lines(run_log_unit, lines)
+      call log_core_lines(lines)
 end subroutine core_report
 
 subroutine core_terminal(lines)
@@ -59,7 +64,7 @@ end subroutine core_terminal
 
 subroutine core_log(lines)
       character(len=*), intent(in) :: lines(:)
-      call write_core_lines(run_log_unit, lines)
+      call log_core_lines(lines)
 end subroutine core_log
 
 subroutine core_stdout(lines)
@@ -70,7 +75,7 @@ end subroutine core_stdout
 subroutine core_stdout_and_log(lines)
       character(len=*), intent(in) :: lines(:)
       call write_core_lines(output_unit, lines)
-      call write_core_lines(run_log_unit, lines)
+      call log_core_lines(lines)
 end subroutine core_stdout_and_log
 
 ! ---------------------------------------------------------------
@@ -154,6 +159,8 @@ subroutine write_core_values(unit, values, text, int_value)
 end subroutine write_core_values
 
 ! ---------------------------------------------------------------
+! The lines a caller wrote, without their trailing blanks, to unit, or
+! (log_core_lines) to the run log through log_line.
 subroutine write_core_lines(unit, lines)
       integer, intent(in) :: unit
       character(len=*), intent(in) :: lines(:)
@@ -163,5 +170,14 @@ subroutine write_core_lines(unit, lines)
          write(unit,'(a)') trim(lines(k))
       end do
 end subroutine write_core_lines
+
+subroutine log_core_lines(lines)
+      character(len=*), intent(in) :: lines(:)
+      integer :: k
+      do k = 1, size(lines)
+         if (lines(k)(1:1) == unwritten_line) cycle
+         call log_line(trim(lines(k)))
+      end do
+end subroutine log_core_lines
 
 end module core_messages
