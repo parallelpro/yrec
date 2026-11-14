@@ -17,6 +17,9 @@
 !   on a star set up here:
 !     - without the solar calibration, cards 2 and 3 keep the deck's
 !       stop ages; with it, they get the calibration's 1e8 and 4.57e9 yr;
+!   the sample file's read (setup_monte_carlo_runs), on a scratch file:
+!     - a file that ends before the last run asked for is an error
+!       (ierr 1), and a complete one reads every run's samples;
 !   the C entry (yrec_capi's yrec_run) and the re-entrancy prologue
 !   (yrec_reset), called here as a C or Fortran host would:
 !     - a unit the host opened stays open across calls, and the run's
@@ -38,10 +41,10 @@ program test_run_contracts
       use physical_constants, only: c4pi, csig
       use calibration, only: setup_star_calibration, check_star_calibration, &
            end_star_calibration_card
-      use monte_carlo, only: begin_monte_carlo_run
+      use monte_carlo, only: begin_monte_carlo_run, setup_monte_carlo_runs
       use yrec_capi, only: yrec_run
       use run_messages, only: run_log_unit
-      use run_files, only: last_model_unit
+      use run_files, only: last_model_unit, dynamics_unit
       implicit none
       integer :: num_failed = 0
       character(len=1024) :: deck
@@ -194,6 +197,7 @@ end function log_teff_at
 subroutine monte_carlo_checks()
       type(star_info), allocatable :: s
       double precision :: age_scale_factor
+      integer :: ierr
       call new_monte_carlo_star(s)
       call begin_monte_carlo_run(s, 1, age_scale_factor)
       call run_contract_check_that('Monte Carlo: without the calibration, the deck''s stop ages', &
@@ -203,7 +207,48 @@ subroutine monte_carlo_checks()
       call begin_monte_carlo_run(s, 1, age_scale_factor)
       call run_contract_check_that('Monte Carlo: with the calibration, 1e8 and 4.57e9 yr', &
            s%card_max_age_yr(2) == 1.0d8 .and. s%card_max_age_yr(3) == 4.57d9)
+
+! The sample file, with runs 1 to 2 asked for: one record, then two (run
+! 2's luminosity factor 1.01).
+      call new_monte_carlo_star(s)
+      s%physics%mc_run_end = 2
+      call open_sample_file(s, 1)
+      call setup_monte_carlo_runs(s, ierr)
+      call close_sample_file()
+      call run_contract_check_that('Monte Carlo: a sample file that ends before the last run: ierr 1', &
+           ierr == 1)
+      call new_monte_carlo_star(s)
+      s%physics%mc_run_end = 2
+      call open_sample_file(s, 2)
+      call setup_monte_carlo_runs(s, ierr)
+      call close_sample_file()
+      call run_contract_check_that('Monte Carlo: a complete sample file reads every run', &
+           ierr == 0 .and. s%mc_samples%luminosity_factor(2) == 1.01d0)
 end subroutine monte_carlo_checks
+
+! A scratch sample file on run_files' dynamics_unit, rewound, with
+! num_records records in the shipped mc_input.dat's layout (run k's
+! luminosity factor 1 + (k-1)/100), and its name for the star's
+! messages.
+subroutine open_sample_file(s, num_records)
+      type(star_info), intent(inout) :: s
+      integer, intent(in) :: num_records
+      integer :: k
+      s%control%dynamics_file = 'test_run_contracts samples (scratch)'
+      open(newunit=dynamics_unit, status='scratch', form='formatted')
+      do k = 1, num_records
+         write(dynamics_unit,'(a,i2,1p7e10.3/1pe9.3)') 'run  ', k, 1.0d0, 1.0d0, 1.0d0, &
+              1.0d0, 2.29d-2, 1.0d0, 1.0d0 + 0.01d0*(k - 1), 1.0d0
+      end do
+      rewind(dynamics_unit)
+end subroutine open_sample_file
+
+! Close it, and set the unit back to -1, as run_files' close_run_files
+! does: the run's own close would otherwise find a stale number there.
+subroutine close_sample_file()
+      close(dynamics_unit)
+      dynamics_unit = -1
+end subroutine close_sample_file
 
 ! A fresh star for a Monte-Carlo run: three cards stopping at 1e6, 5e6
 ! and 3e9 yr, the deck's solar luminosity, and run 1's samples all 1.

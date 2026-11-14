@@ -18,12 +18,13 @@
 module controls_check
       use run_messages, only: report_error, report_warning
       use numerics_lib, only: bsstep_max_stages, bsstep_max_extrap_order
-      use star_info_lib, only: star_info
+      use star_info_lib, only: star_info, max_mc_runs
       use control_slots, only: max_runs
       use controls_buffer, only: use_semiconvection, core_overshoot_active, &
            envelope_overshoot_active, intermediate_overshoot_active, tri_delta_teffl, tri_delta_logl, &
            rotation_active, max_diffusion_iters, tolerance_fraction, max_stage_index, &
-           extrap_order, num_runs, run_kind
+           extrap_order, num_runs, run_kind, monte_carlo_active, mc_run_start, &
+           mc_run_end
       use rotation_configuration, only: max_transport_iterations
       use run_cards, only: card_evolve, card_rescale, card_rescale_and_evolve
       implicit none
@@ -62,7 +63,12 @@ end subroutine warn
 !   - a card the deck runs (1 to num_runs) has a run_kind (legacy KINDRN)
 !     other than run_cards' three kinds: 1 evolve, 2 rescale, 3 rescale
 !     and evolve (the F77 took any other value for a card that rescales
-!     with no targets and evolves with no stops; docs/bug_sweep.md M108).
+!     with no targets and evolves with no stops; docs/bug_sweep.md M108);
+!   - with Monte Carlo on, the run range is not 1 <= mc_run_start <=
+!     mc_run_end <= max_mc_runs (state's 1000, the size of the sample
+!     arrays): a start below 1 indexed the arrays at 0, an end past
+!     max_mc_runs was cut to it without a word, and a start after the end
+!     ran nothing (docs/bug_sweep.md M115).
 ! It reads the controls in the read's buffer, after the deck is read
 ! and map_user_inputs.
 subroutine check_controls(ierr)
@@ -125,6 +131,15 @@ subroutine check_controls(ierr)
             return
          end if
       end do
+      if (monte_carlo_active .and. (mc_run_start < 1 .or. mc_run_end > max_mc_runs &
+           .or. mc_run_start > mc_run_end)) then
+         write(line,'(a,i0,a,i0,a,i0)') 'the Monte Carlo runs need 1 <= mc_run_start (IMBEG)' &
+              //' <= mc_run_end (IMEND) <= ', max_mc_runs, ', not ', mc_run_start, ' and ', &
+              mc_run_end
+         call report_error(line)
+         ierr = 1
+         return
+      end if
 end subroutine check_controls
 
 !----------------------------------------------------------------------

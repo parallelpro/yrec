@@ -19,7 +19,7 @@ import pytest
 REPO = pathlib.Path(__file__).parent
 BINARY = REPO / "src" / "test_run_contracts"
 DECK = REPO / "examples" / "run_config_matrix" / "cm_env_overshoot.inlist"
-NUM_CHECKS = 19
+NUM_CHECKS = 21
 
 
 def test_run_contracts(tmp_path):

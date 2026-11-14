@@ -7,9 +7,11 @@
 ! fields of star%mc_samples, state/README.md):
 !
 !  * first_mc_run, last_mc_run -- the run range, functions of the
-!    controls (run_yrec's loop bounds);
+!    controls (run_yrec's loop bounds), which io's check_controls keeps
+!    within 1 to max_mc_runs;
 !  * setup_monte_carlo_runs -- each run's samples read from the sample
-!    file (once, from prepare_run);
+!    file (once, from prepare_run; a short or unreadable file is an
+!    error);
 !  * begin_monte_carlo_run -- the start of every Monte-Carlo run, the
 !    per-run hook: every run copy of a control re-armed from its control,
 !    the other state found so far that a run leaves and the next would
@@ -29,7 +31,8 @@ module monte_carlo
            max_mc_runs, star_info
       use control_slots, only: i_target_x, i_target_z
       use run_messages, only: run_log_unit
-      use core_messages, only: core_terminal_values
+      use core_messages, only: core_report, core_terminal_values, &
+           message_length, unwritten_line
       use run_files, only: last_model_unit, starting_model_unit, &
            dynamics_unit, mc_summary_unit, mc_model_unit
       use model_files, only: write_mod_model
@@ -44,9 +47,11 @@ module monte_carlo
 contains
 
 ! ---------------------------------------------------------------
-! The run range: the first and the last Monte-Carlo run, from the
-! controls mc_run_start and mc_run_end (legacy IMBEG, IMEND), the last
-! clamped to max_mc_runs; without Monte Carlo the single run 1.
+! The run range: the first and the last Monte-Carlo run, the controls
+! mc_run_start and mc_run_end (legacy IMBEG, IMEND), which io's
+! check_controls requires to satisfy 1 <= mc_run_start <= mc_run_end <=
+! max_mc_runs when Monte Carlo is on (M115; the F77 clamped the last to
+! 1000 without a word); without Monte Carlo the single run 1.
 !   star reads: physics%mc_run_start, physics%monte_carlo_active
 !   star writes: none
 pure integer function first_mc_run(s)
@@ -60,7 +65,7 @@ end function first_mc_run
 pure integer function last_mc_run(s)
       type(star_info), intent(in) :: s
       last_mc_run = 1
-      if (s%physics%monte_carlo_active) last_mc_run = min(s%physics%mc_run_end, max_mc_runs)
+      if (s%physics%monte_carlo_active) last_mc_run = s%physics%mc_run_end
 end function last_mc_run
 
 ! ---------------------------------------------------------------
@@ -68,20 +73,35 @@ end function last_mc_run
 ! (opened on dynamics_unit with the run's files): the S11, S33, S34 and
 ! S17 factors, Z/X, the metal settling factor, and the luminosity and
 ! age factors. Only the records up to last_mc_run (at most max_mc_runs)
-! are read (MHP 3/96).
-!   star reads: physics%monte_carlo_active
+! are read (MHP 3/96). A file that ends before them, or a record that
+! does not read, is an error (ierr = 1, reported on the terminal and in
+! the run log; M115).
+!   star reads: control%dynamics_file, physics%monte_carlo_active
 !   star writes: mc_samples
-subroutine setup_monte_carlo_runs(s)
+subroutine setup_monte_carlo_runs(s, ierr)
       type(star_info), intent(inout) :: s
-      integer :: i
+      integer, intent(out) :: ierr
+      integer :: i, ios
+      character(len=256) :: msg
+      character(len=message_length) :: lines(1)
+      ierr = 0
       if (s%physics%monte_carlo_active) then
 ! Read the samples, one two-line record per run.
          do i = 1,last_mc_run(s)
-            read(dynamics_unit,1511)s%mc_samples%s11_factor(i),s%mc_samples%s33_factor(i), &
+            read(dynamics_unit,1511,iostat=ios,iomsg=msg)s%mc_samples%s11_factor(i),s%mc_samples%s33_factor(i), &
                  s%mc_samples%s34_factor(i),s%mc_samples%s17_factor(i),s%mc_samples%metal_to_h_ratio(i), &
                  s%mc_samples%settling_z_factor(i),s%mc_samples%luminosity_factor(i), &
                  s%mc_samples%age_factor(i)
  1511       format(7X,1P7E10.3/E9.3)
+            if (ios /= 0) then
+               lines = unwritten_line
+               write(lines,'(a,i0,3a)') ' ERROR: cannot read run ', i, &
+                    '''s samples from the Monte Carlo dynamics file ', &
+                    trim(s%control%dynamics_file), ': '//trim(msg)
+               call core_report(lines)
+               ierr = 1
+               return
+            end if
             call core_terminal_values([s%mc_samples%s11_factor(i),s%mc_samples%s33_factor(i), &
                  s%mc_samples%s34_factor(i),s%mc_samples%s17_factor(i),s%mc_samples%metal_to_h_ratio(i), &
                  s%mc_samples%settling_z_factor(i),s%mc_samples%luminosity_factor(i), &
