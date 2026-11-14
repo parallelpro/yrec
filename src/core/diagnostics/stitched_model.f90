@@ -467,13 +467,23 @@ end function envelope_mass_g
 
 ! Radius [cm] of atmosphere point i: the photosphere (the envelope's
 ! outermost point) plus its accumulated height (see build_stitched_model).
-!   star reads: env_points, stitched
+! With no envelope point stored, which is the case when the starting
+! model's stitched model is built (before any envelope integration has
+! stored one), the photosphere's radius comes from L and Teff, as the
+! one build_stitched_model gives atm_get.
+!   star reads: env_points, log_L_lsun, log_Teff, stitched
 !   star writes: none
 real(dp) function atmosphere_radius_cm(s, i)
+      use envelope_integration, only: surface_log10_radius_cm
       type(star_info), intent(in) :: s
       integer, intent(in) :: i
-      atmosphere_radius_cm = exp(ln10* &
-           s%env_points%env_log10_radius(s%env_points%num_env_points)) + s%stitched%atm_height(i)
+      real(dp) :: photosphere_log10_radius
+      if (s%env_points%num_env_points > 0) then
+         photosphere_log10_radius = s%env_points%env_log10_radius(s%env_points%num_env_points)
+      else
+         photosphere_log10_radius = surface_log10_radius_cm(s, s%log_L_lsun, s%log_Teff)
+      end if
+      atmosphere_radius_cm = exp(ln10*photosphere_log10_radius) + s%stitched%atm_height(i)
 end function atmosphere_radius_cm
 
 ! mu = R*rho*T/(beta*P): the ideal-gas mean molecular weight from the
