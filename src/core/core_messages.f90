@@ -6,21 +6,17 @@
 !   core_report        to the terminal and to the run log: an error the
 !                      run stops on, or a warning the run goes on with;
 !   core_terminal      to the terminal only;
-!   core_log           to the run log only (the per-model notes);
-!   core_stdout        to standard output only: what core's write(*)
-!                      meant, which is standard output even before io
-!                      assigns its units (the terminal is standard error
-!                      until then; run_messages);
-!   core_stdout_and_log
-!                      to standard output and to the run log.
+!   core_log           to the run log only (the per-model notes).
 ! The terminal and the run log are run_messages' terminal_unit and
 ! run_log_unit. Before io assigns them they are standard error, as for
 ! every domain's messages. The routes' run-log lines go through
 ! run_messages' log_line, which writes a line when the run log is open
 ! and keeps it for the log until then (M112); the *_values routes and
-! the two procedures of envelope/, structure/ and step/ below write the
-! run log's unit directly (list-directed and formatted lines whose
-! trailing blanks they keep).
+! log_mixed_zone_bounds below write the run log's unit directly
+! (list-directed and formatted lines whose trailing blanks they keep).
+! A message's text: an error begins "ERROR: ", a warning "WARNING: ",
+! then where it comes from ("starting model: ", "rezone: ", ...), in
+! sentence case; an error the run stops on ends "; run stopped".
 !
 ! The caller formats the message into an array of lines with an
 ! internal write (one record per element), after setting every element
@@ -32,17 +28,15 @@
 ! and the driver that called them reports through these routes
 ! (GUIDELINES "Code style" 7; tools/check_boundaries.py's no-I/O check).
 module core_messages
-      use, intrinsic :: iso_fortran_env, only: dp => real64, output_unit
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       use run_messages, only: run_log_unit, terminal_unit, log_line
       implicit none
       private
-      public :: core_report, core_terminal, core_log, core_stdout, &
-           core_stdout_and_log
+      public :: core_report, core_terminal, core_log
 ! envelope/, structure/ and step/
-      public :: log_envelope_start_retry, log_mixed_zone_bounds, &
-           rewind_core_log
+      public :: log_mixed_zone_bounds, rewind_core_log
 ! model/, run/ and diagnostics/
-      public :: core_terminal_values, core_log_values, core_stdout_values
+      public :: core_terminal_values, core_log_values
 
 ! The length of one message line. A line may hold a path of up to 256
 ! characters and its context.
@@ -67,32 +61,9 @@ subroutine core_log(lines)
       call log_core_lines(lines)
 end subroutine core_log
 
-subroutine core_stdout(lines)
-      character(len=*), intent(in) :: lines(:)
-      call write_core_lines(output_unit, lines)
-end subroutine core_stdout
-
-subroutine core_stdout_and_log(lines)
-      character(len=*), intent(in) :: lines(:)
-      call write_core_lines(output_unit, lines)
-      call log_core_lines(lines)
-end subroutine core_stdout_and_log
-
 ! ---------------------------------------------------------------
 ! The messages of envelope/, structure/ and step/ that have a
 ! procedure of their own.
-
-! The atmosphere integration's starting optical depth lay past the
-! photosphere's (log tau), so it starts again from a tenth of the
-! density (envelope_integration's report_envint_events). List-directed,
-! as it always was: the numbers keep their trailing blanks.
-subroutine log_envelope_start_retry(log_tau_start, log_tau_photosphere)
-      use, intrinsic :: iso_fortran_env, only: dp => real64
-      real(dp), intent(in) :: log_tau_start, log_tau_photosphere
-      write(run_log_unit,*) "ENVINT: X0>XLIM, X0,XLIM:", log_tau_start, &
-           log_tau_photosphere
-      write(run_log_unit,*) "ENVINT: get new X0 by dividing ATMD0 by 10"
-end subroutine log_envelope_start_retry
 
 ! The mixed regions of the composition step, (first, last) shell of each
 ! of the first num_zones rows of bounds, with the solver diagnostics
@@ -119,8 +90,7 @@ end subroutine rewind_core_log
 ! int_value, values: the text (when given), then the integer (when
 ! given), then the values. List-directed output leaves blanks after a
 ! value it writes in F form, which the routes' trimmed lines would drop;
-! these keep the line as it was. To the terminal, the run log or
-! standard output.
+! these keep the line as it was. To the terminal or the run log.
 subroutine core_terminal_values(values, text, int_value)
       real(dp), intent(in) :: values(:)
       character(len=*), intent(in), optional :: text
@@ -134,13 +104,6 @@ subroutine core_log_values(values, text, int_value)
       integer, intent(in), optional :: int_value
       call write_core_values(run_log_unit, values, text, int_value)
 end subroutine core_log_values
-
-subroutine core_stdout_values(values, text, int_value)
-      real(dp), intent(in) :: values(:)
-      character(len=*), intent(in), optional :: text
-      integer, intent(in), optional :: int_value
-      call write_core_values(output_unit, values, text, int_value)
-end subroutine core_stdout_values
 
 subroutine write_core_values(unit, values, text, int_value)
       integer, intent(in) :: unit

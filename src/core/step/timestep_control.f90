@@ -113,13 +113,13 @@ end subroutine compute_timestep
 !----------------------------------------------------------------------
 ! The structure-based limits are switched off for the rest of the run
 ! (MHP 9/01) once the centre is hotter than log Tc = 7.1 while the
-! gravothermal luminosity L_grav is negative; the switch goes to
-! standard output.
+! gravothermal luminosity L_grav is negative; the switch goes to the
+! terminal and the run log.
 !   star reads: logT, luminosity_breakdown_lsun
 !   star writes: structure_dt_limits_active
 subroutine switch_off_structure_limits(s)
       use star_info_lib, only: i_lum_grav
-      use core_messages, only: core_stdout, message_length, unwritten_line
+      use core_messages, only: core_report, message_length, unwritten_line
       type(star_info), intent(inout) :: s
 ! The central log T above which, with L_grav < 0, they go off.
       real(dp), parameter :: structure_limits_log_tc_max = 7.1d0
@@ -131,7 +131,7 @@ subroutine switch_off_structure_limits(s)
             write(lines, 100) s%logT(1), s%luminosity_breakdown_lsun(i_lum_grav)
  100        format(1x,'timestep control: structure-based limits', &
                  ' disabled (log Tc =',f7.4,', L_grav =',es10.2,' Lsun)')
-            call core_stdout(lines)
+            call core_report(lines)
             s%structure_dt_limits_active = .false.
          end if
       end if

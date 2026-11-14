@@ -77,7 +77,7 @@ subroutine rescale_model(s, ierr)
       use physical_constants, only: ln10
       use star_info_lib, only: i_h1, i_he3, i_he4, i_metals
       use control_slots, only: itime_core_min
-      use core_messages, only: core_log, core_stdout_values, message_length, unwritten_line
+      use core_messages, only: core_log, core_report, message_length, unwritten_line
       use settings_install, only: install_surface_z_settings, install_surface_mixture_settings
       use math_lib
       implicit none
@@ -151,10 +151,9 @@ subroutine rescale_surface_x
 ! Requested X above 1: X is not changed.
             lines = unwritten_line
             write(lines,1000)run_index,s%card_rescale_targets(i_target_x,run_index)
-            call core_log(lines)
- 1000       format(1x,'ERROR IN SUBROUTINE RSCALE'/1x,'RESCALING OF X', &
-           ' IN KIND CARD #',i3,1x,'FAILED - DESIRED COMP',f9.6/1x, &
-           'GREATER THAN UNITY.  X NOT RESCALED')
+            call core_report(lines)
+ 1000       format(1x,'WARNING: rescale (card ',i0,'): the requested X =',f9.6, &
+           ' is above 1; X is not rescaled')
          end if
       end if
 end subroutine rescale_surface_x
@@ -213,10 +212,9 @@ subroutine rescale_interior_z
 ! Requested Z above 1: Z is not changed.
             lines = unwritten_line
             write(lines,1002)run_index,s%card_rescale_targets(i_target_z,run_index)
-            call core_log(lines)
- 1002       format(1x,'ERROR IN SUBROUTINE RSCALE'/1x,'RESCALING OF Z', &
-           ' IN KIND CARD #',i3,1x,'FAILED - DESIRED COMP',f9.6/1x, &
-           'GREATER THAN UNITY.  Z NOT RESCALED')
+            call core_report(lines)
+ 1002       format(1x,'WARNING: rescale (card ',i0,'): the requested Z =',f9.6, &
+           ' is above 1; Z is not rescaled')
          end if
       end if
 end subroutine rescale_interior_z
@@ -246,11 +244,11 @@ subroutine rescale_one_species
             else
 ! An abundance of 1 or more is refused; the species is not changed.
                lines = unwritten_line
-               write(lines,1004)s%physics%new_species_index,run_index,species_target
-               call core_log(lines)
- 1004       format(1x,'ERROR IN SUBROUTINE RSCALE'/1x,'RESCALING OF ', &
-           'SPECIES ',i3,' IN KIND CARD # ',i3,' FAILED - DESIRED COMP',f9.6/1x, &
-           'GREATER THAN UNITY.  Z NOT RESCALED')
+               write(lines,1004)run_index,species_target,s%physics%new_species_index, &
+                    s%physics%new_species_index
+               call core_report(lines)
+ 1004       format(1x,'WARNING: rescale (card ',i0,'): the requested abundance',1pe11.3, &
+           ' of species ',i0,' is 1 or more; species ',i0,' is not rescaled')
             end if
          end if
 end subroutine rescale_one_species
@@ -305,9 +303,8 @@ end subroutine measure_hb_masses
 !   m_i -> m_b + s (m_i - m_b),  s = (M_new - m_b)/(M_old - m_b),
 ! and likewise M. The base is the top of the H shell, m(shell_end),
 ! when at least 0.01 Msun lies outside the core ("old method"), else
-! the top of the core, m(shell_begin-1) ("new method"). Each method
-! prints diagnostics to the terminal. Sets ierr if the envelope mass
-! would not be positive.
+! the top of the core, m(shell_begin-1) ("new method"). Sets ierr if
+! the envelope mass would not be positive.
 subroutine rescale_hb_total_mass
       character(len=message_length) :: lines(4)
          if(s%card_rescale_targets(i_target_mass,run_index) > 0.0d0) then
@@ -316,21 +313,15 @@ subroutine rescale_hb_total_mass
             env_mass_new = env_mass_old + delta_env_mass
 
             if((((pow(10d0, s%log_total_mass))/s%solar_mass_cgs)-core_mass_old) >= hb_old_method_envelope_msun) then
-      call core_stdout_values([(exp10(s%log_total_mass)-exp10(s%log_mass(s%nz)))/ &
-           (exp10(s%log_mass(s%nz))-exp10(s%log_mass(shell_begin-1)))], &
-           text='Entering old method ')
-      call core_stdout_values([exp10(s%log_total_mass) - exp10(s%log_mass(s%nz))], text='SENV ')
-      call core_stdout_values([exp10(s%log_mass(s%nz)) - exp10(s%log_mass(shell_begin-1))], &
-           text='Envelope ')
 ! The new envelope mass outside the H shell must be positive.
             if(env_mass_new <= 0.0d0)then
                lines = unwritten_line
-               write(lines,69)env_mass_old,env_mass_old+delta_env_mass,s%card_rescale_targets(i_target_mass,run_index),s%star_mass
-               call core_log(lines)
-   69          format(1x,'ERROR IN SUBROUTINE RSCALE'/1x, &
-           'DESIRED NEW ENVELOPE MASS LESS THAN ZERO'/1x, &
-           'OLD ENVELOPE MASS ',1pe9.2,' NEW ENVELOPE ',e9.2, &
-           ' NEW AND OLD TOTAL MASS ',2e10.2)
+               write(lines,69)run_index,env_mass_old,env_mass_old+delta_env_mass, &
+                    s%card_rescale_targets(i_target_mass,run_index),s%star_mass
+               call core_report(lines)
+   69          format(1x,'ERROR: rescale (card ',i0,'): the new envelope mass outside', &
+           ' the H shell would be negative (old',1pe10.2,', new',e10.2, &
+           ' Msun; total mass new',e10.2,', old',e10.2,' Msun); run stopped')
                ! run_yrec returns the error; the command-line wrapper
                ! (main) stops.
                ierr = 1
@@ -352,19 +343,14 @@ subroutine rescale_hb_total_mass
 
          else
 
-      call core_stdout_values([(exp10(s%log_total_mass)-exp10(s%log_mass(s%nz)))/ &
-           (exp10(s%log_mass(s%nz))-exp10(s%log_mass(shell_begin-1)))], &
-           text='Entering new method ')
-      call core_stdout_values([exp10(s%log_total_mass) - exp10(s%log_mass(s%nz))], text='SENV ')
-      call core_stdout_values([exp10(s%log_mass(s%nz)) - exp10(s%log_mass(shell_begin-1))], &
-           text='Envelope ')
 ! The mass outside the core must be positive. (This tests the old
 ! mass, M_old - M_core, not the new one.)
             env_mass_check = ((exp10(s%log_total_mass))/s%solar_mass_cgs)-core_mass_old
             if(env_mass_check <= 0.0d0)then
                lines = unwritten_line
-               write(lines,69)env_mass_old,env_mass_old+delta_env_mass,s%card_rescale_targets(i_target_mass,run_index),s%star_mass
-               call core_log(lines)
+               write(lines,69)run_index,env_mass_old,env_mass_old+delta_env_mass, &
+                    s%card_rescale_targets(i_target_mass,run_index),s%star_mass
+               call core_report(lines)
                ! run_yrec returns the error; the command-line wrapper
                ! (main) stops.
                ierr = 1
@@ -409,13 +395,12 @@ subroutine rescale_hb_core_mass
             env_mass_new = env_mass_old2 + delta_env_mass
             if(env_mass_new <= 0.0d0)then
                lines = unwritten_line
-               write(lines,71)env_mass_old,env_mass_new,s%card_rescale_targets(i_target_core_mass,run_index),core_mass_old
-               call core_log(lines)
-   71          format(1x,'ERROR IN SUBROUTINE RSCALE'/1x, &
-           'NEW ENVELOPE MASS LESS THAN ZERO BECAUSE OF CORE', &
-           ' RESCALING'/1x, &
-           'OLD ENVELOPE MASS ',1pe10.2,' NEW ENVELOPE ',e10.2, &
-           ' NEW AND OLD CORE MASS ',2e10.2)
+               write(lines,71)run_index,env_mass_old,env_mass_new, &
+                    s%card_rescale_targets(i_target_core_mass,run_index),core_mass_old
+               call core_report(lines)
+   71          format(1x,'ERROR: rescale (card ',i0,'): the core rescaling would leave a', &
+           ' negative envelope mass (old',1pe10.2,', new',e10.2, &
+           ' Msun; core mass new',e10.2,', old',e10.2,' Msun); run stopped')
                ! run_yrec returns the error; the command-line wrapper
                ! (main) stops.
                ierr = 1

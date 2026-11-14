@@ -101,15 +101,19 @@ module envelope_integration_kernel
 !                               (counts: steps accepted, rejected;
 !                               values: the summed relative error in P)
 !   envint_atmosphere_maxstp    the atmosphere did not reach the
-!                               photosphere in maxstp steps (ierr 1)
+!                               photosphere in maxstp steps (counts:
+!                               maxstp; ierr 1)
 !   envint_bsstep_limits        the Bulirsch-Stoer limits are out of
 !                               range (counts: max_stage_index,
 !                               extrap_order; ierr numerics_bad_input)
 !   envint_bsstep_failed        a Bulirsch-Stoer step failed (counts:
 !                               bsstep's status, and the integrands'
-!                               code when they failed; ierr: that code,
-!                               or envelope_termination when the step
-!                               underflowed)
+!                               code when they failed; values: where
+!                               the step started, log tau or log P, and
+!                               the number of equations, 1 the
+!                               atmosphere's and 3 the envelope's; ierr:
+!                               that code, or envelope_termination when
+!                               the step underflowed)
 !   envint_vertex               the fitting point of the vertex being
 !                               saved (values: log P, log T, log R,
 !                               log(m/M))
@@ -119,7 +123,8 @@ module envelope_integration_kernel
 !                               log(m/M), and the summed relative errors
 !                               in log m, log T and log r)
 !   envint_envelope_maxstp      the envelope did not reach the fitting
-!                               mass in maxstp steps (ierr 1)
+!                               mass in maxstp steps (counts: maxstp;
+!                               ierr 1)
       integer, parameter, public :: envint_start_retry = 1, &
            envint_atmosphere_done = 2, envint_atmosphere_maxstp = 3, &
            envint_bsstep_limits = 4, envint_bsstep_failed = 5, &
@@ -560,7 +565,7 @@ subroutine integrate_to_photosphere()
       if (step_index > maxstp) then
 ! The integration did not reach the photosphere in maxstp steps:
 ! return an error.
-      call add_envint_event(events, envint_atmosphere_maxstp)
+      call add_envint_event(events, envint_atmosphere_maxstp, counts=[maxstp, 0])
       jerr = 1
       ierr = jerr
       return
@@ -843,7 +848,7 @@ subroutine integrate_to_fitting_mass()
       if (step_index > maxstp) then
 ! The integration did not reach the fitting mass in maxstp steps:
 ! return an error.
-      call add_envint_event(events, envint_envelope_maxstp)
+      call add_envint_event(events, envint_envelope_maxstp, counts=[maxstp, 0])
       jerr = 1
       ierr = jerr
       return
@@ -899,10 +904,12 @@ subroutine check_bsstep_status()
                counts=[cfg%max_stage_index, cfg%extrap_order])
           ierr = jerr
        else if (jerr == numerics_derivatives_failed) then
-          call add_envint_event(events, envint_bsstep_failed, counts=[jerr, derivatives_jerr])
+          call add_envint_event(events, envint_bsstep_failed, counts=[jerr, derivatives_jerr], &
+               values=[indep_var, real(num_eqs, dp)])
           ierr = derivatives_jerr
        else if (jerr /= 0) then
-          call add_envint_event(events, envint_bsstep_failed, counts=[jerr])
+          call add_envint_event(events, envint_bsstep_failed, counts=[jerr, 0], &
+               values=[indep_var, real(num_eqs, dp)])
           ierr = envelope_termination
        end if
 end subroutine check_bsstep_status

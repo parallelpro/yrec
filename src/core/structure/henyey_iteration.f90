@@ -290,7 +290,7 @@ subroutine accept_small_residuals(s, iter, iterations_done, converged)
        end if
 ! A copy of log_henyey_corrections' format 75, since a statement label
 ! belongs to one procedure.
-   75 format(10X,'MODEL CONVERGED AFTER ',I4,'  ITERATIONS')
+   75 format(10X,'model converged after ',I0,' iterations')
 end subroutine accept_small_residuals
 
 ! ---------------------------------------------------------------
@@ -453,14 +453,14 @@ subroutine log_henyey_corrections(s, converged, iterations_done, correction_fact
           if (converged) then
              lines = unwritten_line
              write(lines(1),75) iterations_done+1
-   75          format(10X,'MODEL CONVERGED AFTER ',I4,'  ITERATIONS')
+   75          format(10X,'model converged after ',I0,' iterations')
              call core_log(lines)
           end if
        end if
        if (s%model_diverged_flag) then
           lines = unwritten_line
           write(lines(1),80)
-   80       format(1X,'-----CORRECTIONS EXCEEDED TOLERANCES')
+   80       format(1X,'Henyey iteration: the corrections exceeded their tolerances')
           call core_report(lines)
             return
          end if

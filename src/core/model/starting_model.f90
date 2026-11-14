@@ -23,7 +23,7 @@ module starting_model
       use envelope_integration, only: atm_get, envint_step_config, fixed_envint_step, &
            ambient_log10_teff
       use envelope_refit, only: append_envelope_points
-      use core_messages, only: core_log, core_report, core_stdout, core_stdout_and_log, &
+      use core_messages, only: core_log, core_report, core_terminal, &
            message_length, unwritten_line
       use run_files, only: starting_model_unit
       use model_files, only: model_file_header, read_model_format_tag, read_mod_model, &
@@ -145,14 +145,8 @@ subroutine read_starting_model(s, ierr)
 ! converge: stop the run.
       if (s%model_diverged_flag) then
           lines = unwritten_line
-          write(lines,1000)
-          call core_log(lines)
- 1000       format(1x,39('>'),40('<')/, &
-                  "STARIN:        ***** RUN STOPPED *****")
-          lines = unwritten_line
-          write(lines,1010)
-          call core_log(lines)
- 1010       format("STARIN: ***** MODEL FAILED TO CONVERGE *****")
+          lines(1) = ' ERROR: starting model: the previous model failed to converge; run stopped'
+          call core_report(lines)
             ! run_yrec returns the error; the command-line wrapper
             ! (main) stops.
             ierr = 1
@@ -265,7 +259,7 @@ end subroutine acquire_starting_model
 ! triangle orientation is not used: reset_state_after_read sets it to 1
 ! and asks for a fresh envelope.) Sets ierr on an unknown layout or a
 ! failed read (an empty file among them).
-!   star reads: none
+!   star reads: control%first_model_file
 !   star writes: dt, timestep_yr
 subroutine read_starting_model_file(s, sm, ierr)
       type(star_info), intent(inout) :: s
@@ -300,10 +294,10 @@ subroutine read_starting_model_file(s, sm, ierr)
          if (ierr /= 0) return
       else
          lines = unwritten_line
-         write(lines,20)
-         call core_log(lines)
- 20      format('STARIN: ***** RUN TERMINATED, INVALID INPUT', &
-                ' MODEL FILE.  *****')
+         write(lines,'(5a)') ' ERROR: starting model: unknown model file layout ''', &
+              format_tag, ''' in ', trim(s%control%first_model_file), &
+              ' (expected YMOD, NMOD or MOD2); run stopped'
+         call core_report(lines)
          ! run_yrec returns the error; the command-line wrapper (main)
          ! stops.
          ierr = 1
@@ -440,7 +434,7 @@ subroutine check_mixture_homogeneity(s, sm)
                if (fraction_diff > homogeneity_tol) then
                   lines = unwritten_line
                   write(lines,592)i,j,fraction_diff
-                  call core_stdout_and_log(lines)
+                  call core_report(lines)
  592              format('SPECIES ',i3,' IN SHELL ',i5, &
                     ' DIFFERS FROM CENTER BY ',e12.4, &
                     ' MIX NOT MODIFIED IN EVOLVED MODEL')
@@ -511,7 +505,7 @@ subroutine rescale_cno_mixture(s, sm)
          lines = unwritten_line
          write(lines,594)(sm%reference_composition(k),k=i_c12,i_o18), &
               (s%xa(k,1),k=i_c12,i_o18)
-         call core_stdout_and_log(lines)
+         call core_report(lines)
  594     format(1x,'CNO mixture applied to the starting model:',/, &
              4x,'old (C12 C13 N14 N15 O16 O17 O18):',7es12.4,/, &
              4x,'new (C12 C13 N14 N15 O16 O17 O18):',7es12.4)
@@ -560,7 +554,7 @@ subroutine set_isotope_ratios(s, sm)
          lines = unwritten_line
          write(lines,593)(sm%reference_composition(k),k=i_he3,i_be9), &
               (s%xa(k,1),k=i_he3,i_be9)
-         call core_stdout_and_log(lines)
+         call core_report(lines)
  593     format(1x,'isotope/light-element mixture applied to the', &
              ' starting model:',/, &
              4x,'old (He3 C12 C13 N14 N15 O16 O17 O18 H2 Li6 Li7 Be9):', &
@@ -616,19 +610,9 @@ subroutine extend_core_toward_center(s, sm, ierr)
 ! 2026-10).
           if (num_shells_extended > json) then
              lines = unwritten_line
-             write(lines,476)"STARIN: Unable to extend core inward ", &
-                   "- JSON too small"
-             call core_log(lines)
-             lines = unwritten_line
-             write(lines,477) "STARIN: Required size =", &
-                    num_shells_extended, ", JSON = ", json
-             call core_log(lines)
-             lines = unwritten_line
-             write(lines,478) "STARIN:  ***** RUN TERMINATED *****"
-             call core_log(lines)
-  476        format(2a)
-  477        format(a, i8, a, i8)
-  478        format(a)
+             write(lines,'(a,i0,a,i0,a)') ' ERROR: core extension: the model needs ', &
+                  num_shells_extended, ' shells, more than json (', json, '); run stopped'
+             call core_report(lines)
              ierr = 1
              return
           end if
@@ -752,10 +736,10 @@ subroutine rescale_and_refit_envelope(s, sm, ierr)
 ! it and leave the envelope mass unchanged.
           lines = unwritten_line
           write(lines,576)s%requested_log_fit_point_mass_fraction
-          call core_log(lines)
- 576        format(5x,'ERROR IN SUBROUTINE STARIN'/5x,'DESIRED', &
-              ' ENVELOPE MASS',1pe22.13,' TOO LARGE'/5x,'ENVELOPE', &
-              ' MASS NOT CHANGED')
+          call core_report(lines)
+ 576        format(1x,'WARNING: starting model: the requested envelope fit mass', &
+              ' log(m/M) =',1pe22.13,' lies inside the innermost shell;', &
+              ' the envelope mass is not changed')
           exit envelope_rescale
           end if
           call interpolate_new_fitting_point(s, sm)
@@ -1052,8 +1036,10 @@ subroutine append_envelope_as_shells(s, sm, ierr)
 ! Stop if the envelope points would overflow the json-point arrays.
             if (s%nz+s%env_points%num_env_points >= json) then
                lines = unwritten_line
-               write(lines,*) 'read_starting_model: grid overflow (json too small)'
-               call core_stdout(lines)
+               write(lines,'(a,i0,a,i0,a)') ' ERROR: starting model: the model and its envelope' &
+                    //' points need ', s%nz+s%env_points%num_env_points, ' shells, more than' &
+                    //' json (', json, '); run stopped'
+               call core_report(lines)
                ierr = 1
                return
             end if
@@ -1089,9 +1075,9 @@ subroutine append_envelope_as_shells(s, sm, ierr)
 ! A degenerate interpolation interval in mass is fatal; run_yrec
 ! returns the error.
                lines = unwritten_line
-               write(lines,*) 'STARIN: degenerate', &
-                    ' envelope interpolation interval (was STOP 9998)'
-               call core_log(lines)
+               lines(1) = ' ERROR: starting model: a degenerate interval in mass while' &
+                    //' appending the envelope shells; run stopped'
+               call core_report(lines)
                return
             end if
 ! The new shells rotate with the old last shell's omega, with the
@@ -1105,7 +1091,7 @@ subroutine append_envelope_as_shells(s, sm, ierr)
             end if
             lines = unwritten_line
             write(lines,910)
-            call core_stdout(lines)
+            call core_terminal(lines)
  910  format(1x,'NEW INTERIOR POINTS FROM CHANGE IN ENVELOPE MASS'/ &
             ' J,LOG RHO, LOG L, LOG P, LOG R, LOG M, LOG T, CONV T/F')
       allocate(point_lines(s%nz-sm%old_last_shell+1))
@@ -1113,7 +1099,7 @@ subroutine append_envelope_as_shells(s, sm, ierr)
       write(point_lines,911)(j,s%logRho(j),s%luminosity_lsun(j),s%logP(j), &
                    s%logR(j),s%log_mass(j)-s%log_total_mass, &
                    s%logT(j),s%convective_flag(j), j = sm%old_last_shell,s%nz)
-      call core_stdout(point_lines)
+      call core_terminal(point_lines)
  911  format(i5,1p6e16.8,l2)
 end subroutine append_envelope_as_shells
 

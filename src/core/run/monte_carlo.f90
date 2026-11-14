@@ -95,9 +95,9 @@ subroutine setup_monte_carlo_runs(s, ierr)
  1511       format(7X,1P7E10.3/E9.3)
             if (ios /= 0) then
                lines = unwritten_line
-               write(lines,'(a,i0,3a)') ' ERROR: cannot read run ', i, &
-                    '''s samples from the Monte Carlo dynamics file ', &
-                    trim(s%control%dynamics_file), ': '//trim(msg)
+               write(lines,'(a,i0,3a)') ' ERROR: Monte Carlo: cannot read run ', i, &
+                    '''s samples from the dynamics file ', &
+                    trim(s%control%dynamics_file), ': '//trim(msg)//'; run stopped'
                call core_report(lines)
                ierr = 1
                return

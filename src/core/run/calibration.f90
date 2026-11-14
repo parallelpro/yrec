@@ -190,7 +190,7 @@ end subroutine check_solar_calibration
 !     termination_reason
 subroutine check_star_calibration(s)
 
-      use core_messages, only: core_log, core_log_values, core_stdout, core_stdout_values, &
+      use core_messages, only: core_log, core_log_values, core_terminal, core_terminal_values, &
            message_length, unwritten_line
       use physical_constants, only: c4pi, csig
       use math_lib
@@ -260,7 +260,7 @@ subroutine check_star_calibration(s)
 !
       lines = unwritten_line
       write(lines,*) ' Just passed R*'
-      call core_stdout(lines)
+      call core_terminal(lines)
       lines = unwritten_line
       write(lines,*) '#Just passed R*'
       call core_log(lines)
@@ -278,7 +278,7 @@ subroutine check_star_calibration(s)
            (r_rsun_current-s%r_rsun_prev_model)
       s%age_gyr_at_target_radius = current_age + &
            dage_dr*(s%calibration_target_radius_rsun-r_rsun_current)
-      call core_stdout_values([s%card_rescale_targets(i_target_x,run_index-1), &
+      call core_terminal_values([s%card_rescale_targets(i_target_x,run_index-1), &
            s%log_l_lsun_at_target_radius], text=' X, LogL/Lsun at R* =')
       call core_log_values([s%card_rescale_targets(i_target_x,run_index-1), &
            s%log_l_lsun_at_target_radius], text='#X, LogL/Lsun at R* =')
@@ -309,7 +309,7 @@ subroutine check_star_calibration(s)
        s%card_initial_x(run_index+1) = s%card_rescale_targets(i_target_x,run_index+1)
        s%card_initial_x(run_index+2) = s%card_initial_x(run_index+1)
 !
-      call core_stdout_values([s%age_gyr_at_target_radius], &
+      call core_terminal_values([s%age_gyr_at_target_radius], &
            text=' Have hit R* & L*, prepare final run to age:')
       call core_log_values([s%age_gyr_at_target_radius], &
            text='#Have hit R* & L*, prepare final run to age:')
@@ -325,8 +325,12 @@ subroutine check_star_calibration(s)
           s%card_initial_x(run_index+1) = new_x
           s%card_initial_x(run_index+2) = new_x
 !
-      call core_stdout_values([new_x], text=' NK=2, Y=Y+0.01, Setup next run, X=')
-      call core_log_values([new_x], text='#NK=2, Y=Y+0.01, Setup next run, X=')
+      lines = unwritten_line
+      write(lines,'(a,f5.3,a,1pe23.15)') ' star calibration, first pass: X lowered by ', &
+           x_calibration_step, ' (Y raised), next X = ', new_x
+      call core_terminal(lines)
+      lines(1)(1:1) = '#'
+      call core_log(lines)
             return
        else
 ! Later passes (cards 4, 6, 8, ...): a secant step from this run's and
@@ -343,8 +347,12 @@ subroutine check_star_calibration(s)
           new_x = dx_dlogl*(log10(s%control%target_luminosity_lsun)- &
                s%log_l_lsun_at_target_radius)+new_x
 !
-      call core_stdout_values([new_x], text=' Setup next run, NK, X =', int_value=run_index)
-      call core_log_values([new_x], text=' Setup next run, NK, X =', int_value=run_index)
+      lines = unwritten_line
+      write(lines,'(a,i0,a,1pe23.15)') ' star calibration: secant step, card ', run_index, &
+           ', next X = ', new_x
+      call core_terminal(lines)
+      lines(1)(1:1) = '#'
+      call core_log(lines)
           s%log_l_lsun_at_target_radius_prev_run = s%log_l_lsun_at_target_radius
           s%card_rescale_targets(i_target_x,run_index+1) = new_x
           s%card_initial_x(run_index+1) = new_x
@@ -474,7 +482,7 @@ end subroutine setup_solar_calibration
 subroutine setup_star_calibration(s)
 
       use control_slots, only: max_runs
-      use core_messages, only: core_log_values, core_stdout_values
+      use core_messages, only: core_log_values, core_terminal_values
       use physical_constants, only: c4pi, csig
       use math_lib
       implicit none
@@ -529,7 +537,7 @@ subroutine setup_star_calibration(s)
          s%card_fixed_timestep_yr(i) = s%card_fixed_timestep_yr(2)
          s%card_fixed_timestep_active(i) = s%card_fixed_timestep_active(2)
       end do
-      call core_stdout_values([s%calibration_target_radius_rsun, s%control%target_luminosity_lsun], &
+      call core_terminal_values([s%calibration_target_radius_rsun, s%control%target_luminosity_lsun], &
            text=' Evolve to R*, L* = ')
       call core_log_values([s%calibration_target_radius_rsun, s%control%target_luminosity_lsun], &
            text='#Evolve to R*, L* = ')

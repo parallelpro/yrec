@@ -38,7 +38,7 @@ module mass_change
            seconds_per_year
       use eos_lib, only: eos_get, eos_result
       use math_lib
-      use core_messages, only: core_stdout, message_length, unwritten_line
+      use core_messages, only: core_log, core_report, message_length, unwritten_line
       implicit none
       private
       public :: change_mass
@@ -176,7 +176,7 @@ subroutine measure_convective_envelope()
                  ' mass change: turnover time (yr), R/Rsun', &
                  s%convective_turnover_timescale/seconds_per_year, &
                  total_radius_cm/s%solar_radius_cgs
-            call core_stdout(lines)
+            call core_log(lines)
          end if
          s%envelope_cz_bottom_index_start = jenv
       else
@@ -436,8 +436,9 @@ subroutine require_zone_below_surface()
       character(len=message_length) :: lines(1)
       if(jenv == nz) then
          lines = unwritten_line
-         lines(1) = ' mdot: envelope boundary at the surface (911)'
-         call core_stdout(lines)
+         lines(1) = ' ERROR: mass change: the surface convection zone''s base is the' &
+              //' outermost shell, so there is no zone to take the mass change'
+         call core_report(lines)
          ierr = 1
       end if
 end subroutine require_zone_below_surface
@@ -466,8 +467,8 @@ subroutine limit_mass_change_timestep()
          if(timestep_limit < s%dt)then
             lines = unwritten_line
             write(lines,10)s%dt,timestep_limit
- 10         format(' TIMESTEP REDUCED FOR MASS LOSS - OLD,NEW',1P2E12.3)
-            call core_stdout(lines)
+ 10         format(' mass change: timestep reduced from',1pe11.3,' s to',e11.3,' s')
+            call core_log(lines)
             s%dt = timestep_limit
          end if
       end if
@@ -576,25 +577,26 @@ subroutine spin_down_cz_by_wind()
          call remove_wind_angular_momentum(wind_j_surface, delta_mass_cgs, &
               cz_shell_masses_before, s%dm(jenv:nz), s%j_rot(jenv:nz), &
               wind_am)
-! Standard output: dM, dJ, omega(nz), the new and old J_cz, and the
+! The run log: dM, dJ, omega(nz), the new and old J_cz, and the
 ! convective envelope's mass.
          lines = unwritten_line
          write(lines,22)delta_mass_cgs,wind_am%lost,s%omega(nz), &
               wind_am%zone_after,wind_am%zone_before,cz_total_mass_below_fitting
- 22      format(1P6E13.4)
-         call core_stdout(lines)
+ 22      format(' mass change, wind: dM, dJ, omega(nz), J_cz after and before, M_cz', &
+              1P6E13.4)
+         call core_log(lines)
       end if
 end subroutine spin_down_cz_by_wind
 
 ! ---------------------------------------------------------------
-! Standard output: the new mass and the step's change, in Msun.
+! The run log: the new mass and the step's change, in Msun.
 subroutine report_new_mass()
       character(len=message_length) :: lines(1)
       delta_mass_msun = delta_mass_cgs/s%solar_mass_cgs
       lines = unwritten_line
       write(lines,20)s%star_mass,delta_mass_msun
- 20   format('MASS LOSS APPLIED - NEW M,DEL M',1P2E19.10)
-      call core_stdout(lines)
+ 20   format(' mass change: new mass',1pe19.10,' Msun, change',e19.10,' Msun')
+      call core_log(lines)
 end subroutine report_new_mass
 
 ! ---------------------------------------------------------------
