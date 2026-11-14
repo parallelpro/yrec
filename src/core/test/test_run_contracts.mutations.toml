@@ -1,6 +1,7 @@
 # Mutations of test_run_contracts: each check must print FAIL under a
 # mutation of the code it covers (the star calibration's last card and
-# verdicts, the C entry's path limit and the units it closes). Run, after
+# verdicts, a Monte-Carlo run's start, the C entry's path limit and the
+# units it closes). Run, after
 # `make tests` in src/: python3 src/tools/mutate.py core --program
 # test_run_contracts (src/tools/mutate.py describes this format and the
 # verdicts). The deck is the configuration matrix's shortest.
@@ -87,6 +88,20 @@ check = 'star calibration: L on target before the last card arms the final run'
 file = 'core/run/calibration.f90'
 old = 's%card_stops_active(run_index+2) = .true.'
 new = 's%card_stops_active(run_index+2) = .false.'
+
+[[mutation]]
+id = 'monte_carlo-01'
+check = "Monte Carlo: without the calibration, the deck's stop ages"
+file = 'core/run/monte_carlo.f90'
+old = 'if (s%control%calibrate_solar_model) then'
+new = 'if (.true.) then'
+
+[[mutation]]
+id = 'monte_carlo-02'
+check = 'Monte Carlo: with the calibration, 1e8 and 4.57e9 yr'
+file = 'core/run/monte_carlo.f90'
+old = 'if (s%control%calibrate_solar_model) then'
+new = 'if (.false.) then'
 
 [[mutation]]
 id = 'capi-01'

@@ -13,6 +13,10 @@
 !     - end_star_calibration_card: the final run's end is the
 !       converged verdict, and a last card that ends without finding
 !       the star is the not-converged one;
+!   a Monte-Carlo run's start (monte_carlo.f90's begin_monte_carlo_run)
+!   on a star set up here:
+!     - without the solar calibration, cards 2 and 3 keep the deck's
+!       stop ages; with it, they get the calibration's 1e8 and 4.57e9 yr;
 !   the C entry (yrec_capi's yrec_run) and the re-entrancy prologue
 !   (yrec_reset), called here as a C or Fortran host would:
 !     - a unit the host opened stays open across calls, and the run's
@@ -34,6 +38,7 @@ program test_run_contracts
       use physical_constants, only: c4pi, csig
       use calibration, only: setup_star_calibration, check_star_calibration, &
            end_star_calibration_card
+      use monte_carlo, only: begin_monte_carlo_run
       use yrec_capi, only: yrec_run
       use run_messages, only: run_log_unit
       use run_files, only: last_model_unit
@@ -52,6 +57,7 @@ program test_run_contracts
       end if
 
       call star_calibration_checks()
+      call monte_carlo_checks()
       call c_entry_checks()
 
       if (num_failed > 0) then
@@ -178,6 +184,45 @@ double precision function log_teff_at(s, log_l, r_rsun)
       log_teff_at = 0.25d0*log10(10.0d0**log_l*s%solar_luminosity_cgs/ &
            (c4pi*csig*(r_rsun*s%solar_radius_cgs)**2))
 end function log_teff_at
+
+! ---------------------------------------------------------------
+! The start of a Monte-Carlo run (begin_monte_carlo_run) on a star whose
+! deck stops cards 2 and 3 at 5e6 and 3e9 yr, with run 1's samples all
+! 1: without the solar calibration the cards keep the deck's ages; with
+! it, the run sets the calibration's (setup_solar_calibration then lays
+! out its cycles).
+subroutine monte_carlo_checks()
+      type(star_info), allocatable :: s
+      double precision :: age_scale_factor
+      call new_monte_carlo_star(s)
+      call begin_monte_carlo_run(s, 1, age_scale_factor)
+      call run_contract_check_that('Monte Carlo: without the calibration, the deck''s stop ages', &
+           s%card_max_age_yr(2) == 5.0d6 .and. s%card_max_age_yr(3) == 3.0d9)
+      call new_monte_carlo_star(s)
+      s%control%calibrate_solar_model = .true.
+      call begin_monte_carlo_run(s, 1, age_scale_factor)
+      call run_contract_check_that('Monte Carlo: with the calibration, 1e8 and 4.57e9 yr', &
+           s%card_max_age_yr(2) == 1.0d8 .and. s%card_max_age_yr(3) == 4.57d9)
+end subroutine monte_carlo_checks
+
+! A fresh star for a Monte-Carlo run: three cards stopping at 1e6, 5e6
+! and 3e9 yr, the deck's solar luminosity, and run 1's samples all 1.
+subroutine new_monte_carlo_star(s)
+      type(star_info), allocatable, intent(inout) :: s
+      if (allocated(s)) deallocate(s)
+      allocate(s)
+      s%physics%monte_carlo_active = .true.
+      s%physics%solar_luminosity_cgs = 3.828d33
+      s%control%num_runs = 3
+      s%control%target_end_age(1:3) = [1.0d6, 5.0d6, 3.0d9]
+      s%mc_samples%s11_factor(1) = 1.0d0
+      s%mc_samples%s33_factor(1) = 1.0d0
+      s%mc_samples%s34_factor(1) = 1.0d0
+      s%mc_samples%s17_factor(1) = 1.0d0
+      s%mc_samples%settling_z_factor(1) = 1.0d0
+      s%mc_samples%luminosity_factor(1) = 1.0d0
+      s%mc_samples%age_factor(1) = 1.0d0
+end subroutine new_monte_carlo_star
 
 ! ---------------------------------------------------------------
 ! The C entry and the prologue, with the host's own unit 42 open

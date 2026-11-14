@@ -157,10 +157,11 @@ end subroutine clear_previous_run_state
 ! cross-section scales r_pp, r_he3he3, r_he3he4 and the extra scale
 ! xs_be7p), each times the factor that takes the code's reference S0 to
 ! the Bahcall & Pinsonneault (1996) value; the metal settling factor;
-! the solar luminosity; and the age scale factor. It also sets cards 2
-! and 3's stop ages, which no sample gives (below). Outside Monte Carlo
-! it only sets age_scale_factor = 1.
-!   star reads: mc_samples, physics%monte_carlo_active
+! the solar luminosity; and the age scale factor. With the solar
+! calibration on, it also sets cards 2 and 3's stop ages, which no sample
+! gives (below). Outside Monte Carlo it only sets age_scale_factor = 1.
+!   star reads: control%calibrate_solar_model, mc_samples,
+!     physics%monte_carlo_active
 !   star writes: card_max_age_yr, cross_section_scale_in_use,
 !     extra_cross_section_scale_in_use, ln10_over_lsun,
 !     log10_solar_luminosity, settling_z_factor_in_use,
@@ -185,7 +186,7 @@ subroutine apply_monte_carlo_parameters(s, monte_carlo_run_number, &
 ! The base solar luminosity in erg/s (MHP 3/96), which
 ! luminosity_factor scales.
       real(dp), parameter :: reference_solar_luminosity = 3.844D33
-! Cards 2 and 3's stop ages [yr] (below).
+! Cards 2 and 3's stop ages [yr] for the solar calibration (below).
       real(dp), parameter :: mc_settling_age_yr = 1.0D8, mc_solar_age_yr = 4.57D9
 
       if (s%physics%monte_carlo_active) then
@@ -202,17 +203,15 @@ subroutine apply_monte_carlo_parameters(s, monte_carlo_run_number, &
          s%log10_solar_luminosity = log10(s%solar_luminosity_cgs)
          s%ln10_over_lsun = ln10/s%solar_luminosity_cgs
          age_scale_factor = s%mc_samples%age_factor(monte_carlo_run_number)
-! Stop ages of cards 2 and 3 for a solar age of 4.57 Gyr, the F77's
-! (main.f:243-244), in every Monte-Carlo run whether or not it
-! calibrates, whatever the deck's max_age: neither sampled nor scaled by
-! the age factor. With the solar calibration on, setup_solar_calibration
-! overwrites both, with 1e8 yr and target_solar_age times
-! age_scale_factor; without it they stand (cm_monte_carlo's card 2 asks
-! 4.568e9 yr and runs with 1e8, stopping at its 10 models first).
-! Whether they stay is the authors' decision (docs/bug_sweep.md
-! section 13).
-         s%card_max_age_yr(2) = mc_settling_age_yr
-         s%card_max_age_yr(3) = mc_solar_age_yr
+! With the solar calibration on, the stop ages of cards 2 and 3 for a
+! solar age of 4.57 Gyr, the F77's (main.f:243-244), neither sampled nor
+! scaled by the age factor; setup_solar_calibration then sets both
+! again, with 1e8 yr and target_solar_age times age_scale_factor.
+! Without the calibration the deck's max_age stands (M191).
+         if (s%control%calibrate_solar_model) then
+            s%card_max_age_yr(2) = mc_settling_age_yr
+            s%card_max_age_yr(3) = mc_solar_age_yr
+         end if
       else
          age_scale_factor = 1.0D0
       end if
