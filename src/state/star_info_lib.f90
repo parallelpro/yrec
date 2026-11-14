@@ -389,8 +389,9 @@ module star_info_lib
             integer :: atm_choice_in_use
 ! the structure-based timestep limits are on [logical]; run_driver,
 ! timestep_control, controls_sync. From physics%use_structure_dt_limits;
-! compute_timestep switches them off, and each solar-calibration cycle
-! restores them from the control (run_driver).
+! compute_timestep switches them off, and a card that reads the starting
+! model and each solar-calibration cycle restore them from the control
+! (run_driver).
             logical :: structure_dt_limits_active
 ! the mass change (accretion or the Reimers wind) runs [logical];
 ! mass_change, controls_sync. From physics%use_mass_accretion; switched off
