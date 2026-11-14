@@ -150,10 +150,10 @@ end subroutine begin_monte_carlo_run
 ! the run copies, and that the next run would read before writing them,
 ! put back to their value at the start of the first run (the template
 ! star's zero). The list is what a bisection of the star's classes on
-! four two-run decks found (M169), not one shown to be complete:
-! disk_gate_age_gyr, the disk-locking tests' age, is known to carry over
-! too and is left as it is, the authors' decision (state/README.md
-! section 7; docs/bug_sweep.md section 13). The members: the
+! four two-run decks found (M169), not one shown to be complete
+! (disk_gate_age_gyr, the disk-locking tests' age, would carry over too:
+! every model read from file sets it, starting_model's
+! reset_state_after_read; M190). The members: the
 ! start-of-step deuterium rates. compute_burn_rates stores them only in
 ! the zones above the burning cutoff (and while there is deuterium to
 ! burn), and burn_deuterium averages them over a mixed region, the

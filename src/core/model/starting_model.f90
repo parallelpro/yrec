@@ -353,12 +353,13 @@ end subroutine check_model_against_controls
 
 
 ! ---------------------------------------------------------------
-! Reset the store and trial-sign flags, require a fresh envelope, and
-! take the surface X and Z from the outermost interior point.
-!   star reads: nz, xa
-!   star writes: recompute_envelope_triangle, stored_vertex_index,
-!     surface_hydrogen_fraction, surface_metal_fraction,
-!     triangle_orientation
+! Reset the store and trial-sign flags, require a fresh envelope, take
+! the surface X and Z from the outermost interior point, and start the
+! disk-locking tests' age at the model's.
+!   star reads: age_gyr, nz, xa
+!   star writes: disk_gate_age_gyr, recompute_envelope_triangle,
+!     stored_vertex_index, surface_hydrogen_fraction,
+!     surface_metal_fraction, triangle_orientation
 subroutine reset_state_after_read(s)
       type(star_info), intent(inout) :: s
       s%stored_vertex_index = 0
@@ -371,6 +372,10 @@ subroutine reset_state_after_read(s)
 ! surface_hydrogen_fraction, surface_metal_fraction: the outermost point's X, Z.
       s%surface_hydrogen_fraction = s%xa(i_h1,s%nz)
       s%surface_metal_fraction = s%xa(i_metals,s%nz)
+! The age the disk-locking tests read (the step sets it after each
+! converged model) starts at the model's, not at the previous Monte-Carlo
+! run's or card's last age, nor at 0 on a run's first step (M190).
+      s%disk_gate_age_gyr = s%age_gyr
 end subroutine reset_state_after_read
 
 

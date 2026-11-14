@@ -869,11 +869,11 @@ module star_info_lib
 ! d log r/dt over the last step [1/s]; step_driver, rezoning, run_driver
             real(dp) :: dlog_radius_dt(json)
 ! age of the last converged model, for the disk-locking tests [Gyr];
-! step_driver. Written after each converged step only (legacy SAGE, as
-! the F77 did): the first step of a run reads 0, and the first step of a
-! later Monte-Carlo run, or of a card that starts again from the starting
-! model, reads the previous run's or card's last age
-! (docs/bug_sweep.md, section 13; open, the authors' decision).
+! step_driver, starting_model. Written after each converged step (legacy
+! SAGE) and at every model read from file, as the model's age, so that
+! the first step of a run, of a later Monte-Carlo run or of a card that
+! starts again from the starting model reads that model's age
+! (docs/bug_sweep.md M190).
             real(dp) :: disk_gate_age_gyr
 ! convective turnover time one pressure scale height above the base of
 ! the surface convection zone [s]; turnover_timescale, run_driver,
