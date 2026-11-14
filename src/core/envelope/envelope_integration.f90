@@ -11,17 +11,20 @@
 ! (star%photosphere_logP, and the gray atmosphere after a failed Allard
 ! lookup), and reports the kernel's events (report_envint_events). The
 ! points it integrates go to the star's env_points, atm_points and
-! atm_point. The tables and their surface lookups are atm's. The helpers
-! fixed_envint_step, surface_log10_radius_cm and ambient_log10_teff serve
-! atm_get's callers (compute_surface_boundary, rebuild_envelope,
-! read_starting_model, build_stitched_model).
+! atm_point. gray_photosphere integrates the Eddington gray atmosphere
+! alone, at a given Teff and g, into its own points (change_mass's
+! accretion surface after a failed Allard lookup). The tables and their
+! surface lookups are atm's. The helpers fixed_envint_step,
+! surface_log10_radius_cm and ambient_log10_teff serve atm_get's callers
+! (compute_surface_boundary, rebuild_envelope, read_starting_model,
+! build_stitched_model).
 module envelope_integration
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use star_info_lib, only: star_info
       implicit none
       private
-      public :: atm_get, fixed_envint_step, surface_log10_radius_cm, &
-           ambient_log10_teff
+      public :: atm_get, gray_photosphere, fixed_envint_step, &
+           surface_log10_radius_cm, ambient_log10_teff
 
 ! A Bulirsch-Stoer step-size triple (begin, min, max) a driver can hand
 ! atm_get in place of the controls' {atm,env}_step_* values, for that
@@ -75,14 +78,7 @@ real(dp) function ambient_log10_teff(s, log_teff)
            pow(s%physics%spot_temp_contrast, 4.0) + 1.0 - s%physics%spot_filling_factor)
 end function ambient_log10_teff
 
-!   star reads: log10_solar_luminosity, log_fit_point_mass_fraction,
-!     log_total_mass, physics%atm_error_tol, physics%atm_step_begin,
-!     physics%atm_step_initial, physics%atm_step_max,
-!     physics%atm_step_min, physics%calc_envelope_flag,
-!     physics%env_error_tol, physics%env_step_begin,
-!     physics%env_step_max, physics%env_step_min,
-!     physics%envelope_store_log_temperature, physics%extrap_order,
-!     physics%max_stage_index, physics%tolerance_fraction
+!   star reads: none
 !   star writes: atm_choice_in_use, atm_point, atm_points, env_points,
 !     photosphere_logP
 subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
@@ -106,8 +102,7 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
 ! diagnostics.
       use envelope_integration_kernel, only: envint_config, envint_events, &
            integrate_envelope_atmosphere
-      use physical_constants, only: cgl
-      use atm_lib, only: hsra_t_tau_offset, atm_eddington_gray
+      use atm_lib, only: atm_eddington_gray
       implicit none
       type(star_info), intent(inout) :: s
 
@@ -137,45 +132,22 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
       type(envint_events) :: events
       logical :: switched_to_gray
       real(dp) :: log10_photo_pressure
-! scratch stand-ins for the absent vertex group (never read back)
+! stand-ins for the absent vertex group (never read back)
       real(dp) :: scratch_state(4), scratch_logp(3), scratch_logr(3), &
            scratch_logt(3)
       integer :: scratch_vertex_index, scratch_stored_vertex_index
 
-      cfg%atm_choice = s%atm_choice_in_use
+      cfg = envint_config_from_star(s, surface_composition)
       if (present(atm_steps)) then
          cfg%atm_step_begin = atm_steps%step_begin
          cfg%atm_step_min = atm_steps%step_min
          cfg%atm_step_max = atm_steps%step_max
-      else
-         cfg%atm_step_begin = s%physics%atm_step_begin
-         cfg%atm_step_min = s%physics%atm_step_min
-         cfg%atm_step_max = s%physics%atm_step_max
       end if
       if (present(env_steps)) then
          cfg%env_step_begin = env_steps%step_begin
          cfg%env_step_min = env_steps%step_min
          cfg%env_step_max = env_steps%step_max
-      else
-         cfg%env_step_begin = s%physics%env_step_begin
-         cfg%env_step_min = s%physics%env_step_min
-         cfg%env_step_max = s%physics%env_step_max
       end if
-      cfg%atm_error_tol = s%physics%atm_error_tol
-      cfg%env_error_tol = s%physics%env_error_tol
-      cfg%atm_step_initial = s%physics%atm_step_initial
-! the HSRA T(tau) fit at tau = 2/3, for atm_choice = 2
-      cfg%hsra_log_t_offset = hsra_t_tau_offset()
-      cfg%log10_total_mass = s%log_total_mass
-      cfg%surface_composition = surface_composition
-      cfg%log_fit_point_mass_fraction = s%log_fit_point_mass_fraction
-      cfg%envelope_store_log_temperature = s%physics%envelope_store_log_temperature
-      cfg%log10_solar_luminosity = s%log10_solar_luminosity
-      cfg%log10_gravitational_constant = cgl
-      cfg%calc_envelope = s%physics%calc_envelope_flag
-      cfg%tolerance_fraction = s%physics%tolerance_fraction
-      cfg%max_stage_index = s%physics%max_stage_index
-      cfg%extrap_order = s%physics%extrap_order
 
       if (present(vertex_index)) then
          call run_kernel(vertex_index, stored_envelope_state, &
@@ -221,6 +193,131 @@ contains
       end subroutine run_kernel
 
 end subroutine atm_get
+
+! ---------------------------------------------------------------
+! The kernel's settings as the star's controls give them (envint_config):
+! the atmosphere choice in use, the controls' step sizes and
+! tolerances, the fitting mass, and calc_envelope_flag. atm_get and
+! gray_photosphere change what their call needs.
+!   star reads: atm_choice_in_use, log10_solar_luminosity,
+!     log_fit_point_mass_fraction, log_total_mass,
+!     physics%atm_error_tol, physics%atm_step_begin,
+!     physics%atm_step_initial, physics%atm_step_max,
+!     physics%atm_step_min, physics%calc_envelope_flag,
+!     physics%env_error_tol, physics%env_step_begin,
+!     physics%env_step_max, physics%env_step_min,
+!     physics%envelope_store_log_temperature, physics%extrap_order,
+!     physics%max_stage_index, physics%tolerance_fraction
+!   star writes: none
+function envint_config_from_star(s, surface_composition) result(cfg)
+      use envelope_integration_kernel, only: envint_config
+      use physical_constants, only: cgl
+      use atm_lib, only: hsra_t_tau_offset
+      type(star_info), intent(in) :: s
+      real(dp), intent(in) :: surface_composition(:)
+      type(envint_config) :: cfg
+
+      cfg%atm_choice = s%atm_choice_in_use
+      cfg%atm_step_begin = s%physics%atm_step_begin
+      cfg%atm_step_min = s%physics%atm_step_min
+      cfg%atm_step_max = s%physics%atm_step_max
+      cfg%env_step_begin = s%physics%env_step_begin
+      cfg%env_step_min = s%physics%env_step_min
+      cfg%env_step_max = s%physics%env_step_max
+      cfg%atm_error_tol = s%physics%atm_error_tol
+      cfg%env_error_tol = s%physics%env_error_tol
+      cfg%atm_step_initial = s%physics%atm_step_initial
+! the HSRA T(tau) fit at tau = 2/3, for atm_choice = 2
+      cfg%hsra_log_t_offset = hsra_t_tau_offset()
+      cfg%log10_total_mass = s%log_total_mass
+      cfg%surface_composition = surface_composition
+      cfg%log_fit_point_mass_fraction = s%log_fit_point_mass_fraction
+      cfg%envelope_store_log_temperature = s%physics%envelope_store_log_temperature
+      cfg%log10_solar_luminosity = s%log10_solar_luminosity
+      cfg%log10_gravitational_constant = cgl
+      cfg%calc_envelope = s%physics%calc_envelope_flag
+      cfg%tolerance_fraction = s%physics%tolerance_fraction
+      cfg%max_stage_index = s%physics%max_stage_index
+      cfg%extrap_order = s%physics%extrap_order
+end function envint_config_from_star
+
+!----------------------------------------------------------------------
+! gray_photosphere
+!----------------------------------------------------------------------
+! log P and log T at the photosphere (tau = 2/3, where T = Teff) of the
+! Eddington gray atmosphere (atm_choice 0) at log Teff and log g, for
+! the surface X, Z and composition: one integration of the atmosphere
+! alone (calc_envelope off), with the controls' atmosphere steps and
+! tolerance and no rotation (f_P = f_T = 1). Its points go to locals:
+! the star's atmosphere and envelope points, atm_point,
+! photosphere_logP and atm_choice_in_use are not written. The
+! integration's events are reported as atm_get's are; ierr is the
+! kernel's.
+!   star reads: log_L_lsun, log_total_mass
+!   star writes: none
+subroutine gray_photosphere(s, log10_teff, log10_gravity, &
+     hydrogen_fraction, metal_fraction, surface_composition, &
+     log10_pressure, log10_temperature, ierr)
+      use envelope_integration_kernel, only: envint_config, envint_events, &
+           integrate_envelope_atmosphere
+      use envelope_points, only: envelope_structure_state, &
+           atmosphere_structure_state, atmosphere_point_state
+      use atm_lib, only: atm_eddington_gray
+      use math_lib
+      type(star_info), intent(in) :: s
+      real(dp), intent(in) :: log10_teff, log10_gravity
+      real(dp), intent(in) :: hydrogen_fraction, metal_fraction
+      real(dp), intent(in) :: surface_composition(:)
+      real(dp), intent(out) :: log10_pressure, log10_temperature
+      integer, intent(out) :: ierr
+      type(envint_config) :: cfg
+      type(envint_events) :: events
+! the integration's points, on the heap for their size
+      type(envelope_structure_state), allocatable :: env_points
+      type(atmosphere_structure_state), allocatable :: atm_points
+      type(atmosphere_point_state) :: atm_point
+      logical :: switched_to_gray
+      real(dp) :: log10_photo_pressure, luminosity, pressure_factor, &
+           temperature_factor, gravity, teff, radius, x, z
+      real(dp) :: unused_state(4), unused_logp(3), unused_logr(3), &
+           unused_logt(3)
+      integer :: unused_vertex_index, unused_stored_index, saha_iterations
+
+      cfg = envint_config_from_star(s, surface_composition)
+      cfg%atm_choice = atm_eddington_gray
+      cfg%calc_envelope = .false.
+      allocate(env_points, atm_points)
+      env_points%num_env_points = 0
+      atm_points%num_atm_points = 0
+      luminosity = exp10(s%log_L_lsun)
+      pressure_factor = 1.0d0
+      temperature_factor = 1.0d0
+      gravity = log10_gravity
+      teff = log10_teff
+      radius = surface_log10_radius_cm(s, s%log_L_lsun, log10_teff)
+      x = hydrogen_fraction
+      z = metal_fraction
+      unused_vertex_index = 0
+      unused_stored_index = 0
+      unused_state = 0.0d0
+      unused_logp = 0.0d0
+      unused_logr = 0.0d0
+      unused_logt = 0.0d0
+      saha_iterations = 0
+      log10_pressure = 0.0d0
+      log10_temperature = 0.0d0
+      call integrate_envelope_atmosphere(cfg, switched_to_gray, &
+           log10_photo_pressure, luminosity, pressure_factor, &
+           temperature_factor, gravity, s%log_total_mass, &
+           unused_vertex_index, .false., 0.0d0, radius, teff, x, z, &
+           unused_state, unused_stored_index, saha_iterations, &
+           unused_logp, unused_logr, unused_logt, env_points, atm_points, &
+           atm_point, events, ierr)
+      call report_envint_events(events, switched_to_gray, .false.)
+      if (ierr /= 0) return
+      log10_pressure = atm_point%log10_pressure
+      log10_temperature = atm_point%log10_temperature
+end subroutine gray_photosphere
 
 ! ---------------------------------------------------------------
 ! The messages of one envelope integration (integrate_envelope_atmosphere

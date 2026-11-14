@@ -244,3 +244,10 @@ check = 'derivatives failure in a step: the event holds the code'
 file = 'core/envelope/envelope_integration_kernel.f90'
 old = 'counts=[jerr, derivatives_jerr]'
 new = 'counts=[jerr]'
+
+[[mutation]]
+id = 'envelope-gray-01'
+check = 'gray photosphere: log P = the kernel'
+file = 'core/envelope/envelope_integration.f90'
+old = '      pressure_factor = 1.0d0'
+new = '      pressure_factor = 0.5d0'

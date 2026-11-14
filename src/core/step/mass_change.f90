@@ -27,6 +27,7 @@
 module mass_change
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use atm_lib, only: atm_get_surface_pt, atm_table_is_loaded, atm_allard
+      use envelope_integration, only: gray_photosphere
       use star_info_lib, only: json, star_info, i_h1, i_metals
       use mass_change_kernel, only: wind_angular_momentum, &
            convection_zone_mass, change_shell_masses, &
@@ -255,12 +256,15 @@ end subroutine average_envelope_energies
 ! the inputs evaluate_stahler_surface reuses are used afterwards: no
 ! entropy of the accreted matter is formed from this state.
 subroutine find_accreted_surface_state()
-! log g = log G + log M - 2 log R. The surface: the Allard tables at
-! the star's Teff and log g when atm_init read them (atm_choice 4), else,
-! or when the point is outside them, the photosphere of the last
-! envelope integration (s%atm_point: the point its atmosphere
-! integration ended at, or its table's surface point; O19).
+! log g = log G + log M - 2 log R. The surface, at the star's Teff and
+! log g: the Allard tables when atm_init read them (atm_choice 4), and
+! the Eddington gray atmosphere's photosphere (gray_photosphere) when
+! the point is outside them (O19). Without the Allard tables, the
+! photosphere of the last envelope integration (s%atm_point: the point
+! its atmosphere integration ended at, or its table's surface point).
       log10_gravity = cgl+s%log_total_mass-2.0d0*log10_radius
+      hydrogen_fraction_local = s%xa(i_h1,nz)
+      metal_fraction_local = s%xa(i_metals,nz)
       log10_temperature_local = s%atm_point%log10_temperature
       log10_pressure_local = s%atm_point%log10_pressure
       if (atm_table_is_loaded(atm_allard)) then
@@ -268,13 +272,16 @@ subroutine find_accreted_surface_state()
               allard_log10_pressure, allard_log10_temperature, &
               allard_lookup_failed, ierr)
          if (ierr /= 0) return
-         if (.not. allard_lookup_failed) then
+         if (allard_lookup_failed) then
+            call gray_photosphere(s, s%log_Teff, log10_gravity, &
+                 hydrogen_fraction_local, metal_fraction_local, s%xa(:,nz), &
+                 log10_pressure_local, log10_temperature_local, ierr)
+            if (ierr /= 0) return
+         else
             log10_temperature_local = allard_log10_temperature
             log10_pressure_local = allard_log10_pressure
          end if
       end if
-      hydrogen_fraction_local = s%xa(i_h1,nz)
-      metal_fraction_local = s%xa(i_metals,nz)
       eos_deriv_flag = .false.
       saha_iterations = 1
       eos_atmosphere_flag = .true.
