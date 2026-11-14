@@ -318,8 +318,9 @@ end subroutine read_starting_model_file
 
 ! ---------------------------------------------------------------
 ! Warn when an evolved model (model_number > 0) has a mixing length or
-! extended-composition flag that differs from the controls. A warning
-! only: the run goes on.
+! extended-composition flag that differs from the controls: the deck's
+! and the model's values, in one core_report warning. A warning only:
+! the run goes on.
 !   star reads: mixing_length_alpha, model_number,
 !     physics%use_extended_composition
 !   star writes: none
@@ -327,11 +328,7 @@ subroutine check_model_against_controls(s, sm)
       type(star_info), intent(inout) :: s
       type(starting_model_state), intent(inout) :: sm
       logical :: mixing_length_matches
-! lexcp0 is never assigned: the mismatch warning below prints it where it
-! presumably means the model's flag, header%use_extended_composition (a
-! bug kept from starin; core.md finding 3, on the B list).
-      logical :: lexcp0
-      character(len=message_length) :: lines(4)
+      character(len=message_length) :: lines(3)
       if (s%model_number > 0) then
        mixing_length_matches = .true.
 ! The tolerance 2e-3 allows for model files storing the mixing length
@@ -339,18 +336,15 @@ subroutine check_model_against_controls(s, sm)
 ! checked.
        if (sm%header%mixing_length > 0.0d0) mixing_length_matches = &
             (abs(s%mixing_length_alpha-sm%header%mixing_length) < mixing_length_match_tol)
-! The warning prints lexcp0, which is never set (see its declaration),
-! for the model's flag.
        if (.not.mixing_length_matches .or. sm%header%use_extended_composition.neqv. &
             s%physics%use_extended_composition) then
           lines = unwritten_line
           write(lines,1040) s%mixing_length_alpha,sm%header%mixing_length, &
-               s%physics%use_extended_composition,lexcp0
+               s%physics%use_extended_composition,sm%header%use_extended_composition
           call core_report(lines)
- 1040       format(1x,'ERROR IN SUBROUTINE STARIN'/1x,'USER PARAMETERS', &
-             ' OF WRONG TYPE FOR INITIAL MODEL'/1x,'MIXING LENGTH - USER' &
-             ,' DESIRES',f7.3,' MODEL MIX LENGTH',f7.3/1x, &
-             'EXTENDED COMP-USER DESIRES ',l1,' MODEL USED ',l1)
+ 1040       format(1x,'WARNING: the starting model differs from the deck; the run goes on'/ &
+             3x,'mixing length: deck ',f0.3,', model ',f0.3/ &
+             3x,'extended composition: deck ',l1,', model ',l1)
        end if
       end if
 end subroutine check_model_against_controls
