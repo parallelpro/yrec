@@ -86,12 +86,13 @@ contains
 !   extend_core_toward_center   optionally add points inward of the
 !                               innermost shell (file models only);
 !   rescale_and_refit_envelope  rescale X, Z or the mass on a rescale
-!                               card, and optionally move the envelope
+!                               card, set the surface mixture and the
+!                               surface opacity tables from the
+!                               rescaled model (update_surface_mixture),
+!                               and optionally move the envelope
 !                               fitting point;
-!   build_shell_masses, initialize_rotation_state,
-!   update_surface_mixture, snapshot_step_start
-!                               shell masses, rotation totals, surface
-!                               mixture and opacity tables, step-start
+!   build_shell_masses, initialize_rotation_state, snapshot_step_start
+!                               shell masses, rotation totals, step-start
 !                               copies.
 ! Then shell_physics, am_convective_regions and
 ! compute_turnover_timescale give the gradients, opacities, convection
@@ -169,9 +170,7 @@ subroutine read_starting_model(s, ierr)
       call build_shell_masses(s)
       call initialize_rotation_state(s, ierr)
       if (ierr /= 0) return
-      call update_surface_mixture(s, sm, ierr)
       call snapshot_step_start(s)
-      if (ierr /= 0) return
       call compute_shell_physics(s, jerr)
       if (jerr /= 0) then
       ! Pass the error on.
@@ -693,7 +692,11 @@ end subroutine extend_core_toward_center
 
 ! ---------------------------------------------------------------
 ! On a rescale card (card_kind /= card_evolve), rescale the model's X, Z or
-! mass (rescale_model). Then, with fit_point_move_requested, move the
+! mass (rescale_model). Then set the star's surface mixture from the
+! rescaled model and the surface opacity tables for it
+! (update_surface_mixture), before the refit below evaluates the EOS and
+! the opacities with them (M86). Then, with
+! fit_point_move_requested, move the
 ! envelope fitting point to requested_log_fit_point_mass_fraction = log10(m_fit/M)
 ! (legacy SENV0), on the first model of every card (DBG 2/92):
 ! - deeper than now: drop the points outside the new fitting mass and
@@ -717,6 +720,8 @@ subroutine rescale_and_refit_envelope(s, sm, ierr)
       character(len=message_length) :: lines(4)
 
       if (s%card_kind(sm%run_index) /= card_evolve) call rescale_model(s, ierr)
+      if (ierr /= 0) return
+      call update_surface_mixture(s, sm, ierr)
       if (ierr /= 0) return
 
 ! A once-through loop: exit leaves the envelope change early.
