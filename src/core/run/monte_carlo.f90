@@ -34,6 +34,8 @@ module monte_carlo
            dynamics_unit, mc_summary_unit, mc_model_unit
       use model_files, only: write_mod_model
       use output_files, only: flush_output_file
+      use calibration, only: dlogl_dx_fixed, dlogr_dx_fixed, dlogl_dalpha_fixed, &
+           dlogr_dalpha_fixed
       implicit none
       private
       public :: first_mc_run, last_mc_run, setup_monte_carlo_runs, &
@@ -277,8 +279,7 @@ end subroutine write_run_summaries
 !   star reads: card_mixing_length_alpha, card_rescale_targets,
 !     central_log10_density, central_log10_pressure,
 !     central_log10_temperature, cl37_snu_rate,
-!     control%monte_carlo_file1_path, dlum_dalpha, dlum_dx, drad_dalpha,
-!     drad_dx, envelope_mass_msun, envelope_radius_rsun, ga71_snu_rate,
+!     control%monte_carlo_file1_path, envelope_mass_msun, envelope_radius_rsun, ga71_snu_rate,
 !     log_L_lsun, luminosity_breakdown_lsun, mc_samples,
 !     neutrino_flux_total_e10_per_cm2_s, nz, xa
 !   star writes: none
@@ -315,10 +316,12 @@ subroutine write_monte_carlo_model(s, local_log_radius, &
               s%mc_samples%settling_z_factor(monte_carlo_run_number),s%mc_samples%luminosity_factor(monte_carlo_run_number), &
               s%mc_samples%age_factor(monte_carlo_run_number)
    10 format(I7,1P9E10.3)
-! Record 2: the number of calibration cycles, and the partial
-! derivatives d log L/dX, d log R/dX, d log L/d alpha, d log R/d alpha.
-      if (ios == 0) write(mc_summary_unit,20,iostat=ios,iomsg=msg)convergence_iterations,s%dlum_dx,s%drad_dx, &
-           s%dlum_dalpha,s%drad_dalpha
+! Record 2: the number of calibration cycles, and the solar
+! calibration's fixed partial derivatives d log L/dX, d log R/dX,
+! d log L/d alpha, d log R/d alpha (the F77 printed its COMMON copies of
+! them, zero when the first run converged at its first check; M34).
+      if (ios == 0) write(mc_summary_unit,20,iostat=ios,iomsg=msg)convergence_iterations,dlogl_dx_fixed, &
+           dlogr_dx_fixed,dlogl_dalpha_fixed,dlogr_dalpha_fixed
  20   format(1X,I2,1P4E11.4)
 ! Record 3: the Cl37 and Ga71 capture rates (SNU) and the first eight
 ! neutrino fluxes, pp, pep, hep, Be7, B8, N13, O15 and F17 (see

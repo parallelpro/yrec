@@ -14,6 +14,8 @@ module calibration
       private
       public :: check_solar_calibration, check_star_calibration, setup_solar_calibration, setup_star_calibration, &
            end_star_calibration_card
+! the fixed partial derivatives, which the Monte-Carlo summary prints
+      public :: dlogl_dx_fixed, dlogr_dx_fixed, dlogl_dalpha_fixed, dlogr_dalpha_fixed
 
 ! The star calibration's cards per pass: an odd card rescales, the even
 ! card after it evolves.
@@ -48,9 +50,8 @@ contains
 ! |log(Z/X) - log(Z/X)_target| < zx_tolerance. If so, it sets
 ! solar_calibration_converged and returns. If not, it takes one Newton
 ! step in (X, alpha) with the fixed empirical partial derivatives of
-! log L and log R (the *_fixed parameters above; it records them in
-! star%dlum_dx, drad_dx, dlum_dalpha, drad_dalpha for the Monte-Carlo
-! summary), rescales Z by the Z/X mismatch when calibrate_solar_zx is
+! log L and log R (the *_fixed parameters above, which the Monte-Carlo
+! summary prints), rescales Z by the Z/X mismatch when calibrate_solar_zx is
 ! set, and writes the new envelope (X, Z, alpha) into the next triple's
 ! cards.
 !
@@ -69,8 +70,7 @@ contains
 !     log_L_lsun
 !   star writes: card_initial_x, card_initial_z,
 !     card_mixing_length_alpha, card_rescale_targets, delta_alpha,
-!     delta_x, dlum_dalpha, dlum_dx, drad_dalpha, drad_dx,
-!     log_l_lsun_prev_check, log_r_rsun_prev_check,
+!     delta_x, log_l_lsun_prev_check, log_r_rsun_prev_check,
 !     solar_calibration_converged
 subroutine check_solar_calibration(s, log_r_rsun, current_zx)
 
@@ -107,15 +107,9 @@ subroutine check_solar_calibration(s, log_r_rsun, current_zx)
          end if
       end if
 
-! The fixed partial derivatives d log L/dX, d log R/dX, d log L/d alpha
-! and d log R/d alpha, recorded for the Monte-Carlo summary.
-      s%dlum_dx = dlogl_dx_fixed
-      s%drad_dx = dlogr_dx_fixed
-      s%dlum_dalpha = dlogl_dalpha_fixed
-      s%drad_dalpha = dlogr_dalpha_fixed
-! (The original code also had a run_index-based estimate of these
-! derivatives, which an unconditional jump always bypassed; it has been
-! removed.)
+! The Newton step, with the fixed partial derivatives. (The original code
+! also had a run_index-based estimate of them, which an unconditional
+! jump always bypassed; it has been removed.)
 !
 ! The Newton step: the corrections that zero log L and log R solve
 !   dlum_dx dX + dlum_dalpha dalpha = -log L

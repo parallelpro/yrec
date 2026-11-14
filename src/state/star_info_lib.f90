@@ -461,19 +461,6 @@ module star_info_lib
 ! number fractions of the 12 surface-mixture elements, slots ix_*, passed
 ! to the EOS (eos_set_mixture) [-]; starting_model
             real(dp) :: envelope_number_fractions(n_mix_species)
-! d log L/dX of the last solar-calibration Newton step: calibration's
-! parameter dlogl_dx_fixed, -3.78 [-]; calibration. 0 before the first
-! step; printed in the Monte-Carlo summary, as the three below.
-            real(dp) :: dlum_dx
-! d log R/dX of the last Newton step, dlogr_dx_fixed, -0.89 [-];
-! calibration
-            real(dp) :: drad_dx
-! d log L/d alpha of the last Newton step, dlogl_dalpha_fixed, 0.0139
-! [-]; calibration
-            real(dp) :: dlum_dalpha
-! d log R/d alpha of the last Newton step, dlogr_dalpha_fixed, -0.050
-! [-]; calibration
-            real(dp) :: drad_dalpha
 ! the solar calibration has converged [logical]; calibration
             logical :: solar_calibration_converged
 ! the star calibration found a track through the target L and R, so the
@@ -1252,9 +1239,10 @@ end module star_info_lib
 ! pulse) were then folded in as flat members, and the computed values
 ! once kept in the controls buffer moved here. The module-level star was
 ! removed in 2026-10. The members' F77 homes:
-!   /calsun/    dlum_dx, drad_dx, dlum_dalpha, drad_dalpha,
-!               log_l_lsun_prev_check, log_r_rsun_prev_check, delta_x,
-!               delta_alpha, solar_calibration_converged
+!   /calsun/    log_l_lsun_prev_check, log_r_rsun_prev_check, delta_x,
+!               delta_alpha, solar_calibration_converged (its DLDX, DRDX,
+!               DLDA and DRDA are calibration's dlogl_dx_fixed ...
+!               parameters)
 !   /cent/      central_log10_temperature, central_log10_pressure,
 !               central_log10_density, envelope_mass_msun, envelope_radius_rsun
 !   /comp2/     envelope_helium_fraction, envelope_he3_fraction
