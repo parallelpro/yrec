@@ -183,7 +183,7 @@ end subroutine clear_previous_run_state
 ! calibration on, it also sets cards 2 and 3's stop ages, which no sample
 ! gives (below). Outside Monte Carlo it only sets age_scale_factor = 1.
 !   star reads: control%calibrate_solar_model, mc_samples,
-!     physics%monte_carlo_active
+!     physics%monte_carlo_active, physics%solar_luminosity_cgs
 !   star writes: card_max_age_yr, cross_section_scale_in_use,
 !     extra_cross_section_scale_in_use, ln10_over_lsun,
 !     log10_solar_luminosity, settling_z_factor_in_use,
@@ -205,9 +205,6 @@ subroutine apply_monte_carlo_parameters(s, monte_carlo_run_number, &
       real(dp), parameter :: bp96_pp_factor = 0.9558, &
            bp96_he3he3_factor = 0.9690, bp96_he3he4_factor = 0.9712, &
            bp96_be7p_factor = 0.92088
-! The base solar luminosity in erg/s (MHP 3/96), which
-! luminosity_factor scales.
-      real(dp), parameter :: reference_solar_luminosity = 3.844D33
 ! Cards 2 and 3's stop ages [yr] for the solar calibration (below).
       real(dp), parameter :: mc_settling_age_yr = 1.0D8, mc_solar_age_yr = 4.57D9
 
@@ -221,7 +218,10 @@ subroutine apply_monte_carlo_parameters(s, monte_carlo_run_number, &
 ! only; the helium factor fgry keeps its control value. The sampled Z/X
 ! (metal_to_h_ratio) is only written to the summary.
          s%settling_z_factor_in_use = s%mc_samples%settling_z_factor(monte_carlo_run_number)
-         s%solar_luminosity_cgs = reference_solar_luminosity*s%mc_samples%luminosity_factor(monte_carlo_run_number)
+! The sampled solar luminosity: the deck's (physics%solar_luminosity_cgs)
+! times the run's luminosity factor (M97; it was 3.844e33 erg/s, MHP 3/96,
+! whatever the deck set).
+         s%solar_luminosity_cgs = s%physics%solar_luminosity_cgs*s%mc_samples%luminosity_factor(monte_carlo_run_number)
          s%log10_solar_luminosity = log10(s%solar_luminosity_cgs)
          s%ln10_over_lsun = ln10/s%solar_luminosity_cgs
          age_scale_factor = s%mc_samples%age_factor(monte_carlo_run_number)

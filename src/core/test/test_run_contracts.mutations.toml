@@ -122,6 +122,13 @@ old = 'do i = 1,last_mc_run(s)'
 new = 'do i = 1,last_mc_run(s)-1'
 
 [[mutation]]
+id = 'monte_carlo-05'
+check = "Monte Carlo: L_sun is the deck's times the luminosity factor"
+file = 'core/run/monte_carlo.f90'
+old = 's%solar_luminosity_cgs = s%physics%solar_luminosity_cgs*s%mc_samples%luminosity_factor(monte_carlo_run_number)'
+new = 's%solar_luminosity_cgs = 3.844D33*s%mc_samples%luminosity_factor(monte_carlo_run_number)'
+
+[[mutation]]
 id = 'capi-01'
 check = 'yrec_run: a control path over 256 characters is refused (status 1)'
 file = 'core/run/yrec_capi.f90'

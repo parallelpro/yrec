@@ -17,6 +17,8 @@
 !   on a star set up here:
 !     - without the solar calibration, cards 2 and 3 keep the deck's
 !       stop ages; with it, they get the calibration's 1e8 and 4.57e9 yr;
+!     - the run's solar luminosity is the deck's times its sample's
+!       luminosity factor;
 !   the sample file's read (setup_monte_carlo_runs), on a scratch file:
 !     - a file that ends before the last run asked for is an error
 !       (ierr 1), and a complete one reads every run's samples;
@@ -207,6 +209,13 @@ subroutine monte_carlo_checks()
       call begin_monte_carlo_run(s, 1, age_scale_factor)
       call run_contract_check_that('Monte Carlo: with the calibration, 1e8 and 4.57e9 yr', &
            s%card_max_age_yr(2) == 1.0d8 .and. s%card_max_age_yr(3) == 4.57d9)
+! A sample's luminosity factor of 1.01 on the deck's 3.828e33 erg/s.
+      call new_monte_carlo_star(s)
+      s%mc_samples%luminosity_factor(1) = 1.01d0
+      call begin_monte_carlo_run(s, 1, age_scale_factor)
+      call run_contract_check_that('Monte Carlo: L_sun is the deck''s times the luminosity factor', &
+           s%solar_luminosity_cgs == 3.828d33*1.01d0 .and. &
+           s%log10_solar_luminosity == log10(3.828d33*1.01d0))
 
 ! The sample file, with runs 1 to 2 asked for: one record, then two (run
 ! 2's luminosity factor 1.01).
