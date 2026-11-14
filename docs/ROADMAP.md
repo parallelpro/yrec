@@ -4663,3 +4663,112 @@ the measure; no deck asks for the neutrino table.
 - **The eighth evaluation** (PLAN.md section 9), after 2B.
 - **The push**: yrec-next holds rounds 0 to 2 unpushed; a push waits for
   the owner's word.
+
+### Round 2B: core's measured fixes (yrec-next, 2026-11-13/14)
+
+The owner approved core's B list
+(`audit/module-evaluation-7-2026-11-10/B_LIST_CORE.md`) on 2026-11-13
+with every recommendation as written: M132 an error, M176's part A
+only, M31's narrow form, M303's deck change, and of round 1B's
+questions M278's option B, M285's merged fix kept, and M293 an error
+after M86. yrec-next was pushed through 9059d0b1 the same day.
+
+**How it was done.**
+- **Two agents, one after the other**, each in its own worktree with a
+  measuring area (a copy of the deck baseline and the 35 pins), under
+  one set of rules (the work directory's `notes/COMMON2B.md`). Each item
+  was one commit: the fix, `compare_decks --set all` against the
+  previous item's snapshot, every moved deck measured (files, model
+  count, the largest change per column, the final log L, log Teff and
+  age), the tests that moved re-pinned, the baseline reseeded and a
+  plain compare ALL IDENTICAL again, and the item's bug_sweep entry
+  closed in the same commit.
+- **Path-sensitive decks** (the 12 testsuite solar decks, the `rv_`
+  decks, o24_rescale_rotating, ZAHB_m1p0feh+0p0_TAHB, and
+  Test_m0030_feh0_noGS_ZAMS, which M273 showed amplifies as they do)
+  report the **first visible change**: the first progress line of the
+  run log that differs, which is the fix's own size; their end states
+  are the deck's amplification.
+- **The integrator** merged each branch with `--no-ff`, reproduced the
+  agent's final baseline and pins in MAIN (a compare against a copy of
+  the agent's area, ALL IDENTICAL, 35 pins), backed up MAIN's baseline,
+  pins and MESA baselines, installed the agent's, and ran the full
+  checks (`scratch_integrator/integrate_b2.sh`).
+
+**What was done.**
+- **Part 1** (b2-core1, merged in 1592edca): byte-identical on the 56
+  decks, O4 (23e3d0f1; devel_tests' four O4 known failures run clean,
+  9bef8fb0), O5, O6's part A, M126 (a second core extension converges
+  instead of a NaN), M31's narrow form (a four-card deck that died at
+  card 4 runs to its stop), M191, M34, M115 (with io's checks), M112's
+  core part, M132 (an error, exit 1) and M293 (eos: Saha
+  non-convergence an error; after M86 none of the 275 shipped decks
+  outside the set fails, from 41,128 failures in 35 decks before);
+  changes of results, M85 with M96 (Test_solarcal_noGS_norot log L
+  -5.4e-11), M86 (two logs lose their Saha lines, 2,212 and 5 to 0),
+  M97 (cm_monte_carlo log L +1.809e-3, the deck's L☉), M190
+  (Test_solarGS98_difrotmixper18p4d0p1 855 to 854 models, first visible
+  change 4.3e-5 at model 2), M176's part A (Test_solarcal_noGS_norot
+  log L -4.1e-10) and M303 (cm_env_overshoot runs 78 models with
+  envelope overshoot); the owner's decisions recorded (73a9d6a7); and
+  M315 (2de1d79e), a round-2 regression the M293 count found: round 2
+  gave each envelope refit step its own loop index, so every deeper
+  refit was refused, in 32 shipped decks outside the set. Five pins
+  moved.
+- **Part 2** (b2-core2, merged in 83b30640): bug_sweep section 18
+  (e303cfc3); O7 (accretion mixes by shell mass with one M_cz; the
+  accretion and mass-loss decks at 1e-11), O19's core side (the gray
+  photosphere after a failed Allard lookup; byte-identical), O8
+  (byte-identical), O9 (34 decks' final surface Li7 by up to -3.9e-3
+  dex), O22 (the profile's N² is the pulse files'; no compared file
+  holds it) and M270 (two logs); item 24, core's messages reworded and
+  the routes folded to `core_report`, `core_terminal`, `core_log` and
+  the `*_values` pair (38 decks' logs, 18 pins, nothing else); M273's
+  part B, the year, its inverse and ln 10 from physical_constants (46
+  decks, 27 pins, first visible change 6.6e-6..1.1e-5 at model 50); and
+  M278's option B in kap's conductive opacity (every deck, 25 pins;
+  the solar models log L -1.66e-5; ZAHB 1865 to 1726 models and its
+  final age -2.64%, inside the 6% and 15% the owner was told would stop
+  the commit; round 1B's trial on the older base had lengthened the run
+  by 3.7%). 28 pins and the MESA baselines moved (solar log L -1.6e-5).
+
+**Verification.** The integrator's checks (`scratch_integrator/integrate_b2.sh`,
+logs `notes/b2core1_verify.log` and `notes/b2core2_verify.log`), the same
+for each part: the agent's baseline and pins reproduced in MAIN (ALL
+IDENTICAL, 35 pins); the builds; make check (207 star contracts after
+part 1, 209 after part 2; the style ratchet at 330); a plain compare
+ALL IDENTICAL after the install (5 pin files moved in part 1, 28 in
+part 2); CI's 32 pytest files, 99 passed and 1 skipped, byte-exact and
+tolerant; mutate.py on the packages each part touched (core, eos and
+convection; core, kap and convection), nothing survived; devel_tests, 0
+cases failed; the release rebuild; and the MESA baselines reseeded,
+checked (2 passed) and identical to the agent's. After the CI failure
+on 9059d0b1 (below), CI's two jobs were run from a local sparse clone:
+97 passed and 1 skipped, and devel_tests 0 failed.
+
+**Learned.**
+- A reworded statement in a file that a mutation manifest names breaks
+  the manifest (`mutate.py` refuses it): run `mutate.py <pkg> --check`
+  before committing a message change.
+- An error that replaces a warning (M293) can fail a unit test that
+  called the code with an unset input. Run CI's full pytest list after
+  such an item, not only at the end.
+- compare_decks' `--only` matches the deck file's name, and the four
+  standard solar decks are `.nml1`: a snapshot regex must include them.
+- A test that opens a new input file needs its line in both of CI's
+  sparse-checkout lists (c690b498 added two Kurucz tables that test_atm
+  had read since round 1).
+
+**What is left.**
+- Open by decision: O6's and M176's parts B (with a round that reseeds
+  everything), O1 and O3 (the Jacobian), O20, and M146's remainder
+  (with net's next round).
+- Found in the round and open: M316 (two shipped decks stop at their
+  first model, beta not positive), M317 (the solar starting models'
+  total mass and the decks' solar mass differ by 5.0e-5), and three
+  low-mass decks that stop within 50 models (on O3's record).
+- M112's rest: core's list-directed run-log lines and the other
+  packages' message modules still write the run log directly.
+- **The eighth evaluation** (PLAN.md section 9).
+- **The push**: yrec-next was pushed through 9059d0b1 on 2026-11-13;
+  c690b498 and the two merges wait for the owner's word.

@@ -17,6 +17,17 @@ deck's amplification. "Decision" marks the choices that are the owner's; each ca
 historical clean stop; M176, part A only or also part B; M31, the narrow form or the broad; M303, a change of a
 pinned deck. M190 and M191 were decided on 2026-11-10 (PLAN.md section 11: fix both).
 
+## Status (2026-11-14): done in round 2B
+
+The owner approved every recommendation on 2026-11-13. Round 2B made them, one commit per item, merged into yrec-next
+in 1592edca (part 1) and 83b30640 (part 2); docs/ROADMAP.md's "Round 2B" section has the measured changes.
+- Part 1: item 1 23e3d0f1 (and 9bef8fb0), 2 b5b4f7d4, 3 part A e4f0c964, 4 2f05231f, 5 narrow b0992abe, 6 b2b1d0ab,
+  7 93627060, 8 9841e5fc, 9 e2516361, 10 1dd05628, 11 7f94a0b3, 12 91b7695e, 30 9f21f5dd (and ebf4d507), 13 88dabbd2,
+  14 1555c0a9, 15 part A c43ed58e, 16 77c75da8; 29 and the decisions recorded in 73a9d6a7.
+- Part 2: item 19 3560ddaa, 20 64944e0b, 21 eb898c46, 22 a8f176e3, 26 0f5ac510, 18 1c35ffc2, 24 534cf49e (and
+  0f744230), 17 3f40c9fa, 28 95ae332b.
+- Left by decision: items 3 and 15's parts B, 23 (O1, O3), 25 (M146's rest, with net) and 27 (O20).
+
 ## Byte-identical on the 56 decks
 
 1. **O4** (the starting model's stitched atmosphere reads `env_log10_radius(0)`). Fix: in stitched_model's
