@@ -165,7 +165,7 @@ new = 'atm_density_guess = atm_density_guess / 1.0d0'
 id = 'envelope-22'
 check = 'atmosphere maxstp: ierr = 1, its event last'
 file = 'core/envelope/envelope_integration_kernel.f90'
-old = 'call add_envint_event(events, envint_atmosphere_maxstp)'
+old = 'call add_envint_event(events, envint_atmosphere_maxstp, counts=[maxstp, 0])'
 new = 'continue'
 
 [[mutation]]
@@ -179,8 +179,8 @@ new = 'log10_photo_pressure = 0.0d0'
 id = 'envelope-24'
 check = 'envelope maxstp: ierr = 1, its event last'
 file = 'core/envelope/envelope_integration_kernel.f90'
-old = 'call add_envint_event(events, envint_envelope_maxstp)'
-new = 'call add_envint_event(events, envint_atmosphere_maxstp)'
+old = 'call add_envint_event(events, envint_envelope_maxstp, counts=[maxstp, 0])'
+new = 'call add_envint_event(events, envint_atmosphere_maxstp, counts=[maxstp, 0])'
 
 [[mutation]]
 id = 'envelope-25'
@@ -218,18 +218,18 @@ id = 'envelope-28'
 check = 'step underflow: ierr = envelope_termination'
 file = 'core/envelope/envelope_integration_kernel.f90'
 old = '''
-          call add_envint_event(events, envint_bsstep_failed, counts=[jerr])
+               values=[indep_var, real(num_eqs, dp)])
           ierr = envelope_termination'''
 new = '''
-          call add_envint_event(events, envint_bsstep_failed, counts=[jerr])
+               values=[indep_var, real(num_eqs, dp)])
           ierr = 1'''
 
 [[mutation]]
 id = 'envelope-29'
 check = "step underflow: the event holds bsstep's status"
 file = 'core/envelope/envelope_integration_kernel.f90'
-old = 'call add_envint_event(events, envint_bsstep_failed, counts=[jerr])'
-new = 'call add_envint_event(events, envint_bsstep_failed, counts=[0])'
+old = 'call add_envint_event(events, envint_bsstep_failed, counts=[jerr, 0], &'
+new = 'call add_envint_event(events, envint_bsstep_failed, counts=[0, 0], &'
 
 [[mutation]]
 id = 'envint-derivs-01'
