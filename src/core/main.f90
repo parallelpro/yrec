@@ -17,8 +17,10 @@ program main
 
       ierr = 0
       call run_yrec(ierr)
-! negative ierr is envelope_termination (envelope_integration_kernel) -- the
-! historical "solution diverged" stop, which exited 0; preserve that
-! as a clean exit. Positive ierr is a real error (exit 1).
+! negative ierr is envelope_termination (envelope_integration_kernel) -- a
+! Bulirsch-Stoer step of the envelope integration underflowed, the
+! historical "solution diverged" stop, which exited 0; preserve that as a
+! clean exit. Positive ierr is a real error (exit 1), a failure of the
+! microphysics inside that integration among them.
       if (ierr > 0) stop 1
 end program main

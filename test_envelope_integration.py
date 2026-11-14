@@ -13,7 +13,7 @@ fourth-order Runge-Kutta integration of the same equations; the vertex
 as the interpolation to the fitting mass; the thin envelope's vertex at
 the surface; the retried start; and the error contracts (maxstp in the
 atmosphere and in the envelope, Bulirsch-Stoer limits out of range, a
-step that underflows). The binary exits nonzero when a check fails (see
+step that underflows, the integrands failing inside a step). The binary exits nonzero when a check fails (see
 the header of src/core/test/test_envelope_integration.f90). See
 test_eos.py for the conventions.
 
