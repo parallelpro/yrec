@@ -223,7 +223,6 @@ star%card_num_models(3) = 1000
 star%card_log_fit_point_mass_fraction(1) = -9.99999999999999955E-008
 star%card_initial_x(1) =  7.08482999999999974E-001
 star%card_initial_z(1) =  1.88040000000000013E-002
-star%core_mass_reduction =  1.00000000000000000E+001
 star%num_core_points_added = 40
 star%card_stops_active(2) = T
 star%card_stops_active(3) = T

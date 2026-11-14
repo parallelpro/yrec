@@ -47,7 +47,7 @@ program test_eos
       type(eos_table_paths_t) :: mhd_paths
       character(len=256) :: fermi_path, scvh_path, scvhe_path, scvz_path, &
            opal06_path, dummy_path
-! core/model/starting_model.f90's atomic weights and the default of the
+! core/model/model_rescaling.f90's atomic weights and the default of the
 ! mixture_weights_seed control (the G&N93 12-species mixture), in the
 ! ix_* order of the envelope mixture
       double precision, parameter :: atomic_weight(12) = [23.0d0, 26.99d0, &
@@ -801,6 +801,7 @@ subroutine check_physics()
       call ideal_gas_checks()
       call continuity_checks()
       call atmosphere_checks()
+      call saha_nonconvergence_checks()
       call envelope_table_checks()
       call debye_huckel_checks()
       call gamma1_checks()
@@ -1767,6 +1768,25 @@ subroutine atmosphere_checks()
       end do
       call check("in_atmosphere: the density, ionization and first derivatives of a full evaluation", ok)
 end subroutine atmosphere_checks
+
+! The Saha solver without convergence is an error (M293): with the run
+! plan's partial mixture (X_env 0, the inverse weight and number fractions
+! unset), which the starting model's envelope refit saw until core's M86
+! fix, the helium term holds E below its root at a point of the 10 Msun
+! refit (log T 4.062, log P 4.123): ierr = 1 and the error's message.
+! Then the envelope's mixture again.
+subroutine saha_nonconvergence_checks()
+      type(eos_result) :: res
+      real(dp) :: fractions(12)
+      integer :: ierr1
+      fractions = 0.0d0
+      call configure_eos("yale_only")
+      call eos_set_mixture(0.0d0, envelope_metal_fraction, 0.0d0, fractions)
+      call eos_at(4.061939d0, 4.123467d0, 0.70d0, envelope_metal_fraction, res, ierr1)
+      call set_envelope_mixture(envelope_hydrogen_fraction, envelope_metal_fraction)
+      call check("Saha solver: no convergence (the run plan's partial mixture) is an error, ierr 1 (M293)", &
+           ierr1 == 1)
+end subroutine saha_nonconvergence_checks
 
 ! When the envelope composition changes, eos_set_mixture builds the SCV
 ! envelope table for it: a lookup at the new composition is the table's

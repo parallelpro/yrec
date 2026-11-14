@@ -43,7 +43,9 @@ end function fixed_envint_step
 
 ! log10 of the surface radius (cm) from log10 L/Lsun and log10 Teff,
 ! L = 4 pi R**2 sigma Teff**4, as rebuild_envelope, compute_surface_boundary
-! and build_stitched_model derive it before integrating. The operand
+! and build_stitched_model derive it before integrating (and the stitched
+! model's atmosphere takes it as its base when no envelope point is
+! stored). The operand
 ! order is theirs; physical_constants' log10_radius_from_l_teff adds the
 ! - 4 log Teff term last, which can differ in the last bit, so the two
 ! forms are kept apart (merging them moves results).
@@ -51,7 +53,7 @@ end function fixed_envint_step
 !   star writes: none
 real(dp) function surface_log10_radius_cm(s, log_luminosity_lsun, log_teff)
       use physical_constants, only: c4pil, csigl
-      type(star_info), intent(inout) :: s
+      type(star_info), intent(in) :: s
       real(dp), intent(in) :: log_luminosity_lsun, log_teff
       surface_log10_radius_cm = 0.5d0*(log_luminosity_lsun + s%log10_solar_luminosity &
            - 4.0d0*log_teff - c4pil - csigl)

@@ -607,11 +607,10 @@ subroutine solve_level(level, level_max_iterations, check_surface_bc)
 
 ! envelope_zone_index gates the accretion correction to the entropy term
 ! of the energy equation (compute_henyey_coefficients adds it from that
-! zone out). It is the redone composition step's envelope edge at levels
-! >= 3, and 0 (every zone) at levels 1-2. That reproduces the legacy
-! code, where it was an unset local zeroed by -finit-local-zero
-! (docs/ROADMAP.md section 13).
-      envelope_zone_index = 0
+! zone out, the surface convection zone the accreted matter mixes into).
+! It is the predictor's envelope edge (star%envelope_cz_bottom_index) at
+! levels 1-2 and the redone composition step's at levels >= 3.
+      envelope_zone_index = s%envelope_cz_bottom_index
       core_cz_edge_rerun = 0
       mixed_zone_bounds_rerun = 0
       if (iteration_level > 2 .and. evolve_model_flag .and. s%dt > 0.0d0) then

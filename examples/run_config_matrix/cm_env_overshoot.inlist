@@ -35,11 +35,11 @@
   
  run_kind(2) = 1   
  first_call_flag(2) = .FALSE.  
- max_model_number(2) = 10 
+ max_model_number(2) = 600 
  initial_x_array(2) = 0.719620
  initial_z_array(2) = 0.016492
  mixing_length_alpha(2) = 1.707575
- max_age(2) = 4.568D9 ! Run stops if NMODLS(I) is reached or this age is reached
+ max_age(2) = 1.0D7 ! Run stops if NMODLS(I) is reached or this age is reached; 1e7 yr: past the radiative core's birth (model 44-47), so that envelope overshoot, the Li/Be burn's overshoot depth and the rezone's overshoot base act (M303)
 ! END_DCEN(2) = 2.75d-5 ! Run stops if NMODLS(I) is reached or this central deuterium is reached (D bl, start)
 ! END_DCEN(2) = 2.75d-7 ! Run stops if NMODLS(I) is reached or this central deuterium is reached (D bl, end)
 ! END_XCEN(2) = 0.714620 ! Run stops if NMODLS(I) is reached or this central hydrogen is reached (ZAMS)

@@ -4,16 +4,20 @@
 ! Rescaling a model at the start of a rescale run card (rescale_model):
 ! its X and Z (every model), its total mass and one species
 ! (main-sequence models) or its core and total mass (horizontal-branch
-! models), and optionally a Z ramp toward the center.
+! models), and optionally a Z ramp toward the center. On a later card
+! the envelope mixture follows a new Z (compute_envelope_mixture, the
+! star-free kernel the first card's update_surface_mixture shares).
 module model_rescaling
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use shell_boundaries, only: find_shell_boundaries
       use star_info_lib, only: star_info
+      use composition_layout, only: n_mix_species, ix_na, ix_al, ix_mg, ix_fe, &
+           ix_si, ix_c, ix_h, ix_o, ix_n, ix_ar, ix_ne, ix_he
       use control_slots, only: i_target_mass, i_target_x, i_target_z, &
            i_target_core_mass
       implicit none
       private
-      public :: rescale_model
+      public :: rescale_model, compute_envelope_mixture
 
 ! A model with central X above main_sequence_x_min is rescaled as a
 ! main-sequence model, else as a horizontal-branch one [mass fraction];
@@ -23,6 +27,11 @@ module model_rescaling
 ! outside the core [Msun]; z_floor keeps a Z ratio finite [mass fraction].
       real(dp), parameter :: main_sequence_x_min = 1.0d-10, log_abundance_scale_h = 12.0d0, &
            hb_old_method_envelope_msun = 0.01d0, z_floor = 1.d-30
+
+! Atomic weights of the surface-mixture elements, in ix_* slot order
+! (Na, Al, Mg, Fe, Si, C, H, O, N, Ar, Ne, He) [amu].
+      real(dp), parameter :: mixture_atomic_weight(n_mix_species) = [23.0d0, 26.99d0, &
+           24.32d0, 55.86d0, 28.1d0, 12.015d0, 1.008d0, 16.0d0, 14.01d0, 39.96d0, 20.19d0, 4.004d0]
 
 contains
 
@@ -54,19 +63,22 @@ contains
 !   star reads: card_rescale_targets, card_z_ramp_core_z,
 !     card_z_ramp_inner_mass_fraction, card_z_ramp_outer_mass_fraction,
 !     control%use_z_ramp, convective_flag, current_card,
-!     luminosity_lsun, nz, physics%new_species_index,
-!     physics%new_species_value, physics%rescale_species_active,
-!     physics%timestep_factors, physics%value_relative_to_h,
-!     solar_mass_cgs
+!     envelope_he3_fraction, envelope_hydrogen_fraction,
+!     luminosity_lsun, nz, physics%mixture_weights_seed,
+!     physics%new_species_index, physics%new_species_value,
+!     physics%rescale_species_active, physics%timestep_factors,
+!     physics%value_relative_to_h, solar_mass_cgs
 !   star writes: current_card_envelope_x, current_card_envelope_z,
-!     envelope_metal_fraction, log_mass, log_total_mass, star_mass,
+!     envelope_helium_fraction, envelope_inverse_atomic_weight,
+!     envelope_metal_fraction, envelope_metals_no_cno,
+!     envelope_number_fractions, log_mass, log_total_mass, star_mass,
 !     surface_hydrogen_fraction, surface_metal_fraction, xa
 subroutine rescale_model(s, ierr)
       use physical_constants, only: ln10
       use star_info_lib, only: i_h1, i_he3, i_he4, i_metals
       use control_slots, only: itime_core_min
       use core_messages, only: core_log, core_stdout_values, message_length, unwritten_line
-      use settings_install, only: install_surface_z_settings
+      use settings_install, only: install_surface_z_settings, install_surface_mixture_settings
       use math_lib
       implicit none
       type(star_info), intent(inout) :: s
@@ -153,7 +165,9 @@ end subroutine rescale_surface_x
 ! C12..O18) by each shell's new over old Z:
 !   Z_i -> max(0, Z_i + dZ),
 !   X_k,i -> X_k,i max(0, Z_i + dZ)/(Z_i + 1e-30),  k = C12..O18.
-! He3 and the light elements are left alone. The target is applied when
+! He3 and the light elements are left alone. The envelope Z follows, and
+! on a card after the first the whole envelope mixture with it (below).
+! The target is applied when
 ! positive, as the run plan's "0 or negative = keep current" says (the
 ! F77 rscale.f applied it at >= 0, so an unset rescale_z, whose default
 ! is 0, set Z = 0; fixed 2026-10). A requested Z above 1 is refused
@@ -175,9 +189,26 @@ subroutine rescale_interior_z
             s%current_card_envelope_z = s%card_rescale_targets(i_target_z,run_index)
 ! Unlike X, the envelope Z (star%envelope_metal_fraction, legacy ZENV)
 ! follows the new Z, since many routines read it (DBG 4/95), and the
-! EOS mixture with it (settings_install's install_surface_z_settings).
+! EOS mixture with it. On a card after the first, the whole envelope
+! mixture is computed again for the new Z and installed: the EOS's
+! inverse mean atomic weight and number fractions, Y_env, and
+! convection's Z without C, N and O (its O16 floor), with the first
+! card's X_env and He3 (X_env sets the Yale EOS's reference mixture and
+! stays the first card's, MHP 7/99); they kept the first card's metals
+! (M85, M96). On the first card, update_surface_mixture computes the
+! whole mixture from the rescaled model next (settings_install's
+! install_surface_z_settings meanwhile).
             s%envelope_metal_fraction = s%current_card_envelope_z
-            call install_surface_z_settings(s)
+            if (run_index > 1) then
+               call compute_envelope_mixture(s%envelope_hydrogen_fraction, &
+                    s%envelope_metal_fraction, s%envelope_he3_fraction, &
+                    s%physics%mixture_weights_seed, s%envelope_helium_fraction, &
+                    s%envelope_metals_no_cno, s%envelope_inverse_atomic_weight, &
+                    s%envelope_number_fractions)
+               call install_surface_mixture_settings(s)
+            else
+               call install_surface_z_settings(s)
+            end if
          else
 ! Requested Z above 1: Z is not changed.
             lines = unwritten_line
@@ -478,5 +509,55 @@ subroutine ramp_interior_z
 end subroutine ramp_interior_z
 
 end subroutine rescale_model
+
+! ---------------------------------------------------------------
+! The envelope mixture from the envelope's X, Z and He3 mass fractions
+! (x_env, z_env, he3_env) and the controls' relative mass fractions w_i
+! of the ten metals (seed_weights, mixture_weights_seed, n_mix_species
+! of them in ix_* slot order; H's and He's slots are not read), into
+! number_fractions (n_mix_species):
+!   y_env = 1 - x_env - z_env - he3_env;
+!   with S the sum of w_i over the ten metals, Z outside C, N and O,
+!     metals_no_cno = z_env (S - w_C - w_O - w_N)/S;
+!   with f = z_env/S, the metals' mass fractions X_i = f w_i, H's x_env
+!   and He's 1 - x_env - z_env (He3 with He4); inverse_atomic_weight is
+!   sum_i X_i/A_i, 1/mu_ion of the mixture, and number fractions are
+!   the (X_i/A_i)/inverse_atomic_weight (the EOS's, compute_blended_eos
+!   and compute_saha_eos; DBG 1/96).
+! The arithmetic is update_surface_mixture's (AMUENV), in its order.
+pure subroutine compute_envelope_mixture(x_env, z_env, he3_env, seed_weights, &
+     y_env, metals_no_cno, inverse_atomic_weight, number_fractions)
+      real(dp), intent(in) :: x_env, z_env, he3_env, seed_weights(:)
+      real(dp), intent(out) :: y_env, metals_no_cno, inverse_atomic_weight, &
+           number_fractions(:)
+      real(dp) :: weights(n_mix_species), weight_sum, scale_factor
+      integer :: i
+
+      do i = 1, n_mix_species
+         weights(i) = seed_weights(i)
+      end do
+      y_env = 1.0d0 - x_env - z_env - he3_env
+      weight_sum = weights(ix_na)+weights(ix_al)+ &
+           weights(ix_mg)+weights(ix_fe)+ &
+           weights(ix_si)+weights(ix_c)+ &
+           weights(ix_o)+weights(ix_n)+ &
+           weights(ix_ar)+weights(ix_ne)
+      metals_no_cno = z_env*(weight_sum - &
+           weights(ix_c)-weights(ix_o)- &
+           weights(ix_n))/weight_sum
+      scale_factor = z_env/weight_sum
+      weights(ix_h) = x_env/scale_factor
+      weights(ix_he) = (1.0d0-x_env-z_env)/scale_factor
+      weight_sum = 0.0d0
+      do i = 1, n_mix_species
+         weights(i) = scale_factor*weights(i)/mixture_atomic_weight(i)
+         weight_sum = weight_sum + weights(i)
+      end do
+      inverse_atomic_weight = weight_sum
+      scale_factor = 1.0d0/inverse_atomic_weight
+      do i = 1, n_mix_species
+         number_fractions(i) = weights(i)*scale_factor
+      end do
+end subroutine compute_envelope_mixture
 
 end module model_rescaling

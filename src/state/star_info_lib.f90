@@ -389,22 +389,17 @@ module star_info_lib
             integer :: atm_choice_in_use
 ! the structure-based timestep limits are on [logical]; run_driver,
 ! timestep_control, controls_sync. From physics%use_structure_dt_limits;
-! compute_timestep switches them off, and each solar-calibration cycle
-! restores them from the control (run_driver).
+! compute_timestep switches them off, and a card that reads the starting
+! model and each solar-calibration cycle restore them from the control
+! (run_driver).
             logical :: structure_dt_limits_active
 ! the mass change (accretion or the Reimers wind) runs [logical];
 ! mass_change, controls_sync. From physics%use_mass_accretion; switched off
 ! for the rest of the run when the disk is exhausted.
             logical :: mass_change_active
-! the core extension's mass factor: the factor by which the innermost
-! mass is reduced, then the log10 mass shift N dlogm the extension made
-! [-]; starting_model, controls_sync. From
-! physics%core_mass_reduction_factor. A second extension in one run (a later
-! card read from file) starts from the shift, as found.
-            real(dp) :: core_mass_reduction
 ! the number of points the core extension added [-]; starting_model,
 ! controls_sync. From physics%num_core_shells_added; the extension
-! recomputes it from core_mass_reduction.
+! recomputes it from physics%core_mass_reduction_factor.
             integer :: num_core_points_added
 ! the star calibration's target Teff [K]; calibration, controls_sync.
 ! From control%target_teff; setup_star_calibration computes it from the
@@ -453,32 +448,23 @@ module star_info_lib
 ! setup (set_run_plan_envelope_z) first sets it from the run plan's
 ! rescale Z, before kap_init.
             real(dp) :: envelope_metal_fraction
-! surface Y = 1 - X - Z - X(He3) of the first card [-]; starting_model
+! surface Y = 1 - X - Z - X(He3) of the EOS mixture: the first card's, or
+! the last Z rescale's [-]; starting_model, model_rescaling
             real(dp) :: envelope_helium_fraction
 ! surface He3 of the first card [-]; starting_model
             real(dp) :: envelope_he3_fraction
-! the part of the first card's surface Z not in C, N and O, passed to
-! convection's settings (envelope_metals_no_cno) [-]; starting_model
+! the part of the surface Z not in C, N and O (the first card's, or the
+! last Z rescale's), passed to convection's settings
+! (envelope_metals_no_cno) [-]; starting_model, model_rescaling
             real(dp) :: envelope_metals_no_cno
-! inverse mean atomic weight of the surface mixture, sum X_i/A_i
-! [1/amu]; starting_model
+! inverse mean atomic weight of the surface mixture, sum X_i/A_i (the
+! first card's, or the last Z rescale's) [1/amu]; starting_model,
+! model_rescaling
             real(dp) :: envelope_inverse_atomic_weight
 ! number fractions of the 12 surface-mixture elements, slots ix_*, passed
-! to the EOS (eos_set_mixture) [-]; starting_model
+! to the EOS (eos_set_mixture; the first card's, or the last Z
+! rescale's) [-]; starting_model, model_rescaling
             real(dp) :: envelope_number_fractions(n_mix_species)
-! d log L/dX of the last solar-calibration Newton step: calibration's
-! parameter dlogl_dx_fixed, -3.78 [-]; calibration. 0 before the first
-! step; printed in the Monte-Carlo summary, as the three below.
-            real(dp) :: dlum_dx
-! d log R/dX of the last Newton step, dlogr_dx_fixed, -0.89 [-];
-! calibration
-            real(dp) :: drad_dx
-! d log L/d alpha of the last Newton step, dlogl_dalpha_fixed, 0.0139
-! [-]; calibration
-            real(dp) :: dlum_dalpha
-! d log R/d alpha of the last Newton step, dlogr_dalpha_fixed, -0.050
-! [-]; calibration
-            real(dp) :: drad_dalpha
 ! the solar calibration has converged [logical]; calibration
             logical :: solar_calibration_converged
 ! the star calibration found a track through the target L and R, so the
@@ -883,11 +869,11 @@ module star_info_lib
 ! d log r/dt over the last step [1/s]; step_driver, rezoning, run_driver
             real(dp) :: dlog_radius_dt(json)
 ! age of the last converged model, for the disk-locking tests [Gyr];
-! step_driver. Written after each converged step only (legacy SAGE, as
-! the F77 did): the first step of a run reads 0, and the first step of a
-! later Monte-Carlo run, or of a card that starts again from the starting
-! model, reads the previous run's or card's last age
-! (docs/bug_sweep.md, section 13; open, the authors' decision).
+! step_driver, starting_model. Written after each converged step (legacy
+! SAGE) and at every model read from file, as the model's age, so that
+! the first step of a run, of a later Monte-Carlo run or of a card that
+! starts again from the starting model reads that model's age
+! (docs/bug_sweep.md M190).
             real(dp) :: disk_gate_age_gyr
 ! convective turnover time one pressure scale height above the base of
 ! the surface convection zone [s]; turnover_timescale, run_driver,
@@ -1257,9 +1243,10 @@ end module star_info_lib
 ! pulse) were then folded in as flat members, and the computed values
 ! once kept in the controls buffer moved here. The module-level star was
 ! removed in 2026-10. The members' F77 homes:
-!   /calsun/    dlum_dx, drad_dx, dlum_dalpha, drad_dalpha,
-!               log_l_lsun_prev_check, log_r_rsun_prev_check, delta_x,
-!               delta_alpha, solar_calibration_converged
+!   /calsun/    log_l_lsun_prev_check, log_r_rsun_prev_check, delta_x,
+!               delta_alpha, solar_calibration_converged (its DLDX, DRDX,
+!               DLDA and DRDA are calibration's dlogl_dx_fixed ...
+!               parameters)
 !   /cent/      central_log10_temperature, central_log10_pressure,
 !               central_log10_density, envelope_mass_msun, envelope_radius_rsun
 !   /comp2/     envelope_helium_fraction, envelope_he3_fraction

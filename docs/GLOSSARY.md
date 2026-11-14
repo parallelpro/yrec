@@ -351,7 +351,7 @@ Alternate names are those listed in the alias table at the top of `rotation/secu
 | — | zone index | `star%h_shell_bot_index`, `h_shell_mid_index`, `h_shell_top_index` | `JXBEG`, `JXMID`, `JXEND` | core/model/shell_boundaries.f90 | Bottom, middle and top zones of the H-burning shell. |
 | — | logical | `star%has_h_shell` | `LSHELL` | core/model/shell_boundaries.f90 | A hydrogen-burning shell exists. |
 | — | logical | `star%solar_calibration_converged`; `delta_x`, `delta_alpha`; `log_l_lsun_prev_check`, `log_r_rsun_prev_check` | `LSOL`; `DX`, `DA`; `BLP`, `RLP` (`/CALSUN/`) | core/run/calibration.f90 | Solar calibration in progress; the next X and α corrections; the previous run's surface log L and log R. |
-| ∂logL/∂X, ∂logR/∂X, ∂logL/∂α, ∂logR/∂α | dex | the parameters `dlogl_dx_fixed`, `dlogr_dx_fixed`, `dlogl_dalpha_fixed`, `dlogr_dalpha_fixed`; their copies `star%dlum_dx`, `drad_dx`, `dlum_dalpha`, `drad_dalpha` | `DLDX`, `DRDX`, `DLDA`, `DRDA` | core/run/calibration.f90 | Calibration Jacobian: the fixed empirical fits (LLP 6/28/09), which the Newton step reads. The star members are their copies for the Monte-Carlo summary, zero until the first Newton step (`docs/bug_sweep.md` M34). |
+| ∂logL/∂X, ∂logR/∂X, ∂logL/∂α, ∂logR/∂α | dex | the parameters `dlogl_dx_fixed`, `dlogr_dx_fixed`, `dlogl_dalpha_fixed`, `dlogr_dalpha_fixed` | `DLDX`, `DRDX`, `DLDA`, `DRDA` | core/run/calibration.f90 | Calibration Jacobian: the fixed empirical fits (LLP 6/28/09), which the Newton step reads and the Monte-Carlo summary's record 2 prints (`docs/bug_sweep.md` M34). |
 
 ### 2.11 Diagnostics and observables (filled after convergence by `core/diagnostics/observables.f90`)
 
@@ -566,7 +566,7 @@ Every item was confirmed by reading the code. Lines are for the 2026-10-10 worki
 - `star%substep_time_fraction` (`FRACSTEP`, initialized to 0.5);
 - `rot_scr%quadrupole_moment` and `local_gravity` (`QUAD`, `GG`).
 
-**Discrepancy:** the value and comment of `dlum_dalpha` differ by a factor of 10 (`core/run/calibration.f90:51`: value 0.0139, comment "+0.139").
+**Discrepancy:** the value and comment of `dlogl_dalpha_fixed` differ by a factor of 10 (`core/run/calibration.f90`: value 0.0139, comment "+0.139"; `docs/bug_sweep.md` O20).
 
 ### Network (2026-10)
 

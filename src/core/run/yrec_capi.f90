@@ -19,8 +19,10 @@
 ! enforced by test_reentry and test_pyyrec). The numerics gates
 ! report through ierr rather than stopping the process: a NEGATIVE
 ! status is envelope_termination (envelope_integration_kernel), i.e. the run ended
-! in the historical "solution diverged" mode (outputs up to that
-! model are valid); positive is a hard error; zero is success.
+! in the historical "solution diverged" mode, a Bulirsch-Stoer step of
+! the envelope integration that underflowed (outputs up to that model
+! are valid); positive is a hard error (an EOS or opacity failure inside
+! that integration among them); zero is success.
 ! A namelist path longer than 256 characters (the override slots) is
 ! refused with status 1 before anything runs: cut, it would name another
 ! file. After the run the C entry closes the run's own units

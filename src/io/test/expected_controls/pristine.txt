@@ -2992,7 +2992,6 @@ star%card_central_helium_stop(47) =  0.00000000000000000E+000
 star%card_central_helium_stop(48) =  0.00000000000000000E+000
 star%card_central_helium_stop(49) =  0.00000000000000000E+000
 star%card_central_helium_stop(50) =  0.00000000000000000E+000
-star%core_mass_reduction =  1.00000000000000000E+000
 star%settling_z_factor_in_use =  1.00000000000000000E+000
 star%num_rotation_structure_passes = 1
 star%atm_choice_in_use = 0

@@ -2,7 +2,7 @@
 C entry's path limit and the units it closes.
 
 Runs src/test_run_contracts (built by `make tests` in src/) on the
-configuration matrix's cm_env_overshoot deck, in a scratch directory with
+configuration matrix's cm_base deck, in a scratch directory with
 an empty output/. Every check line must end in ok; the checks and what
 each covers are in the header of src/core/test/test_run_contracts.f90,
 and each fails under a mutation of the code it covers
@@ -18,8 +18,8 @@ import pytest
 
 REPO = pathlib.Path(__file__).parent
 BINARY = REPO / "src" / "test_run_contracts"
-DECK = REPO / "examples" / "run_config_matrix" / "cm_env_overshoot.inlist"
-NUM_CHECKS = 17
+DECK = REPO / "examples" / "run_config_matrix" / "cm_base.inlist"
+NUM_CHECKS = 22
 
 
 def test_run_contracts(tmp_path):

@@ -51,6 +51,13 @@
 !               invalid traps of a devel build held off for that one
 !               integration) returns envelope_termination
 !               and an envint_bsstep_failed event with bsstep's status.
+!               The integrands failing inside a Bulirsch-Stoer step (a
+!               first envelope step of 40 in log P toward a fitting mass
+!               deep in the star: its midpoint substeps leave the
+!               microphysics' tables) return their own positive code, an
+!               error, not envelope_termination, and an
+!               envint_bsstep_failed event with bsstep's
+!               numerics_derivatives_failed and that code.
 !
 ! Usage: test_envelope_integration [DECK.inlist]   (run with YREC_INPUT
 ! and YREC_START set and YREC_OUTPUT pointing at a directory the deck
@@ -78,8 +85,11 @@ program test_envelope_integration
            envint_envelope_done, envint_envelope_maxstp
       use atm_lib, only: atm_eddington_gray, hsra_t_tau_offset, &
            ttau_photosphere_x_limit
-      use numerics_lib, only: numerics_bad_input, numerics_step_underflow
+      use numerics_lib, only: numerics_bad_input, numerics_step_underflow, &
+           numerics_derivatives_failed
       use physical_constants, only: ln10, cgl, c4pil, csigl
+      use model_rescaling, only: compute_envelope_mixture
+      use settings_install, only: install_surface_mixture_settings
       implicit none
 ! the test's star (star_info_lib declares no instance); static, as it
 ! is too large for the stack
@@ -181,6 +191,18 @@ subroutine set_surface()
       composition(i_h1) = x_surface
       composition(i_metals) = z_surface
       composition(i_he4) = 1.0_dp - x_surface - z_surface
+! The envelope's mixture for the EOS, as a run's first model read installs
+! it (update_surface_mixture): without it the EOS works from the run
+! plan's unset mixture, where the Saha solver does not converge (an
+! error since M293).
+      star%envelope_hydrogen_fraction = x_surface
+      star%envelope_metal_fraction = z_surface
+      star%envelope_he3_fraction = 0.0_dp
+      call compute_envelope_mixture(x_surface, z_surface, 0.0_dp, &
+           star%physics%mixture_weights_seed, star%envelope_helium_fraction, &
+           star%envelope_metals_no_cno, star%envelope_inverse_atomic_weight, &
+           star%envelope_number_fractions)
+      call install_surface_mixture_settings(star)
       base_cfg%atm_choice = atm_eddington_gray
       base_cfg%atm_step_begin = star%physics%atm_step_begin
       base_cfg%atm_step_min = star%physics%atm_step_min
@@ -537,10 +559,10 @@ end subroutine check_start_retry
 subroutine check_errors()
       use, intrinsic :: ieee_exceptions, only: ieee_get_halting_mode, &
            ieee_set_halting_mode, ieee_support_halting, ieee_set_flag, &
-           ieee_divide_by_zero, ieee_invalid
+           ieee_divide_by_zero, ieee_invalid, ieee_overflow
       type(envint_config) :: cfg
       integer :: last
-      logical :: halt_zero, halt_invalid
+      logical :: halt_zero, halt_invalid, halt_overflow
 
       cfg = base_cfg
       cfg%atm_step_begin = 1.0e-6_dp
@@ -601,6 +623,42 @@ subroutine check_errors()
       if (last == envint_bsstep_failed) call report('step underflow: the event holds bsstep''s status', &
            real(events%event(events%num_events)%counts(1), dp), &
            events%event(events%num_events)%counts(1) == numerics_step_underflow)
+
+! The integrands failing inside a step: a first envelope step of 40 in
+! log P toward log(m/M) = -0.5 puts the step's midpoint substeps far past
+! the microphysics' tables. The traps are held off as above (the failing
+! points may overflow on their way to the error).
+      cfg = base_cfg
+      cfg%env_step_begin = 40.0_dp
+      cfg%env_step_min = 40.0_dp
+      cfg%env_step_max = 40.0_dp
+      cfg%log_fit_point_mass_fraction = -0.5_dp
+      call ieee_get_halting_mode(ieee_divide_by_zero, halt_zero)
+      call ieee_get_halting_mode(ieee_invalid, halt_invalid)
+      call ieee_get_halting_mode(ieee_overflow, halt_overflow)
+      if (ieee_support_halting(ieee_divide_by_zero)) &
+           call ieee_set_halting_mode(ieee_divide_by_zero, .false.)
+      if (ieee_support_halting(ieee_invalid)) &
+           call ieee_set_halting_mode(ieee_invalid, .false.)
+      if (ieee_support_halting(ieee_overflow)) &
+           call ieee_set_halting_mode(ieee_overflow, .false.)
+      call integrate(cfg)
+      call ieee_set_flag(ieee_divide_by_zero, .false.)
+      call ieee_set_flag(ieee_invalid, .false.)
+      call ieee_set_flag(ieee_overflow, .false.)
+      if (ieee_support_halting(ieee_divide_by_zero)) &
+           call ieee_set_halting_mode(ieee_divide_by_zero, halt_zero)
+      if (ieee_support_halting(ieee_invalid)) &
+           call ieee_set_halting_mode(ieee_invalid, halt_invalid)
+      if (ieee_support_halting(ieee_overflow)) &
+           call ieee_set_halting_mode(ieee_overflow, halt_overflow)
+      last = event_kind(events%num_events)
+      call report('derivatives failure in a step: ierr > 0 (an error)', real(ierr, dp), &
+           ierr > 0 .and. last == envint_bsstep_failed)
+      if (last == envint_bsstep_failed) call report('derivatives failure in a step: the event holds the code', &
+           real(events%event(events%num_events)%counts(2), dp), &
+           events%event(events%num_events)%counts(1) == numerics_derivatives_failed .and. &
+           events%event(events%num_events)%counts(2) == ierr)
 end subroutine check_errors
 
 end program test_envelope_integration

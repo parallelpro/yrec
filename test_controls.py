@@ -467,6 +467,37 @@ def test_a_card_kind_outside_1_to_3_is_an_error(tmp_path):
                 f"evolve); card 2 has {kind}") in stdout
 
 
+def test_a_monte_carlo_run_range_outside_1_to_max_is_an_error(tmp_path):
+    """With Monte Carlo on, the run range must satisfy 1 <= mc_run_start <=
+    mc_run_end <= max_mc_runs (1000, the sample arrays' size): a start of 0
+    (which indexed the arrays at 0), an end of 1001 (which was cut to 1000
+    without a word) and a start after the end (which ran nothing) each stop
+    the read with ierr = 1 and the range's message; the shipped 1 to 1 reads
+    (M115)."""
+    if not BINARY.exists():
+        pytest.skip("src/test_controls not built (run `make tests` in src/)")
+    deck = REPO / "examples" / "run_config_matrix" / "cm_monte_carlo.inlist"
+    text = deck.read_text()
+    assert " mc_run_start = 1\n" in text and " mc_run_end = 1\n" in text
+    cases = {"start0": (0, 1), "end1001": (1, 1001), "after": (2, 1), "shipped": (1, 1)}
+    for name, (start, end) in cases.items():
+        body = text.replace(" mc_run_start = 1\n", f" mc_run_start = {start}\n").replace(
+            " mc_run_end = 1\n", f" mc_run_end = {end}\n")
+        d = tmp_path / f"{name}.inlist"
+        d.write_text(body)
+        out = tmp_path / name
+        out.mkdir()
+        r = subprocess.run([str(BINARY), str(d)], cwd=deck.parent, capture_output=True,
+                           env=dict(os.environ, YREC_OUTPUT=str(out)))
+        stdout = r.stdout.decode("latin-1")
+        if name == "shipped":
+            assert "ierr = 0" in stdout.splitlines(), stdout[-300:]
+            continue
+        assert "ierr = 1" in stdout.splitlines(), (name, stdout[-300:])
+        assert (f" ERROR: the Monte Carlo runs need 1 <= mc_run_start (IMBEG) <= mc_run_end (IMEND)"
+                f" <= 1000, not {start} and {end}") in stdout, (name, stdout[-400:])
+
+
 def test_a_deck_without_a_description_writes_a_clean_run_log(tmp_path):
     """run_description defaults to blanks: a deck that sets neither line
     writes the run log's header with an empty description and no second

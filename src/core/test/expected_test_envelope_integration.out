@@ -33,4 +33,7 @@ bsstep limits: ierr = numerics_bad_input                     3.0E+00  ok
 bsstep limits: the event holds imax, nuse                    1.0E+00  ok
 step underflow: ierr = envelope_termination                 -2.0E+00  ok
 step underflow: the event holds bsstep's status              4.0E+00  ok
+kap_get: log T = 9.497055 is outside the OPAL 1995 tables (log T 3.75 to 8.70)
+derivatives failure in a step: ierr > 0 (an error)           1.0E+00  ok
+derivatives failure in a step: the event holds the code      1.0E+00  ok
 test_envelope_integration: done

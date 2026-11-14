@@ -257,7 +257,8 @@ subroutine gas_eos(log10_temperature, log10_pressure, hydrogen_fraction, metal_f
          return
       end if
       call compute_saha_eos(saha_number_fractions, log10_temperature, &
-           log10_pressure, r, want_derivatives, in_atmosphere, saha_iterations)
+           log10_pressure, r, want_derivatives, in_atmosphere, saha_iterations, ierr)
+      if (ierr /= 0) return
       sources = table_sources()
       do k = 1, n_table_sources
          if (sources(k)%stage /= stage_in_place_of_saha) cycle

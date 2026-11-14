@@ -32,7 +32,8 @@
 ! exits 1 when a check fails.
 program test_convection
       use star_info_lib, only: json, max_convective_zones, max_radiative_zones
-      use eos_lib, only: eos_result, eos_init, eos_settings_t, eos_table_paths_t, eos_get
+      use eos_lib, only: eos_result, eos_init, eos_settings_t, eos_table_paths_t, eos_get, &
+           eos_set_mixture
       use kap_lib, only: num_kap_results, i_kap, i_dlnkap_dlnrho, i_dlnkap_dlnt, &
            kap_init, kap_get, kap_settings_t, kap_table_paths_t
       use convection_lib, only: convection_settings_t, set_convection_settings, &
@@ -88,10 +89,24 @@ program test_convection
 contains
 
 ! The Yale EOS alone (the Fermi table, the Saha cutoff at log T = 6),
-! for the pressure scale heights of the overshoot cases.
+! for the pressure scale heights of the overshoot cases, with an envelope
+! mixture (X = 0.70, Z = sc_metals, the default mixture seed of the G&N93
+! metals, as core's compute_envelope_mixture builds it): without one the
+! Saha solver works from an unset mixture and does not converge (an
+! error, docs/bug_sweep.md M293).
 subroutine boot_yale_eos()
       type(eos_settings_t) :: eos_cfg
       type(eos_table_paths_t) :: eos_paths
+! the atomic weights and the default mixture_weights_seed, in ix_* order
+! (Na, Al, Mg, Fe, Si, C, H, O, N, Ar, Ne, He)
+      double precision, parameter :: atomic_weight(12) = [23.0d0, 26.99d0, &
+           24.32d0, 55.86d0, 28.1d0, 12.015d0, 1.008d0, 16.0d0, 14.01d0, &
+           39.96d0, 20.19d0, 4.004d0]
+      double precision, parameter :: seed(12) = [0.001999d0, &
+           0.003238d0, 0.037573d0, 0.071794d0, 0.040520d0, 0.173285d0, 0.0d0, &
+           0.482273d0, 0.053152d0, 0.005379d0, 0.098668d0, 0.0d0]
+      double precision, parameter :: x_env = 0.70d0
+      double precision :: w(12), scale
       run_log_unit = 20
       open(run_log_unit, file="test_convection.short", status="replace")
       eos_cfg%saha_log10t_cutoff = 6.0d0
@@ -101,6 +116,12 @@ subroutine boot_yale_eos()
          write(*,'(a)') "test_convection: FAIL (eos_init error)"
          stop 1
       end if
+      scale = sc_metals/(sum(seed) - seed(7) - seed(12))
+      w = scale*seed
+      w(7) = x_env
+      w(12) = 1.0d0 - x_env - sc_metals
+      w = w/atomic_weight
+      call eos_set_mixture(x_env, sc_metals, sum(w), w/sum(w))
       close(run_log_unit)
 end subroutine boot_yale_eos
 
@@ -816,12 +837,13 @@ subroutine overshoot_checks()
            .and. mix_bounds(1,2) == 13 .and. mix_bounds(2,1) == 31 .and. &
            regions_tile_the_model())
 ! a core whose overshoot reaches past an intermediate zone's top: the
-! merge is the union, to the core's top (M285)
+! merge is the union, to the core's top (shell 11 with the envelope
+! mixture's H_P; M285)
       cs%intermediate_overshoot = .false.
       call find_zones([1, 5, 7, 8, 31, 40])
       call check_that("overshoot merge: the union, the lower region reaching higher (M285)", &
            ierr == 0 .and. n_mix == 2 .and. mix_bounds(1,1) == 1 .and. &
-           mix_bounds(1,2) == 10 .and. mix_bounds(2,1) == 31 .and. regions_tile_the_model())
+           mix_bounds(1,2) == 11 .and. mix_bounds(2,1) == 31 .and. regions_tile_the_model())
       cs%core_overshoot = .false.
       cs%intermediate_overshoot = .false.
       cs%overshoot_alpha_core = 0.6d0

@@ -81,10 +81,13 @@ module envelope_integration_kernel
 ! envelope integration when log_fit_point_mass_fraction lies above it.
       real(dp), parameter, public :: max_log_fit_point_mass_fraction = -1.0d-12
 
-! The status of an envelope integration that failed (bsstep: the
-! solution diverged; the historical "solution diverged, stop", which
-! exited 0): negative, so that main and yrec_capi tell it from an error.
-! (It was numerics_lib's numerics_termination.)
+! The status of an envelope integration whose Bulirsch-Stoer step
+! vanished (bsstep's numerics_step_underflow: the solution diverged; the
+! historical "solution diverged, stop", which exited 0): negative, so
+! that main and yrec_capi tell it from an error. (It was numerics_lib's
+! numerics_termination.) A failure of the integrands inside bsstep (the
+! EOS or the opacity) is not this: it returns their own positive code, an
+! error, as it does at a step's end (M132).
       integer, parameter, public :: envelope_termination = -2
 
 ! The events of an integration, for the driver to report. Each is one of
@@ -103,8 +106,10 @@ module envelope_integration_kernel
 !                               range (counts: max_stage_index,
 !                               extrap_order; ierr numerics_bad_input)
 !   envint_bsstep_failed        a Bulirsch-Stoer step failed (counts:
-!                               bsstep's status; ierr
-!                               envelope_termination)
+!                               bsstep's status, and the integrands'
+!                               code when they failed; ierr: that code,
+!                               or envelope_termination when the step
+!                               underflowed)
 !   envint_vertex               the fitting point of the vertex being
 !                               saved (values: log P, log T, log R,
 !                               log(m/M))
@@ -225,7 +230,7 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
            ttau_photosphere_x_limit, atm_choice_is_tabulated
       use physical_constants, only: cdelrl, gas_constant, ln10, &
            radiation_constant_over_3
-      use numerics_lib, only: bsstep, numerics_bad_input
+      use numerics_lib, only: bsstep, numerics_bad_input, numerics_derivatives_failed
       implicit none
 
       type(envint_config), intent(inout) :: cfg
@@ -268,6 +273,8 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
       logical :: want_derivatives, in_atmosphere
       logical :: allard_lookup_failed
       integer :: jj, jerr
+! the integrands' code when they fail inside bsstep (its derivatives_ierr)
+      integer :: derivatives_jerr
       real(dp) :: log10_temperature, temperature, log10_pressure, &
            pressure, log10_density, density
       real(dp) :: atm_density_guess
@@ -582,21 +589,11 @@ subroutine take_atmosphere_step()
 ! h_did the step taken and h_next the predicted next step.
        call load_equations(.true.)
        call bsstep(equations,y,dydx,num_eqs,indep_var,h_step,tolerance,y_scale,h_did, &
-            h_next,step_err,cfg%max_stage_index,cfg%extrap_order,hydrogen_fraction,jerr)
+            h_next,step_err,cfg%max_stage_index,cfg%extrap_order,hydrogen_fraction,jerr, &
+            derivatives_ierr=derivatives_jerr)
        call unload_equations()
-! A bsstep limit out of range is a configuration error; any other
-! bsstep failure (the solution diverged) returns envelope_termination;
-! each is an event, for the driver's message.
-       if (jerr == numerics_bad_input) then
-          call add_envint_event(events, envint_bsstep_limits, &
-               counts=[cfg%max_stage_index, cfg%extrap_order])
-          ierr = jerr
-          return
-       else if (jerr /= 0) then
-          call add_envint_event(events, envint_bsstep_failed, counts=[jerr])
-          ierr = envelope_termination
-          return
-       end if
+       call check_bsstep_status()
+       if (ierr /= 0) return
 ! Add up the error estimate, and find d log P / d log tau at the start
 ! of the next step.
        err_sum(1) = err_sum(1) + step_err(1)
@@ -888,25 +885,40 @@ subroutine limit_envelope_step()
 end subroutine limit_envelope_step
 
 ! ---------------------------------------------------------------
+! bsstep's status (jerr, and derivatives_jerr when the integrands
+! failed) after a step of the atmosphere or the envelope, into ierr and
+! an event for the driver's message: a limit out of range is a
+! configuration error (numerics_bad_input); a failure of the integrands
+! (the EOS or the opacity at one of the step's midpoint substeps) returns
+! their code, an error, as the same failure at the step's end does (M132);
+! a step that underflowed (the solution diverged) returns
+! envelope_termination. ierr is 0 when the step succeeded.
+subroutine check_bsstep_status()
+       if (jerr == numerics_bad_input) then
+          call add_envint_event(events, envint_bsstep_limits, &
+               counts=[cfg%max_stage_index, cfg%extrap_order])
+          ierr = jerr
+       else if (jerr == numerics_derivatives_failed) then
+          call add_envint_event(events, envint_bsstep_failed, counts=[jerr, derivatives_jerr])
+          ierr = derivatives_jerr
+       else if (jerr /= 0) then
+          call add_envint_event(events, envint_bsstep_failed, counts=[jerr])
+          ierr = envelope_termination
+       end if
+end subroutine check_bsstep_status
+
+! ---------------------------------------------------------------
 ! One Bulirsch-Stoer step of the envelope, then the derivatives at its end.
 subroutine take_envelope_step()
 ! One step from log P to log P + h_step: h_step is the step tried,
 ! h_did the step taken and h_next the predicted next step.
        call load_equations(.false.)
        call bsstep(equations,y,dydx,num_eqs,indep_var,h_step,tolerance,y_scale,h_did, &
-              h_next,step_err,cfg%max_stage_index,cfg%extrap_order,hydrogen_fraction,jerr)
+              h_next,step_err,cfg%max_stage_index,cfg%extrap_order,hydrogen_fraction,jerr, &
+              derivatives_ierr=derivatives_jerr)
        call unload_equations()
-! A bsstep failure returns as in the atmosphere.
-       if (jerr == numerics_bad_input) then
-          call add_envint_event(events, envint_bsstep_limits, &
-               counts=[cfg%max_stage_index, cfg%extrap_order])
-          ierr = jerr
-          return
-       else if (jerr /= 0) then
-          call add_envint_event(events, envint_bsstep_failed, counts=[jerr])
-          ierr = envelope_termination
-          return
-       end if
+       call check_bsstep_status()
+       if (ierr /= 0) return
 ! Add up the error estimates.
        do i = 1,3
           err_sum(i) = err_sum(i) + step_err(i)

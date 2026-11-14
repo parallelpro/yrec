@@ -8,7 +8,7 @@ module starting_model
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use turnover_timescale, only: compute_turnover_timescale
       use shell_physics, only: compute_shell_physics
-      use model_rescaling, only: rescale_model
+      use model_rescaling, only: rescale_model, compute_envelope_mixture
       use star_info_lib, only: star_info
       use run_cards, only: card_evolve
       use am_regions, only: am_convective_regions
@@ -36,11 +36,6 @@ module starting_model
       private
       public :: read_starting_model
 
-! Atomic weights of the surface-mixture elements, in ix_* slot order
-! (Na, Al, Mg, Fe, Si, C, H, O, N, Ar, Ne, He).
-      real(dp), parameter :: atomic_weight(n_mix_species) = [23.0d0, 26.99d0, &
-           24.32d0, 55.86d0, 28.1d0, 12.015d0, 1.008d0, 16.0d0, 14.01d0, 39.96d0, 20.19d0, 4.004d0]
-
 ! An evolved model's mixing length matches the card's within this
 ! [-]; a species differs from the centre's by more than this in a model
 ! that is not homogeneous [mass fraction].
@@ -62,6 +57,9 @@ module starting_model
 !   old_last_shell, old_senv, target_log_mass_at_fit
 !                          the envelope refit's old last shell, old
 !                          fitting mass and target log m;
+!   fit_shell_index        a deeper refit's shell below the new fitting
+!                          mass (find_shell_below_new_fit; 0 when the
+!                          fitting mass lies inside the innermost shell);
 !   convective_velocity    the convective velocity of the new last shell
 !                          (set_new_last_shell_convection).
       type :: starting_model_state
@@ -75,6 +73,7 @@ module starting_model
          integer :: old_last_shell = 0
          real(dp) :: old_senv = 0.0d0
          real(dp) :: target_log_mass_at_fit = 0.0d0
+         integer :: fit_shell_index = 0
          real(dp) :: convective_velocity = 0.0d0
       end type starting_model_state
 
@@ -91,12 +90,13 @@ contains
 !   extend_core_toward_center   optionally add points inward of the
 !                               innermost shell (file models only);
 !   rescale_and_refit_envelope  rescale X, Z or the mass on a rescale
-!                               card, and optionally move the envelope
+!                               card, set the surface mixture and the
+!                               surface opacity tables from the
+!                               rescaled model (update_surface_mixture),
+!                               and optionally move the envelope
 !                               fitting point;
-!   build_shell_masses, initialize_rotation_state,
-!   update_surface_mixture, snapshot_step_start
-!                               shell masses, rotation totals, surface
-!                               mixture and opacity tables, step-start
+!   build_shell_masses, initialize_rotation_state, snapshot_step_start
+!                               shell masses, rotation totals, step-start
 !                               copies.
 ! Then shell_physics, am_convective_regions and
 ! compute_turnover_timescale give the gradients, opacities, convection
@@ -174,9 +174,7 @@ subroutine read_starting_model(s, ierr)
       call build_shell_masses(s)
       call initialize_rotation_state(s, ierr)
       if (ierr /= 0) return
-      call update_surface_mixture(s, sm, ierr)
       call snapshot_step_start(s)
-      if (ierr /= 0) return
       call compute_shell_physics(s, jerr)
       if (jerr /= 0) then
       ! Pass the error on.
@@ -359,10 +357,13 @@ end subroutine check_model_against_controls
 
 
 ! ---------------------------------------------------------------
-! Reset the store and trial-sign flags, require a fresh envelope, and
-! take the surface X and Z from the outermost interior point.
-!   star reads: nz, xa
-!   star writes: recompute_envelope_triangle, stored_vertex_index,
+! Reset the store and trial-sign flags, require a fresh envelope, take
+! the surface X and Z from the outermost interior point, start the
+! disk-locking tests' age at the model's, and clear the start-of-step
+! deuterium burning rates.
+!   star reads: age_gyr, nz, xa
+!   star writes: deuterium_burning_rate_start, disk_gate_age_gyr,
+!     recompute_envelope_triangle, stored_vertex_index,
 !     surface_hydrogen_fraction, surface_metal_fraction,
 !     triangle_orientation
 subroutine reset_state_after_read(s)
@@ -377,6 +378,16 @@ subroutine reset_state_after_read(s)
 ! surface_hydrogen_fraction, surface_metal_fraction: the outermost point's X, Z.
       s%surface_hydrogen_fraction = s%xa(i_h1,s%nz)
       s%surface_metal_fraction = s%xa(i_metals,s%nz)
+! The age the disk-locking tests read (the step sets it after each
+! converged model) starts at the model's, not at the previous Monte-Carlo
+! run's or card's last age, nor at 0 on a run's first step (M190).
+      s%disk_gate_age_gyr = s%age_gyr
+! A model read from file starts with no start-of-step deuterium burning
+! rates, as the run's first card does, not with the previous card's
+! (compute_burn_rates stores them only above the burning cutoff, and
+! burn_deuterium averages them over a mixed region that may span it;
+! M176).
+      s%deuterium_burning_rate_start = 0.0d0
 end subroutine reset_state_after_read
 
 
@@ -573,8 +584,8 @@ end subroutine set_isotope_ratios
 ! It is done on every card that reads its model from file, not only the
 ! first, so that auto-calibrated solar models keep the change (MHP 9/14).
 !   star reads: card_from_starting_model, physics%chi_grid_scale,
-!     physics%extend_core_inward
-!   star writes: convective_flag, core_mass_reduction, log_mass, logP,
+!     physics%core_mass_reduction_factor, physics%extend_core_inward
+!   star writes: convective_flag, log_mass, logP,
 !     logR, logRho, logT, luminosity_lsun, num_core_points_added, nz,
 !     omega, xa
 subroutine extend_core_toward_center(s, sm, ierr)
@@ -596,14 +607,12 @@ subroutine extend_core_toward_center(s, sm, ierr)
       character(len=message_length) :: lines(4)
 
       if (s%physics%extend_core_inward .and. s%card_from_starting_model(sm%run_index)) then
-! The innermost mass is to drop by the factor core_mass_reduction_factor
-! (legacy FCORE): that takes N = int(log10(factor)/dlogm) + 1 steps
-! (num_core_points_added, legacy MCORE). core_mass_reduction is then
-! overwritten with the log10 shift N dlogm actually made.
-          s%num_core_points_added = int(log10(s%core_mass_reduction)/ &
+! The innermost mass is to drop by the deck's factor
+! core_mass_reduction_factor (legacy FCORE): that takes
+! N = int(log10(factor)/dlogm) + 1 steps (num_core_points_added, legacy
+! MCORE), the same N on every extension of the run (M126).
+          s%num_core_points_added = int(log10(s%physics%core_mass_reduction_factor)/ &
                s%physics%chi_grid_scale(ichi_dm_max))+1
-          s%core_mass_reduction = dble(s%num_core_points_added)* &
-               s%physics%chi_grid_scale(ichi_dm_max)
           num_shells_extended = s%nz + s%num_core_points_added
 ! Too many points for the json-point arrays: the run stops with ierr
 ! (starin printed RUN TERMINATED but went on writing past json; fixed
@@ -700,7 +709,11 @@ end subroutine extend_core_toward_center
 
 ! ---------------------------------------------------------------
 ! On a rescale card (card_kind /= card_evolve), rescale the model's X, Z or
-! mass (rescale_model). Then, with fit_point_move_requested, move the
+! mass (rescale_model). Then set the star's surface mixture from the
+! rescaled model and the surface opacity tables for it
+! (update_surface_mixture), before the refit below evaluates the EOS and
+! the opacities with them (M86). Then, with
+! fit_point_move_requested, move the
 ! envelope fitting point to requested_log_fit_point_mass_fraction = log10(m_fit/M)
 ! (legacy SENV0), on the first model of every card (DBG 2/92):
 ! - deeper than now: drop the points outside the new fitting mass and
@@ -720,10 +733,11 @@ subroutine rescale_and_refit_envelope(s, sm, ierr)
       type(star_info), intent(inout) :: s
       type(starting_model_state), intent(inout) :: sm
       integer, intent(inout) :: ierr
-      integer :: i
       character(len=message_length) :: lines(4)
 
       if (s%card_kind(sm%run_index) /= card_evolve) call rescale_model(s, ierr)
+      if (ierr /= 0) return
+      call update_surface_mixture(s, sm, ierr)
       if (ierr /= 0) return
 
 ! A once-through loop: exit leaves the envelope change early.
@@ -736,7 +750,7 @@ subroutine rescale_and_refit_envelope(s, sm, ierr)
        if (s%requested_log_fit_point_mass_fraction < s%log_fit_point_mass_fraction) then
 ! The new envelope is deeper than the old one.
           call find_shell_below_new_fit(s, sm)
-          if (i < (1)) then
+          if (sm%fit_shell_index < 1) then
 ! The requested fitting mass lies inside the innermost shell: report
 ! it and leave the envelope mass unchanged.
           lines = unwritten_line
@@ -806,6 +820,7 @@ subroutine find_shell_below_new_fit(s, sm)
           do i = s%nz-1,1,-1
              if (s%log_mass(i) < sm%target_log_mass_at_fit) exit
           end do
+          sm%fit_shell_index = i
 end subroutine find_shell_below_new_fit
 
 
@@ -827,6 +842,7 @@ subroutine interpolate_new_fitting_point(s, sm)
       integer :: i
       integer :: j
       real(dp) :: interior_interp_fraction
+            i = sm%fit_shell_index
             s%nz = i + 1
           s%log_fit_point_mass_fraction = s%requested_log_fit_point_mass_fraction
           interior_interp_fraction = (sm%target_log_mass_at_fit-s%log_mass(i))/ &
@@ -889,6 +905,7 @@ subroutine set_new_last_shell_convection(s, sm, ierr)
       real(dp) :: dgrad_dr_component
       logical :: is_convective
       integer :: jerr
+          i = sm%fit_shell_index
           if (s%convective_flag(i).and.s%convective_flag(i+1)) then
              s%convective_flag(s%nz) = .true.
           else if (.not.s%convective_flag(i).and. .not.s%convective_flag(i+1)) &
@@ -1191,60 +1208,23 @@ subroutine update_surface_mixture(s, sm, ierr)
       type(star_info), intent(inout) :: s
       type(starting_model_state), intent(inout) :: sm
       integer, intent(inout) :: ierr
-      real(dp) :: species_mix_weights(n_mix_species)
-      integer :: i
-      real(dp) :: mixture_weight_sum
-      real(dp) :: mixture_scale_factor
       if (sm%run_index <= 1) then
-! The relative mass fractions w_i of the ten metals are the controls'
-! mixture_weights_seed.
-      do i=1, n_mix_species
-         species_mix_weights(i)=s%physics%mixture_weights_seed(i)
-      end do
-
-! Surface: X_env = surface_hydrogen_fraction, Z_env = surface_metal_fraction,
-! X(He3) of the last shell, Y_env = 1 - X_env - Z_env - X(He3).
-      s%envelope_hydrogen_fraction = s%surface_hydrogen_fraction
-      s%envelope_metal_fraction = s%surface_metal_fraction
-      s%envelope_helium_fraction = 1.0d0 - s%envelope_hydrogen_fraction - &
-           s%envelope_metal_fraction - s%xa(i_he3,s%nz)
-      s%envelope_he3_fraction = s%xa(i_he3,s%nz)
-! S = sum of w_i over the ten metals (all but H and He).
-      mixture_weight_sum = species_mix_weights(ix_na)+species_mix_weights(ix_al)+ &
-           species_mix_weights(ix_mg)+species_mix_weights(ix_fe)+ &
-           species_mix_weights(ix_si)+species_mix_weights(ix_c)+ &
-           species_mix_weights(ix_o)+species_mix_weights(ix_n)+ &
-           species_mix_weights(ix_ar)+species_mix_weights(ix_ne)
-! Z outside C, N and O: envelope_metals_no_cno = Z_env (S - w_C - w_O - w_N)/S.
-      s%envelope_metals_no_cno = s%envelope_metal_fraction*(mixture_weight_sum - &
-           species_mix_weights(ix_c)-species_mix_weights(ix_o)- &
-           species_mix_weights(ix_n))/mixture_weight_sum
-! With f = Z_env/S, the metals' mass fractions are X_i = f w_i; H and He
-! get w = X_env/f and (1 - X_env - Z_env)/f, so that f w is their mass
-! fraction too. Then w_i becomes X_i/A_i, and
-!   envelope_inverse_atomic_weight = sum_i X_i/A_i,
-! the inverse mean atomic weight 1/mu_ion of the whole surface mixture.
-      mixture_scale_factor = s%envelope_metal_fraction/mixture_weight_sum
-      species_mix_weights(ix_h) = s%envelope_hydrogen_fraction/ &
-           mixture_scale_factor
-      species_mix_weights(ix_he) = (1.0d0-s%envelope_hydrogen_fraction- &
-           s%envelope_metal_fraction)/mixture_scale_factor
-      mixture_weight_sum = 0.0d0
-      do i = 1,n_mix_species
-       species_mix_weights(i) = mixture_scale_factor*species_mix_weights(i)/ &
-            atomic_weight(i)
-       mixture_weight_sum = mixture_weight_sum + species_mix_weights(i)
-      end do
-      s%envelope_inverse_atomic_weight = mixture_weight_sum
-      mixture_scale_factor = 1.0d0/s%envelope_inverse_atomic_weight
-! Number fractions of the elements, envelope_number_fractions(i) =
-! (X_i/A_i)/envelope_inverse_atomic_weight, which the EOS needs (DBG
-! 1/96): compute_blended_eos and compute_saha_eos (legacy EQSAHA).
-      do i = 1,n_mix_species
-       s%envelope_number_fractions(i) = species_mix_weights(i)*mixture_scale_factor
-      end do
+! Surface: X_env = surface_hydrogen_fraction, Z_env = surface_metal_fraction
+! and X(He3) of the last shell; from them and the controls' relative
+! metal mass fractions (mixture_weights_seed), Y_env, Z without C, N and
+! O, the inverse mean atomic weight and the number fractions
+! (model_rescaling's compute_envelope_mixture, which a later card's Z
+! rescale calls too).
+         s%envelope_hydrogen_fraction = s%surface_hydrogen_fraction
+         s%envelope_metal_fraction = s%surface_metal_fraction
+         s%envelope_he3_fraction = s%xa(i_he3,s%nz)
+         call compute_envelope_mixture(s%envelope_hydrogen_fraction, &
+              s%envelope_metal_fraction, s%envelope_he3_fraction, &
+              s%physics%mixture_weights_seed, s%envelope_helium_fraction, &
+              s%envelope_metals_no_cno, s%envelope_inverse_atomic_weight, &
+              s%envelope_number_fractions)
 ! Install the new mixture: convection's metals and the EOS mixture.
-      call install_surface_mixture_settings(s)
+         call install_surface_mixture_settings(s)
       end if
 ! Regenerate the surface opacity tables for the surface X (DBG 11/95).
       call install_surface_x_settings(s%envelope_hydrogen_fraction, ierr)

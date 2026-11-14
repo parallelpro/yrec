@@ -196,7 +196,8 @@ contains
 ! to log T and log P: always the first derivatives (dln rho/dln T,
 ! dln rho/dln P, cp, grad_ad), the second ones only with
 ! want_derivatives and not in_atmosphere (otherwise they keep the
-! caller's values). Called from blended_eos's gas_eos
+! caller's values); ierr = 1 when the Saha solver does not converge
+! (solve_saha_system). Called from blended_eos's gas_eos
 ! whenever the temperature is below the ionization cutoff, either
 ! directly (Prather EOS) or ahead of the SCV table lookup (to get
 ! derivatives SCV itself does not supply).
@@ -211,13 +212,14 @@ contains
 ! steps differentiate the converged system: sqet = dE/dln T,
 ! sqep = dE/dln P, sx1qt = dx1/dln T, and so on.
 subroutine compute_saha_eos(saha_number_fractions, log10_temperature, &
-     log10_pressure, r, want_derivatives, in_atmosphere, saha_iterations)
+     log10_pressure, r, want_derivatives, in_atmosphere, saha_iterations, ierr)
 
       real(dp), intent(in) :: saha_number_fractions(:)
       real(dp), intent(in) :: log10_temperature, log10_pressure
       type(eos_result), intent(inout) :: r
       logical, intent(in) :: want_derivatives, in_atmosphere
       integer, intent(inout) :: saha_iterations
+      integer, intent(out) :: ierr
       type(saha_system) :: s
       type(saha_sensitivities) :: d
 
@@ -228,7 +230,9 @@ subroutine compute_saha_eos(saha_number_fractions, log10_temperature, &
       s%helium_ion_fraction_1 = r%saha_helium_plus
       s%helium_ion_fraction_2 = r%saha_helium_plus2
       call set_saha_constants(log10_temperature, log10_pressure, r, s)
-      call solve_saha_system(saha_number_fractions, log10_temperature, log10_pressure, s, saha_iterations)
+      call solve_saha_system(saha_number_fractions, log10_temperature, log10_pressure, s, &
+           saha_iterations, ierr)
+      if (ierr /= 0) return
       r%saha_electrons_per_ion = s%mean_electrons_per_ion
       r%saha_helium_plus = s%helium_ion_fraction_1
       r%saha_helium_plus2 = s%helium_ion_fraction_2
@@ -314,13 +318,15 @@ end subroutine set_saha_constants
 ! columns (eliminate_helium), then solves the triangular system from the
 ! bottom up, each fraction clamped to [0, 1] and E to
 ! [min_electrons_per_ion, 1 + Y]. A run of max_saha_iterations without
-! convergence is written to the run log, and the last iterate stands.
+! convergence is an error (ierr = 1, reported on the terminal and in the
+! run log; M293), as the fully ionized iteration's is (M93).
 subroutine solve_saha_system(saha_number_fractions, log10_temperature, log10_pressure, &
-     s, saha_iterations)
+     s, saha_iterations, ierr)
       real(dp), intent(in) :: saha_number_fractions(:)
       real(dp), intent(in) :: log10_temperature, log10_pressure
       type(saha_system), intent(inout) :: s
       integer, intent(inout) :: saha_iterations
+      integer, intent(out) :: ierr
       character(len=message_length) :: eos_lines(4)
 ! the residuals of the He++ and He+ balances and of charge, E/(1 + E),
 ! and the Newton step in E, x1 and x2
@@ -354,13 +360,15 @@ subroutine solve_saha_system(saha_number_fractions, log10_temperature, log10_pre
          converged = converged .and. abs(delta_electrons_per_ion) < saha_convergence_tol
          if (converged) exit
       end do
+      ierr = 0
       if (isaha > max_saha_iterations) then
          eos_lines = unwritten_line
          write(eos_lines,99) max_saha_iterations, log10_temperature, log10_pressure, &
               s%mean_electrons_per_ion, delta_electrons_per_ion
-         call eos_log(eos_lines)
+         call eos_report(eos_lines)
  99      format('Saha solver: no convergence in ',I0,' iterations at log T, log P',2F10.6, &
-              '; E, last step',2F20.12,'; the last iterate stands')
+              '; E, last step',2F20.12)
+         ierr = 1
       end if
 end subroutine solve_saha_system
 

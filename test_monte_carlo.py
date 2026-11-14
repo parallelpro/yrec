@@ -7,6 +7,10 @@ deuterium rates). This test runs the shipped deck examples/run_config_matrix/cm_
 with two runs of identical samples and checks that the second run's history rows are the
 first's, character for character. Before the reset the second run differed from the first
 at the 1e-11 level here (and by much more on decks that burn deuterium for longer).
+A second case runs the same deck accreting 1e-9 Msun/yr with the disk locked until
+1.59e-4 Gyr, which its starting model's age (1.58e-4 Gyr) is just short of: the disk tests
+read the age every model read sets (docs/bug_sweep.md M190); before that, run 2's first
+step read run 1's last age, past the disk's end, stepped back in age and never accreted.
 Local test: needs the full input/ tree.
 """
 import os
@@ -39,11 +43,29 @@ def history_runs(path):
 
 
 def test_identical_samples_give_identical_runs(tmp_path):
+    two_identical_runs(tmp_path, lambda text: text)
+
+
+def test_identical_samples_give_identical_runs_with_accretion_and_a_disk(tmp_path):
+    def accreting(text):
+        for old, new in ((" use_mass_change = .FALSE.", " use_mass_change = .TRUE.\n mass_change = 1.0D-9"),
+                         (" disk_locking_age_gyr = 1.00D+05", " disk_locking_age_gyr = 1.59D-4")):
+            assert old in text, old
+            text = text.replace(old, new, 1)
+        return text
+    runs = two_identical_runs(tmp_path, accreting)
+    masses = [float(row.split()[3]) for row in runs[0]]
+    assert max(masses) > masses[0], "run 1 does not accrete: the case tests nothing"
+
+
+def two_identical_runs(tmp_path, edit):
+    """cm_monte_carlo, edited, with two Monte-Carlo runs of identical samples: both runs'
+    history rows, which must be the same"""
     if not YREC.exists():
         pytest.skip("src/yrec not built (run `make` in src/)")
     if not (REPO / "input" / "eos").exists():
         pytest.skip("needs the full input/ tree")
-    text = (DECK / f"{STEM}.inlist").read_text()
+    text = edit((DECK / f"{STEM}.inlist").read_text())
     assert re.search(r"(?m)^ mc_run_end = 1\s*$", text), "cm_monte_carlo no longer makes one run"
     text = re.sub(r"(?m)^ mc_run_end = 1\s*$", " mc_run_end = 2", text).replace(STEM, "mc_twice")
     (tmp_path / "mc_twice.inlist").write_text(text)
@@ -62,3 +84,4 @@ def test_identical_samples_give_identical_runs(tmp_path):
     assert len(runs[0]) == len(runs[1]) and first_difference is None, (
         f"run 2 differs from run 1 ({len(runs[0])} and {len(runs[1])} rows; first differing row "
         f"{first_difference}): state from run 1 carried into run 2")
+    return runs

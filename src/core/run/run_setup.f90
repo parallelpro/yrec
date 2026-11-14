@@ -41,7 +41,7 @@ subroutine prepare_run(s, ierr)
       call set_up_constants_and_tables(s, ierr)
       if (ierr /= 0) return
 ! Each Monte-Carlo run's sampled parameters (core/run/monte_carlo.f90).
-      call setup_monte_carlo_runs(s)
+      call setup_monte_carlo_runs(s, ierr)
 
       return
 end subroutine prepare_run

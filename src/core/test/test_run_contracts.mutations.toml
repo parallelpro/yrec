@@ -1,12 +1,13 @@
 # Mutations of test_run_contracts: each check must print FAIL under a
 # mutation of the code it covers (the star calibration's last card and
-# verdicts, the C entry's path limit and the units it closes). Run, after
+# verdicts, a Monte-Carlo run's start, the C entry's path limit and the
+# units it closes). Run, after
 # `make tests` in src/: python3 src/tools/mutate.py core --program
 # test_run_contracts (src/tools/mutate.py describes this format and the
-# verdicts). The deck is the configuration matrix's shortest.
+# verdicts). The deck is a short one of the configuration matrix's.
 program = "test_run_contracts"
 timeout = 300
-args = ["{repo}/examples/run_config_matrix/cm_env_overshoot.inlist"]
+args = ["{repo}/examples/run_config_matrix/cm_base.inlist"]
 
 [[mutation]]
 id = 'calibration-01'
@@ -87,6 +88,45 @@ check = 'star calibration: L on target before the last card arms the final run'
 file = 'core/run/calibration.f90'
 old = 's%card_stops_active(run_index+2) = .true.'
 new = 's%card_stops_active(run_index+2) = .false.'
+
+[[mutation]]
+id = 'monte_carlo-01'
+check = "Monte Carlo: without the calibration, the deck's stop ages"
+file = 'core/run/monte_carlo.f90'
+old = 'if (s%control%calibrate_solar_model) then'
+new = 'if (.true.) then'
+
+[[mutation]]
+id = 'monte_carlo-02'
+check = 'Monte Carlo: with the calibration, 1e8 and 4.57e9 yr'
+file = 'core/run/monte_carlo.f90'
+old = 'if (s%control%calibrate_solar_model) then'
+new = 'if (.false.) then'
+
+[[mutation]]
+id = 'monte_carlo-03'
+check = 'Monte Carlo: a sample file that ends before the last run: ierr 1'
+file = 'core/run/monte_carlo.f90'
+old = '''               call core_report(lines)
+               ierr = 1
+               return'''
+new = '''               call core_report(lines)
+               ierr = 0
+               return'''
+
+[[mutation]]
+id = 'monte_carlo-04'
+check = 'Monte Carlo: a complete sample file reads every run'
+file = 'core/run/monte_carlo.f90'
+old = 'do i = 1,last_mc_run(s)'
+new = 'do i = 1,last_mc_run(s)-1'
+
+[[mutation]]
+id = 'monte_carlo-05'
+check = "Monte Carlo: L_sun is the deck's times the luminosity factor"
+file = 'core/run/monte_carlo.f90'
+old = 's%solar_luminosity_cgs = s%physics%solar_luminosity_cgs*s%mc_samples%luminosity_factor(monte_carlo_run_number)'
+new = 's%solar_luminosity_cgs = 3.844D33*s%mc_samples%luminosity_factor(monte_carlo_run_number)'
 
 [[mutation]]
 id = 'capi-01'

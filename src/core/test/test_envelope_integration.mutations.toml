@@ -194,30 +194,22 @@ id = 'envelope-26'
 check = 'bsstep limits: ierr = numerics_bad_input'
 file = 'core/envelope/envelope_integration_kernel.f90'
 old = '''
-! each is an event, for the driver's message.
-       if (jerr == numerics_bad_input) then
-          call add_envint_event(events, envint_bsstep_limits, &
                counts=[cfg%max_stage_index, cfg%extrap_order])
-          ierr = jerr'''
+          ierr = jerr
+       else if (jerr == numerics_derivatives_failed) then'''
 new = '''
-! each is an event, for the driver's message.
-       if (jerr == numerics_bad_input) then
-          call add_envint_event(events, envint_bsstep_limits, &
                counts=[cfg%max_stage_index, cfg%extrap_order])
-          ierr = 1'''
+          ierr = 1
+       else if (jerr == numerics_derivatives_failed) then'''
 
 [[mutation]]
 id = 'envelope-27'
 check = 'bsstep limits: the event holds imax, nuse'
 file = 'core/envelope/envelope_integration_kernel.f90'
 old = '''
-! each is an event, for the driver's message.
-       if (jerr == numerics_bad_input) then
           call add_envint_event(events, envint_bsstep_limits, &
                counts=[cfg%max_stage_index, cfg%extrap_order])'''
 new = '''
-! each is an event, for the driver's message.
-       if (jerr == numerics_bad_input) then
           call add_envint_event(events, envint_bsstep_limits, &
                counts=[cfg%extrap_order, cfg%max_stage_index])'''
 
@@ -226,23 +218,9 @@ id = 'envelope-28'
 check = 'step underflow: ierr = envelope_termination'
 file = 'core/envelope/envelope_integration_kernel.f90'
 old = '''
-! each is an event, for the driver's message.
-       if (jerr == numerics_bad_input) then
-          call add_envint_event(events, envint_bsstep_limits, &
-               counts=[cfg%max_stage_index, cfg%extrap_order])
-          ierr = jerr
-          return
-       else if (jerr /= 0) then
           call add_envint_event(events, envint_bsstep_failed, counts=[jerr])
           ierr = envelope_termination'''
 new = '''
-! each is an event, for the driver's message.
-       if (jerr == numerics_bad_input) then
-          call add_envint_event(events, envint_bsstep_limits, &
-               counts=[cfg%max_stage_index, cfg%extrap_order])
-          ierr = jerr
-          return
-       else if (jerr /= 0) then
           call add_envint_event(events, envint_bsstep_failed, counts=[jerr])
           ierr = 1'''
 
@@ -250,21 +228,19 @@ new = '''
 id = 'envelope-29'
 check = "step underflow: the event holds bsstep's status"
 file = 'core/envelope/envelope_integration_kernel.f90'
-old = '''
-! each is an event, for the driver's message.
-       if (jerr == numerics_bad_input) then
-          call add_envint_event(events, envint_bsstep_limits, &
-               counts=[cfg%max_stage_index, cfg%extrap_order])
-          ierr = jerr
-          return
-       else if (jerr /= 0) then
-          call add_envint_event(events, envint_bsstep_failed, counts=[jerr])'''
-new = '''
-! each is an event, for the driver's message.
-       if (jerr == numerics_bad_input) then
-          call add_envint_event(events, envint_bsstep_limits, &
-               counts=[cfg%max_stage_index, cfg%extrap_order])
-          ierr = jerr
-          return
-       else if (jerr /= 0) then
-          call add_envint_event(events, envint_bsstep_failed, counts=[0])'''
+old = 'call add_envint_event(events, envint_bsstep_failed, counts=[jerr])'
+new = 'call add_envint_event(events, envint_bsstep_failed, counts=[0])'
+
+[[mutation]]
+id = 'envint-derivs-01'
+check = 'derivatives failure in a step: ierr > 0 (an error)'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = 'ierr = derivatives_jerr'
+new = 'ierr = envelope_termination'
+
+[[mutation]]
+id = 'envint-derivs-02'
+check = 'derivatives failure in a step: the event holds the code'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = 'counts=[jerr, derivatives_jerr]'
+new = 'counts=[jerr]'

@@ -59,7 +59,7 @@ CASES = [
     ("test_timestep_limits", "test_timestep_limits", [], {}, None),
     ("test_model_kernels", "test_model_kernels", [], {}, None),
     ("test_run_contracts", "test_run_contracts",
-     ["{repo}/examples/run_config_matrix/cm_env_overshoot.inlist"], {}, None),
+     ["{repo}/examples/run_config_matrix/cm_base.inlist"], {}, None),
     ("test_structure[tams]", "test_structure",
      ["{repo}/src/core/test/test_structure_tams.inlist", "3e-3"], {"YREC_OUTPUT": "output"}, None),
     ("test_structure[yale]", "test_structure",
@@ -81,14 +81,7 @@ for _deck in sorted((REPO / "examples" / "run_config_matrix").glob("*.inlist")):
 # Cases that fail under the devel flags today, each with its defect (the
 # first the run meets; the program stops there). Remove an entry when its
 # defect is fixed, and see what the run meets next.
-_O4 = ("O4 (docs/bug_sweep.md): the starting model's stitched atmosphere reads "
-       "env_log10_radius(0), core/diagnostics/stitched_model.f90:475, a bounds error")
-KNOWN_FAILURES = {
-    "test_structure[tams]": _O4,
-    "test_structure[yale]": _O4,
-    "test_structure[extra]": _O4,
-    "test_run_contracts": _O4,
-}
+KNOWN_FAILURES = {}
 
 RUNTIME_ERROR = re.compile(r"Fortran runtime error|Program received signal|Error termination")
 

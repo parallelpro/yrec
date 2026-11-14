@@ -340,6 +340,12 @@ subroutine begin_kind_card
 ! Arm helium settling for the card (the settling routines switch it off
 ! when the centre runs out of hydrogen).
        s%settling_active = s%physics%diffuse_helium_active
+! A card that reads the starting model starts with the deck's
+! structure-based timestep limits, as the run's first card does
+! (compute_timestep switches them off past log Tc 7.1 with L_grav < 0,
+! for the rest of the run until then; M31).
+       if (s%card_from_starting_model(s%current_card)) &
+            s%structure_dt_limits_active = s%physics%use_structure_dt_limits
 ! Zero the total angular momentum and rotational kinetic energy before
 ! the model read (MHP 10/02).
          s%total_angular_momentum = 0.0D0

@@ -7,9 +7,11 @@
 ! fields of star%mc_samples, state/README.md):
 !
 !  * first_mc_run, last_mc_run -- the run range, functions of the
-!    controls (run_yrec's loop bounds);
+!    controls (run_yrec's loop bounds), which io's check_controls keeps
+!    within 1 to max_mc_runs;
 !  * setup_monte_carlo_runs -- each run's samples read from the sample
-!    file (once, from prepare_run);
+!    file (once, from prepare_run; a short or unreadable file is an
+!    error);
 !  * begin_monte_carlo_run -- the start of every Monte-Carlo run, the
 !    per-run hook: every run copy of a control re-armed from its control,
 !    the other state found so far that a run leaves and the next would
@@ -29,11 +31,14 @@ module monte_carlo
            max_mc_runs, star_info
       use control_slots, only: i_target_x, i_target_z
       use run_messages, only: run_log_unit
-      use core_messages, only: core_terminal_values
+      use core_messages, only: core_report, core_terminal_values, &
+           message_length, unwritten_line
       use run_files, only: last_model_unit, starting_model_unit, &
            dynamics_unit, mc_summary_unit, mc_model_unit
       use model_files, only: write_mod_model
       use output_files, only: flush_output_file
+      use calibration, only: dlogl_dx_fixed, dlogr_dx_fixed, dlogl_dalpha_fixed, &
+           dlogr_dalpha_fixed
       implicit none
       private
       public :: first_mc_run, last_mc_run, setup_monte_carlo_runs, &
@@ -42,9 +47,11 @@ module monte_carlo
 contains
 
 ! ---------------------------------------------------------------
-! The run range: the first and the last Monte-Carlo run, from the
-! controls mc_run_start and mc_run_end (legacy IMBEG, IMEND), the last
-! clamped to max_mc_runs; without Monte Carlo the single run 1.
+! The run range: the first and the last Monte-Carlo run, the controls
+! mc_run_start and mc_run_end (legacy IMBEG, IMEND), which io's
+! check_controls requires to satisfy 1 <= mc_run_start <= mc_run_end <=
+! max_mc_runs when Monte Carlo is on (M115; the F77 clamped the last to
+! 1000 without a word); without Monte Carlo the single run 1.
 !   star reads: physics%mc_run_start, physics%monte_carlo_active
 !   star writes: none
 pure integer function first_mc_run(s)
@@ -58,7 +65,7 @@ end function first_mc_run
 pure integer function last_mc_run(s)
       type(star_info), intent(in) :: s
       last_mc_run = 1
-      if (s%physics%monte_carlo_active) last_mc_run = min(s%physics%mc_run_end, max_mc_runs)
+      if (s%physics%monte_carlo_active) last_mc_run = s%physics%mc_run_end
 end function last_mc_run
 
 ! ---------------------------------------------------------------
@@ -66,20 +73,35 @@ end function last_mc_run
 ! (opened on dynamics_unit with the run's files): the S11, S33, S34 and
 ! S17 factors, Z/X, the metal settling factor, and the luminosity and
 ! age factors. Only the records up to last_mc_run (at most max_mc_runs)
-! are read (MHP 3/96).
-!   star reads: physics%monte_carlo_active
+! are read (MHP 3/96). A file that ends before them, or a record that
+! does not read, is an error (ierr = 1, reported on the terminal and in
+! the run log; M115).
+!   star reads: control%dynamics_file, physics%monte_carlo_active
 !   star writes: mc_samples
-subroutine setup_monte_carlo_runs(s)
+subroutine setup_monte_carlo_runs(s, ierr)
       type(star_info), intent(inout) :: s
-      integer :: i
+      integer, intent(out) :: ierr
+      integer :: i, ios
+      character(len=256) :: msg
+      character(len=message_length) :: lines(1)
+      ierr = 0
       if (s%physics%monte_carlo_active) then
 ! Read the samples, one two-line record per run.
          do i = 1,last_mc_run(s)
-            read(dynamics_unit,1511)s%mc_samples%s11_factor(i),s%mc_samples%s33_factor(i), &
+            read(dynamics_unit,1511,iostat=ios,iomsg=msg)s%mc_samples%s11_factor(i),s%mc_samples%s33_factor(i), &
                  s%mc_samples%s34_factor(i),s%mc_samples%s17_factor(i),s%mc_samples%metal_to_h_ratio(i), &
                  s%mc_samples%settling_z_factor(i),s%mc_samples%luminosity_factor(i), &
                  s%mc_samples%age_factor(i)
  1511       format(7X,1P7E10.3/E9.3)
+            if (ios /= 0) then
+               lines = unwritten_line
+               write(lines,'(a,i0,3a)') ' ERROR: cannot read run ', i, &
+                    '''s samples from the Monte Carlo dynamics file ', &
+                    trim(s%control%dynamics_file), ': '//trim(msg)
+               call core_report(lines)
+               ierr = 1
+               return
+            end if
             call core_terminal_values([s%mc_samples%s11_factor(i),s%mc_samples%s33_factor(i), &
                  s%mc_samples%s34_factor(i),s%mc_samples%s17_factor(i),s%mc_samples%metal_to_h_ratio(i), &
                  s%mc_samples%settling_z_factor(i),s%mc_samples%luminosity_factor(i), &
@@ -98,7 +120,7 @@ end subroutine setup_monte_carlo_runs
 ! stops init_stop_conditions disarmed, the solar calibration's
 ! age-scaled fixed timesteps and laid-out cycles, the structure-timestep
 ! and mass-change latches, the atmosphere the surface boundary switched
-! to, the core extension's factor. The other state found so far that a run
+! to, the core extension's point count. The other state found so far that a run
 ! leaves on the star and the next would read before writing it is
 ! cleared (clear_previous_run_state). Then the run's samples are applied
 ! (apply_monte_carlo_parameters). On the first run the re-arm and the
@@ -128,10 +150,10 @@ end subroutine begin_monte_carlo_run
 ! the run copies, and that the next run would read before writing them,
 ! put back to their value at the start of the first run (the template
 ! star's zero). The list is what a bisection of the star's classes on
-! four two-run decks found (M169), not one shown to be complete:
-! disk_gate_age_gyr, the disk-locking tests' age, is known to carry over
-! too and is left as it is, the authors' decision (state/README.md
-! section 7; docs/bug_sweep.md section 13). The members: the
+! four two-run decks found (M169), not one shown to be complete
+! (disk_gate_age_gyr, the disk-locking tests' age, would carry over too:
+! every model read from file sets it, starting_model's
+! reset_state_after_read; M190). The members: the
 ! start-of-step deuterium rates. compute_burn_rates stores them only in
 ! the zones above the burning cutoff (and while there is deuterium to
 ! burn), and burn_deuterium averages them over a mixed region, the
@@ -157,10 +179,11 @@ end subroutine clear_previous_run_state
 ! cross-section scales r_pp, r_he3he3, r_he3he4 and the extra scale
 ! xs_be7p), each times the factor that takes the code's reference S0 to
 ! the Bahcall & Pinsonneault (1996) value; the metal settling factor;
-! the solar luminosity; and the age scale factor. It also sets cards 2
-! and 3's stop ages, which no sample gives (below). Outside Monte Carlo
-! it only sets age_scale_factor = 1.
-!   star reads: mc_samples, physics%monte_carlo_active
+! the solar luminosity; and the age scale factor. With the solar
+! calibration on, it also sets cards 2 and 3's stop ages, which no sample
+! gives (below). Outside Monte Carlo it only sets age_scale_factor = 1.
+!   star reads: control%calibrate_solar_model, mc_samples,
+!     physics%monte_carlo_active, physics%solar_luminosity_cgs
 !   star writes: card_max_age_yr, cross_section_scale_in_use,
 !     extra_cross_section_scale_in_use, ln10_over_lsun,
 !     log10_solar_luminosity, settling_z_factor_in_use,
@@ -182,10 +205,7 @@ subroutine apply_monte_carlo_parameters(s, monte_carlo_run_number, &
       real(dp), parameter :: bp96_pp_factor = 0.9558, &
            bp96_he3he3_factor = 0.9690, bp96_he3he4_factor = 0.9712, &
            bp96_be7p_factor = 0.92088
-! The base solar luminosity in erg/s (MHP 3/96), which
-! luminosity_factor scales.
-      real(dp), parameter :: reference_solar_luminosity = 3.844D33
-! Cards 2 and 3's stop ages [yr] (below).
+! Cards 2 and 3's stop ages [yr] for the solar calibration (below).
       real(dp), parameter :: mc_settling_age_yr = 1.0D8, mc_solar_age_yr = 4.57D9
 
       if (s%physics%monte_carlo_active) then
@@ -198,21 +218,22 @@ subroutine apply_monte_carlo_parameters(s, monte_carlo_run_number, &
 ! only; the helium factor fgry keeps its control value. The sampled Z/X
 ! (metal_to_h_ratio) is only written to the summary.
          s%settling_z_factor_in_use = s%mc_samples%settling_z_factor(monte_carlo_run_number)
-         s%solar_luminosity_cgs = reference_solar_luminosity*s%mc_samples%luminosity_factor(monte_carlo_run_number)
+! The sampled solar luminosity: the deck's (physics%solar_luminosity_cgs)
+! times the run's luminosity factor (M97; it was 3.844e33 erg/s, MHP 3/96,
+! whatever the deck set).
+         s%solar_luminosity_cgs = s%physics%solar_luminosity_cgs*s%mc_samples%luminosity_factor(monte_carlo_run_number)
          s%log10_solar_luminosity = log10(s%solar_luminosity_cgs)
          s%ln10_over_lsun = ln10/s%solar_luminosity_cgs
          age_scale_factor = s%mc_samples%age_factor(monte_carlo_run_number)
-! Stop ages of cards 2 and 3 for a solar age of 4.57 Gyr, the F77's
-! (main.f:243-244), in every Monte-Carlo run whether or not it
-! calibrates, whatever the deck's max_age: neither sampled nor scaled by
-! the age factor. With the solar calibration on, setup_solar_calibration
-! overwrites both, with 1e8 yr and target_solar_age times
-! age_scale_factor; without it they stand (cm_monte_carlo's card 2 asks
-! 4.568e9 yr and runs with 1e8, stopping at its 10 models first).
-! Whether they stay is the authors' decision (docs/bug_sweep.md
-! section 13).
-         s%card_max_age_yr(2) = mc_settling_age_yr
-         s%card_max_age_yr(3) = mc_solar_age_yr
+! With the solar calibration on, the stop ages of cards 2 and 3 for a
+! solar age of 4.57 Gyr, the F77's (main.f:243-244), neither sampled nor
+! scaled by the age factor; setup_solar_calibration then sets both
+! again, with 1e8 yr and target_solar_age times age_scale_factor.
+! Without the calibration the deck's max_age stands (M191).
+         if (s%control%calibrate_solar_model) then
+            s%card_max_age_yr(2) = mc_settling_age_yr
+            s%card_max_age_yr(3) = mc_solar_age_yr
+         end if
       else
          age_scale_factor = 1.0D0
       end if
@@ -278,8 +299,7 @@ end subroutine write_run_summaries
 !   star reads: card_mixing_length_alpha, card_rescale_targets,
 !     central_log10_density, central_log10_pressure,
 !     central_log10_temperature, cl37_snu_rate,
-!     control%monte_carlo_file1_path, dlum_dalpha, dlum_dx, drad_dalpha,
-!     drad_dx, envelope_mass_msun, envelope_radius_rsun, ga71_snu_rate,
+!     control%monte_carlo_file1_path, envelope_mass_msun, envelope_radius_rsun, ga71_snu_rate,
 !     log_L_lsun, luminosity_breakdown_lsun, mc_samples,
 !     neutrino_flux_total_e10_per_cm2_s, nz, xa
 !   star writes: none
@@ -316,10 +336,12 @@ subroutine write_monte_carlo_model(s, local_log_radius, &
               s%mc_samples%settling_z_factor(monte_carlo_run_number),s%mc_samples%luminosity_factor(monte_carlo_run_number), &
               s%mc_samples%age_factor(monte_carlo_run_number)
    10 format(I7,1P9E10.3)
-! Record 2: the number of calibration cycles, and the partial
-! derivatives d log L/dX, d log R/dX, d log L/d alpha, d log R/d alpha.
-      if (ios == 0) write(mc_summary_unit,20,iostat=ios,iomsg=msg)convergence_iterations,s%dlum_dx,s%drad_dx, &
-           s%dlum_dalpha,s%drad_dalpha
+! Record 2: the number of calibration cycles, and the solar
+! calibration's fixed partial derivatives d log L/dX, d log R/dX,
+! d log L/d alpha, d log R/d alpha (the F77 printed its COMMON copies of
+! them, zero when the first run converged at its first check; M34).
+      if (ios == 0) write(mc_summary_unit,20,iostat=ios,iomsg=msg)convergence_iterations,dlogl_dx_fixed, &
+           dlogr_dx_fixed,dlogl_dalpha_fixed,dlogr_dalpha_fixed
  20   format(1X,I2,1P4E11.4)
 ! Record 3: the Cl37 and Ga71 capture rates (SNU) and the first eight
 ! neutrino fluxes, pp, pep, hep, Be7, B8, N13, O15 and F17 (see

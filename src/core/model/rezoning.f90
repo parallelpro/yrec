@@ -1013,12 +1013,11 @@ subroutine regrid_composition_terms(s, rz, ierr)
            rz%new_log_mass(1:rz%new_point_count), regridded_xa, ierr)
       if (ierr /= 0) return
       s%xa_start(1:rz%num_species_tracked,1:rz%new_point_count) = regridded_xa
-! The start-of-step deuterium burning rate, when the surface deuterium
-! is above 1e-14 (MHP 05/02). (star%nz is still the old point count
-! here: when the mesh grew, this is the regridded deuterium at that
-! index, below the new surface.)
+! The start-of-step deuterium burning rate, when the deuterium at the new
+! surface (point new_point_count of the regridded xa; star%nz is still
+! the old point count here) is above 1e-14 (MHP 05/02).
       if (s%physics%use_extended_composition .and. &
-           s%xa(i_h2,s%nz) >= deuterium_regrid_min) then
+           s%xa(i_h2,rz%new_point_count) >= deuterium_regrid_min) then
          call regrid_in_place(s, rz, ierr, s%deuterium_burning_rate_start)
       end if
 end subroutine regrid_composition_terms
