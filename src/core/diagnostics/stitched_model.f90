@@ -140,8 +140,9 @@ subroutine build_stitched_model(s, ierr)
       if (.not. s%physics%calc_envelope_flag) then
          s%stitched%n_ie = s%stitched%n_ext
 ! interior-only: materialize what we have. (Historical quirk kept
-! byte-for-byte: the seismic columns are NOT recomputed on this
-! branch -- they hold whatever the last full build left.)
+! byte-for-byte: lamb_S2, gradL and gradr_div_grada are NOT recomputed
+! on this branch -- they hold whatever the last full build left;
+! brunt_N2 is the pulse points' N^2 of this grid.)
          call fill_stitched_arrays(s, ierr)
          return
       end if
@@ -223,16 +224,18 @@ subroutine build_stitched_model(s, ierr)
 end subroutine build_stitched_model
 
 ! ---------------------------------------------------------------
-! Fill s%stitched%seismic(1:4,:) over the assembled extended grid:
-!   1 brunt_N2 = g*[(1/Gamma1) dlnP/dr - dlnRho/dr]  (centered
-!     differences in r -- the same derivative content as FGONG's A4)
+! Fill s%stitched%seismic(2:4,:) over the assembled extended grid:
+!   1 brunt_N2: not here; fill_stitched_arrays copies the pulse points'
+!     N^2 (build_pulse_points: the thermal form where it is negative,
+!     the centred difference in r elsewhere), so that the profile and
+!     the pulse files hold one N^2
 !   2 lamb_S2  = l(l+1) c^2 / r^2 with l=1: 2*Gamma1*P/(rho r^2)
 !   3 gradL    = grada + (1/delta)*dln(mu)/dlnP  (Ledoux gradient
 !     with the ideal-fully-ionized phi=1 approximation; the mu
 !     gradient is a centered difference in lnP)
 !   4 gradr_div_grada
 ! Endpoints copy their neighbor's derivative-based values.
-!   star reads: solar_mass_cgs
+!   star reads: none
 !   star writes: stitched
 subroutine compute_seismic_columns(s)
       use math_lib
@@ -240,8 +243,8 @@ subroutine compute_seismic_columns(s)
       integer :: j
       real(dp) :: r(max_ext), lnp(max_ext), lnrho(max_ext), &
            lnmu(max_ext), g1(max_ext), grada_(max_ext), delta_(max_ext), &
-           gradr_(max_ext), mass_g(max_ext)
-      real(dp) :: dr, dlnp_dr, dlnrho_dr, grav, dlnmu_dlnp, p, rho
+           gradr_(max_ext)
+      real(dp) :: dlnmu_dlnp, p, rho
       logical :: mu_ok(max_ext)
 
       mu_ok = .true.
@@ -253,7 +256,6 @@ subroutine compute_seismic_columns(s)
          grada_(j) = ext_profile_value(s, ip_grada, j)
          gradr_(j) = ext_profile_value(s, ip_gradr, j)
          delta_(j) = ext_profile_value(s, ip_delta, j)
-         mass_g(j) = ext_profile_value(s, ip_mass, j)*s%solar_mass_cgs
          lnmu(j)   = ext_profile_value(s, ip_mu, j)
          if (lnmu(j) > 0.0d0) then
             lnmu(j) = log(lnmu(j))
@@ -279,15 +281,6 @@ subroutine compute_seismic_columns(s)
          end if
       end do
       do j = 2, s%stitched%n_ext-1
-         dr = r(j+1) - r(j-1)
-         if (dr /= 0.0d0 .and. r(j) > 0.0d0 .and. g1(j) > 0.0d0) then
-            dlnp_dr   = (lnp(j+1) - lnp(j-1))/dr
-            dlnrho_dr = (lnrho(j+1) - lnrho(j-1))/dr
-            grav = local_gravity_cgs(mass_g(j), r(j))
-            s%stitched%seismic(1,j) = grav*(dlnp_dr/g1(j) - dlnrho_dr)
-         else
-            s%stitched%seismic(1,j) = 0.0d0
-         end if
 ! the mu gradient's term, dropped where mu is unavailable (Sources, 2)
          if (lnp(j+1) /= lnp(j-1) .and. delta_(j) /= 0.0d0 .and. &
               mu_ok(j-1) .and. mu_ok(j+1)) then
@@ -298,9 +291,7 @@ subroutine compute_seismic_columns(s)
          end if
       end do
       if (s%stitched%n_ext >= 2) then
-         s%stitched%seismic(1,1) = s%stitched%seismic(1,2)
          s%stitched%seismic(3,1) = s%stitched%seismic(3,2)
-         s%stitched%seismic(1,s%stitched%n_ext) = s%stitched%seismic(1,s%stitched%n_ext-1)
          s%stitched%seismic(3,s%stitched%n_ext) = s%stitched%seismic(3,s%stitched%n_ext-1)
       end if
 end subroutine compute_seismic_columns
@@ -425,12 +416,10 @@ end function ext_profile_value
 ! and build_pulse_points evaluate at more than one site, each written
 ! once; the sites differ only in which array they read (the interior's
 ! star%, the envelope's env_points, the atmosphere's atm_points). Two
-! are not shared, because their sites differ in operand order (and so
-! in the last bit): the interior gravity of column ip_grav,
-! exp(ln10*(cgl - 2*logR))*m, versus local_gravity_cgs; and the N^2 of
-! compute_seismic_columns, grav*(dlnp_dr/g1 - dlnrho_dr) with the two
-! derivatives divided by dr first, versus build_pulse_points' second
-! pass, which divides the bracket by dr last.
+! is not shared, because its sites differ in operand order (and so in
+! the last bit): the interior gravity of column ip_grav,
+! exp(ln10*(cgl - 2*logR))*m, versus local_gravity_cgs. N^2 is computed
+! once, in build_pulse_points, for the pulse files and the profile.
 
 ! Local gravity G*m/r^2 [cgs] from mass [g] and radius [cm].
 real(dp) function local_gravity_cgs(mass_g, radius_cm)
@@ -931,9 +920,10 @@ integer function species_slot(k)
 end function species_slot
 
 ! ---------------------------------------------------------------
-! The writers' arrays from the assembled grid: every profile column at
-! every point, then the pulse points. A column without a value in a
-! point's region is an error (ierr = 1), reported once.
+! The writers' arrays from the assembled grid: the pulse points, their
+! N^2 as the profile's brunt_N2 (one N^2 for both), then every profile
+! column at every point. A column without a value in a point's region
+! is an error (ierr = 1), reported once.
 !   star reads: none
 !   star writes: stitched
 subroutine fill_stitched_arrays(s, ierr)
@@ -947,6 +937,11 @@ subroutine fill_stitched_arrays(s, ierr)
       logical :: found
 
       ierr = 0
+      call build_pulse_points(s)
+      do j = 1, s%stitched%n_ext
+         s%stitched%seismic(ip_brunt_N2-ip_seismic_first+1, j) = &
+              s%stitched%pulse(ipul_N2, j)
+      end do
       do j = 1, s%stitched%n_ext
          do icol = 1, n_prof_cols
             call extended_point_value(s, icol, j, value, found)
@@ -963,7 +958,6 @@ subroutine fill_stitched_arrays(s, ierr)
             s%stitched%prof(icol, j) = value
          end do
       end do
-      call build_pulse_points(s)
 end subroutine fill_stitched_arrays
 
 ! The name of a region of the extended grid, for messages.

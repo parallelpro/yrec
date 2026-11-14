@@ -66,7 +66,7 @@ omega                     ! angular velocity (rad/s)
 !delta                     ! -dlnRho/dlnT
 !mu                        ! mean molecular weight
 !mu_e_inv                  ! 1/mu_e
-!brunt_N2         ! Brunt-Vaisala frequency squared [1/s^2]: g*[(1/Gamma1) dlnP/dr - dlnRho/dr], centered differences on the extended grid
+!brunt_N2         ! Brunt-Vaisala frequency squared [1/s^2], the pulse files' N2: g^2 rho delta (grad_ad - grad)/P where that is negative, else g*[(1/Gamma1) dlnP/dr - dlnRho/dr] by centered differences on the extended grid
 !lamb_S2          ! Lamb frequency squared (l=1) [1/s^2]: 2*Gamma1*P/(rho*r^2)
 !gradL            ! Ledoux temperature gradient: grada + (1/delta)*dln(mu)/dlnP (phi=1 fully-ionized approximation)
 !gradr_div_grada  ! Schwarzschild stability ratio
