@@ -95,6 +95,8 @@ jobs:
             /input/opacity/molecular/legacy/kurmol/kapm05.ross
             /input/opacity/molecular/legacy/kurmol/kapp00.ross
             /input/atmos/kurucz/atmk1990p00.tab
+            /input/atmos/kurucz/atmk1990m50.tab
+            /input/atmos/kurucz/atmk1990p01.tab
             /input/atmos/CastelliKurucz/atmk2004p00.tab
             /input/atmos/allard/Nextgen.p00
             /input/atmos/allard/Nextgen2.all
@@ -199,6 +201,8 @@ jobs:
             /input/opacity/molecular/legacy/kurmol/kapm05.ross
             /input/opacity/molecular/legacy/kurmol/kapp00.ross
             /input/atmos/kurucz/atmk1990p00.tab
+            /input/atmos/kurucz/atmk1990m50.tab
+            /input/atmos/kurucz/atmk1990p01.tab
             /input/atmos/CastelliKurucz/atmk2004p00.tab
             /input/atmos/allard/Nextgen.p00
             /input/atmos/allard/Nextgen2.all
