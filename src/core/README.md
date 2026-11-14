@@ -142,7 +142,7 @@ Every deck runs core, so the deck pins are its integration test: the 35 pinned r
 
 Each check of the nine programs with a manifest was confirmed to fail under a mutation of the code it covers: the manifests `core/test/<program>.mutations.toml` hold 159 mutations, and `python3 src/tools/mutate.py core` (after `make tests` in `src/`) reported all 159 caught on 2026-11-13 (test_envelope_integration 29, test_henyey_elimination 15, test_mass_change 12, test_model_kernels 9, test_regrid 19, test_run_contracts 17, test_structure 10, test_timestep_limits 33, test_triangle_fit 15).
 
-Under the development flags (`make devel_tests`, `python3 src/tools/devel_tests.py`) the programs run clean but for one known failure, O4: the starting model's stitched atmosphere reads `env_log10_radius(0)` (`diagnostics/stitched_model.f90:475`), a bounds error that stops `test_structure`'s three cases and `test_run_contracts` (`devel_tests.py`'s `KNOWN_FAILURES`).
+Under the development flags (`make devel_tests`, `python3 src/tools/devel_tests.py`) the programs run clean: `devel_tests.py`'s `KNOWN_FAILURES` is empty (it held `test_structure`'s three cases and `test_run_contracts` until O4's fix, `docs/bug_sweep.md`).
 
 ## 5. Coverage
 
