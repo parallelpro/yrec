@@ -604,12 +604,16 @@ contains
             call report(label, abs(above(i_kap)/below(i_kap) - 1.0d0), tol, ierr + jerr == 0)
          end subroutine continuity_check
 
-! The Potekhin mixture: with each species' weight w_i = its number
-! fraction times its ionized fraction (He++ counting twice, over 2, the
-! metals' proxy O fully ionized), the mixture's conductive opacity is
-! sum w_i kappa_i, kappa_i the species' own (each from a pure
-! composition, fully ionized); and the mixture's derivatives against
-! differences
+! The Potekhin mixture (Potekhin et al. 1999, section 3.3): 1/K =
+! sum x_i/K_i(rho_i), with x_i = n_i Z_i/sum n_k Z_k each species' share
+! of the electrons (Z_i the mean charge: H+, He+ + 2 He++, 8 for the
+! metals' proxy O) and K_i read at rho_i = rho (A_i/Z_i) Y_e, where the
+! pure, fully ionized species has the mixture's electron density Y_e =
+! sum X_k Z_k/A_k (A/Z = 1, 2, 2 for the table's H, He and O). Each K_i
+! comes from a pure composition, fully ionized, at the density rho'_i
+! = rho_i/s_i that its own call shifts to rho_i (s_i = (A_i/Z_i) Y_e of
+! the pure species): kappa'_i = 16 sigma T^3/(3 rho'_i K_i(rho_i)), so
+! the mixture's kappa_c = sum x_i (rho'_i/rho) kappa'_i.
          subroutine conductive_mixture_check()
             use opacity_tables, only: conductive_table_set
             use conductive_reader, only: read_conductive_table
@@ -617,30 +621,35 @@ contains
             type(conductive_table_set), save :: cond
             double precision, parameter :: logt = 7.33d0, logd = 2.93d0, x = 0.5d0, z = 0.1d0
             double precision, parameter :: a_h = 1.008d0, a_he = 4.004d0, a_o = 16.0d0
-            double precision :: species(3), mix, o, ol, dr, dt, n(3), w(3), f(3), ions(3)
+            double precision, parameter :: a_over_z(3) = [1.0d0, 2.0d0, 2.0d0]
+            double precision :: species(3), mix, ol, dr, dt, n(3), w(3), f(3), ions(3), &
+                 charge(3), y_e, pure_y_e(3), logd_pure(3)
             logical :: got
             character(len=512) :: msg
             integer :: ierr, k
             call read_conductive_table(cond, trim(yrec_input)// &
                  "/opacity/conductive/potekhin/condall06.d", ierr)
-            ions = [1.0d0, 0.0d0, 1.0d0]
-            call compute_conductive_opacity(cond, logd, logt, 1.0d0, 0.0d0, species(1), ol, dr, &
-                 dt, ions, got, msg, k)
-            ierr = ierr + k
-            call compute_conductive_opacity(cond, logd, logt, 0.0d0, 0.0d0, species(2), ol, dr, &
-                 dt, ions, got, msg, k)
-            ierr = ierr + k
-            call compute_conductive_opacity(cond, logd, logt, 0.0d0, 1.0d0, species(3), ol, dr, &
-                 dt, ions, got, msg, k)
-            ierr = ierr + k
             f = [0.5d0, 0.3d0, 0.6d0]
+            charge = [f(1), f(2) + 2.0d0*f(3), 8.0d0]
+            n = [x/a_h, (1.0d0 - x - z)/a_he, z/a_o]
+            w = n*charge/sum(n*charge)
+            y_e = x*charge(1)/a_h + (1.0d0 - x - z)*charge(2)/a_he + z*charge(3)/a_o
+            pure_y_e = [1.0d0/a_h, 2.0d0/a_he, 8.0d0/a_o]
+            logd_pure = logd + log10(a_over_z*y_e) - log10(a_over_z*pure_y_e)
+            ions = [1.0d0, 0.0d0, 1.0d0]
+            call compute_conductive_opacity(cond, logd_pure(1), logt, 1.0d0, 0.0d0, species(1), &
+                 ol, dr, dt, ions, got, msg, k)
+            ierr = ierr + k
+            call compute_conductive_opacity(cond, logd_pure(2), logt, 0.0d0, 0.0d0, species(2), &
+                 ol, dr, dt, ions, got, msg, k)
+            ierr = ierr + k
+            call compute_conductive_opacity(cond, logd_pure(3), logt, 0.0d0, 1.0d0, species(3), &
+                 ol, dr, dt, ions, got, msg, k)
+            ierr = ierr + k
             call compute_conductive_opacity(cond, logd, logt, x, z, mix, ol, dr, dt, f, got, msg, k)
             ierr = ierr + k
-            n = [x/a_h, (1.0d0 - x - z)/a_he, z/a_o]
-            n = n/sum(n)
-            w = [n(1)*f(1), n(2)*(f(2) + 2.0d0*f(3))/2.0d0, n(3)]
-            call report("Potekhin mixture: kappa_c = sum of w_i kappa_i (partly ionized)", &
-                 abs(mix/dot_product(w, species) - 1.0d0), 1.0d-12, ierr == 0)
+            call report("Potekhin mixture: 1/K = sum x_i/K_i(rho_i), electron fractions", &
+                 abs(mix/sum(w*10.0d0**(logd_pure - logd)*species) - 1.0d0), 1.0d-12, ierr == 0)
          end subroutine conductive_mixture_check
 
 ! Potekhin conduction below the table's lowest density (log rho = -6,
