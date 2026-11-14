@@ -634,6 +634,9 @@ ok   continuity: where SCV's high-pressure ramp reaches SCV (log P_gas 11.2) (M8
 # test_eos: configuration yale_only
 # test_eos: configuration scv_only
 ok   in_atmosphere: the density, ionization and first derivatives of a full evaluation
+# test_eos: configuration yale_only
+Saha solver: no convergence in 20 iterations at log T, log P  4.061939  4.123467; E, last step      0.663568397656      0.011054233638
+ok   Saha solver: no convergence (the run plan's partial mixture) is an error, ierr 1 (M293)
 # test_eos: configuration scv_only
 ok   envelope tables: eos_set_mixture builds the SCV table for a new composition
 ok   envelope tables: a table built for another composition is not used

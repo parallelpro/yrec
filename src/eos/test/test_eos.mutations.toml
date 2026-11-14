@@ -650,3 +650,12 @@ check = "diffusion of Z: at Z = 1.1 Z_env, one 1/mu_ion inside the OPAL table an
 file = 'eos/opal/opal_eos.f90'
 old = '''           metal_fraction, eos_settings%use_diffusion_z, specific_gas_constant_check, &'''
 new = '''           metal_fraction, .false., specific_gas_constant_check, &'''
+
+[[mutation]]
+id = 'saha_nonconvergence-01'
+check = "Saha solver: no convergence (the run plan's partial mixture) is an error, ierr 1 (M293)"
+file = 'eos/yale/yale_eos.f90'
+old = '''              '; E, last step',2F20.12)
+         ierr = 1'''
+new = '''              '; E, last step',2F20.12)
+         ierr = 0'''
