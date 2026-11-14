@@ -1,4 +1,5 @@
-"""model/'s star-free kernels: find_shell_boundaries on synthetic profiles.
+"""model/'s star-free kernels: find_shell_boundaries on synthetic profiles, and
+compute_envelope_mixture on a ten-metal mixture.
 
 Runs src/test_model_kernels (built by `make tests` in src/). Every check
 line must end in ok; the checks are listed in the header of
@@ -13,7 +14,7 @@ import pytest
 
 REPO = pathlib.Path(__file__).parent
 BINARY = REPO / "src" / "test_model_kernels"
-NUM_CHECKS = 9
+NUM_CHECKS = 15
 
 
 def test_model_kernels(tmp_path):

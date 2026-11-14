@@ -8,7 +8,7 @@ module starting_model
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use turnover_timescale, only: compute_turnover_timescale
       use shell_physics, only: compute_shell_physics
-      use model_rescaling, only: rescale_model
+      use model_rescaling, only: rescale_model, compute_envelope_mixture
       use star_info_lib, only: star_info
       use run_cards, only: card_evolve
       use am_regions, only: am_convective_regions
@@ -35,11 +35,6 @@ module starting_model
       implicit none
       private
       public :: read_starting_model
-
-! Atomic weights of the surface-mixture elements, in ix_* slot order
-! (Na, Al, Mg, Fe, Si, C, H, O, N, Ar, Ne, He).
-      real(dp), parameter :: atomic_weight(n_mix_species) = [23.0d0, 26.99d0, &
-           24.32d0, 55.86d0, 28.1d0, 12.015d0, 1.008d0, 16.0d0, 14.01d0, 39.96d0, 20.19d0, 4.004d0]
 
 ! An evolved model's mixing length matches the card's within this
 ! [-]; a species differs from the centre's by more than this in a model
@@ -1189,60 +1184,23 @@ subroutine update_surface_mixture(s, sm, ierr)
       type(star_info), intent(inout) :: s
       type(starting_model_state), intent(inout) :: sm
       integer, intent(inout) :: ierr
-      real(dp) :: species_mix_weights(n_mix_species)
-      integer :: i
-      real(dp) :: mixture_weight_sum
-      real(dp) :: mixture_scale_factor
       if (sm%run_index <= 1) then
-! The relative mass fractions w_i of the ten metals are the controls'
-! mixture_weights_seed.
-      do i=1, n_mix_species
-         species_mix_weights(i)=s%physics%mixture_weights_seed(i)
-      end do
-
-! Surface: X_env = surface_hydrogen_fraction, Z_env = surface_metal_fraction,
-! X(He3) of the last shell, Y_env = 1 - X_env - Z_env - X(He3).
-      s%envelope_hydrogen_fraction = s%surface_hydrogen_fraction
-      s%envelope_metal_fraction = s%surface_metal_fraction
-      s%envelope_helium_fraction = 1.0d0 - s%envelope_hydrogen_fraction - &
-           s%envelope_metal_fraction - s%xa(i_he3,s%nz)
-      s%envelope_he3_fraction = s%xa(i_he3,s%nz)
-! S = sum of w_i over the ten metals (all but H and He).
-      mixture_weight_sum = species_mix_weights(ix_na)+species_mix_weights(ix_al)+ &
-           species_mix_weights(ix_mg)+species_mix_weights(ix_fe)+ &
-           species_mix_weights(ix_si)+species_mix_weights(ix_c)+ &
-           species_mix_weights(ix_o)+species_mix_weights(ix_n)+ &
-           species_mix_weights(ix_ar)+species_mix_weights(ix_ne)
-! Z outside C, N and O: envelope_metals_no_cno = Z_env (S - w_C - w_O - w_N)/S.
-      s%envelope_metals_no_cno = s%envelope_metal_fraction*(mixture_weight_sum - &
-           species_mix_weights(ix_c)-species_mix_weights(ix_o)- &
-           species_mix_weights(ix_n))/mixture_weight_sum
-! With f = Z_env/S, the metals' mass fractions are X_i = f w_i; H and He
-! get w = X_env/f and (1 - X_env - Z_env)/f, so that f w is their mass
-! fraction too. Then w_i becomes X_i/A_i, and
-!   envelope_inverse_atomic_weight = sum_i X_i/A_i,
-! the inverse mean atomic weight 1/mu_ion of the whole surface mixture.
-      mixture_scale_factor = s%envelope_metal_fraction/mixture_weight_sum
-      species_mix_weights(ix_h) = s%envelope_hydrogen_fraction/ &
-           mixture_scale_factor
-      species_mix_weights(ix_he) = (1.0d0-s%envelope_hydrogen_fraction- &
-           s%envelope_metal_fraction)/mixture_scale_factor
-      mixture_weight_sum = 0.0d0
-      do i = 1,n_mix_species
-       species_mix_weights(i) = mixture_scale_factor*species_mix_weights(i)/ &
-            atomic_weight(i)
-       mixture_weight_sum = mixture_weight_sum + species_mix_weights(i)
-      end do
-      s%envelope_inverse_atomic_weight = mixture_weight_sum
-      mixture_scale_factor = 1.0d0/s%envelope_inverse_atomic_weight
-! Number fractions of the elements, envelope_number_fractions(i) =
-! (X_i/A_i)/envelope_inverse_atomic_weight, which the EOS needs (DBG
-! 1/96): compute_blended_eos and compute_saha_eos (legacy EQSAHA).
-      do i = 1,n_mix_species
-       s%envelope_number_fractions(i) = species_mix_weights(i)*mixture_scale_factor
-      end do
+! Surface: X_env = surface_hydrogen_fraction, Z_env = surface_metal_fraction
+! and X(He3) of the last shell; from them and the controls' relative
+! metal mass fractions (mixture_weights_seed), Y_env, Z without C, N and
+! O, the inverse mean atomic weight and the number fractions
+! (model_rescaling's compute_envelope_mixture, which a later card's Z
+! rescale calls too).
+         s%envelope_hydrogen_fraction = s%surface_hydrogen_fraction
+         s%envelope_metal_fraction = s%surface_metal_fraction
+         s%envelope_he3_fraction = s%xa(i_he3,s%nz)
+         call compute_envelope_mixture(s%envelope_hydrogen_fraction, &
+              s%envelope_metal_fraction, s%envelope_he3_fraction, &
+              s%physics%mixture_weights_seed, s%envelope_helium_fraction, &
+              s%envelope_metals_no_cno, s%envelope_inverse_atomic_weight, &
+              s%envelope_number_fractions)
 ! Install the new mixture: convection's metals and the EOS mixture.
-      call install_surface_mixture_settings(s)
+         call install_surface_mixture_settings(s)
       end if
 ! Regenerate the surface opacity tables for the surface X (DBG 11/95).
       call install_surface_x_settings(s%envelope_hydrogen_fraction, ierr)

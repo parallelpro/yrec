@@ -426,7 +426,7 @@ core/envelope/envelope_integration_kernel.o: atm_lib.mod composition_layout.mod 
 core/envelope/envelope_rebuild.o: control_slots.mod core_messages.mod envelope_integration.mod envelope_integration_kernel.mod envelope_refit.mod math_lib.mod omega_profile.mod physical_constants.mod star_info_lib.mod
 core/envelope/envelope_refit.o: star_info_lib.mod
 core/main.o: run_driver.mod
-core/model/model_rescaling.o: control_slots.mod core_messages.mod math_lib.mod physical_constants.mod settings_install.mod shell_boundaries.mod star_info_lib.mod
+core/model/model_rescaling.o: composition_layout.mod control_slots.mod core_messages.mod math_lib.mod physical_constants.mod settings_install.mod shell_boundaries.mod star_info_lib.mod
 core/model/regridding.o: math_lib.mod numerics_lib.mod physical_constants.mod
 core/model/rezoning.o: am_regions.mod control_slots.mod convection_lib.mod core_messages.mod math_lib.mod moments_of_inertia.mod numerics_lib.mod omega_profile.mod physical_constants.mod regridding.mod rotating_shape.mod run_messages.mod settings_install.mod shell_physics.mod star_info_lib.mod
 core/model/shell_boundaries.o: control_slots.mod star_info_lib.mod
@@ -456,7 +456,7 @@ core/structure/surface_boundary.o: atm_lib.mod core_messages.mod envelope_integr
 core/test/test_envelope_integration.o: atm_lib.mod composition_layout.mod controls_reader.mod convection_lib.mod convection_settings_builder.mod envelope_integrands.mod envelope_integration_kernel.mod envelope_points.mod numerics_lib.mod physical_constants.mod run_files.mod run_setup.mod star_info_lib.mod
 core/test/test_henyey_elimination.o: henyey_elimination.mod numerics_lib.mod physical_constants.mod shell_equations.mod
 core/test/test_mass_change.o: composition_layout.mod mass_change_kernel.mod
-core/test/test_model_kernels.o: shell_boundaries.mod
+core/test/test_model_kernels.o: composition_layout.mod model_rescaling.mod shell_boundaries.mod
 core/test/test_reentry.o: run_driver.mod star_info_lib.mod
 core/test/test_regrid.o: math_lib.mod numerics_lib.mod physical_constants.mod regridding.mod
 core/test/test_run_contracts.o: calibration.mod control_slots.mod monte_carlo.mod physical_constants.mod run_files.mod run_messages.mod star_info_lib.mod yrec_capi.mod

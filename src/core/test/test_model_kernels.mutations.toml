@@ -1,6 +1,6 @@
 # Mutations of test_model_kernels: each check must print FAIL under a
-# mutation of the kernel it covers (find_shell_boundaries). Run, after
-# `make tests` in src/: python3 src/tools/mutate.py core --program
+# mutation of the kernel it covers (find_shell_boundaries,
+# compute_envelope_mixture). Run, after `make tests` in src/: python3 src/tools/mutate.py core --program
 # test_model_kernels (src/tools/mutate.py describes this format and the
 # verdicts).
 program = "test_model_kernels"
@@ -74,3 +74,47 @@ check = 'find_shell_boundaries: H shell ends where X is within 1e-5 of X_surf (3
 file = 'core/model/shell_boundaries.f90'
 old = 'hydrogen_surface_tol = 1.0e-5_dp'
 new = 'hydrogen_surface_tol = 1.0e-3_dp'
+
+[[mutation]]
+id = 'envelope_mixture-01'
+check = 'compute_envelope_mixture: Y = 1 - X - Z - X(He3)'
+file = 'core/model/model_rescaling.f90'
+old = 'y_env = 1.0d0 - x_env - z_env - he3_env'
+new = 'y_env = 1.0d0 - x_env - z_env'
+
+[[mutation]]
+id = 'envelope_mixture-02'
+check = 'compute_envelope_mixture: the number fractions sum to 1'
+file = 'core/model/model_rescaling.f90'
+old = 'number_fractions(i) = weights(i)*scale_factor'
+new = 'number_fractions(i) = weights(i)*scale_factor*1.001d0'
+
+[[mutation]]
+id = 'envelope_mixture-03'
+check = 'compute_envelope_mixture: X(H) and X(He) = 1 - X - Z back'
+file = 'core/model/model_rescaling.f90'
+old = 'weights(ix_he) = (1.0d0-x_env-z_env)/scale_factor'
+new = 'weights(ix_he) = (1.0d0-x_env-z_env-he3_env)/scale_factor'
+
+[[mutation]]
+id = 'envelope_mixture-04'
+check = 'compute_envelope_mixture: each metal Z w_i/S back'
+file = 'core/model/model_rescaling.f90'
+old = '''           weights(ix_ar)+weights(ix_ne)
+      metals_no_cno'''
+new = '''           weights(ix_ar)
+      metals_no_cno'''
+
+[[mutation]]
+id = 'envelope_mixture-05'
+check = 'compute_envelope_mixture: 1/mu_ion = sum X_i/A_i'
+file = 'core/model/model_rescaling.f90'
+old = 'inverse_atomic_weight = weight_sum'
+new = 'inverse_atomic_weight = weight_sum*1.001d0'
+
+[[mutation]]
+id = 'envelope_mixture-06'
+check = 'compute_envelope_mixture: Z without C, N, O = Z (S-wC-wN-wO)/S'
+file = 'core/model/model_rescaling.f90'
+old = 'weights(ix_c)-weights(ix_o)-'
+new = 'weights(ix_c)-'

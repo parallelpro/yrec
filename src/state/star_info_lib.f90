@@ -448,18 +448,22 @@ module star_info_lib
 ! setup (set_run_plan_envelope_z) first sets it from the run plan's
 ! rescale Z, before kap_init.
             real(dp) :: envelope_metal_fraction
-! surface Y = 1 - X - Z - X(He3) of the first card [-]; starting_model
+! surface Y = 1 - X - Z - X(He3) of the EOS mixture: the first card's, or
+! the last Z rescale's [-]; starting_model, model_rescaling
             real(dp) :: envelope_helium_fraction
 ! surface He3 of the first card [-]; starting_model
             real(dp) :: envelope_he3_fraction
-! the part of the first card's surface Z not in C, N and O, passed to
-! convection's settings (envelope_metals_no_cno) [-]; starting_model
+! the part of the surface Z not in C, N and O (the first card's, or the
+! last Z rescale's), passed to convection's settings
+! (envelope_metals_no_cno) [-]; starting_model, model_rescaling
             real(dp) :: envelope_metals_no_cno
-! inverse mean atomic weight of the surface mixture, sum X_i/A_i
-! [1/amu]; starting_model
+! inverse mean atomic weight of the surface mixture, sum X_i/A_i (the
+! first card's, or the last Z rescale's) [1/amu]; starting_model,
+! model_rescaling
             real(dp) :: envelope_inverse_atomic_weight
 ! number fractions of the 12 surface-mixture elements, slots ix_*, passed
-! to the EOS (eos_set_mixture) [-]; starting_model
+! to the EOS (eos_set_mixture; the first card's, or the last Z
+! rescale's) [-]; starting_model, model_rescaling
             real(dp) :: envelope_number_fractions(n_mix_species)
 ! the solar calibration has converged [logical]; calibration
             logical :: solar_calibration_converged
