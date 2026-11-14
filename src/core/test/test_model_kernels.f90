@@ -13,13 +13,20 @@
 !   fractions sum to 1; the mass fractions they give back (n_i A_i/
 !   sum n_j A_j) are X for H, 1 - X - Z for He and Z w_i/S for each
 !   metal (relative 1e-13); 1/mu_ion is sum X_i/A_i of those mass
-!   fractions; Z without C, N and O is Z (S - w_C - w_N - w_O)/S.
+!   fractions; Z without C, N and O is Z (S - w_C - w_N - w_O)/S;
+!   step/convection_geometry's mixed_base_mass and mixed_base_fraction (the
+!   Li/Be burn's mixed-region base, O9) on 40 zones with m(k) ~ k^2 and
+!   rezoning's dm: the region above the base holds sum dm(k..n) + f (m(k) -
+!   m(k-1)); the fraction comes back from the base's mass (1e-12); a base a
+!   zone away clips to 0.5 or -0.5; no base, or the first or last zone,
+!   gives 0.
 ! (regridding's kernels have test_regrid.)
 ! Prints one line per check and exits with status 1 when one fails.
 program test_model_kernels
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use shell_boundaries, only: find_shell_boundaries
       use model_rescaling, only: compute_envelope_mixture
+      use convection_geometry, only: mixed_base_mass, mixed_base_fraction
       use composition_layout, only: n_mix_species, ix_h, ix_he, ix_c, ix_n, ix_o
       implicit none
       integer, parameter :: n = 40
@@ -36,6 +43,9 @@ program test_model_kernels
            mass_back(n_mix_species), y_env, metals_no_cno, inverse_atomic_weight, &
            metal_sum
       integer :: k
+! the mixed-region base's case: zone-centre masses m(k) ~ k^2 (g) and the
+! shell masses as rezoning sets them
+      real(dp) :: zone_mass(n), shell_mass(n), base_mass, region_mass
 
 ! The zones: radiative throughout; a convective core of 10 points; a
 ! surface convection zone from point 31; fully convective.
@@ -122,6 +132,30 @@ program test_model_kernels
       call model_kernel_check('compute_envelope_mixture: Z without C, N, O = Z (S-wC-wN-wO)/S', &
            abs(metals_no_cno/(z_env*(metal_sum - seed(ix_c) - seed(ix_n) - seed(ix_o))/metal_sum) &
            - 1.0_dp) < mixture_tol)
+
+! mixed_base_mass and mixed_base_fraction: 40 zones, m(k) = 1e30 k^2 g.
+      zone_mass = [(1.0e30_dp*real(i*i, dp), i = 1, n)]
+      shell_mass(1) = 0.5_dp*(zone_mass(1) + zone_mass(2))
+      shell_mass(2:n-1) = 0.5_dp*(zone_mass(3:n) - zone_mass(1:n-2))
+      shell_mass(n) = 1.0e30_dp*real(n*n + n, dp) - 0.5_dp*(zone_mass(n) + zone_mass(n-1))
+      base_mass = mixed_base_mass(zone_mass, shell_mass, 25, 0.3_dp, n)
+      region_mass = sum(shell_mass) - base_mass
+      call model_kernel_check('mixed_base_mass: the region holds sum dm(k..n) + f (m(k) - m(k-1))', &
+           abs(region_mass/(sum(shell_mass(25:n)) + 0.3_dp*(zone_mass(25) - zone_mass(24))) &
+           - 1.0_dp) < 1.0e-13_dp)
+      call model_kernel_check('mixed_base_fraction: f back from the base mass (0.3, -0.2)', &
+           abs(mixed_base_fraction(zone_mass, shell_mass, 25, base_mass, n) - 0.3_dp) < 1.0e-12_dp &
+           .and. abs(mixed_base_fraction(zone_mass, shell_mass, 25, &
+           mixed_base_mass(zone_mass, shell_mass, 25, -0.2_dp, n), n) + 0.2_dp) < 1.0e-12_dp)
+      call model_kernel_check('mixed_base_fraction: a base a zone away clips to 0.5, -0.5', &
+           mixed_base_fraction(zone_mass, shell_mass, 25, &
+           mixed_base_mass(zone_mass, shell_mass, 24, 0.0_dp, n), n) == 0.5_dp .and. &
+           mixed_base_fraction(zone_mass, shell_mass, 25, &
+           mixed_base_mass(zone_mass, shell_mass, 26, 0.0_dp, n), n) == -0.5_dp)
+      call model_kernel_check('mixed_base_fraction: 0 with no base, at zone 1 or zone n', &
+           mixed_base_fraction(zone_mass, shell_mass, 25, 0.0_dp, n) == 0.0_dp .and. &
+           mixed_base_fraction(zone_mass, shell_mass, 1, base_mass, n) == 0.0_dp .and. &
+           mixed_base_fraction(zone_mass, shell_mass, n, base_mass, n) == 0.0_dp)
 
       if (num_failed > 0) then
          write(*,'(a,i0,a)') 'test_model_kernels: ', num_failed, ' checks FAIL'

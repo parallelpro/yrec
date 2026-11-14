@@ -456,7 +456,7 @@ core/structure/surface_boundary.o: atm_lib.mod core_messages.mod envelope_integr
 core/test/test_envelope_integration.o: atm_lib.mod composition_layout.mod controls_reader.mod convection_lib.mod convection_settings_builder.mod envelope_integrands.mod envelope_integration.mod envelope_integration_kernel.mod envelope_points.mod model_rescaling.mod numerics_lib.mod physical_constants.mod run_files.mod run_setup.mod settings_install.mod star_info_lib.mod
 core/test/test_henyey_elimination.o: henyey_elimination.mod numerics_lib.mod physical_constants.mod shell_equations.mod
 core/test/test_mass_change.o: composition_layout.mod mass_change_kernel.mod
-core/test/test_model_kernels.o: composition_layout.mod model_rescaling.mod shell_boundaries.mod
+core/test/test_model_kernels.o: composition_layout.mod convection_geometry.mod model_rescaling.mod shell_boundaries.mod
 core/test/test_reentry.o: run_driver.mod star_info_lib.mod
 core/test/test_regrid.o: math_lib.mod numerics_lib.mod physical_constants.mod regridding.mod
 core/test/test_run_contracts.o: calibration.mod control_slots.mod monte_carlo.mod physical_constants.mod run_files.mod run_messages.mod star_info_lib.mod yrec_capi.mod

@@ -360,12 +360,12 @@ end subroutine check_model_against_controls
 ! Reset the store and trial-sign flags, require a fresh envelope, take
 ! the surface X and Z from the outermost interior point, start the
 ! disk-locking tests' age at the model's, and clear the start-of-step
-! deuterium burning rates.
+! deuterium burning rates and the base the last Li/Be burn left.
 !   star reads: age_gyr, nz, xa
 !   star writes: deuterium_burning_rate_start, disk_gate_age_gyr,
-!     recompute_envelope_triangle, stored_vertex_index,
-!     surface_hydrogen_fraction, surface_metal_fraction,
-!     triangle_orientation
+!     li_be_mixed_base_mass, recompute_envelope_triangle,
+!     stored_vertex_index, surface_hydrogen_fraction,
+!     surface_metal_fraction, triangle_orientation
 subroutine reset_state_after_read(s)
       type(star_info), intent(inout) :: s
       s%stored_vertex_index = 0
@@ -388,6 +388,9 @@ subroutine reset_state_after_read(s)
 ! burn_deuterium averages them over a mixed region that may span it;
 ! M176).
       s%deuterium_burning_rate_start = 0.0d0
+! Nor with the previous card's Li/Be mixed-region base (O9): its first
+! burn takes the whole start zone.
+      s%li_be_mixed_base_mass = 0.0d0
 end subroutine reset_state_after_read
 
 

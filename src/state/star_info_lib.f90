@@ -911,6 +911,12 @@ module star_info_lib
 ! physics%use_extended_composition; zeroed at each step start to mean none
 ! yet.
             real(dp) :: cz_base_radius_last_call
+! mass coordinate of the base of the surface mixed region where the last
+! Li/Be burn left it (its end-of-step base, with the edge's fraction of
+! its zone), the start of the next burn's region [g]; burn_step,
+! starting_model. With physics%use_extended_composition; 0 means none
+! (a model just read).
+            real(dp) :: li_be_mixed_base_mass
 ! mass accreted during the step [g]; mass_change. Set only when the star
 ! accretes; its readers check that it does.
             real(dp) :: accreted_mass
