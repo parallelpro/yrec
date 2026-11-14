@@ -43,10 +43,10 @@ new = '           dt_factor = max_change(3)/set%timestep_factors(itime_dp)'
 
 [[mutation]]
 id = 'timestep-06'
-check = 'structure: f = (dL/mean L)/(2.3026 atime(dl))'
+check = 'structure: f = (dL/mean L)/(ln 10 atime(dl))'
 file = 'core/step/timestep_limits.f90'
-old = 'ln10_ptime = 2.3026d0'
-new = 'ln10_ptime = 2.0d0'
+old = '           dt_factor = max_change(4)/(set%timestep_factors(itime_dl)*ln10)'
+new = '           dt_factor = max_change(4)/(set%timestep_factors(itime_dl)*2.3026d0)'
 
 [[mutation]]
 id = 'timestep-07'

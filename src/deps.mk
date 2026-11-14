@@ -446,7 +446,7 @@ core/step/mass_change_kernel.o: composition_layout.mod math_lib.mod
 core/step/shell_physics.o: convection_lib.mod eos_lib.mod kap_lib.mod math_lib.mod star_info_lib.mod viscosity.mod
 core/step/step_driver.o: burn_step.mod composition_step.mod convection_lib.mod core_messages.mod envelope_rebuild.mod evolve_rotation.mod henyey_iteration.mod mass_change.mod math_lib.mod observables.mod physical_constants.mod rezoning.mod rotating_shape.mod shell_boundaries.mod star_info_lib.mod starting_model.mod stitched_model.mod stop_conditions.mod timestep_control.mod turnover_timescale.mod yrec_output.mod
 core/step/timestep_control.o: burn_step.mod core_messages.mod net_lib.mod physical_constants.mod star_info_lib.mod timestep_limits.mod
-core/step/timestep_limits.o: composition_layout.mod control_slots.mod math_lib.mod net_lib.mod
+core/step/timestep_limits.o: composition_layout.mod control_slots.mod math_lib.mod net_lib.mod physical_constants.mod
 core/structure/energy_sources.o: composition_layout.mod core_messages.mod
 core/structure/henyey_elimination.o: numerics_lib.mod physical_constants.mod shell_equations.mod star_info_lib.mod
 core/structure/henyey_iteration.o: core_messages.mod energy_sources.mod henyey_elimination.mod math_lib.mod omega_profile.mod physical_constants.mod rotating_shape.mod run_messages.mod star_info_lib.mod structure_equations.mod surface_boundary.mod

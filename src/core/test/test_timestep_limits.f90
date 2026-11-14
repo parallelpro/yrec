@@ -168,14 +168,14 @@ subroutine check_structure()
       l(3) = l0(3)*1.25_dp
       dt = structure_dt(dt_prev)
       expected = dt_prev/(abs((l0(3) - l(3))*2.0_dp/(l(3) + l(2)))/ &
-           (set%timestep_factors(itime_dl)*2.3026_dp))
-      call report('structure: f = (dL/mean L)/(2.3026 atime(dl))', relerr(dt, expected), &
+           (set%timestep_factors(itime_dl)*log(10.0_dp)))
+      call report('structure: f = (dL/mean L)/(ln 10 atime(dl))', relerr(dt, expected), &
            relerr(dt, expected) <= 1.0e-14_dp)
       call reset_structure()
       l(1) = l0(1)*2.0_dp
       dt = structure_dt(dt_prev)
       expected = dt_prev/(abs((l0(1) - l(1))*2.0_dp/(l(2) + l(1)))/ &
-           (set%timestep_factors(itime_dl)*2.3026_dp))
+           (set%timestep_factors(itime_dl)*log(10.0_dp)))
       call report('structure: the centre''s L against L(2)', relerr(dt, expected), &
            relerr(dt, expected) <= 1.0e-14_dp)
       call reset_structure()

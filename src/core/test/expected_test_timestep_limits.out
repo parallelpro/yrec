@@ -5,7 +5,7 @@ structure: nothing changed -> the previous dt                  0.0E+00  ok
 structure: f = dlog P/atime(dp)                                0.0E+00  ok
 structure: f = dlog T/atime(dt), the largest change            0.0E+00  ok
 structure: f = dlog R/atime(dr)                                0.0E+00  ok
-structure: f = (dL/mean L)/(2.3026 atime(dl))                  0.0E+00  ok
+structure: f = (dL/mean L)/(ln 10 atime(dl))                   0.0E+00  ok
 structure: the centre's L against L(2)                         0.0E+00  ok
 structure: f clipped to a                                      0.0E+00  ok
 structure: f clipped to 1/a                                    0.0E+00  ok
