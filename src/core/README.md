@@ -140,7 +140,7 @@ Build the programs with `make tests` in `src/`, then run each root `test_*.py` w
 
 Every deck runs core, so the deck pins are its integration test: the 35 pinned run logs (`*/standard/`) that `src/tools/compare_decks.py --set all` and `test_all.py` compare, and `test_mesa_baselines.py`'s two MESA-format baselines. No pinned deck calibrates to a target star, rescales a horizontal-branch model or writes the neutrino table; check a change there by running such a deck against the previous commit's binary.
 
-Each check of the nine programs with a manifest was confirmed to fail under a mutation of the code it covers: the manifests `core/test/<program>.mutations.toml` hold 159 mutations, and `python3 src/tools/mutate.py core` (after `make tests` in `src/`) reported all 159 caught on 2026-11-13 (test_envelope_integration 29, test_henyey_elimination 15, test_mass_change 12, test_model_kernels 9, test_regrid 19, test_run_contracts 17, test_structure 10, test_timestep_limits 33, test_triangle_fit 15).
+Each check of the nine programs with a manifest was confirmed to fail under a mutation of the code it covers: the manifests `core/test/<program>.mutations.toml` hold 172 mutations, and `python3 src/tools/mutate.py core` (after `make tests` in `src/`) reported all 172 caught on 2026-11-14 (test_envelope_integration 31, test_henyey_elimination 15, test_mass_change 12, test_model_kernels 15, test_regrid 19, test_run_contracts 22, test_structure 10, test_timestep_limits 33, test_triangle_fit 15).
 
 Under the development flags (`make devel_tests`, `python3 src/tools/devel_tests.py`) the programs run clean: `devel_tests.py`'s `KNOWN_FAILURES` is empty (it held `test_structure`'s three cases and `test_run_contracts` until O4's fix, `docs/bug_sweep.md`).
 

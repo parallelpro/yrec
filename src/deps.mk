@@ -453,7 +453,7 @@ core/structure/henyey_iteration.o: core_messages.mod energy_sources.mod henyey_e
 core/structure/shell_equations.o: composition_layout.mod convection_lib.mod energy_sources.mod eos_lib.mod kap_lib.mod math_lib.mod net_lib.mod physical_constants.mod
 core/structure/structure_equations.o: core_messages.mod eos_lib.mod henyey_elimination.mod kap_lib.mod math_lib.mod net_lib.mod physical_constants.mod shell_equations.mod star_info_lib.mod
 core/structure/surface_boundary.o: atm_lib.mod core_messages.mod envelope_integration.mod math_lib.mod physical_constants.mod run_messages.mod star_info_lib.mod triangle_fit.mod
-core/test/test_envelope_integration.o: atm_lib.mod composition_layout.mod controls_reader.mod convection_lib.mod convection_settings_builder.mod envelope_integrands.mod envelope_integration_kernel.mod envelope_points.mod numerics_lib.mod physical_constants.mod run_files.mod run_setup.mod star_info_lib.mod
+core/test/test_envelope_integration.o: atm_lib.mod composition_layout.mod controls_reader.mod convection_lib.mod convection_settings_builder.mod envelope_integrands.mod envelope_integration_kernel.mod envelope_points.mod model_rescaling.mod numerics_lib.mod physical_constants.mod run_files.mod run_setup.mod settings_install.mod star_info_lib.mod
 core/test/test_henyey_elimination.o: henyey_elimination.mod numerics_lib.mod physical_constants.mod shell_equations.mod
 core/test/test_mass_change.o: composition_layout.mod mass_change_kernel.mod
 core/test/test_model_kernels.o: composition_layout.mod model_rescaling.mod shell_boundaries.mod

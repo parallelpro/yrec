@@ -88,6 +88,8 @@ program test_envelope_integration
       use numerics_lib, only: numerics_bad_input, numerics_step_underflow, &
            numerics_derivatives_failed
       use physical_constants, only: ln10, cgl, c4pil, csigl
+      use model_rescaling, only: compute_envelope_mixture
+      use settings_install, only: install_surface_mixture_settings
       implicit none
 ! the test's star (star_info_lib declares no instance); static, as it
 ! is too large for the stack
@@ -189,6 +191,18 @@ subroutine set_surface()
       composition(i_h1) = x_surface
       composition(i_metals) = z_surface
       composition(i_he4) = 1.0_dp - x_surface - z_surface
+! The envelope's mixture for the EOS, as a run's first model read installs
+! it (update_surface_mixture): without it the EOS works from the run
+! plan's unset mixture, where the Saha solver does not converge (an
+! error since M293).
+      star%envelope_hydrogen_fraction = x_surface
+      star%envelope_metal_fraction = z_surface
+      star%envelope_he3_fraction = 0.0_dp
+      call compute_envelope_mixture(x_surface, z_surface, 0.0_dp, &
+           star%physics%mixture_weights_seed, star%envelope_helium_fraction, &
+           star%envelope_metals_no_cno, star%envelope_inverse_atomic_weight, &
+           star%envelope_number_fractions)
+      call install_surface_mixture_settings(star)
       base_cfg%atm_choice = atm_eddington_gray
       base_cfg%atm_step_begin = star%physics%atm_step_begin
       base_cfg%atm_step_min = star%physics%atm_step_min
