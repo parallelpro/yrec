@@ -121,7 +121,7 @@ subroutine turnover_from_interior_new(s, shell_mass, convective_flag, log10_radi
      adiabatic_gradient, radius_at_bcz, ierr)
       use math_lib
       use numerics_lib, only: natural_spline, splint, numerics_status_text
-      use core_messages, only: core_log, message_length, unwritten_line
+      use core_messages, only: core_log, core_report, message_length, unwritten_line
       use convection_geometry, only: cz_base_fraction
       use physical_constants, only: ln10
       use star_info_lib, only: json
@@ -384,8 +384,10 @@ subroutine time_scale_height_above_base()
                call splint(spline_x_delta, spline_y_velocity, 4, spline_deriv,0.0d0,convective_velocity_bcz, ierr)
                if (ierr /= 0) then
                   lines = unwritten_line
-                  write(lines,*) 'splint: '//numerics_status_text(ierr)
-                  call core_log(lines)
+                  write(lines,'(a)') ' ERROR: turnover time: the spline of the convective' &
+                       //' velocity at the convection-zone base failed: ' &
+                       //trim(numerics_status_text(ierr))
+                  call core_report(lines)
                   return
                end if
                spline_y_pscale(1) = exp(ln10*(log10_pressure(kk-2)-log10_density(kk-2)))/local_gravity(kk-2)
@@ -396,8 +398,9 @@ subroutine time_scale_height_above_base()
                call splint(spline_x_delta, spline_y_pscale, 4, spline_deriv,0.0d0,pressure_scale_height, ierr)
                if (ierr /= 0) then
                   lines = unwritten_line
-                  write(lines,*) 'splint: '//numerics_status_text(ierr)
-                  call core_log(lines)
+                  write(lines,'(a)') ' ERROR: turnover time: the spline of H_P at the' &
+                       //' convection-zone base failed: '//trim(numerics_status_text(ierr))
+                  call core_report(lines)
                   return
                end if
 ! tau = H_p/v_c.
@@ -456,8 +459,9 @@ subroutine time_bottom_cell_crossing()
       call splint(spline_x_radius, spline_y_velocity, 4, spline_deriv,radius_test,convective_velocity_bcz, ierr)
       if (ierr /= 0) then
          lines = unwritten_line
-         write(lines,*) 'splint: '//numerics_status_text(ierr)
-         call core_log(lines)
+         write(lines,'(a)') ' ERROR: turnover time: the spline of the convective velocity' &
+              //' at the convection-zone base failed: '//trim(numerics_status_text(ierr))
+         call core_report(lines)
          return
       end if
 ! tau = width/v_c.

@@ -29,7 +29,7 @@ module stop_conditions
       use calibration, only: check_star_calibration
       use run_cards, only: card_rescale
       use star_info_lib, only: i_h1, i_h2, i_he4, star_info
-      use core_messages, only: core_stdout, core_stdout_and_log, message_length, unwritten_line
+      use core_messages, only: core_report, core_terminal, message_length, unwritten_line
       use math_lib
       implicit none
       private
@@ -62,12 +62,11 @@ subroutine check_rotation_initialised(s, ierr)
       integer, intent(inout) :: ierr
       character(len=message_length) :: lines(1)
       if ((s%omega(1) == 0) .and. (s%physics%rotation_active)) then
-1611      format('LROT set to TRUE, but OMEGA(1) = 0. Stopping.', &
-                 ' Initialize rotation rates or set LROT to', &
-                 ' FALSE.')
           lines = unwritten_line
-          write(lines,1611)
-          call core_stdout(lines)
+          lines(1) = ' ERROR: rotation_active is on but the model''s central omega is 0:' &
+               //' set set_initial_omega and initial_omega, or turn rotation_active off;' &
+               //' run stopped'
+          call core_report(lines)
           ierr = 1
       end if
 end subroutine check_rotation_initialised
@@ -113,7 +112,7 @@ logical function converged_model_is_nan(s)
       if (converged_model_is_nan) then
          lines = unwritten_line
          write(lines,10) trim(what), s%model_number + 1
-         call core_stdout_and_log(lines)
+         call core_report(lines)
          s%termination_reason = 'NaN in '//trim(what)
       end if
    10 format(1x,'ERROR: NaN in ',a,' after model ',i0,' converged; stopping')
@@ -216,7 +215,7 @@ logical function structure_limit_stop_triggered(s)
             lines = unwritten_line
             write(lines,10) trim(qname(k)), qval(k), 'above', &
                  trim(qname(k))//'_upper_limit', qup(k)
-            call core_stdout_and_log(lines)
+            call core_report(lines)
             s%termination_reason = &
                  trim(qname(k))//' above '//trim(qname(k))//'_upper_limit'
             structure_limit_stop_triggered = .true.
@@ -224,7 +223,7 @@ logical function structure_limit_stop_triggered(s)
             lines = unwritten_line
             write(lines,10) trim(qname(k)), qval(k), 'below', &
                  trim(qname(k))//'_lower_limit', qlo(k)
-            call core_stdout_and_log(lines)
+            call core_report(lines)
             s%termination_reason = &
                  trim(qname(k))//' below '//trim(qname(k))//'_lower_limit'
             structure_limit_stop_triggered = .true.
@@ -268,7 +267,7 @@ logical function abundance_stop_triggered(s)
             write(lines,'(A,E12.4,A,E12.4)') 'CENTRAL '//stop_letter(k)//' ', &
                  s%xa(stop_species(k),1), ' BELOW STOP VALUE ', &
                  stop_value(s, k,nk)
-            call core_stdout(lines)
+            call core_terminal(lines)
             s%termination_reason = &
                  'central '//stop_letter(k)//' below stop value'
             abundance_stop_triggered = .true.
@@ -302,7 +301,7 @@ subroutine init_stop_conditions(s)
             write(lines,'(A,E12.4,A,E12.4,A)') 'STARTING '//stop_letter(k)//' ', &
                  s%xa(stop_species(k),1), ' BELOW STOP VALUE ', &
                  stop_value(s, k,nk), ' STOP DISABLED.'
-            call core_stdout_and_log(lines)
+            call core_report(lines)
          end if
       end do
 end subroutine init_stop_conditions

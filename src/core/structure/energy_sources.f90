@@ -40,7 +40,7 @@
 module energy_sources
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use composition_layout, only: n_species_extended
-      use core_messages, only: core_stdout, message_length, unwritten_line
+      use core_messages, only: core_report, message_length, unwritten_line
       implicit none
       private
       public :: energy_point, energy_source_eval, max_energy_sources, &
@@ -96,16 +96,16 @@ subroutine add_energy_source(name, eval, ierr)
       lines = unwritten_line
       do i = 1, num_sources
          if (sources(i)%name == name) then
-            lines(1) = 'add_energy_source: '//trim(name)//' is already registered'
-            call core_stdout(lines)
+            lines(1) = 'ERROR: energy sources: '//trim(name)//' is already registered'
+            call core_report(lines)
             ierr = 1
             return
          end if
       end do
       if (num_sources >= max_energy_sources) then
-         write(lines,'(a,i0,a)') 'add_energy_source: no room for ', &
+         write(lines,'(a,i0,a)') 'ERROR: energy sources: no room for ', &
               max_energy_sources + 1, ' sources'
-         call core_stdout(lines)
+         call core_report(lines)
          ierr = 1
          return
       end if
@@ -158,8 +158,8 @@ subroutine evaluate_energy_sources(pt, eps, deps_dlnrho, deps_dlnt, ierr)
          call sources(i)%eval(pt, e, de_drho, de_dt, ierr)
          if (ierr /= 0) then
             lines = unwritten_line
-            lines(1) = 'energy source '//trim(sources(i)%name)//' failed'
-            call core_stdout(lines)
+            lines(1) = 'ERROR: energy sources: '//trim(sources(i)%name)//' failed'
+            call core_report(lines)
             return
          end if
          eps = eps + e

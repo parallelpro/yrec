@@ -1,6 +1,7 @@
 # Mutations of test_model_kernels: each check must print FAIL under a
 # mutation of the kernel it covers (find_shell_boundaries,
-# compute_envelope_mixture). Run, after `make tests` in src/: python3 src/tools/mutate.py core --program
+# compute_envelope_mixture, and step/convection_geometry's
+# mixed_base_mass and mixed_base_fraction). Run, after `make tests` in src/: python3 src/tools/mutate.py core --program
 # test_model_kernels (src/tools/mutate.py describes this format and the
 # verdicts).
 program = "test_model_kernels"
@@ -118,3 +119,35 @@ check = 'compute_envelope_mixture: Z without C, N, O = Z (S-wC-wN-wO)/S'
 file = 'core/model/model_rescaling.f90'
 old = 'weights(ix_c)-weights(ix_o)-'
 new = 'weights(ix_c)-'
+
+[[mutation]]
+id = 'mixed_base-01'
+check = 'mixed_base_mass: the region holds sum dm(k..n) + f (m(k) - m(k-1))'
+file = 'core/step/convection_geometry.f90'
+old = '''
+      if (base_zone > 1 .and. base_zone < num_zones) base_mass = base_mass - &'''
+new = '''
+      if (base_zone > 1 .and. base_zone < num_zones) base_mass = base_mass + &'''
+
+[[mutation]]
+id = 'mixed_base-02'
+check = 'mixed_base_fraction: a base a zone away clips to 0.5, -0.5'
+file = 'core/step/convection_geometry.f90'
+old = 'base_frac = min(0.5d0, max(-0.5d0, base_frac))'
+new = 'base_frac = min(1.5d0, max(-1.5d0, base_frac))'
+
+[[mutation]]
+id = 'mixed_base-03'
+check = 'mixed_base_fraction: 0 with no base, at zone 1 or zone n'
+file = 'core/step/convection_geometry.f90'
+old = 'if (base_mass <= 0.0d0 .or. base_zone <= 1 .or. base_zone >= num_zones) return'
+new = 'if (base_zone <= 1 .or. base_zone >= num_zones) return'
+
+[[mutation]]
+id = 'mixed_base-04'
+check = 'mixed_base_fraction: f back from the base mass (0.3, -0.2)'
+file = 'core/step/convection_geometry.f90'
+old = '''
+           num_zones) - base_mass)/(mass_coordinate(base_zone) - mass_coordinate(base_zone-1))'''
+new = '''
+           num_zones) - base_mass)/(mass_coordinate(base_zone+1) - mass_coordinate(base_zone-1))'''

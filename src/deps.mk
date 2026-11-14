@@ -421,7 +421,7 @@ core/diagnostics/observables.o: convection_geometry.mod energy_sources.mod eos_l
 core/diagnostics/stitched_model.o: core_messages.mod envelope_integration.mod math_lib.mod output_columns.mod physical_constants.mod star_info_lib.mod
 core/diagnostics/turnover_timescale.o: convection_geometry.mod core_messages.mod math_lib.mod numerics_lib.mod physical_constants.mod star_info_lib.mod stitched_model.mod
 core/envelope/envelope_integrands.o: atm_lib.mod convection_lib.mod envelope_points.mod eos_lib.mod kap_lib.mod math_lib.mod physical_constants.mod
-core/envelope/envelope_integration.o: atm_lib.mod core_messages.mod envelope_integration_kernel.mod math_lib.mod numerics_lib.mod physical_constants.mod run_messages.mod star_info_lib.mod
+core/envelope/envelope_integration.o: atm_lib.mod core_messages.mod envelope_integration_kernel.mod envelope_points.mod math_lib.mod numerics_lib.mod physical_constants.mod run_messages.mod star_info_lib.mod
 core/envelope/envelope_integration_kernel.o: atm_lib.mod composition_layout.mod envelope_integrands.mod envelope_points.mod eos_lib.mod kap_lib.mod math_lib.mod numerics_lib.mod physical_constants.mod
 core/envelope/envelope_rebuild.o: control_slots.mod core_messages.mod envelope_integration.mod envelope_integration_kernel.mod envelope_refit.mod math_lib.mod omega_profile.mod physical_constants.mod star_info_lib.mod
 core/envelope/envelope_refit.o: star_info_lib.mod
@@ -441,22 +441,22 @@ core/run/yrec_reset.o: run_files.mod run_messages.mod star_info_lib.mod
 core/step/burn_step.o: convection_geometry.mod math_lib.mod net_lib.mod physical_constants.mod run_messages.mod star_info_lib.mod
 core/step/composition_step.o: burn_step.mod convection_lib.mod core_messages.mod element_diffusion_lib.mod math_lib.mod net_lib.mod physical_constants.mod run_messages.mod star_info_lib.mod
 core/step/convection_geometry.o: math_lib.mod physical_constants.mod star_info_lib.mod
-core/step/mass_change.o: atm_lib.mod core_messages.mod eos_lib.mod mass_change_kernel.mod math_lib.mod physical_constants.mod run_messages.mod star_info_lib.mod
+core/step/mass_change.o: atm_lib.mod core_messages.mod envelope_integration.mod eos_lib.mod mass_change_kernel.mod math_lib.mod physical_constants.mod run_messages.mod star_info_lib.mod
 core/step/mass_change_kernel.o: composition_layout.mod math_lib.mod
 core/step/shell_physics.o: convection_lib.mod eos_lib.mod kap_lib.mod math_lib.mod star_info_lib.mod viscosity.mod
 core/step/step_driver.o: burn_step.mod composition_step.mod convection_lib.mod core_messages.mod envelope_rebuild.mod evolve_rotation.mod henyey_iteration.mod mass_change.mod math_lib.mod observables.mod physical_constants.mod rezoning.mod rotating_shape.mod shell_boundaries.mod star_info_lib.mod starting_model.mod stitched_model.mod stop_conditions.mod timestep_control.mod turnover_timescale.mod yrec_output.mod
 core/step/timestep_control.o: burn_step.mod core_messages.mod net_lib.mod physical_constants.mod star_info_lib.mod timestep_limits.mod
-core/step/timestep_limits.o: composition_layout.mod control_slots.mod math_lib.mod net_lib.mod
+core/step/timestep_limits.o: composition_layout.mod control_slots.mod math_lib.mod net_lib.mod physical_constants.mod
 core/structure/energy_sources.o: composition_layout.mod core_messages.mod
 core/structure/henyey_elimination.o: numerics_lib.mod physical_constants.mod shell_equations.mod star_info_lib.mod
 core/structure/henyey_iteration.o: core_messages.mod energy_sources.mod henyey_elimination.mod math_lib.mod omega_profile.mod physical_constants.mod rotating_shape.mod run_messages.mod star_info_lib.mod structure_equations.mod surface_boundary.mod
 core/structure/shell_equations.o: composition_layout.mod convection_lib.mod energy_sources.mod eos_lib.mod kap_lib.mod math_lib.mod net_lib.mod physical_constants.mod
 core/structure/structure_equations.o: core_messages.mod eos_lib.mod henyey_elimination.mod kap_lib.mod math_lib.mod net_lib.mod physical_constants.mod shell_equations.mod star_info_lib.mod
 core/structure/surface_boundary.o: atm_lib.mod core_messages.mod envelope_integration.mod math_lib.mod physical_constants.mod run_messages.mod star_info_lib.mod triangle_fit.mod
-core/test/test_envelope_integration.o: atm_lib.mod composition_layout.mod controls_reader.mod convection_lib.mod convection_settings_builder.mod envelope_integrands.mod envelope_integration_kernel.mod envelope_points.mod model_rescaling.mod numerics_lib.mod physical_constants.mod run_files.mod run_setup.mod settings_install.mod star_info_lib.mod
+core/test/test_envelope_integration.o: atm_lib.mod composition_layout.mod controls_reader.mod convection_lib.mod convection_settings_builder.mod envelope_integrands.mod envelope_integration.mod envelope_integration_kernel.mod envelope_points.mod model_rescaling.mod numerics_lib.mod physical_constants.mod run_files.mod run_setup.mod settings_install.mod star_info_lib.mod
 core/test/test_henyey_elimination.o: henyey_elimination.mod numerics_lib.mod physical_constants.mod shell_equations.mod
 core/test/test_mass_change.o: composition_layout.mod mass_change_kernel.mod
-core/test/test_model_kernels.o: composition_layout.mod model_rescaling.mod shell_boundaries.mod
+core/test/test_model_kernels.o: composition_layout.mod convection_geometry.mod model_rescaling.mod shell_boundaries.mod
 core/test/test_reentry.o: run_driver.mod star_info_lib.mod
 core/test/test_regrid.o: math_lib.mod numerics_lib.mod physical_constants.mod regridding.mod
 core/test/test_run_contracts.o: calibration.mod control_slots.mod monte_carlo.mod physical_constants.mod run_files.mod run_messages.mod star_info_lib.mod yrec_capi.mod

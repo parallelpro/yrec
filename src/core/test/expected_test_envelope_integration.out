@@ -22,7 +22,7 @@ thin: ierr = 0, no envelope points                           0.0E+00  ok
 thin: vertex = the surface point                             0.0E+00  ok
 -- retry
 retry: an envint_start_retry event first                     1.0E+00  ok
-retry: its start lies past the photosphere                   6.2E+00  ok
+retry: its start lies past the photosphere                   8.4E+00  ok
 retry: then the integration succeeds                         0.0E+00  ok
 -- errors
 atmosphere maxstp: ierr = 1, its event last                  1.0E+00  ok
@@ -36,4 +36,9 @@ step underflow: the event holds bsstep's status              4.0E+00  ok
 kap_get: log T = 9.497055 is outside the OPAL 1995 tables (log T 3.75 to 8.70)
 derivatives failure in a step: ierr > 0 (an error)           1.0E+00  ok
 derivatives failure in a step: the event holds the code      1.0E+00  ok
+-- gray photosphere
+gray photosphere: ierr = 0                                   0.0E+00  ok
+gray photosphere: log P = the kernel's                       0.0E+00  ok
+gray photosphere: T = Teff                                   1.6E-11  ok
+gray photosphere: the star's atmosphere untouched            0.0E+00  ok
 test_envelope_integration: done

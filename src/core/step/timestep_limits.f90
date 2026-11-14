@@ -25,6 +25,7 @@ module timestep_limits
            itime_dx_total, itime_dx_shell, itime_dt, itime_dp, itime_dr, &
            itime_dl, itime_dy_shell, itime_max_dt_frac, itime_dy_total
       use composition_layout, only: i_h1, i_he4, i_metals
+      use physical_constants, only: ln10
       implicit none
       private
       public :: timestep_settings, structure_change_limit, omega_change_limit, &
@@ -52,10 +53,6 @@ module timestep_limits
       real(dp), parameter :: flash_log_central_density = 5.0d0
       real(dp), parameter :: flash_energy_per_gram = 1.0d15
       real(dp), parameter :: min_triple_alpha_rate = 1.0d-22
-! ln 10 as the legacy ptime wrote it (four digits; physical_constants'
-! ln10 differs by 7e-6 relative, which would move the structure limit:
-! a B item).
-      real(dp), parameter :: ln10_ptime = 2.3026d0
 
 ! The settings of the limits: the timestep factors (legacy atime,
 ! physics%timestep_factors); the largest fractional change of omega per
@@ -159,8 +156,8 @@ pure real(dp) function structure_change_limit(set, previous_dt, &
            dt_factor = max_change(2)/set%timestep_factors(itime_dt)
       if (max_change(3)/set%timestep_factors(itime_dr) > dt_factor) &
            dt_factor = max_change(3)/set%timestep_factors(itime_dr)
-      if (max_change(4)/(set%timestep_factors(itime_dl)*ln10_ptime) > dt_factor) &
-           dt_factor = max_change(4)/(set%timestep_factors(itime_dl)*ln10_ptime)
+      if (max_change(4)/(set%timestep_factors(itime_dl)*ln10) > dt_factor) &
+           dt_factor = max_change(4)/(set%timestep_factors(itime_dl)*ln10)
 ! No change since the previous model: keep the previous timestep.
       if (dt_factor == 0.d0) dt_factor = 1.0d0
       dt = previous_dt/clipped_factor(set, dt_factor)

@@ -132,10 +132,24 @@ new = '            tbl%surface_opacity(j,k) = x_weight(2)*tbl%fixed_z_opacity(ta
 
 [[mutation]]
 id = 'conductive-he-weight'
-check = 'Potekhin mixture: kappa_c = sum of w_i kappa_i (partly ionized)'
+check = 'Potekhin mixture: 1/K = sum x_i/K_i(rho_i), electron fractions'
 file = 'kap/conductive/conductive_opacity.f90'
-old = 'weight_he4 = number_fraction_he4 * (ion_fraction(2) + 2D0*ion_fraction(3))/2D0'
-new = 'weight_he4 = number_fraction_he4 * (ion_fraction(2) + ion_fraction(3))/2D0'
+old = 'weight_he4 = number_fraction_he4 * (ion_fraction(2) + 2D0*ion_fraction(3))'
+new = 'weight_he4 = number_fraction_he4 * (ion_fraction(2) + ion_fraction(3))'
+
+[[mutation]]
+id = 'conductive-weights-normalized'
+check = 'Potekhin mixture: 1/K = sum x_i/K_i(rho_i), electron fractions'
+file = 'kap/conductive/conductive_opacity.f90'
+old = '       weight_h1 = weight_h1/electron_sum'
+new = '       weight_h1 = weight_h1'
+
+[[mutation]]
+id = 'conductive-electron-density'
+check = 'Potekhin mixture: 1/K = sum x_i/K_i(rho_i), electron fractions'
+file = 'kap/conductive/conductive_opacity.f90'
+old = '            helium_fraction*(ion_fraction(2) + 2D0*ion_fraction(3))/atomic_weight_he4 + &'
+new = '            helium_fraction*2D0/atomic_weight_he4 + &'
 
 [[mutation]]
 id = 'conductive-low-density-sign'

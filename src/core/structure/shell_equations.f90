@@ -129,7 +129,7 @@ contains
 ! carried from shell to shell. ierr is nonzero when the eos, the opacity,
 ! the gradients or an extra energy source fail.
 subroutine evaluate_shell_equations(sh, cfg, eos, saha_iterations, terms, diag, ierr)
-      use physical_constants, only: c4pil, clni, ln10
+      use physical_constants, only: c4pil, clni, ln10, seconds_per_year
       use math_lib
       type(shell_state), intent(in) :: sh
       type(structure_settings), intent(in) :: cfg
@@ -142,14 +142,11 @@ subroutine evaluate_shell_equations(sh, cfg, eos, saha_iterations, terms, diag, 
 ! Every mesh point is interior (not atmosphere), and the eos and
 ! gradient derivatives are always wanted.
       logical, parameter :: want_derivatives = .true., in_atmosphere = .false.
-! One year in seconds and the inverse the entropy term uses, as the F77
-! COEFFT wrote them (TIME, TIMEI; the inverse is 3.16877e-8 to five
-! digits, physical_constants' seconds_per_year is the year: replacing
-! either moves results, a B item): the entropy term's floor on the time
-! step while hydrogen is above eps_grav_floor_min_x
-! (form_gravitational_energy_terms).
-      real(dp), parameter :: one_year_sec = 3.1558d7, &
-           one_year_sec_inv = 3.1688d-8, eps_grav_floor_min_x = 0.01d0
+! The entropy term's floor on the time step, one year (physical_constants'
+! seconds_per_year) and its inverse, while hydrogen is above
+! eps_grav_floor_min_x (form_gravitational_energy_terms).
+      real(dp), parameter :: one_year_sec = seconds_per_year, &
+           one_year_sec_inv = 1.0d0/seconds_per_year, eps_grav_floor_min_x = 0.01d0
       real(dp) :: hydrogen_fraction, metal_fraction
       real(dp) :: dgrad_dt_component, dgrad_dp_component, &
            dgrad_dr_component

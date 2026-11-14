@@ -11,6 +11,9 @@
 !                              (convection zone plus envelope overshoot)
 !                              at the start and end of the step, for the
 !                              Li/Be burn
+!   mixed_base_mass, mixed_base_fraction
+!                              that base as a mass coordinate, and back
+!                              to its zone's fraction
 ! Users: observables (the surface convection zone's mass, radius, T, rho,
 ! P and kappa), turnover_timescale (the radius of its base), burn_step
 ! (burn_li_be). Each caller keeps its own choice of gradients and its own
@@ -21,7 +24,8 @@ module convection_geometry
       use star_info_lib, only: star_info
       implicit none
       private
-      public :: cz_base_fraction, first_zone_above, locate_surface_mixing_base
+      public :: cz_base_fraction, first_zone_above, locate_surface_mixing_base, &
+           mixed_base_mass, mixed_base_fraction
 
 contains
 
@@ -166,5 +170,51 @@ subroutine locate_surface_mixing_base(s, radius, grada, gradr, env_cz_zone, &
       s%envelope_cz_base_zone_last_call = cz_base_zone
       return
 end subroutine locate_surface_mixing_base
+
+!----------------------------------------------------------------------
+! mixed_base_mass: the mass coordinate (g) of the base of a mixed region
+! whose base zone is k = base_zone and whose edge sits base_frac of the
+! way, in units of m(k) - m(k-1), below the zone's lower boundary (the
+! convention of locate_surface_mixing_base and average_li_be_over_cz:
+! the region holds shells k..num_zones and base_frac (m(k) - m(k-1))
+! more):
+!   m_base = sum of dm(1..k-1) - base_frac (m(k) - m(k-1)),
+! with no fraction when k is 1 or num_zones. mass_coordinate is m, the
+! mass inside each zone centre, and shell_mass dm.
+pure function mixed_base_mass(mass_coordinate, shell_mass, base_zone, &
+     base_frac, num_zones) result(base_mass)
+      real(dp), intent(in) :: mass_coordinate(:), shell_mass(:), base_frac
+      integer, intent(in) :: base_zone, num_zones
+      real(dp) :: base_mass
+      integer :: k
+
+      base_mass = 0.0d0
+      do k = 1, base_zone-1
+         base_mass = base_mass + shell_mass(k)
+      end do
+      if (base_zone > 1 .and. base_zone < num_zones) base_mass = base_mass - &
+           base_frac*(mass_coordinate(base_zone) - mass_coordinate(base_zone-1))
+end function mixed_base_mass
+
+!----------------------------------------------------------------------
+! mixed_base_fraction: the edge fraction (mixed_base_mass's convention)
+! that puts the base of a region whose base zone is k = base_zone at the
+! mass coordinate base_mass (g):
+!   f = (sum of dm(1..k-1) - base_mass)/(m(k) - m(k-1)),
+! clipped to [-0.5, 0.5] as locate_surface_mixing_base clips its own;
+! 0 when k is 1 or num_zones, or when base_mass is not positive (no base
+! recorded).
+pure function mixed_base_fraction(mass_coordinate, shell_mass, base_zone, &
+     base_mass, num_zones) result(base_frac)
+      real(dp), intent(in) :: mass_coordinate(:), shell_mass(:), base_mass
+      integer, intent(in) :: base_zone, num_zones
+      real(dp) :: base_frac
+
+      base_frac = 0.0d0
+      if (base_mass <= 0.0d0 .or. base_zone <= 1 .or. base_zone >= num_zones) return
+      base_frac = (mixed_base_mass(mass_coordinate, shell_mass, base_zone, 0.0d0, &
+           num_zones) - base_mass)/(mass_coordinate(base_zone) - mass_coordinate(base_zone-1))
+      base_frac = min(0.5d0, max(-0.5d0, base_frac))
+end function mixed_base_fraction
 
 end module convection_geometry

@@ -53,7 +53,7 @@ subroutine rebuild_envelope(s, target_envelope_mass, ierr)
       use control_slots, only: ichi_dp_env_max
       use physical_constants, only: cc23, cgl, ln10
       use math_lib
-      use core_messages, only: core_stdout, message_length, unwritten_line
+      use core_messages, only: core_report, message_length, unwritten_line
       implicit none
       type(star_info), intent(inout) :: s
       integer, intent(out) :: ierr
@@ -97,7 +97,8 @@ subroutine rebuild_envelope(s, target_envelope_mass, ierr)
 ! Return an error if the new points could overflow the arrays (legacy
 ! stop 9999).
       if(s%nz+s%env_points%num_env_points >= json) then
-         call write_rebuild_note(' rebuild_envelope: grid overflow (json too small)')
+         call write_rebuild_note(' ERROR: envelope rebuild: the new envelope shells would' &
+              //' overflow the json-point arrays')
          ierr = 1
          return
       end if
@@ -108,7 +109,8 @@ subroutine rebuild_envelope(s, target_envelope_mass, ierr)
       call append_envelope_points(s, .false., species_end_index, ierr)
 ! A degenerate mass interval returns an error (legacy stop 9998).
       if (ierr /= 0) then
-         call write_rebuild_note(' rebuild_envelope: degenerate mass interpolation')
+         call write_rebuild_note(' ERROR: envelope rebuild: a degenerate interval in mass' &
+              //' while appending the envelope shells')
          return
       end if
       call compute_new_shell_masses()
@@ -130,24 +132,24 @@ subroutine rebuild_envelope(s, target_envelope_mass, ierr)
 contains
 
 ! ---------------------------------------------------------------
-! One line to standard output.
+! One line to the terminal and the run log.
 subroutine write_rebuild_note(text)
       character(len=*), intent(in) :: text
       character(len=message_length) :: lines(1)
       lines = unwritten_line
       lines(1) = text
-      call core_stdout(lines)
+      call core_report(lines)
 end subroutine write_rebuild_note
 
 ! ---------------------------------------------------------------
-! The fitting mass before and after, to standard output.
+! The fitting mass before and after, to the terminal and the run log.
 subroutine report_new_envelope_mass()
       character(len=message_length) :: lines(2)
       lines = unwritten_line
       write(lines,597)envelope_mass_before,s%log_fit_point_mass_fraction
  597  format(5X,'***** NEW ENVELOPE MASS CALCULATED *****'/8X, &
      'OLD SENV ',1PE22.13,'  NEW SENV',E22.13)
-      call core_stdout(lines)
+      call core_report(lines)
 end subroutine report_new_envelope_mass
 
 ! ---------------------------------------------------------------
@@ -325,7 +327,7 @@ subroutine sum_rotation_totals()
 end subroutine sum_rotation_totals
 
 ! ---------------------------------------------------------------
-! Print the new interior shells.
+! The new interior shells, to the terminal and the run log.
 subroutine print_new_interior_points()
       character(len=message_length) :: heading(2)
       character(len=message_length), allocatable :: rows(:)
@@ -333,7 +335,7 @@ subroutine print_new_interior_points()
       write(heading,910)
  910  format(1X,'NEW INTERIOR POINTS FROM CHANGE IN ENVELOPE MASS'/ &
      ' J,LOG RHO, LOG L, LOG P, LOG R, LOG M, LOG T, CONV T/F')
-      call core_stdout(heading)
+      call core_report(heading)
       allocate(rows(max(s%nz-old_num_zones+1, 1)))
       rows = unwritten_line
       write(rows,911)(zone_index,s%logRho(zone_index),s%luminosity_lsun(zone_index), &
@@ -342,7 +344,7 @@ subroutine print_new_interior_points()
            s%logT(zone_index),s%convective_flag(zone_index), &
            zone_index = old_num_zones,s%nz)
  911  format(I5,1P6E16.8,L2)
-      call core_stdout(rows)
+      call core_report(rows)
 end subroutine print_new_interior_points
 end subroutine rebuild_envelope
 

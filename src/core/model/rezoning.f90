@@ -24,7 +24,7 @@ module rezoning
            ichi_dz_max, ichi_flag_dw, ichi_flag_dx, ichi_flag_dz
       use settings_install, only: install_surface_x_settings
       use run_messages, only: solver_diagnostics
-      use core_messages, only: core_log, core_report, core_stdout, message_length, unwritten_line
+      use core_messages, only: core_log, core_report, message_length, unwritten_line
       use physical_constants, only: cc23, ln10
       use numerics_lib, only: natural_spline, splint, numerics_status_text
       use regridding, only: structure_profiles, rotation_profiles, &
@@ -183,10 +183,9 @@ subroutine check_envelope_temperature_range(s, rz, ierr)
 ! The whole model is cooler than tenv0 (unlikely): stop with ierr, which
 ! run_yrec returns and the command-line wrapper stops on.
        lines = unwritten_line
-       write(lines,30)
+       lines(1) = ' ERROR: rezone: the hottest shell is cooler than the minimum envelope' &
+            //' temperature tenv0; run stopped'
        call core_report(lines)
-   30    format(1X,39('>'),40('<')/1X,'ERROR IN HPOINT'/ &
-     1X,'MAX. STAR T LESS THAN MINIMUM ENVELOPE T.RUN STOPPED')
        ierr = 1
        return
        end if
@@ -633,9 +632,9 @@ subroutine place_points_along_chi(s, rz, ierr)
 ! More points than the arrays hold: stop with ierr.
             lines = unwritten_line
             write(lines,101) rz%new_num_zones+segment_point_count,json
-            call core_stdout(lines)
- 101        format(' DESIRED NUMBER OF POINTS ',I6,'EXCEEEDS JSON ', &
-     I6/' RUN STOPPED')
+            call core_report(lines)
+ 101        format(' ERROR: rezone: the new mesh needs ',I0,' points, more than json (', &
+                 I0,'); run stopped')
             ierr = 1
             return
          end if
@@ -648,8 +647,9 @@ subroutine place_points_along_chi(s, rz, ierr)
             ! A spline failure returns through ierr, after its message.
             if (jerr_gate /= 0) then
                lines = unwritten_line
-               write(lines,*) 'splint: '//numerics_status_text(jerr_gate)
-               call core_log(lines)
+               write(lines,'(a)') ' ERROR: rezone: the spline of log m along the mesh' &
+                    //' criterion failed: '//trim(numerics_status_text(jerr_gate))
+               call core_report(lines)
                ierr = jerr_gate
                return
             end if
@@ -701,8 +701,9 @@ subroutine add_points_for_x_jumps(s, rz, ierr)
               spline_eval_x, spline_eval_y, jerr_gate)
          if (jerr_gate /= 0) then
             lines = unwritten_line
-            write(lines,*) 'splint: '//numerics_status_text(jerr_gate)
-            call core_log(lines)
+            write(lines,'(a)') ' ERROR: rezone: the spline of X on the new mesh failed: ' &
+                 //trim(numerics_status_text(jerr_gate))
+            call core_report(lines)
             ierr = jerr_gate
             return
          end if
@@ -734,9 +735,10 @@ subroutine add_points_for_x_jumps(s, rz, ierr)
 ! place_points_along_chi does (no check here before 2026-10).
          if (working_num_zones+num_new_points > json) then
             lines = unwritten_line
-            write(lines,'(a,i6,a,i6)') ' DESIRED NUMBER OF POINTS ', &
-                 working_num_zones+num_new_points, ' EXCEEDS JSON ', json
-            call core_stdout(lines)
+            write(lines,'(a,i0,a,i0,a)') ' ERROR: rezone: the new mesh needs ', &
+                 working_num_zones+num_new_points, ' points, more than json (', json, &
+                 '); run stopped'
+            call core_report(lines)
             ierr = 1
             return
          end if
@@ -794,8 +796,9 @@ subroutine add_points_for_z_jumps(s, rz, ierr)
               spline_eval_x, spline_eval_y, jerr_gate)
          if (jerr_gate /= 0) then
             lines = unwritten_line
-            write(lines,*) 'splint: '//numerics_status_text(jerr_gate)
-            call core_log(lines)
+            write(lines,'(a)') ' ERROR: rezone: the spline of Z on the new mesh failed: ' &
+                 //trim(numerics_status_text(jerr_gate))
+            call core_report(lines)
             ierr = jerr_gate
             return
          end if
@@ -825,9 +828,10 @@ subroutine add_points_for_z_jumps(s, rz, ierr)
 ! place_points_along_chi does (no check here before 2026-10).
          if (working_num_zones+num_new_points > json) then
             lines = unwritten_line
-            write(lines,'(a,i6,a,i6)') ' DESIRED NUMBER OF POINTS ', &
-                 working_num_zones+num_new_points, ' EXCEEDS JSON ', json
-            call core_stdout(lines)
+            write(lines,'(a,i0,a,i0,a)') ' ERROR: rezone: the new mesh needs ', &
+                 working_num_zones+num_new_points, ' points, more than json (', json, &
+                 '); run stopped'
+            call core_report(lines)
             ierr = 1
             return
          end if

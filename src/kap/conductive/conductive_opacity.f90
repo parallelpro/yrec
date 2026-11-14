@@ -7,7 +7,7 @@
 !     compute_conductive_opacity   the mixture's conductive opacity: the
 !                                  table's conductivities for H, He and
 !                                  an O proxy for the metals, weighted by
-!                                  each species' ionized fraction
+!                                  each species' share of the electrons
 !     condopacp, cinterp3          Potekhin's interpolation routines,
 !                                  under their own names
 ! The table is a conductive_table_set (opacity_tables) passed in. The
@@ -50,11 +50,20 @@ contains
 ! The mixture's conductive opacity and its log derivatives (kap_eval's
 ! conduction step, through the family's lookup), from the table's
 ! conductivities K_i (condopacp) for fully ionized H, He and O, the
-! metals' proxy:
-!   kappa_c = 16 sigma T^3/(3 rho K),  1/K = sum_i w_i/K_i,
-! with weights w_i = n_i f_i: n_i the species' number fraction, f_i its
-! ionized fraction (ion_fraction: H+, and (He+ + 2 He++)/2 for He; the
-! metals fully ionized). got_conductive_opacity is .false. outside the
+! metals' proxy, by the rule of Potekhin et al. (1999, section 3.3) for
+! a mixture, the electron-ion collision frequencies summed:
+!   kappa_c = 16 sigma T^3/(3 rho K),  1/K = sum_i x_i/K_i(rho_i),
+! with x_i = n_i Z_i/sum_k n_k Z_k each species' share of the electrons
+! (n_i its number fraction; Z_i its mean charge from ion_fraction: H+
+! for H, He+ + 2 He++ for He, 8 for the metals, taken fully ionized),
+! and each K_i read at rho_i, the density at which the pure, fully
+! ionized species (A/Z = 1, 2 and 2 for the table's H, He and O) has
+! the mixture's electron density,
+!   log rho_i = log rho + log10((A_i/Z_i) sum_k X_k Z_k/A_k),
+! clamped to the table (below its lowest density, at the shifted
+! densities of the lowest one). The x_i sum to 1, so a less ionized
+! mixture does not conduct better (M278). got_conductive_opacity is .false.
+! outside the
 ! table's reach (log T 3-9, log rho up to 9.75, and below log rho = -6
 ! only where log R >= 0), where kappa_c = 10**no_conduction_log10_opacity
 ! is returned unused. A lookup the table cannot give returns ierr with
@@ -91,6 +100,7 @@ subroutine compute_conductive_opacity(tbl, log10_density, log10_temperature, &
       real(dp) :: cond_h1, cond_he4, cond_ox
       real(dp) :: mix_log10_cond, log10_16_sigma_over_3
       real(dp) :: unused_deriv1, unused_deriv2
+      real(dp) :: electron_sum, electrons_per_amu, logrho_h1, logrho_he4, logrho_ox
 
 ! the number fractions of H1, He4 and the metals (as O)
       ierr = 0
@@ -107,12 +117,21 @@ subroutine compute_conductive_opacity(tbl, log10_density, log10_temperature, &
            (hydrogen_fraction/atomic_weight_h1 + &
            helium_fraction/atomic_weight_he4 + metal_fraction/atomic_weight_ox)
 
-! each weighted by its ionized fraction: ion_fraction(1) of H is ionized,
-! ion_fraction(2) of He singly and ion_fraction(3) doubly; the metals (few
-! by number) are taken as fully ionized
-       weight_h1 = number_fraction_h1 * ion_fraction(1) ! (FXION(1)/1D0 is the fraction
-       weight_he4 = number_fraction_he4 * (ion_fraction(2) + 2D0*ion_fraction(3))/2D0
-       weight_ox = number_fraction_ox
+! each weighted by its share of the electrons: its number fraction times
+! its mean charge (ion_fraction(1) of H is ionized, ion_fraction(2) of He
+! singly and ion_fraction(3) doubly; the metals, few by number, fully,
+! with O's charge), over their sum; and the electrons per atomic mass
+! unit, sum_k X_k Z_k/A_k
+       weight_h1 = number_fraction_h1 * ion_fraction(1)
+       weight_he4 = number_fraction_he4 * (ion_fraction(2) + 2D0*ion_fraction(3))
+       weight_ox = number_fraction_ox * charge_ox
+       electron_sum = weight_h1 + weight_he4 + weight_ox
+       weight_h1 = weight_h1/electron_sum
+       weight_he4 = weight_he4/electron_sum
+       weight_ox = weight_ox/electron_sum
+       electrons_per_amu = hydrogen_fraction*ion_fraction(1)/atomic_weight_h1 + &
+            helium_fraction*(ion_fraction(2) + 2D0*ion_fraction(3))/atomic_weight_he4 + &
+            metal_fraction*charge_ox/atomic_weight_ox
 
 ! no conduction until the table gives one
        got_conductive_opacity=.FALSE.
@@ -122,17 +141,25 @@ subroutine compute_conductive_opacity(tbl, log10_density, log10_temperature, &
        conductive_dlnkap_dlnt = conductive_opacity
 
        extrapolation_indicator = log10_density - 3.0D0*(log10_temperature-6.0D0)
-! within the table's reach, each species fully ionized
+! within the table's reach, each species fully ionized, at the density
+! where it alone has the mixture's electron density (clamped to the
+! table; d log rho_i/d log rho = 1, so the derivatives keep their form)
       if(log10_temperature >= conductive_logt_min.and.log10_temperature <= conductive_logt_max &
            .and.log10_density <= conductive_logrho_max) then
          if (log10_density >= conductive_logrho_min) then
-           call condopacp(tbl, charge_h1,log10_temperature,log10_density, &
+           logrho_h1 = min(max(log10_density + log10(1.0d0*electrons_per_amu), &
+                conductive_logrho_min + 1.0d-6), conductive_logrho_max - 1.0d-6)
+           logrho_he4 = min(max(log10_density + log10(2.0d0*electrons_per_amu), &
+                conductive_logrho_min + 1.0d-6), conductive_logrho_max - 1.0d-6)
+           logrho_ox = min(max(log10_density + log10(2.0d0*electrons_per_amu), &
+                conductive_logrho_min + 1.0d-6), conductive_logrho_max - 1.0d-6)
+           call condopacp(tbl, charge_h1,log10_temperature,logrho_h1, &
                 log10_cond_h1,dlnkap_dlnrho_h1,dlnkap_dlnt_h1,message,ierr)
            if (ierr /= 0) return
-           call condopacp(tbl, charge_he4,log10_temperature,log10_density, &
+           call condopacp(tbl, charge_he4,log10_temperature,logrho_he4, &
                 log10_cond_he4,dlnkap_dlnrho_he4,dlnkap_dlnt_he4,message,ierr)
            if (ierr /= 0) return
-           call condopacp(tbl, charge_ox,log10_temperature,log10_density, &
+           call condopacp(tbl, charge_ox,log10_temperature,logrho_ox, &
                 log10_cond_ox,dlnkap_dlnrho_ox,dlnkap_dlnt_ox,message,ierr)
            if (ierr /= 0) return
 
@@ -160,16 +187,23 @@ subroutine compute_conductive_opacity(tbl, log10_density, log10_temperature, &
            conductive_opacity = exp10(conductive_log10_opacity)
          end if
 ! below the table's lowest density, where log R >= 0: the main branch's
-! formula at conductive_logrho_min, extrapolated linearly in log rho to
-! the point with its slope there (the H table's slope, not the mixture's)
+! formula at conductive_logrho_min (each species at its shifted density
+! there, clamped as above), extrapolated linearly in log rho to the
+! point with its slope there (the H table's slope, not the mixture's)
          if (log10_density < conductive_logrho_min.and.extrapolation_indicator >= 0.0D0) then
-           call condopacp(tbl, charge_h1,log10_temperature,conductive_logrho_min,log10_cond_h1, &
+           logrho_h1 = min(max(conductive_logrho_min + log10(1.0d0*electrons_per_amu), &
+                conductive_logrho_min + 1.0d-6), conductive_logrho_max - 1.0d-6)
+           logrho_he4 = min(max(conductive_logrho_min + log10(2.0d0*electrons_per_amu), &
+                conductive_logrho_min + 1.0d-6), conductive_logrho_max - 1.0d-6)
+           logrho_ox = min(max(conductive_logrho_min + log10(2.0d0*electrons_per_amu), &
+                conductive_logrho_min + 1.0d-6), conductive_logrho_max - 1.0d-6)
+           call condopacp(tbl, charge_h1,log10_temperature,logrho_h1,log10_cond_h1, &
                 conductive_dlnkap_dlnrho,conductive_dlnkap_dlnt,message,ierr)
            if (ierr /= 0) return
-           call condopacp(tbl, charge_he4,log10_temperature,conductive_logrho_min,log10_cond_he4, &
+           call condopacp(tbl, charge_he4,log10_temperature,logrho_he4,log10_cond_he4, &
                 unused_deriv1,unused_deriv2,message,ierr)
            if (ierr /= 0) return
-           call condopacp(tbl, charge_ox,log10_temperature,conductive_logrho_min,log10_cond_ox, &
+           call condopacp(tbl, charge_ox,log10_temperature,logrho_ox,log10_cond_ox, &
                 unused_deriv1,unused_deriv2,message,ierr)
            if (ierr /= 0) return
 

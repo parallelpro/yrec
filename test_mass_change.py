@@ -7,9 +7,10 @@ model (no deck, no tables) it checks that after a loss or gain of mass
 the shell masses sum to the new total and the convection zone's masses
 scale about its base (with dm(1) from the center when the zone reaches
 it), that a thermal wind leaves the zone J_cz + dJ for walpcz = 0, -1
-and -2, and that accretion conserves every basic species. The binary
-exits nonzero when a check fails (see the header of
-src/core/test/test_mass_change.f90). See test_eos.py for the conventions.
+and -2, and that accretion conserves every basic species, into a
+uniform zone and a graded one. The binary exits nonzero when a check
+fails (see the header of src/core/test/test_mass_change.f90). See
+test_eos.py for the conventions.
 """
 import pathlib
 import subprocess

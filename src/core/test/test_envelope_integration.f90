@@ -58,6 +58,14 @@
 !               error, not envelope_termination, and an
 !               envint_bsstep_failed event with bsstep's
 !               numerics_derivatives_failed and that code.
+!   gray photosphere  envelope_integration's gray_photosphere (the
+!               accretion surface after a failed Allard lookup, O19) at
+!               the test's Teff and g: ierr = 0; its log P is the
+!               kernel's gray photospheric pressure with the star's
+!               settings (within 1e-10 dex), and T = Teff (relative
+!               1e-6); the star's atmosphere point, atmosphere points,
+!               photospheric pressure and atmosphere choice are left as
+!               they were.
 !
 ! Usage: test_envelope_integration [DECK.inlist]   (run with YREC_INPUT
 ! and YREC_START set and YREC_OUTPUT pointing at a directory the deck
@@ -90,6 +98,7 @@ program test_envelope_integration
       use physical_constants, only: ln10, cgl, c4pil, csigl
       use model_rescaling, only: compute_envelope_mixture
       use settings_install, only: install_surface_mixture_settings
+      use envelope_integration, only: gray_photosphere
       implicit none
 ! the test's star (star_info_lib declares no instance); static, as it
 ! is too large for the stack
@@ -142,6 +151,8 @@ program test_envelope_integration
       call check_start_retry()
       write(*,'(a)') '-- errors'
       call check_errors()
+      write(*,'(a)') '-- gray photosphere'
+      call check_gray_photosphere()
       if (nfail > 0) then
          write(*,'(a,i0,a)') 'test_envelope_integration: ', nfail, ' FAIL'
          stop 1
@@ -660,5 +671,37 @@ subroutine check_errors()
            events%event(events%num_events)%counts(1) == numerics_derivatives_failed .and. &
            events%event(events%num_events)%counts(2) == ierr)
 end subroutine check_errors
+
+! ---------------------------------------------------------------
+! gray_photosphere against the kernel's gray integration with the
+! star's settings, and the star's integration state it must not touch.
+subroutine check_gray_photosphere()
+      real(dp) :: log10_pressure, log10_temperature, dteff
+      real(dp), parameter :: unset = -7.0_dp
+      logical :: untouched
+
+      call integrate(base_cfg)
+      star%log_total_mass = log10_star_mass
+      star%log_L_lsun = 0.0_dp
+      star%atm_choice_in_use = atm_eddington_gray
+      star%atm_point%log10_pressure = unset
+      star%atm_point%log10_temperature = unset
+      star%atm_points%num_atm_points = -1
+      star%photosphere_logP = unset
+      call gray_photosphere(star, log10_teff, log10_gravity, x_surface, z_surface, &
+           composition, log10_pressure, log10_temperature, ierr)
+      call report('gray photosphere: ierr = 0', real(ierr, dp), ierr == 0)
+      call report('gray photosphere: log P = the kernel''s', &
+           abs(log10_pressure - log10_photo_pressure), &
+           abs(log10_pressure - log10_photo_pressure) <= 1.0e-10_dp)
+      dteff = abs(10.0_dp**(log10_temperature - log10_teff) - 1.0_dp)
+      call report('gray photosphere: T = Teff', dteff, dteff <= 1.0e-6_dp)
+      untouched = star%atm_point%log10_pressure == unset .and. &
+           star%atm_point%log10_temperature == unset .and. &
+           star%atm_points%num_atm_points == -1 .and. &
+           star%photosphere_logP == unset .and. &
+           star%atm_choice_in_use == atm_eddington_gray
+      call report('gray photosphere: the star''s atmosphere untouched', 0.0_dp, untouched)
+end subroutine check_gray_photosphere
 
 end program test_envelope_integration

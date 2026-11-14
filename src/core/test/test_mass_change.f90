@@ -9,14 +9,17 @@
 ! convection zone from shell jenv to 40 (jenv = 25, or 1 for a fully
 ! convective star) that rotates as omega ~ r^walpcz (omega(40) =
 ! 3e-6 rad/s) with j_rot = (2/3) r^2 omega, and is uniform in
-! composition. m, dm, r, omega and j_rot are built with arithmetic only
+! composition, or graded (each species' abundance 0.9 to 1.1 times the
+! uniform zone's, linear in the shell number from the zone's base up).
+! m, dm, r, omega and j_rot are built with arithmetic only
 ! (the kernels are also given log10 m and log10 r), and each expected
 ! value is formed here from the model, not from the kernels. Checks:
-!   mass         after a loss or gain dM = -+1e-3 M (change_shell_masses):
-!                the shell masses sum to M + dM; with a loss the
+!   mass         after a loss or gain dM = -+1e-3 M (convection_zone_mass,
+!                change_shell_masses): M_cz, the sum of the zone's shell
+!                masses, is M - (m(jenv-1) + m(jenv))/2 (M for jenv =
+!                1); the shell masses sum to M + dM; with a loss the
 !                zone-center masses above the base scale about m(jenv)
-!                by (M_cz + dM)/M_cz (M_cz = m(40) - m(jenv), or m(40)
-!                for jenv = 1), with a gain they stay; the masses at and
+!                by (M_cz + dM)/M_cz, with a gain they stay; the masses at and
 !                below the base stay; for jenv = 1, dm(1) = (m(1) +
 !                m(2))/2;
 !   angular momentum  after a loss of 1e-3 M from a rotating star, for
@@ -26,9 +29,10 @@
 !                J_cz = sum of j_rot dm over the zone before the change,
 !                and the zone holds J_cz + dJ after it, sum of j_rot dm
 !                on its new masses;
-!   composition  after accreting 1e-3 M (change_shell_masses,
-!                mix_accreted_composition): for each basic species, the
-!                zone's sum of X dm is the old sum plus X_acc dM.
+!   composition  after accreting 1e-3 M into a uniform and a graded
+!                zone (change_shell_masses, mix_accreted_composition):
+!                for each basic species, the zone's sum of X dm is the
+!                old sum plus X_acc dM.
 ! Each check prints its relative error and ok (below 1e-13, round-off)
 ! or FAIL; the program stops with status 1 on any FAIL.
 program test_mass_change
@@ -71,8 +75,10 @@ program test_mass_change
       call check_wind_angular_momentum(25, -1.0d0)
       call check_wind_angular_momentum(25, -2.0d0)
       call check_wind_angular_momentum(1, 0.0d0)
-      call check_accreted_composition(25)
-      call check_accreted_composition(1)
+      call check_accreted_composition(25, .false.)
+      call check_accreted_composition(1, .false.)
+      call check_accreted_composition(25, .true.)
+      call check_accreted_composition(1, .true.)
       if (nfail > 0) then
          write(*,'(a,i4,a)') 'test_mass_change: ', nfail, ' FAIL'
          stop 1
@@ -159,9 +165,9 @@ subroutine check_shell_masses(jenv, fraction)
       delta_mass = fraction*total_mass
       new_total = total_mass + delta_mass
       if (jenv > 1) then
-         cz_mass = m_old(nz) - m_old(jenv)
+         cz_mass = total_mass - 0.5d0*(m_old(jenv-1) + m_old(jenv))
       else
-         cz_mass = m_old(nz)
+         cz_mass = total_mass
       end if
       if (delta_mass < 0.0d0) then
          scale = (cz_mass + delta_mass)/cz_mass
@@ -169,7 +175,7 @@ subroutine check_shell_masses(jenv, fraction)
          scale = 1.0d0
       end if
       call report('M_cz = convection_zone_mass', &
-           abs(convection_zone_mass(jenv, m) - cz_mass)/cz_mass)
+           abs(convection_zone_mass(dm(jenv:nz)) - cz_mass)/cz_mass)
       call change_shell_masses(jenv, delta_mass, new_total, m, log_mass, dm)
       call report('sum of dm = M + dM', &
            abs(sum(dm) - new_total)/new_total)
@@ -227,23 +233,32 @@ subroutine check_wind_angular_momentum(jenv, walpcz)
 end subroutine check_wind_angular_momentum
 
 ! ---------------------------------------------------------------
-! The composition after accreting 1e-3 M into the zone.
-subroutine check_accreted_composition(jenv)
+! The composition after accreting 1e-3 M into the zone, uniform or
+! graded.
+subroutine check_accreted_composition(jenv, graded)
       integer, intent(in) :: jenv
+      logical, intent(in) :: graded
       real(dp) :: dm_before(nz-jenv+1), xa_before(n_species_extended,nz-jenv+1), &
-           delta_mass, cz_mass, expected
-      integer :: s
+           delta_mass, expected
+      integer :: s, k
 
       call build_model(jenv, 0.0d0)
-      write(*,'(a,i0,a,i0,a,1pe9.1)') '# composition: zone ', jenv, '..', nz, &
-           ', dM/M =', mass_change_fraction
+      if (graded) then
+         do k = jenv, nz
+            xa(:,k) = xa(:,k)*(0.9d0 + 0.2d0*real(k-jenv, dp)/real(nz-jenv, dp))
+         end do
+         write(*,'(a,i0,a,i0,a,1pe9.1)') '# composition: graded zone ', jenv, &
+              '..', nz, ', dM/M =', mass_change_fraction
+      else
+         write(*,'(a,i0,a,i0,a,1pe9.1)') '# composition: zone ', jenv, '..', nz, &
+              ', dM/M =', mass_change_fraction
+      end if
       delta_mass = mass_change_fraction*total_mass
       dm_before = dm(jenv:nz)
       xa_before = xa(:,jenv:nz)
-      cz_mass = sum(dm_before)
       call change_shell_masses(jenv, delta_mass, total_mass + delta_mass, &
            m, log_mass, dm)
-      call mix_accreted_composition(cz_mass, delta_mass, x_accreted, &
+      call mix_accreted_composition(dm_before, delta_mass, x_accreted, &
            xa(:,jenv:nz))
       do s = 1, n_species_basic
          expected = weighted_sum(xa_before(s,:), dm_before) + x_accreted(s)*delta_mass
