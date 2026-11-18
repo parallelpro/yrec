@@ -12,8 +12,9 @@
 !     kap_lib writes (the family routines get their sets as arguments);
 !   - the table dimensions, empty-cell markers and composition-cache
 !     tolerances;
-!   - the settings record (kap_settings_t, and kap_settings, installed by
-!     kap_init) and the tables' paths (kap_table_paths_t);
+!   - the settings record's type (kap_settings_t; kap_lib holds the
+!     record kap_init installs) and the tables' paths
+!     (kap_table_paths_t);
 !   - the four-point stencil locators the families share.
 ! The grids, cursors and caches start from the F77 code's DATA values,
 ! as component initializers.
@@ -283,26 +284,26 @@ module opacity_tables
            real(dp) :: envelope_metal_fraction = 0.0d0
            type(conductive_table_set) :: conductive
 ! OPAL92 (Livermore) tables: (1) at opal_table_z1, (2) at
-! opal_table_z2 (read only when kap_settings%use_two_z_tables). See
+! opal_table_z2 (read only when the settings' use_two_z_tables). See
 ! opal92_table_set.
            type(opal92_table_set) :: opal92(2)
 ! Kurucz90 tables: (1) at kurucz_table_z1, (2) at kurucz_table_z2
-! (read only when kap_settings%use_two_z_tables). See kurucz_table_set.
+! (read only when the settings' use_two_z_tables). See kurucz_table_set.
            type(kurucz_table_set) :: kurucz(2)
            type(pure_z_table_set) :: pure_z
            type(alex94_table_set) :: alex94
            type(opal95_table_set) :: opal95
            type(alex06_table_set) :: alex06
 ! LAOL89 tables: (1) at laol_table_z1, (2) at laol_table_z2 (read
-! only when kap_settings%use_two_z_tables). See laol_table_set.
+! only when the settings' use_two_z_tables). See laol_table_set.
            type(laol_table_set) :: laol(2)
       end type opacity_table_state
 
 ! ---- the opacity settings ----
 ! Everything kap needs from the run's configuration, in one record,
-! installed by kap_init (from the star layer's kap_settings_from_star,
-! setup/kap_settings_builder.f90) or kap_lib's set_kap_settings, through
-! install_kap_settings; nothing else writes it.
+! which the star layer builds (kap_settings_from_star,
+! setup/kap_settings_builder.f90) and kap_lib holds: kap_init or
+! set_kap_settings installs it, and the families get it as an argument.
       type, public :: kap_settings_t
 ! the interior tables (OPAL95-format, OPAL92, LAOL89) and the pure-Z
 ! table for helium-burning cores; the molecular tables (Alexander 2006
@@ -330,8 +331,6 @@ module opacity_tables
          real(dp) :: metal_fraction_match_tolerance = 0.0d0, &
               laol_extrapolation_tolerance = 0.0d0
       end type kap_settings_t
-      type(kap_settings_t), public, protected :: kap_settings
-      public :: install_kap_settings
 
 ! the length of a table's path (the controls' own)
       integer, parameter, public :: path_length = 256
@@ -351,14 +350,6 @@ module opacity_tables
       end type kap_table_paths_t
 
 contains
-
-! install_kap_settings: install the run's opacity settings (kap_lib's
-! set_kap_settings, which also chooses their families).
-subroutine install_kap_settings(settings)
-      type(kap_settings_t), intent(in) :: settings
-      kap_settings = settings
-end subroutine install_kap_settings
-
 
 ! stencil4_locate
 ! Warm-start search for the first index idx of the 4-point stencil

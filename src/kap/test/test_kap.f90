@@ -19,8 +19,11 @@ program test_kap
       use run_setup, only: set_up_constants_and_tables
       use run_messages, only: run_log_unit, flush_pending_log
       use star_info_lib, only: star_info
-      use kap_lib
-      use opacity_tables
+      use kap_settings_builder, only: kap_settings_from_star
+      use kap_lib, only: kap_init, kap_get, kap_update_surface_tables, &
+           kap_set_envelope_metal_fraction, set_kap_settings, kap_settings_t, kap_table_paths_t, &
+           num_kap_results, i_kap, i_log10_kap, i_dlnkap_dlnrho, i_dlnkap_dlnt
+      use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
 ! the test's star (star_info_lib declares no instance); static, as it
 ! is too large for the stack
@@ -144,7 +147,7 @@ program test_kap
       fxion = 0.0d0
       call evaluate(logd, logt, x_frac, z_frac, kap_ierr)
       write(*,'(a,i4)') "err out-of-table   ierr = ", kap_ierr
-      settings = kap_settings
+      settings = kap_settings_from_star(star)
       settings%use_opal95_tables = .false.
       call set_kap_settings(settings)
       logt = 6.0d0

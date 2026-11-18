@@ -28,8 +28,7 @@
 ! reads no star, and holds its state (opacity_tables' types) here.
 module kap_lib
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use opacity_tables, only: kap_settings, kap_settings_t, kap_table_paths_t, &
-           opacity_table_state, install_kap_settings
+      use opacity_tables, only: kap_settings_t, kap_table_paths_t, opacity_table_state
       use opacity_source, only: kap_point, kap_result, kap_source
       use opacity_families, only: select_families
       use opacity_blending, only: blend_results_in_z, ramp_to_molecular, &
@@ -63,6 +62,9 @@ module kap_lib
 ! cursors' initial values, zero elsewhere), and kap_init starts each run
 ! from it, so a second run in one process starts where the first did.
       type(opacity_table_state), save :: tables, initial_tables
+! the run's settings (kap_init's or set_kap_settings'), which the
+! families' procedures get as an argument
+      type(kap_settings_t), save :: kap_settings
 ! the families the settings select (opacity_families), one per role
       type(kap_source), save :: interior, molecular, helium_core, conduction
 
@@ -329,7 +331,7 @@ end subroutine kap_init
 subroutine set_kap_settings(settings)
       type(kap_settings_t), intent(in) :: settings
 
-      call install_kap_settings(settings)
+      kap_settings = settings
       call select_families(settings, interior, molecular, helium_core, conduction)
 end subroutine set_kap_settings
 
