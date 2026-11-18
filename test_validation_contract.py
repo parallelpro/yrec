@@ -31,8 +31,9 @@ check states the law at the tolerance a correct code would meet, and
 turns into a failure of this file (XPASS) when the defect is fixed, at
 which point the xfail mark is removed.
 
-YREC_EXE names another yrec to validate (default src/yrec). Run time:
-about 45 s. Needs only the tables CI's sparse checkout has.
+Run time: about 45 s. Needs only the tables CI's sparse checkout has.
+The binary, the tables and the starting models are this repository's
+(src/yrec, input/, startmodels/), whatever the environment names.
 """
 import copy
 import math
@@ -48,7 +49,9 @@ REPO = pathlib.Path(__file__).parent
 sys.path.insert(0, str(REPO / "src" / "tools"))
 import validate_model as vm  # noqa: E402
 
-YREC = pathlib.Path(os.environ.get("YREC_EXE", REPO / "src" / "yrec"))
+# this repository's own build, whatever the environment names (to validate
+# another build, run these tests from its tree)
+YREC = REPO / "src" / "yrec"
 CONVERTER = REPO / "src" / "tools" / "upgrade_inlist.py"
 CASE = REPO / "examples" / "run_standard_solar_model"
 DECK = "Test_solar_noGS_norot"

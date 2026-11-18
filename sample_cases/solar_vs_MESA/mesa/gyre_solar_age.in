@@ -3,7 +3,7 @@
 /
 &model
   model_type = 'EVOL'
-  file = '/Users/yaguang/yrec-work/scratch_valid/mesa/run_a/final.data.GYRE'
+  file = 'final.data.GYRE'
   file_format = 'MESA'
 /
 &mode

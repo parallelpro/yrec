@@ -35,7 +35,12 @@ sys.path.insert(0, str(CASE))
 import validate_model as vm  # noqa: E402
 import compare  # noqa: E402
 
-YREC = pathlib.Path(os.environ.get("YREC_EXE", REPO / "src" / "yrec"))
+# this repository's own build, whatever the environment names (to validate
+# another build, run these tests from its tree)
+YREC = REPO / "src" / "yrec"
+
+# not in CI (minutes): deselect with `pytest -m "not local"`
+pytestmark = pytest.mark.local
 
 # |YREC - MESA| allowed (dex; the age relative), and the largest measured
 # at the three central hydrogens and at 4.568 Gyr (2026-11-17).

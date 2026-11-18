@@ -31,7 +31,6 @@ against validation/rotation/omega_landmarks.txt (YREC's own values of
 sensitivity).
 
 Local (one run of the deck with a rotation profile every 10 models).
-YREC_VALIDATION_ROTATION_RUN=<output dir> reuses a finished run;
 YREC_VALIDATION_WRITE_LANDMARKS=1 rewrites the landmark file from the
 run (say so in the commit that does).
 """
@@ -47,7 +46,12 @@ REPO = pathlib.Path(__file__).parent
 sys.path.insert(0, str(REPO / "src" / "tools"))
 import validate_model as vm  # noqa: E402
 
-YREC = pathlib.Path(os.environ.get("YREC_EXE", REPO / "src" / "yrec"))
+# this repository's own build, whatever the environment names (to validate
+# another build, run these tests from its tree)
+YREC = REPO / "src" / "yrec"
+
+# not in CI (minutes, the full input tree): deselect with `pytest -m "not local"`
+pytestmark = pytest.mark.local
 DECK = REPO / "testsuite" / "Test_solarGS98_difrotmixper18p4d1p0.inlist"
 LANDMARKS = REPO / "validation" / "rotation" / "omega_landmarks.txt"
 PROFILE_COLUMNS = "zone\nmass\nlogR\nomega\nj_rot\ni_rot\nmixing_type\n"
@@ -129,9 +133,6 @@ class Run:
 
 @pytest.fixture(scope="module")
 def run(tmp_path_factory):
-    done = os.environ.get("YREC_VALIDATION_ROTATION_RUN")
-    if done:
-        return Run(done)
     if not YREC.exists():
         pytest.skip("build src/yrec first")
     if not (REPO / "input" / "eos" / "opal2006" / "EOSOPAL06Z0.018127060").exists():

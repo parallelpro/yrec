@@ -32,6 +32,15 @@ os.environ.setdefault("YREC_START", str(_REPO / "startmodels"))
 REL_TOL = 1.0e-9
 
 
+def pytest_configure(config):
+    """The `local` marker: the physics validation tier's tests that CI does
+    not run (docs/PHYSICS_VALIDATION.md); `pytest -m "not local"` leaves
+    them out."""
+    config.addinivalue_line(
+        "markers", "local: a validation test not run in CI (it needs GYRE, the full "
+        "input tree, or minutes)")
+
+
 def _to_float(tok):
     try:
         return float(tok)

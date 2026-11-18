@@ -39,7 +39,12 @@ REPO = pathlib.Path(__file__).parent
 sys.path.insert(0, str(REPO / "src" / "tools"))
 import validate_model as vm  # noqa: E402
 
-YREC = pathlib.Path(os.environ.get("YREC_EXE", REPO / "src" / "yrec"))
+# this repository's own build, whatever the environment names (to validate
+# another build, run these tests from its tree)
+YREC = REPO / "src" / "yrec"
+
+# not in CI (minutes, the full input tree): deselect with `pytest -m "not local"`
+pytestmark = pytest.mark.local
 DATA = REPO / "validation" / "solar"
 
 OBSERVED = {

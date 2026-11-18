@@ -4,8 +4,8 @@
 The physics validation tier's shared library (docs/PHYSICS_VALIDATION.md)
 and a command-line audit of one model:
 
-    python3 -I src/tools/validate_model.py output/profile6.data \\
-        [output/profile6.data.GYRE] [output/profile6.data.FGONG]
+    python3 -I src/tools/validate_model.py output/profile6.data.GYRE \\
+        [output/profile6.data.FGONG] [output/profile6.data.GSM]
 
 It needs only the standard library (CI installs pytest and nothing else).
 
@@ -531,16 +531,20 @@ def all_columns_file(list_name):
 
 def run_yrec(yrec, workdir, inlist_text, timeout=3600):
     """Run yrec on inlist_text in workdir (made here, with output/ and the
-    two all-columns files profile_all.list and history_all.list); returns
-    the output directory. Raises RuntimeError when the run fails."""
+    two all-columns files profile_all.list and history_all.list), with
+    this repository's input/ and startmodels/; returns the output
+    directory. Raises RuntimeError when the run fails."""
     workdir = pathlib.Path(workdir)
     (workdir / "output").mkdir(parents=True)
     (workdir / "inlist").write_text(inlist_text)
     (workdir / "profile_all.list").write_text(all_columns_file("profile_columns.list"))
     (workdir / "history_all.list").write_text(all_columns_file("history_columns.list"))
+    # this repository's tables and starting models, whatever the caller's
+    # environment names (a user's shell may export YREC_INPUT for another
+    # checkout)
     env = dict(os.environ)
-    env.setdefault("YREC_INPUT", str(REPO / "input"))
-    env.setdefault("YREC_START", str(REPO / "startmodels"))
+    env["YREC_INPUT"] = str(REPO / "input")
+    env["YREC_START"] = str(REPO / "startmodels")
     env["YREC_OUTPUT"] = "output"
     r = subprocess.run([str(yrec), "inlist"], cwd=workdir, env=env,
                        capture_output=True, text=True, timeout=timeout)
@@ -725,20 +729,46 @@ def main(argv):
                   "the run's solar constants (see test_validation_contract.py)")
             continue
         n = len(model["r"])
-        print(f"{name}: {n} points, G = {g_newton:.6e}")
+        iph = photosphere_index(model, r_star)
+        terms = structure_terms(model, g_newton)
+        print(f"{name}: {n} points ({n - 1 - iph} above the photosphere), G = {g_newton:.6e}")
         print(f"  r strictly increasing: {is_strictly_increasing(model['r'])}")
-        hyd = hydrostatic_residual(model, g_newton)
-        v, i = worst(hyd)
-        print(f"  hydrostatic residual, worst: {v:.3e} at point {i} (r/R = {model['r'][i] / r_star:.5f})")
-        con = continuity_residual(model)
-        v, i = worst(con)
-        print(f"  continuity residual, worst:  {v:.3e} at point {i} (r/R = {model['r'][i] / r_star:.5f})")
-        n2 = brunt_n2_density(model, g_newton)
-        diff = [None if a is None else a - b for a, b in zip(n2, model["N2"])]
-        v, i = worst(diff)
-        print(f"  N2 - g[(1/Gamma_1)dlnP/dr - dlnrho/dr], worst: {v:.3e} s^-2 at point {i}")
-        print(f"  delta_nu (sound travel to R_star): {acoustic_delta_nu(model, r_star):.4f} uHz")
-        print(f"  period spacing, l = 1, from the file's N2: {period_spacing(model, model['N2']):.2f} s")
+        # below the photosphere: the three-point rule in ln P (in the
+        # interior it shows the difference scheme's truncation, a few
+        # 1e-4; in the envelope the output mesh's, about 1e-3; at the
+        # fitting point the surface boundary condition's mismatch)
+        # (a pair of points closer than 2e-5 in ln r is the envelope's
+        # repeat of the fitting point, V2 of docs/PHYSICS_VALIDATION.md:
+        # the rule means nothing across it)
+        close = [k for k in range(iph) if terms["lnr"][k + 1] - terms["lnr"][k] < 2.0e-5]
+        for k in close:
+            print(f"  a near-duplicate pair at points {k}, {k + 1} (r/R = {model['r'][k] / r_star:.5f}): "
+                  f"ln rho steps by {math.log(model['rho'][k + 1] / model['rho'][k]):+.1e} outward")
+        for label, y, f in (("hydrostatic equilibrium", model["r"], terms["dr_dlnP"]),
+                            ("mass continuity", model["M_r"], terms["dm_dlnP"])):
+            defects = triple_defects(y, terms["lnP"], f, 0, iph)
+            for k in close:
+                for j in (k - 1, k):
+                    if 0 <= j < len(defects):
+                        defects[j] = None
+            v, i = worst(defects)
+            ordered = sorted(abs(d) for d in defects if d is not None)
+            print(f"  {label}, three-point rule in ln P, below the photosphere: median "
+                  f"{ordered[len(ordered) // 2]:.1e}, worst {v:.1e} at point {i} "
+                  f"(r/R = {model['r'][i] / r_star:.5f})")
+        if n - 1 > iph + 1:
+            v, i = worst(pair_defects(model["r"], terms["lnP"], terms["dr_dlnP"], iph + 1, n - 1))
+            print(f"  hydrostatic equilibrium in the atmosphere, pair rule: worst {v:.1e}")
+        if "nabla" in model:
+            rule = brunt_n2_file_rule(model, g_newton)
+            scale = [g * g * rho / pr for g, rho, pr in zip(gravity(model, g_newton), model["rho"], model["P"])]
+            v, i = worst([(a - b) / s for a, b, s in zip(rule, model["N2"], scale)])
+            print(f"  N2 against its rule (thermal form where negative, else the density form), "
+                  f"in g^2 rho/P: worst {v:.1e}")
+        print(f"  [2 int dr/c]^-1 to R_star: {acoustic_delta_nu(model, r_star):.4f} uHz; "
+              f"to the top: {acoustic_delta_nu(model, model['r'][-1]):.4f} uHz")
+        print(f"  sqrt(2) pi^2/int N dr/r from the innermost point, l = 1: "
+              f"{period_spacing(model, model['N2']):.2f} s (the centre's part is left out)")
     return 0
 
 

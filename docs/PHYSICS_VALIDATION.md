@@ -37,10 +37,13 @@ python3 -m pytest -s test_validation_gyre.py                        # -s prints 
 
 - A test whose need is missing skips with the reason; nothing reaches
   for the network.
-- `YREC_EXE` names another `yrec` to validate (a build with a change, an
-  HDF5 build); the default is `src/yrec`.
-- `YREC_TEST_HDF5=1` with an HDF5 build adds the GSM file to the contract
-  and GYRE tests.
+- The four files CI does not run carry the pytest marker `local`:
+  `pytest -m "not local"` leaves them out of a run of everything.
+- The tests run this repository's own `src/yrec` with its `input/` and
+  `startmodels/`, whatever `YREC_INPUT` and the like name in the
+  environment. To validate another build, run them from its tree.
+- `YREC_TEST_HDF5=1`, when `src/yrec` is an HDF5 build, adds the GSM
+  file to the contract and GYRE tests.
 - `YREC_VALIDATION_REPORT=<file>` writes a test file's measured values.
 - `python3 -I src/tools/validate_model.py FILE.GYRE|.FGONG|.GSM` audits
   one pulse file from the command line. The same module holds the
