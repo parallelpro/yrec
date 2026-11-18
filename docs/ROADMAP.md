@@ -304,6 +304,15 @@ the single-precision literal item is DONE in Batch 3.)
 
 ## 9. Physics validation tier (new)
 
+**Status (2026-11-17, branch valid-tier): built.** docs/PHYSICS_VALIDATION.md
+has every check with its measured value, its tolerance and what sets
+it, the defects the tier found (V1 to V12, none fixed there) and a
+table of what it would have caught. The four items below are
+`test_validation_contract.py` (in CI), `test_validation_mesa.py` with
+`sample_cases/solar_vs_MESA`, `test_validation_rotation.py`
+(docs/ROTATION_VALIDATION.md section 6) and `test_validation_gyre.py`;
+`test_validation_solar.py` adds the Sun.
+
 The N2 bug survived every byte-pin because pins freeze outputs, not
 truth. Add a small validation layer that checks physics against
 independent references:

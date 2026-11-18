@@ -101,7 +101,7 @@ Rotation calls back into core for two services: `shell_physics` (the per-shell E
 
 Each of these checks was confirmed to fail under a mutation of the code it covers.
 
-`docs/ROTATION_VALIDATION.md` collects the validation: the analytic checks' measured orders, a sub-step convergence study (`src/tools/substep_convergence.py`), and a comparison with MESA for a solid body under J conservation (`sample_cases/rotation_vs_MESA`).
+`docs/ROTATION_VALIDATION.md` collects the validation: the analytic checks' measured orders, a sub-step convergence study (`src/tools/substep_convergence.py`), a comparison with MESA for a solid body under J conservation (`sample_cases/rotation_vs_MESA`), and a full rotating solar run against the release paper's calibration, the angular momentum budget and the spin-down law (`test_validation_rotation.py`).
 
 `python3 src/tools/coverage.py --work DIR --deck ...` measures the line coverage of rotation/ under the two test programs and the decks given (a -O0 --coverage build in DIR). With the configuration-matrix rotating decks, the rotating-variant decks (radiative cores, 50 Myr) and the rescale-only deck it is 96.9% of 2168 lines (2026-10-29, with the Solberg–Høiland kernel; 92.7% before the checks' unreachable branches and the gradient-reversal safeguard were removed, O15).
 

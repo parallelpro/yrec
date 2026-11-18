@@ -89,6 +89,7 @@ A job's files, in its output directory (the run log's, from `log_output_file`):
 ## 3. Conventions
 
 - Output columns keep their MESA names and layouts (`test_mesa_output`, `test_mesa_baselines`); a column's index is named after it (`ih_star_age`, `ip_logT`).
+- What the profile and pulsation files must satisfy physically (the structure equations, N², the joins, GYRE reading them) is checked by `test_validation_contract.py` and `test_validation_gyre.py`: `docs/PHYSICS_VALIDATION.md`. GYRE needs YREC's G (`&constants G_GRAVITY = 6.6725218e-8`) with the GYRE text and GSM files, which carry none.
 - Units: CGS unless the name has a unit suffix (`_msun`, `_gyr`, `_yr`); log is log₁₀. The history's `star_age` is in years and its luminosities in Lsun, as MESA's.
 - The profile's `eps_ppI` .. `eps_he3` are fractions of `eps_nuc`, one per chain with a slot (`eps_he3` is the triple-α share); the α captures have none, so where they burn the five add up to 1 minus their share (in core helium burning that share reaches nearly all of `eps_nuc`). `eps_nuc`, `eps_neu` and `eps_grav` are erg/g/s.
 - The pulsation files' ε: GYRE and GSM write ε = `eps_nuc`, the chains' sum without the thermal neutrino loss, with that ε's derivatives `eps_eps_T`, `eps_eps_rho` (absolute, dε/dln T), as MESA writes `eps_nuc` with `d_epsnuc_dlnT` and `d_epsnuc_dlnd`; FGONG's `var(9)` is the same ε. `kap_kap_T` and `kap_kap_rho` are κ dln κ/dln T and κ dln κ/dln ρ.

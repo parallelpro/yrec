@@ -37,6 +37,8 @@ pip install pytest pytest-xdist
 
 The test runner will produce a summary of pass/fail results and indicate any differences from reference outputs indentified.
 
+These tests compare YREC with its own reference outputs. Tests of YREC against the Sun, GYRE, MESA and the structure equations are in the repository root (`test_validation_*.py`); see `docs/PHYSICS_VALIDATION.md`.
+
 
 Sample Namelists
 ================

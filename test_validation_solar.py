@@ -61,7 +61,7 @@ BAND = {
     "Z_over_X": 1.0e-2,         # measured -0.02% of 0.0229
     # the profile's own base of the convection zone (gradr = grada,
     # linear between two shells 9e-4 R apart) against the history's column
-    "R_cz_rederived": 1.0e-4,   # measured 4e-6
+    "R_cz_rederived": 1.0e-4,   # measured below 1e-6
     # c(r) against the inversion, 0.1 <= r/R <= 0.95 (71 points): a
     # standard model with the GS98 mixture is at about 1e-3 rms
     "sound_speed_rms": 2.0e-3,  # measured 8.9e-4
