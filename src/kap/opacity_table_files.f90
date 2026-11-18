@@ -51,18 +51,16 @@ logical function read_failed(ios, iomsg, label, path, unit, ierr)
       integer, intent(in) :: ios, unit
       character(len=*), intent(in) :: iomsg, label, path
       integer, intent(inout) :: ierr
-      character(len=message_length) :: line
+      character(len=message_length) :: lines(1)
 
       read_failed = ios /= 0
       if (.not. read_failed) return
-      close(unit)
       if (ios < 0) then
-         line = 'kap_init: the ' // label // ' table ' // trim(path) // ' ends early'
+         lines(1) = 'kap_init: the ' // label // ' table ' // trim(path) // ' ends early'
       else
-         line = 'kap_init: cannot read the ' // label // ' table ' // trim(path) // ': ' // trim(iomsg)
+         lines(1) = 'kap_init: cannot read the ' // label // ' table ' // trim(path) // ': ' // trim(iomsg)
       end if
-      call kap_report([line])
-      ierr = 1
+      call refuse_table(unit, lines, ierr)
 end function read_failed
 
 ! The Z a table file states (file_z) against the Z of the control the
@@ -78,12 +76,22 @@ logical function table_z_differs(file_z, control_z, control_name, label, path, u
 
       table_z_differs = abs(file_z - control_z) > table_z_tolerance
       if (.not. table_z_differs) return
-      close(unit)
       lines = unwritten_line
       write(lines,'(a,f8.5,a,f8.5)') 'kap_init: the ' // label // ' table ' // trim(path) // &
            ' is at Z =', file_z, ', not at ' // control_name // ' =', control_z
       call kap_report(lines)
       ierr = 1
+      call refuse_table(unit, lines, ierr)
 end function table_z_differs
+
+! A table refused while it is being read: the unit closed, the reason
+! reported, ierr = 1.
+subroutine refuse_table(unit, lines, ierr)
+      integer, intent(in) :: unit
+      character(len=*), intent(in) :: lines(:)
+      integer, intent(inout) :: ierr
+
+      close(unit)
+end subroutine refuse_table
 
 end module opacity_table_files

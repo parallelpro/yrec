@@ -23,8 +23,8 @@ contains
 !----------------------------------------------------------------------
 ! Reads the Kurucz table (and, with two_z_tables, the second Z's) into
 ! tables(1) (and (2)) with read_kurucz_table. A table that cannot be
-! opened or read, or that does not fit kurucz_table_set, returns
-! ierr = 1.
+! opened or read, or that does not fit kurucz_table_set, returns ierr
+! (1).
 subroutine read_kurucz_tables(tables, kurucz_table_path, kurucz_table2_path, &
      two_z_tables, ierr)
 ! (1) at kurucz_table_z1 and, with two_z_tables, (2) at kurucz_table_z2

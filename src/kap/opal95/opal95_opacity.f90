@@ -148,7 +148,7 @@ end subroutine build_opal95_fixed_z_table
 subroutine interpolate_x_table_in_z(tbl, ix, first_z, z_weight)
       type(opal95_table_set), intent(inout) :: tbl
       integer, intent(in) :: ix, first_z
-      real(dp), intent(in) :: z_weight(4)
+      real(dp), intent(in) :: z_weight(:)
       integer :: slot(4), j, k
 
       slot = tbl%table_start_index(first_z:first_z+3) + ix
@@ -300,7 +300,7 @@ subroutine locate_opal95_composition(tbl, hydrogen_fraction, metal_fraction, st,
       type(opal95_table_set), intent(inout) :: tbl
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       type(opal95_stencil), intent(inout) :: st
-      integer, intent(out) :: path, x_tables(4)
+      integer, intent(out) :: path, x_tables(:)
       logical :: at_fixed_z, at_surface_x
       integer :: k
 
@@ -414,7 +414,7 @@ end subroutine locate_opal95_x_stencil
 subroutine shift_rows_off_empty_corner(tbl, hydrogen_fraction, x_tables, st, rows_shifted)
       type(opal95_table_set), intent(inout) :: tbl
       real(dp), intent(in) :: hydrogen_fraction
-      integer, intent(in) :: x_tables(4)
+      integer, intent(in) :: x_tables(:)
       type(opal95_stencil), intent(inout) :: st
       logical, intent(out) :: rows_shifted
       integer :: i, j, k, first_column, t_row
@@ -514,8 +514,8 @@ pure subroutine opal95_x_tables_at_z(grid_x, z_here, hydrogen_fraction, first_ta
      table_index, nodes)
       real(dp), intent(in) :: grid_x(:), z_here, hydrogen_fraction
       integer, intent(in) :: first_table
-      integer, intent(out) :: table_index(4)
-      real(dp), intent(out) :: nodes(4)
+      integer, intent(out) :: table_index(:)
+      real(dp), intent(out) :: nodes(:)
       integer :: i
 
       if (z_here >= no_x095_from_z .and. hydrogen_fraction >= high_x) then
