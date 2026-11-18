@@ -480,15 +480,15 @@ new = '''      families(2) = alex06_source(settings)
 id = 'opal95-header'
 check = "kap_init refuses an OPAL95 table at another X than its slot's"
 file = 'kap/opal95/opal95_reader.f90'
-old = '''      if (tbl%grid_z(iz) /= zz .or. xxt /= xx) then'''
-new = '''      if (tbl%grid_z(iz) /= zz) then'''
+old = '''         if (tbl%grid_z(iz) /= header_z .or. slot_x /= header_x) then'''
+new = '''         if (tbl%grid_z(iz) /= header_z) then'''
 
 [[mutation]]
 id = 'alex06-header'
 check = 'kap_init refuses an Alexander 2006 table at another X'
 file = 'kap/alex06/alex06_reader.f90'
-old = '''            if (header_x /= tbl%grid_x(i) .or. header_z /= tbl%grid_z(ii)) then'''
-new = '''            if (header_z /= tbl%grid_z(ii)) then'''
+old = '''      if (header_x /= expected_x .or. header_z /= expected_z) then'''
+new = '''      if (header_z /= expected_z) then'''
 
 [[mutation]]
 id = 'alex94-header'
