@@ -267,7 +267,7 @@ def test_buoyancy_integral_against_gyre(sun):
                       integral / spacing - 1.0)) <= TOL["asymptotic_period_spacing"]
 
 
-@pytest.mark.xfail(strict=True, reason="V5 (docs/PHYSICS_VALIDATION.md): delta_Pg's sum starts at "
+@pytest.mark.xfail(strict=True, reason="V5, M362 (docs/PHYSICS_VALIDATION.md, docs/bug_sweep.md): delta_Pg's sum starts at "
                    "the second mesh point and leaves out the centre's part, 6% of the integral")
 def test_delta_pg_against_gyre(sun):
     spacing, _ = vm.mean_period_spacing(vm.mode_table(sun["g_extended"], 1), 120, 200)
@@ -275,7 +275,7 @@ def test_delta_pg_against_gyre(sun):
                       sun["hist"]["delta_Pg"] / spacing - 1.0)) <= TOL["delta_pg_vs_gyre"]
 
 
-@pytest.mark.xfail(strict=True, reason="V6 (docs/PHYSICS_VALIDATION.md): the pulse files' innermost "
+@pytest.mark.xfail(strict=True, reason="V6, M363 (docs/PHYSICS_VALIDATION.md, docs/bug_sweep.md): the pulse files' innermost "
                    "point is at r = 0.01 R; GYRE's g-mode periods depend on how it fills the centre")
 def test_g_modes_do_not_depend_on_the_centre_fill(sun):
     as_written, _ = vm.mean_period_spacing(vm.mode_table(sun["g"], 1), 120, 200)

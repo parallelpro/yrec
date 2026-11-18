@@ -617,7 +617,7 @@ def test_profile_mass_is_continuous(models):
         check_profile_mass_continuous(b)
 
 
-@pytest.mark.xfail(strict=True, reason="V1 (docs/PHYSICS_VALIDATION.md): the standard solar deck's "
+@pytest.mark.xfail(strict=True, reason="V1, M358 (docs/PHYSICS_VALIDATION.md, docs/bug_sweep.md): the standard solar deck's "
                    "solver tolerances leave the luminosity equation open by 4.5e-4 L")
 def test_luminosity_equation_is_converged(models):
     for b in models:
@@ -625,21 +625,21 @@ def test_luminosity_equation_is_converged(models):
             check_luminosity_equation_converged(b)
 
 
-@pytest.mark.xfail(strict=True, reason="V2 (docs/PHYSICS_VALIDATION.md): a near-duplicate point with "
+@pytest.mark.xfail(strict=True, reason="V2, M359 (docs/PHYSICS_VALIDATION.md, docs/bug_sweep.md): a near-duplicate point with "
                    "a density inversion at the fitting point")
 def test_no_density_inversion_at_the_fit(models):
     for b in models:
         check_fit_join_density(b)
 
 
-@pytest.mark.xfail(strict=True, reason="V4 (docs/PHYSICS_VALIDATION.md): N^2 is the centred "
+@pytest.mark.xfail(strict=True, reason="V4, M361 (docs/PHYSICS_VALIDATION.md, docs/bug_sweep.md): N^2 is the centred "
                    "difference's error, of either sign, where nabla = nabla_ad exactly")
 def test_brunt_is_not_positive_in_convection(models):
     for b in models:
         check_brunt_sign_in_convection(b)
 
 
-@pytest.mark.xfail(strict=True, reason="V3 (docs/PHYSICS_VALIDATION.md): the atmosphere's nabla is "
+@pytest.mark.xfail(strict=True, reason="V3, M360 (docs/PHYSICS_VALIDATION.md, docs/bug_sweep.md): the atmosphere's nabla is "
                    "grad_ad where it is convectively unstable, its T(tau) follows grad_rad")
 def test_atmosphere_gradient_everywhere(models):
     for b in models:
