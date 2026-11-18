@@ -4783,3 +4783,77 @@ on x86 only, fixed after the round.
 - **The push**: yrec-next was pushed through 9059d0b1 on 2026-11-13
   and through f0ed5045 on 2026-11-14; M318's fix waits for the owner's
   word.
+
+### The convergence round: why the low-mass decks stopped (b2-conv, 2026-11-17)
+
+The owner asked for the cause of the shipped decks that stop with a failed
+solve (O3, M294) or at their first model (M316), and the fix. One agent,
+under round 2B's rules (the work directory's `notes/COMMON2B.md`,
+`notes/CONV_BRIEF.md`): a diagnosis first (`notes/CONV_DIAGNOSIS.md`), no
+result-changing commit before it, then one measured commit per fix.
+
+**The diagnosis.**
+- The eight convergence decks (0.03 to 0.15 Msun, fully convective, OPAL
+  2006 + SCV) failed because the blended equation of state was
+  discontinuous along the model: the OPAL 2006 table's edge weight jumped
+  at every inner corner of the table's ragged high-density edge (M356), and
+  single points fell back to SCV where the OPAL density search gave up on
+  a jump of the table's own pressure (M357). Both are the F77's.
+- The Jacobian's known gaps (O1, O2) were not the cause: with every
+  partial replaced by a finite difference of the residual the 0.03 Msun
+  deck still stopped, and decks that run take the same number of Newton
+  solves. Nor was the boundary fit's conditioning (L14's lead), and no
+  retry with a shorter timestep is needed.
+- M316's two decks: the Henyey iteration applies most of a correction of a
+  dex. For the rescaled 3 Msun, Z = 0.04 deck a limit on the applied
+  correction is enough; the 25 Msun deck's shipped starting model sits in
+  a deuterium flash and is the cause there.
+
+**Learned.**
+- A Newton solve that cycles without a flag flipping or a refit is a
+  residual that jumps: scan the microphysics along the failing iterate
+  (ten points per shell interval) before suspecting the Jacobian. A
+  finite-difference Jacobian "curing" a deck can be path luck: a
+  difference taken across a jump is a huge slope that holds the shell
+  back.
+- A blend weight built as a product of one-dimensional ramps is not
+  continuous on a staircase edge; a bilinear interpolant of node weights
+  is.
+- Keeping the old arithmetic where the old function was right kept 55 of
+  56 decks byte-identical through both EOS fixes.
+
+**What was done** (branch b2-conv, from 1179afbf).
+- M356 (229ae4b1): the OPAL 2006 edge weight is the bilinear interpolant
+  of node weights, the old product wherever that was continuous; one
+  deck of the 56 moves (Test_m0030_feh0_noGS_ZAMS, first visible change
+  9.6e-6).
+- M357 (764dbc06): the OPAL density search goes on by bisection and
+  takes the density of a jump in the table's pressure; the same deck, at
+  1e-9. O3 and M294 closed: Test_m0040, m0050 and m0060_feh0_noGS_ZAMS,
+  Test_m0p05feh+0p0GS98_allard_15Gyr, Test_m0p1feh+0p0GS98_allard_ZAMS and
+  SamplelowerMS_m0p15feh+0p0GS98_kurucz_ZAMS run to their stops
+  (`test_low_mass_decks.py`, in CI); Test_m0p03feh+0p0GS98_allard_15Gyr
+  runs to 1.1 Gyr, where it leaves the Allard tables.
+- M316, in part (338cb741): a limit on the Henyey correction, the control
+  `solver_max_correction` (off by default; byte-identical on the 56
+  decks); m3000gs98z040000_prems sets 0.1 and runs
+  (`test_correction_limit.py`, in CI).
+- M176's part B (fc32ebfc): the start-of-step deuterium rate set
+  wherever the rate is; 49 decks, 17 pins, the configuration matrix at
+  1e-11, the standard solar decks within 4.2e-7 in log L.
+- O6's part B (7cc973e8): the rezone regrids that rate unconditionally;
+  14 rotating decks' final deuterium at 1e-13, nothing else.
+- Measured and not committed: O1's first gap (the convective gradient's
+  L partial). It is right to 1e-8 against finite differences, buys no
+  iterations, and moves Test_solar_GS_norot by 8.6e-5 in log L and the
+  horizontal-branch deck by 17% in models: over the round's stop rules.
+  The patch is kept in the work directory.
+
+**What is left.**
+- Open by measurement: O1 and O2 (a correct Jacobian entry against
+  re-seeding every deck; numerical second derivatives cost 3.3 times the
+  CPU for no iterations).
+- For the authors: a stop that Test_m0p03feh+0p0GS98_allard_15Gyr can
+  reach; the shipped massive starting models (m25000gs98z018804_Dbl's is
+  in a deuterium flash) and what a model does at a super-Eddington
+  atmosphere; whether `solver_max_correction` gets a default.
