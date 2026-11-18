@@ -35,7 +35,7 @@
   
  run_kind(2) = 1   
  first_call_flag(2) = .FALSE.  
- max_model_number(2) = 50 ! 0.03 Msun: the central-H stop below can never trigger (no H burning), and the Newton solve fails later in the contraction in every YREC version (the original after about 210 models), so stop at 50
+ max_model_number(2) = 50 ! 0.03 Msun: the central-H stop below can never trigger (no H burning), so stop at 50 models. The solve no longer fails later in the contraction: with this cap lifted the deck runs to model 782 (67 Gyr), where the equation of state beyond SCV's high-pressure edge stops it (docs/bug_sweep.md M368, M372)
  initial_x_array(2) = 0.719620
  initial_z_array(2) = 0.016492
  mixing_length_alpha(2) = 1.707575
