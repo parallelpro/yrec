@@ -5,10 +5,12 @@
 ! spaced evenly in a coordinate chi built from the changes of log m, L
 ! and log P, with points added at X and Z jumps; the model interpolated
 ! onto it and, for rotating models, the rotation re-spun on it. The
-! regridding arithmetic (the shell masses of a mesh, the interpolation
-! of the profiles, the angular momentum totals) is the star-blind kernel
-! in regridding.f90; rezone gathers its inputs from the star and stores
-! its results.
+! arithmetic is two star-blind kernels: the new mesh (chi, the points
+! along it, the points at jumps, the crowded points) in mesh_spacing.f90,
+! and the regridding (the shell masses of a mesh, the interpolation of
+! the profiles, the angular momentum totals) in regridding.f90; rezone
+! gathers their inputs from the star, reports their failures and stores
+! their results.
 module rezoning
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use shell_physics, only: compute_shell_physics
@@ -18,7 +20,7 @@ module rezoning
       use moments_of_inertia, only: zone_moments_of_inertia
       use rotating_shape, only: rotation_shape_factors
       use star_info_lib, only: i_eps_grav, i_eps_neu, i_h1, i_metals, json, n_species_basic, &
-           n_species_extended
+           n_species_extended, max_convective_zones, max_radiative_zones
       use control_slots, only: ichi_czbase_fine_width, ichi_dl_max, ichi_dm_max, &
            ichi_dm_min, ichi_dp_core_max, ichi_dp_czbase_max, ichi_dp_env_max, ichi_dx_max, &
            ichi_dz_max, ichi_flag_dw, ichi_flag_dx, ichi_flag_dz
@@ -26,10 +28,13 @@ module rezoning
       use run_messages, only: solver_diagnostics
       use core_messages, only: core_log, core_report, message_length, unwritten_line
       use physical_constants, only: cc23, ln10
-      use numerics_lib, only: natural_spline, splint, numerics_status_text
+      use numerics_lib, only: numerics_status_text
       use regridding, only: structure_profiles, rotation_profiles, &
            compute_shell_masses, regrid_profile, regrid_composition, &
            regrid_structure, regrid_rotation, compute_angular_momentum_totals
+      use mesh_spacing, only: chi_scales, accumulate_chi, sort_kept_points, &
+           space_points_along_chi, spline_onto_points, insert_points_at_jumps, &
+           remove_crowded_points
       implicit none
       private
       public :: rezone
@@ -38,8 +43,14 @@ module rezoning
 ! every append; one slot stays for the star%nz terminator).
       integer, parameter :: max_flag_points = 100
 
-! A spacing limit at or below spacing_limit_off is off [X, Z].
-      real(dp), parameter :: spacing_limit_off = 1.0D-15
+! The point added outside a surface hotter than the envelope window:
+! its log T rises by added_point_dlogt_dlogp of its log P's rise [-], and
+! its log rho is log P - log T - added_point_log_density_offset, a rough
+! ideal-gas estimate [dex]. The surface opacity tables are rebuilt when
+! the surface X has moved by more than surface_x_refresh_tol since they
+! were built [mass fraction].
+      real(dp), parameter :: added_point_dlogt_dlogp = 0.250D0, &
+           added_point_log_density_offset = 8.0D0, surface_x_refresh_tol = 1.0D-8
 
 ! The rezone's state, which its steps pass on to each other:
 !   flag_point(1:flag_count)  the points the rezone keeps and does not
@@ -47,15 +58,15 @@ module rezoning
 !                             with star%nz;
 !   flag_overflow_warned      append_flag_point has reported a dropped
 !                             point in this rezone;
-!   point_spacing_max         the largest steps in log P, L, X and Z
-!                             between new points (seed_new_point_run);
+!   max_luminosity_step, max_x_step, max_z_step
+!                             the largest steps in L, X and Z between
+!                             new points (seed_new_point_run);
 !   chi                       the running sum of the normalized changes of
 !                             log m, L and log P from shell to shell (MHP
 !                             7/02), which sets the spacing;
 !   new_log_mass(1:new_num_zones)  the new mesh in log m (legacy HSS),
 !                             adopted as star%log_mass by
 !                             transfer_new_points;
-!   x_new, z_new              X and Z splined onto the new points;
 !   ft_splined, fp_splined    the shape factors splined onto the new mesh,
 !                             which transfer_new_points adopts;
 !   old_point_count, new_point_count  the old and the new number of points;
@@ -65,12 +76,12 @@ module rezoning
          integer :: flag_point(max_flag_points) = 0
          integer :: flag_count = 0
          logical :: flag_overflow_warned = .false.
-         real(dp) :: point_spacing_max(4) = 0.0d0
+         real(dp) :: max_luminosity_step = 0.0d0
+         real(dp) :: max_x_step = 0.0d0
+         real(dp) :: max_z_step = 0.0d0
          real(dp) :: chi(json) = 0.0d0
          real(dp) :: new_log_mass(json) = 0.0d0
          integer :: new_num_zones = 0
-         real(dp) :: x_new(json) = 0.0d0
-         real(dp) :: z_new(json) = 0.0d0
          real(dp) :: ft_splined(json) = 0.0d0
          real(dp) :: fp_splined(json) = 0.0d0
          integer :: old_point_count = 0
@@ -110,8 +121,6 @@ contains
 ! mesh (rotating models). ierr /= 0 on failure.
 !   star reads: physics%use_extended_composition
 !   star writes: reset_triangle
-!   star reads: none
-!   star writes: none
 subroutine rezone(s, ierr)
       implicit none
       type(star_info), intent(inout) :: s
@@ -190,8 +199,9 @@ subroutine check_envelope_temperature_range(s, rz, ierr)
 ! The outer point is hotter than tenv1: add a point outside it at the
 ! stored envelope state (log m/M = stored_envelope_state(4)), shifting
 ! log P and log R by the stored state's offsets from the fitting point,
-! with Delta log T = Delta log P/4, L and the composition copied, and
-! log rho = log P - log T - 8 (a rough ideal-gas estimate).
+! with Delta log T = Delta log P/4 (added_point_dlogt_dlogp), L and the
+! composition copied, and log rho = log P - log T - 8
+! (added_point_log_density_offset).
       else if (s%logT(s%nz) > s%physics%rezone_env_logt1.and. &
            s%stored_vertex_index /= 0) then
          s%nz = s%nz + 1
@@ -201,7 +211,7 @@ subroutine check_envelope_temperature_range(s, rz, ierr)
               (s%stored_envelope_state(1) - s%fit_point_logP(s%stored_vertex_index))
          s%logT(s%nz) = s%logT(s%nz-1) + &
               (s%stored_envelope_state(1) - &
-              s%fit_point_logP(s%stored_vertex_index))*0.250D0
+              s%fit_point_logP(s%stored_vertex_index))*added_point_dlogt_dlogp
          s%logR(s%nz) = s%logR(s%nz-1) + &
               (s%stored_envelope_state(3) - s%fit_point_logR(s%stored_vertex_index))
          s%luminosity_lsun(s%nz) = s%luminosity_lsun(s%nz-1)
@@ -209,7 +219,7 @@ subroutine check_envelope_temperature_range(s, rz, ierr)
             s%xa(i,s%nz) = s%xa(i,s%nz-1)
          end do
          s%logRho(s%nz) = s%logP(s%nz) - &
-              s%logT(s%nz) - 8.0D0
+              s%logT(s%nz) - added_point_log_density_offset
          j = s%nz - 1
          lines = unwritten_line
          write(lines,60) j,s%log_mass(j),s%logP(j), &
@@ -399,49 +409,19 @@ end subroutine flag_envelope_bases
 
 ! ---------------------------------------------------------------
 ! End the flagged points with star%nz, sort them into ascending order
-! (bubble sort) and remove the duplicates; with the solver diagnostics
-! on, list them in the run log.
+! and remove the duplicates (sort_kept_points); with the solver
+! diagnostics on, list them in the run log.
 !   star reads: nz
 !   star writes: none
 subroutine sort_flag_points(s, rz)
       type(star_info), intent(inout) :: s
       type(rezone_state), intent(inout) :: rz
-      integer :: i, j
-      logical :: sort_done
-      integer :: temp_swap
+      integer :: j
       character(len=message_length), allocatable :: flag_lines(:)
 ! append_flag_point keeps flag_count <= max_flag_points, so the
 ! terminator is always in bounds.
       rz%flag_point(rz%flag_count) = s%nz
-! Sort the flagged points into ascending order (bubble sort).
-      if (rz%flag_count /= 1) then
-         do
-            sort_done = .true.
-            do i = 1,rz%flag_count-1
-               if (rz%flag_point(i+1) < rz%flag_point(i)) then
-                  temp_swap = rz%flag_point(i)
-                  rz%flag_point(i) = rz%flag_point(i+1)
-                  rz%flag_point(i+1) = temp_swap
-                  sort_done = .false.
-               end if
-            end do
-            if (sort_done) exit
-         end do
-! Remove the duplicates.
-         i = 2
-         do
-            if (rz%flag_point(i) == rz%flag_point(i-1)) then
-               if (i < rz%flag_count) then
-                  do j = i,rz%flag_count-1
-                     rz%flag_point(j) = rz%flag_point(j+1)
-                  end do
-               end if
-               rz%flag_count = rz%flag_count - 1
-            end if
-            i = i + 1
-            if (i > rz%flag_count) exit
-         end do
-      end if
+      call sort_kept_points(rz%flag_point, rz%flag_count)
       if (solver_diagnostics()) then
          allocate(flag_lines(rz%flag_count/20 + 1))
          flag_lines = unwritten_line
@@ -483,7 +463,6 @@ end subroutine append_flag_point
 !   star reads: none
 !   star writes: none
 subroutine assign_new_points(s, rz, ierr)
-      use math_lib
       type(star_info), intent(inout) :: s
       type(rezone_state), intent(inout) :: rz
       integer, intent(inout) :: ierr
@@ -491,21 +470,23 @@ subroutine assign_new_points(s, rz, ierr)
       call accumulate_chi_spacing(s, rz)
       call place_points_along_chi(s, rz, ierr)
       if (ierr /= 0) return
-      call add_points_for_x_jumps(s, rz, ierr)
+! X rising outward by more than tol_dx_max, then Z falling outward by
+! more than tol_dz_max.
+      call add_points_for_jumps(s, rz, i_h1, 'X', .false., rz%max_x_step, ierr)
       if (ierr /= 0) return
-      call add_points_for_z_jumps(s, rz, ierr)
+      call add_points_for_jumps(s, rz, i_metals, 'Z', .true., rz%max_z_step, ierr)
       if (ierr /= 0) return
       call drop_crowded_points(s, rz)
 end subroutine assign_new_points
 
 
 ! ---------------------------------------------------------------
-! Start the new mesh at the centre, save the start-of-step Teff and
-! surface L (for the HR-motion timestep limit), and set the maximum spacings
-! point_spacing_max in log P, L, X and Z, the L one scaled by the largest
-! L in the model.
-!   star reads: log_mass, log_Teff, logP, luminosity_lsun, nz,
-!     physics%chi_grid_scale, xa
+! Save the start-of-step centre values, Teff and surface L (for the
+! HR-motion timestep limit), and set the largest steps between new points
+! in L, X and Z (legacy HPMAX), the L one scaled by the largest L in the
+! model.
+!   star reads: log_Teff, logP, luminosity_lsun, nz,
+!     physics%chi_grid_scale
 !   star writes: log_Teff_start, logP_start, luminosity_lsun_start,
 !     surface_luminosity_lsun_start
 subroutine seed_new_point_run(s, rz)
@@ -513,12 +494,8 @@ subroutine seed_new_point_run(s, rz)
       type(rezone_state), intent(inout) :: rz
       integer :: i
       real(dp) :: luminosity_max
-! The centre point stays where it is.
-      rz%new_log_mass(1) = s%log_mass(1)
       s%logP_start(1) = s%logP(1)
       s%luminosity_lsun_start(1) = s%luminosity_lsun(1)
-      rz%x_new(1) = s%xa(i_h1,1)
-      rz%z_new(1) = s%xa(i_metals,1)
       luminosity_max = s%luminosity_lsun(s%nz)
 ! The start-of-step log Teff (JVS 04/14) and surface L, saved before the
 ! rezone moves the points.
@@ -530,16 +507,15 @@ subroutine seed_new_point_run(s, rz)
             luminosity_max = s%luminosity_lsun(i)
          end if
       end do
-      rz%point_spacing_max(1) = s%physics%chi_grid_scale(ichi_dp_env_max)
-      rz%point_spacing_max(2) = s%physics%chi_grid_scale(ichi_dl_max)*luminosity_max
-      rz%point_spacing_max(3) = s%physics%chi_grid_scale(ichi_dx_max)
-      rz%point_spacing_max(4) = s%physics%chi_grid_scale(ichi_dz_max)
+      rz%max_luminosity_step = s%physics%chi_grid_scale(ichi_dl_max)*luminosity_max
+      rz%max_x_step = s%physics%chi_grid_scale(ichi_dx_max)
+      rz%max_z_step = s%physics%chi_grid_scale(ichi_dz_max)
 end subroutine seed_new_point_run
 
 
 ! ---------------------------------------------------------------
 ! Accumulate chi, the running sum of the normalized changes from shell
-! to shell:
+! to shell (accumulate_chi):
 !   chi(1) = 1,
 !   chi(j) = chi(j-1) + Delta log m/tol_dm_max
 !            + Delta L/(tol_dl_max L_max) - Delta log P/dp_scale,
@@ -554,325 +530,118 @@ end subroutine seed_new_point_run
 subroutine accumulate_chi_spacing(s, rz)
       type(star_info), intent(inout) :: s
       type(rezone_state), intent(inout) :: rz
-      integer :: j
-      real(dp) :: pressure_test
-      real(dp) :: dp_scale
-      real(dp) :: mass_scale
-      real(dp) :: luminosity_scale
-      real(dp) :: dchi
-      mass_scale = s%physics%chi_grid_scale(ichi_dm_max)
-      luminosity_scale = rz%point_spacing_max(2)
-      rz%chi(1) = 1.0D0
-      do j = 2, s%nz
-         pressure_test = s%logP(j) - s%logP(s%envelope_cz_bottom_index)
-         if (abs(pressure_test) < s%physics%chi_grid_scale(ichi_czbase_fine_width)) then
-! The finely zoned region around the convection-zone base.
-            dp_scale = s%physics%chi_grid_scale(ichi_dp_czbase_max)
-         else if (pressure_test > s%physics%chi_grid_scale(ichi_czbase_fine_width)) then
-! Below it, in the radiative interior.
-            dp_scale = s%physics%chi_grid_scale(ichi_dp_core_max)
-         else
-! Above it, in the surface convection zone.
-            dp_scale = s%physics%chi_grid_scale(ichi_dp_env_max)
-         end if
-         if (s%luminosity_lsun(j) > s%luminosity_lsun(j-1)) then
-            dchi = (s%log_mass(j)-s%log_mass(j-1))/mass_scale + &
-                 (s%luminosity_lsun(j)-s%luminosity_lsun(j-1))/luminosity_scale - &
-                 (s%logP(j)-s%logP(j-1))/dp_scale
-         else
-            dchi = (s%log_mass(j)-s%log_mass(j-1))/mass_scale - &
-                 (s%logP(j)-s%logP(j-1))/dp_scale
-         end if
-         rz%chi(j) = rz%chi(j-1)+dchi
-      end do
+      type(chi_scales) :: scales
+
+      scales%log_mass = s%physics%chi_grid_scale(ichi_dm_max)
+      scales%luminosity = rz%max_luminosity_step
+      scales%log_pressure_core = s%physics%chi_grid_scale(ichi_dp_core_max)
+      scales%log_pressure_base = s%physics%chi_grid_scale(ichi_dp_czbase_max)
+      scales%log_pressure_envelope = s%physics%chi_grid_scale(ichi_dp_env_max)
+      scales%base_fine_width = s%physics%chi_grid_scale(ichi_czbase_fine_width)
+      call accumulate_chi(s%log_mass(1:s%nz), s%luminosity_lsun(1:s%nz), s%logP(1:s%nz), &
+           s%logP(s%envelope_cz_bottom_index), scales, rz%chi(1:s%nz))
 end subroutine accumulate_chi_spacing
 
 
 ! ---------------------------------------------------------------
 ! Place the new points evenly in chi between successive flagged points,
 ! int(Delta chi) + 1 intervals per segment so that every step is below
-! one, reading log m off a natural cubic spline of log m against chi.
-! The flagged points themselves are kept (the spline passes through its
-! knots). ierr past json points or on a spline failure.
+! one, reading log m off a natural cubic spline of log m against chi
+! (space_points_along_chi). The flagged points themselves are kept (the
+! spline passes through its knots). ierr past json points or on a spline
+! failure.
 !   star reads: log_mass, nz
 !   star writes: none
 subroutine place_points_along_chi(s, rz, ierr)
       type(star_info), intent(inout) :: s
       type(rezone_state), intent(inout) :: rz
       integer, intent(inout) :: ierr
-      integer :: jerr_gate
-      real(dp) :: spline_x(json)
-      real(dp) :: spline_y(json)
-      real(dp) :: spline_second_deriv(json)
-      integer :: i
-      integer :: j
-      real(dp) :: dchi
-      real(dp) :: chi_prev
-      integer :: point_prev_index
-      real(dp) :: delta_chi
-      integer :: segment_point_count
-      real(dp) :: spline_eval_x
-      real(dp) :: spline_eval_y
+      integer :: needed_points, spline_ierr
       character(len=message_length) :: lines(4)
-      do j = 1,s%nz
-         spline_x(j) = rz%chi(j)
-         spline_y(j) = s%log_mass(j)
-      end do
-! The spline of log m against chi.
-      call natural_spline(spline_x,spline_y,s%nz,spline_second_deriv)
-      chi_prev = rz%chi(1)
-      point_prev_index = 1
-      rz%new_num_zones = 1
-      do i = 1,rz%flag_count
-         delta_chi = rz%chi(rz%flag_point(i))-chi_prev
-         segment_point_count = int(delta_chi)+1
-         if (rz%new_num_zones+segment_point_count > json) then
-! More points than the arrays hold: stop with ierr.
-            lines = unwritten_line
-            write(lines,101) rz%new_num_zones+segment_point_count,json
-            call core_report(lines)
-  101       format(' ERROR: rezone: the new mesh needs ',I0,' points, more than json (', &
-                 I0,'); run stopped')
-            ierr = 1
-            return
-         end if
-         dchi = delta_chi/dble(segment_point_count)
-! The new points of this segment.
-         do j = point_prev_index+1,point_prev_index+segment_point_count
-            spline_eval_x = chi_prev + dchi
-            call splint(spline_x, spline_y, s%nz, &
-                 spline_second_deriv, spline_eval_x, spline_eval_y, jerr_gate)
-            ! A spline failure returns through ierr, after its message.
-            if (jerr_gate /= 0) then
-               lines = unwritten_line
-               write(lines,'(a)') ' ERROR: rezone: the spline of log m along the mesh' &
-                    //' criterion failed: '//trim(numerics_status_text(jerr_gate))
-               call core_report(lines)
-               ierr = jerr_gate
-               return
-            end if
-            rz%new_log_mass(j) = spline_eval_y
-            chi_prev = spline_eval_x
-         end do
-         rz%new_num_zones = rz%new_num_zones + segment_point_count
-         point_prev_index = rz%new_num_zones
-      end do
+
+      call space_points_along_chi(rz%chi(1:s%nz), s%log_mass(1:s%nz), &
+           rz%flag_point(1:rz%flag_count), rz%new_log_mass, rz%new_num_zones, &
+           needed_points, spline_ierr)
+      if (needed_points > 0) then
+         call report_mesh_overflow(needed_points)
+         ierr = 1
+      else if (spline_ierr /= 0) then
+         lines = unwritten_line
+         write(lines,'(a)') ' ERROR: rezone: the spline of log m along the mesh' &
+              //' criterion failed: '//trim(numerics_status_text(spline_ierr))
+         call core_report(lines)
+         ierr = spline_ierr
+      end if
 end subroutine place_points_along_chi
 
 
 ! ---------------------------------------------------------------
-! Interpolate X onto the new points (x_new) and, where X rises outward
-! by more than tol_dx_max between two new points, insert
-! int(Delta X/tol_dx_max) points evenly in log m between them. Skipped
-! when tol_dx_max is zero; ierr on a spline failure.
-!   star reads: log_mass, nz, xa
-!   star writes: none
-subroutine add_points_for_x_jumps(s, rz, ierr)
-      type(star_info), intent(inout) :: s
-      type(rezone_state), intent(inout) :: rz
-      integer, intent(inout) :: ierr
-      integer :: jerr_gate
-      real(dp) :: spline_x(json)
-      real(dp) :: spline_y(json)
-      real(dp) :: spline_second_deriv(json)
-      integer :: gradient_flag_index(json)
-      integer :: i
-      integer :: j
-      integer :: k
-      integer :: working_num_zones
-      integer :: num_new_points
-      real(dp) :: delta_x_over_max
-      real(dp) :: point_insert_spacing
-      real(dp) :: spline_eval_x
-      real(dp) :: spline_eval_y
-      integer :: gradient_flag_count
+! The error of a mesh that needs more points than the arrays hold; the
+! caller returns ierr = 1, and the run stops.
+subroutine report_mesh_overflow(needed_points)
+      integer, intent(in) :: needed_points
       character(len=message_length) :: lines(4)
-      do j = 1,s%nz
-         spline_x(j) = s%log_mass(j)
-         spline_y(j) = s%xa(i_h1,j)
-      end do
-! The spline of X against log m, evaluated at the new points.
-      call natural_spline(spline_x,spline_y,s%nz,spline_second_deriv)
-      do i = 2,rz%new_num_zones
-         spline_eval_x = rz%new_log_mass(i)
-         call splint(spline_x, spline_y, s%nz, spline_second_deriv, &
-              spline_eval_x, spline_eval_y, jerr_gate)
-         if (jerr_gate /= 0) then
-            lines = unwritten_line
-            write(lines,'(a)') ' ERROR: rezone: the spline of X on the new mesh failed: ' &
-                 //trim(numerics_status_text(jerr_gate))
-            call core_report(lines)
-            ierr = jerr_gate
-            return
-         end if
-         rz%x_new(i) = spline_eval_y
-      end do
-! Skip when tol_dx_max (legacy HPMAX(3)) is zero.
-      if (rz%point_spacing_max(3) > spacing_limit_off) then
-! The intervals where X rises outward by more than tol_dx_max, collected
-! outermost first, so that each insertion below shifts only points
-! outside the intervals still to be filled.
-         gradient_flag_count = 0
-         do j = rz%new_num_zones,2,-1
-            if (rz%x_new(j)-rz%x_new(j-1) > rz%point_spacing_max(3)) then
-               gradient_flag_count = gradient_flag_count + 1
-               gradient_flag_index(gradient_flag_count) = j
-            end if
-         end do
-         if (gradient_flag_count /= 0) then
-            working_num_zones = rz%new_num_zones
-            do i = 1,gradient_flag_count
-               j = gradient_flag_index(i)
-               delta_x_over_max = (rz%x_new(j) - rz%x_new(j-1))/rz%point_spacing_max(3)
-! The number of points to insert. Shift the points from j outward up by
-! num_new_points, then fill the interval below j evenly in log m.
-               num_new_points = int(delta_x_over_max)
-               point_insert_spacing = (rz%new_log_mass(j)-rz%new_log_mass(j-1))/ &
-                    dble(num_new_points+1)
-! More points than the arrays hold: stop with ierr, as
-! place_points_along_chi does (no check here before 2026-10).
-               if (working_num_zones+num_new_points > json) then
-                  lines = unwritten_line
-                  write(lines,'(a,i0,a,i0,a)') ' ERROR: rezone: the new mesh needs ', &
-                       working_num_zones+num_new_points, ' points, more than json (', json, &
-                       '); run stopped'
-                  call core_report(lines)
-                  ierr = 1
-                  return
-               end if
-               do k = working_num_zones+num_new_points,j+num_new_points,-1
-                  rz%new_log_mass(k) = rz%new_log_mass(k-num_new_points)
-               end do
-               do k = j + num_new_points -1, j -1, -1
-                  rz%new_log_mass(k) = rz%new_log_mass(k+1) - point_insert_spacing
-               end do
-               working_num_zones = working_num_zones + num_new_points
-            end do
-            rz%new_num_zones = working_num_zones
-         end if
-      end if
-end subroutine add_points_for_x_jumps
+
+      lines = unwritten_line
+      write(lines,101) needed_points, json
+      call core_report(lines)
+  101 format(' ERROR: rezone: the new mesh needs ',I0,' points, more than json (', &
+           I0,'); run stopped')
+end subroutine report_mesh_overflow
 
 
 ! ---------------------------------------------------------------
-! Interpolate Z onto the new points (z_new) and, where Z falls outward
-! by more than tol_dz_max between two new points, insert
-! int(Delta Z/tol_dz_max) points evenly in log m between them, as
-! add_points_for_x_jumps does for X. Skipped when tol_dz_max is zero;
-! ierr on a spline failure.
+! Interpolate one species (slot, called profile_name in the messages: X
+! or Z) onto the new points and, where it steps outward by more than
+! max_step between two new points (its rise, or with falling its fall),
+! insert int(step/max_step) points evenly in log m between them
+! (spline_onto_points, insert_points_at_jumps). Nothing is inserted when
+! max_step is zero. ierr past json points or on a spline failure.
 !   star reads: log_mass, nz, xa
 !   star writes: none
-subroutine add_points_for_z_jumps(s, rz, ierr)
+subroutine add_points_for_jumps(s, rz, slot, profile_name, falling, max_step, ierr)
       type(star_info), intent(inout) :: s
       type(rezone_state), intent(inout) :: rz
+      integer, intent(in) :: slot
+      character(len=*), intent(in) :: profile_name
+      logical, intent(in) :: falling
+      real(dp), intent(in) :: max_step
       integer, intent(inout) :: ierr
-      integer :: jerr_gate
-      real(dp) :: spline_x(json)
-      real(dp) :: spline_y(json)
-      real(dp) :: spline_second_deriv(json)
-      integer :: gradient_flag_index(json)
-      integer :: i
-      integer :: j
-      integer :: k
-      integer :: working_num_zones
-      integer :: num_new_points
-      real(dp) :: delta_z_over_max
-      real(dp) :: point_insert_spacing
-      real(dp) :: spline_eval_x
-      real(dp) :: spline_eval_y
-      integer :: gradient_flag_count
+      real(dp) :: values(rz%new_num_zones)
+      integer :: needed_points, spline_ierr
       character(len=message_length) :: lines(4)
-      do j = 1,s%nz
-         spline_x(j) = s%log_mass(j)
-         spline_y(j) = s%xa(i_metals,j)
-      end do
-! The spline of Z against log m, evaluated at the new points.
-      call natural_spline(spline_x,spline_y,s%nz,spline_second_deriv)
-      do i = 2,rz%new_num_zones
-         spline_eval_x = rz%new_log_mass(i)
-         call splint(spline_x, spline_y, s%nz, spline_second_deriv, &
-              spline_eval_x, spline_eval_y, jerr_gate)
-         if (jerr_gate /= 0) then
-            lines = unwritten_line
-            write(lines,'(a)') ' ERROR: rezone: the spline of Z on the new mesh failed: ' &
-                 //trim(numerics_status_text(jerr_gate))
-            call core_report(lines)
-            ierr = jerr_gate
-            return
-         end if
-         rz%z_new(i) = spline_eval_y
-      end do
-! Skip when tol_dz_max (legacy HPMAX(4)) is zero; otherwise collect the
-! intervals where Z falls outward by more than tol_dz_max, outermost
-! first.
-      if (rz%point_spacing_max(4) > spacing_limit_off) then
-         gradient_flag_count = 0
-         do j = rz%new_num_zones,2,-1
-            if (rz%z_new(j-1)-rz%z_new(j) > rz%point_spacing_max(4)) then
-               gradient_flag_count = gradient_flag_count + 1
-               gradient_flag_index(gradient_flag_count) = j
-            end if
-         end do
-         if (gradient_flag_count /= 0) then
-            working_num_zones = rz%new_num_zones
-            do i = 1,gradient_flag_count
-               j = gradient_flag_index(i)
-               delta_z_over_max = (rz%z_new(j-1) - rz%z_new(j))/rz%point_spacing_max(4)
-! The number of points to insert; shift and fill as for X.
-               num_new_points = int(delta_z_over_max)
-               point_insert_spacing = (rz%new_log_mass(j)-rz%new_log_mass(j-1))/ &
-                    dble(num_new_points+1)
-! More points than the arrays hold: stop with ierr, as
-! place_points_along_chi does (no check here before 2026-10).
-               if (working_num_zones+num_new_points > json) then
-                  lines = unwritten_line
-                  write(lines,'(a,i0,a,i0,a)') ' ERROR: rezone: the new mesh needs ', &
-                       working_num_zones+num_new_points, ' points, more than json (', json, &
-                       '); run stopped'
-                  call core_report(lines)
-                  ierr = 1
-                  return
-               end if
-               do k = working_num_zones+num_new_points,j+num_new_points,-1
-                  rz%new_log_mass(k) = rz%new_log_mass(k-num_new_points)
-               end do
-               do k = j + num_new_points -1, j -1, -1
-                  rz%new_log_mass(k) = rz%new_log_mass(k+1) - point_insert_spacing
-               end do
-               working_num_zones = working_num_zones + num_new_points
-            end do
-            rz%new_num_zones = working_num_zones
-         end if
+
+      call spline_onto_points(s%log_mass(1:s%nz), s%xa(slot,1:s%nz), &
+           rz%new_log_mass(1:rz%new_num_zones), values, spline_ierr)
+      if (spline_ierr /= 0) then
+         lines = unwritten_line
+         write(lines,'(a)') ' ERROR: rezone: the spline of '//profile_name// &
+              ' on the new mesh failed: '//trim(numerics_status_text(spline_ierr))
+         call core_report(lines)
+         ierr = spline_ierr
+         return
       end if
-end subroutine add_points_for_z_jumps
+      call insert_points_at_jumps(values, falling, max_step, rz%new_log_mass, &
+           rz%new_num_zones, needed_points)
+      if (needed_points > 0) then
+         call report_mesh_overflow(needed_points)
+         ierr = 1
+      end if
+end subroutine add_points_for_jumps
 
 
 ! ---------------------------------------------------------------
 ! Drop the new points that lie within tol_dm_min in log m of the last
-! point kept; the first and last points are always kept. The mesh is
-! compacted through compact_log_mass, then copied back.
+! point kept; the first and last points are always kept
+! (remove_crowded_points).
 !   star reads: physics%chi_grid_scale
 !   star writes: none
 subroutine drop_crowded_points(s, rz)
       type(star_info), intent(inout) :: s
       type(rezone_state), intent(inout) :: rz
-      real(dp) :: compact_log_mass(json)
-      integer :: j
-      integer :: k
-      j = 1
-      compact_log_mass(j) = rz%new_log_mass(j)
-      do k = 2,rz%new_num_zones-1
-         if (rz%new_log_mass(k) - compact_log_mass(j) > s%physics%chi_grid_scale(ichi_dm_min)) then
-            j = j + 1
-            compact_log_mass(j) = rz%new_log_mass(k)
-         end if
-      end do
-      j = j + 1
-      compact_log_mass(j) = rz%new_log_mass(rz%new_num_zones)
-      rz%new_num_zones = j
-      do j = 2,rz%new_num_zones
-         rz%new_log_mass(j) = compact_log_mass(j)
-      end do
+
+      call remove_crowded_points(rz%new_log_mass, rz%new_num_zones, &
+           s%physics%chi_grid_scale(ichi_dm_min))
 end subroutine drop_crowded_points
 
 
@@ -1199,8 +968,8 @@ subroutine respin_on_new_grid(s, ierr)
       use math_lib
       type(star_info), intent(inout) :: s
       integer, intent(inout) :: ierr
-      integer :: radiative_zone_bounds(13,2)
-      integer :: convective_zone_bounds(12,2)
+      integer :: radiative_zone_bounds(max_radiative_zones,2)
+      integer :: convective_zone_bounds(max_convective_zones,2)
       integer :: i
       integer :: num_radiative_zones
       integer :: num_convective_zones
@@ -1342,14 +1111,14 @@ end subroutine rerun_physics_on_new_grid
 
 ! ---------------------------------------------------------------
 ! Rebuild the surface opacity tables (for the new surface X and Z) when
-! the surface X has moved by more than 1e-8 since they were built
-! (settings_install's install_surface_x_settings).
+! the surface X has moved by more than surface_x_refresh_tol since they
+! were built (settings_install's install_surface_x_settings).
 !   star reads: nz, xa
 !   star writes: surface_hydrogen_fraction, surface_metal_fraction
 subroutine refresh_surface_opacity(s, ierr)
       type(star_info), intent(inout) :: s
       integer, intent(inout) :: ierr
-      if (abs(s%surface_hydrogen_fraction-s%xa(i_h1,s%nz)) > 1.0D-8) then
+      if (abs(s%surface_hydrogen_fraction-s%xa(i_h1,s%nz)) > surface_x_refresh_tol) then
          s%surface_hydrogen_fraction = s%xa(i_h1,s%nz)
          s%surface_metal_fraction = s%xa(i_metals,s%nz)
          call install_surface_x_settings(s%surface_hydrogen_fraction, ierr)

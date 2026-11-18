@@ -29,6 +29,16 @@
 !   raised by 0.02 Msun at fixed shell mass and fixed outer point
 !   (move_core_mass); scale_hydrogen, shift_metals, ramp_metals and
 !   set_helium_by_difference against their formulas.
+!   mesh_spacing's arithmetic of the rezone's new mesh: accumulate_chi on
+!   40 points with uniform steps (the mass, luminosity and pressure terms,
+!   the three pressure regions); sort_kept_points (order, duplicates, and
+!   the two it leaves of three equal points); space_points_along_chi on a
+!   mesh whose log m is linear in chi (int(Delta chi) + 1 even intervals
+!   per segment, the kept points on the mesh, the count needed when the
+!   arrays are too small); spline_onto_points on a profile linear in
+!   log m; insert_points_at_jumps (int(step/max) points, evenly in log m,
+!   for a rise or with falling for a fall, none when the limit is off, the
+!   count needed when they do not fit); remove_crowded_points.
 ! (regridding's kernels have test_regrid.)
 ! Prints one line per check and exits with status 1 when one fails.
 program test_model_kernels
@@ -167,6 +177,7 @@ program test_model_kernels
            mixed_base_fraction(zone_mass, shell_mass, n, base_mass, n) == 0.0_dp)
 
       call rescaling_checks()
+      call mesh_checks()
 
       if (num_failed > 0) then
          write(*,'(a,i0,a)') 'test_model_kernels: ', num_failed, ' checks FAIL'
@@ -302,6 +313,114 @@ subroutine rescaling_checks()
       call model_kernel_check('ramp_metals: the core value, the ramp, the surface kept; X = 1 - Y - Z - He3', &
            ok .and. count(q < 0.2_dp) > 3 .and. count(q >= 0.6_dp) > 3)
 end subroutine rescaling_checks
+
+! ---------------------------------------------------------------
+! mesh_spacing: the rezone's new mesh.
+subroutine mesh_checks()
+      use mesh_spacing, only: chi_scales, accumulate_chi, sort_kept_points, &
+           space_points_along_chi, spline_onto_points, insert_points_at_jumps, &
+           remove_crowded_points
+      real(dp), parameter :: tol = 1.0e-12_dp
+      type(chi_scales) :: scales
+      real(dp) :: log_mass(n), lum(n), log_pressure(n), chi(n), new_log_mass(200), &
+           small_mesh(50), values(200), mesh(12), steps(6), crowded(6)
+      integer :: kept(5), triple(4), count, new_count, needed, ierr, j
+      logical :: ok
+
+! 40 points: log m rises by 0.1 a point, log P falls by 0.05, L rises by
+! 1 up to point 20 and is flat beyond. The fine zone is within 0.275 dex
+! of log P(30): points 25 to 35.
+      log_mass = [(30.0_dp + 0.1_dp*real(j - 1, dp), j = 1, n)]
+      log_pressure = [(17.0_dp - 0.05_dp*real(j - 1, dp), j = 1, n)]
+      lum = [(real(min(j, 20), dp), j = 1, n)]
+      scales = chi_scales(log_mass=0.2_dp, luminosity=4.0_dp, log_pressure_core=0.1_dp, &
+           log_pressure_base=0.02_dp, log_pressure_envelope=0.25_dp, base_fine_width=0.275_dp)
+      call accumulate_chi(log_mass, lum, log_pressure, log_pressure(30), scales, chi)
+      call model_kernel_check('accumulate_chi: chi(1) = 1; the log m and L terms where L rises', &
+           chi(1) == 1.0_dp .and. abs(chi(2) - chi(1) - (0.5_dp + 0.25_dp + 0.5_dp)) < tol .and. &
+           abs(chi(22) - chi(21) - (0.5_dp + 0.5_dp)) < tol)
+      call model_kernel_check('accumulate_chi: the log P term below, inside and above the fine zone', &
+           abs(chi(24) - chi(23) - (0.5_dp + 0.5_dp)) < tol .and. &
+           abs(chi(25) - chi(24) - (0.5_dp + 2.5_dp)) < tol .and. &
+           abs(chi(35) - chi(34) - (0.5_dp + 2.5_dp)) < tol .and. &
+           abs(chi(36) - chi(35) - (0.5_dp + 0.2_dp)) < tol)
+
+! The kept points.
+      kept = [7, 3, 40, 3, 12]
+      count = 5
+      call sort_kept_points(kept, count)
+      call model_kernel_check('sort_kept_points: ascending, a duplicate removed', &
+           count == 4 .and. all(kept(1:4) == [3, 7, 12, 40]))
+! Three equal points: the scan moves on after a removal, so two are left
+! (reported with this round; the check holds today's result).
+      triple = [5, 9, 5, 5]
+      count = 4
+      call sort_kept_points(triple, count)
+      call model_kernel_check('sort_kept_points: of three equal points two are left', &
+           count == 3 .and. all(triple(1:3) == [5, 5, 9]))
+
+! The new mesh: chi rises by 2.5 a point, so log m is linear in chi;
+! points 11 and 40 are kept. The segments are 25 and 72.5 long in chi:
+! 26 and 73 intervals.
+      chi = [(1.0_dp + 2.5_dp*real(j - 1, dp), j = 1, n)]
+      call space_points_along_chi(chi, log_mass, [11, 40], new_log_mass, new_count, needed, ierr)
+      ok = ierr == 0 .and. needed == 0 .and. new_count == 1 + 26 + 73
+      if (ok) then
+         ok = all(abs(new_log_mass(2:27) - new_log_mass(1:26) - 1.0_dp/26.0_dp) < 1.0e-11_dp) &
+              .and. all(abs(new_log_mass(28:100) - new_log_mass(27:99) - 2.9_dp/73.0_dp) &
+              < 1.0e-11_dp)
+      end if
+      call model_kernel_check('space_points_along_chi: int(Delta chi) + 1 even intervals a segment', ok)
+      call model_kernel_check('space_points_along_chi: the first and the kept points are on the mesh', &
+           new_log_mass(1) == log_mass(1) .and. abs(new_log_mass(27) - log_mass(11)) < 1.0e-11_dp &
+           .and. abs(new_log_mass(100) - log_mass(40)) < 1.0e-11_dp)
+      call space_points_along_chi(chi, log_mass, [11, 40], small_mesh, new_count, needed, ierr)
+      call model_kernel_check('space_points_along_chi: the count needed when the arrays are too small', &
+           needed == 100 .and. ierr == 0)
+
+! A profile linear in log m at the new points.
+      call space_points_along_chi(chi, log_mass, [11, 40], new_log_mass, new_count, needed, ierr)
+      call spline_onto_points(log_mass, 0.7_dp - 0.01_dp*(log_mass - 30.0_dp), &
+           new_log_mass(1:new_count), values(1:new_count), ierr)
+      call model_kernel_check('spline_onto_points: a profile linear in log m is reproduced', &
+           ierr == 0 .and. all(abs(values(1:new_count) - (0.7_dp - 0.01_dp* &
+           (new_log_mass(1:new_count) - 30.0_dp))) < 1.0e-12_dp))
+
+! Points at jumps: six points at log m = 1..6; the profile rises by 0.25
+! into point 3 and by 0.34 into point 6; the limit is 0.1.
+      steps = [0.1_dp, 0.1_dp, 0.35_dp, 0.36_dp, 0.36_dp, 0.7_dp]
+      mesh = 0.0_dp
+      mesh(1:6) = [(real(j, dp), j = 1, 6)]
+      new_count = 6
+      call insert_points_at_jumps(steps, .false., 0.1_dp, mesh, new_count, needed)
+      call model_kernel_check('insert_points_at_jumps: int(step/max) points, evenly in log m', &
+           needed == 0 .and. new_count == 11 .and. &
+           all(abs(mesh(1:11) - [1.0_dp, 2.0_dp, 2.0_dp + 1.0_dp/3.0_dp, 2.0_dp + 2.0_dp/3.0_dp, &
+           3.0_dp, 4.0_dp, 5.0_dp, 5.25_dp, 5.5_dp, 5.75_dp, 6.0_dp]) < tol))
+! The same profile falling outward: nothing with the rise, the same
+! points with falling.
+      mesh(1:6) = [(real(j, dp), j = 1, 6)]
+      new_count = 6
+      call insert_points_at_jumps(-steps, .false., 0.1_dp, mesh, new_count, needed)
+      ok = new_count == 6
+      call insert_points_at_jumps(-steps, .true., 0.1_dp, mesh, new_count, needed)
+      call model_kernel_check('insert_points_at_jumps: a fall counts with falling only', &
+           ok .and. new_count == 11 .and. abs(mesh(8) - 5.25_dp) < tol)
+      mesh(1:6) = [(real(j, dp), j = 1, 6)]
+      new_count = 6
+      call insert_points_at_jumps(steps, .false., 0.0_dp, mesh, new_count, needed)
+      ok = new_count == 6 .and. needed == 0
+      call insert_points_at_jumps(steps, .false., 0.1_dp, mesh(1:8), new_count, needed)
+      call model_kernel_check('insert_points_at_jumps: none with the limit off; the count needed', &
+           ok .and. needed == 9)
+
+! Crowded points: within 0.01 of the last point kept; the last stays.
+      crowded = [1.0_dp, 1.005_dp, 1.02_dp, 1.021_dp, 1.5_dp, 1.501_dp]
+      new_count = 6
+      call remove_crowded_points(crowded, new_count, 0.01_dp)
+      call model_kernel_check('remove_crowded_points: within the limit of the last kept; the ends stay', &
+           new_count == 4 .and. all(crowded(1:4) == [1.0_dp, 1.02_dp, 1.5_dp, 1.501_dp]))
+end subroutine mesh_checks
 
 subroutine boundaries()
       call find_shell_boundaries(h1, luminosity, convective, n, x_core_min, core_edge, &

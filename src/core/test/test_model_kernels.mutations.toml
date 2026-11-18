@@ -1,5 +1,5 @@
 # Mutations of test_model_kernels: each check must print FAIL under a
-# mutation of the kernel it covers (find_shell_boundaries, rescaling_kernels,
+# mutation of the kernel it covers (find_shell_boundaries, rescaling_kernels, mesh_spacing,
 # compute_envelope_mixture, and step/convection_geometry's
 # mixed_base_mass and mixed_base_fraction). Run, after `make tests` in src/: python3 src/tools/mutate.py core --program
 # test_model_kernels (src/tools/mutate.py describes this format and the
@@ -235,3 +235,97 @@ check = 'ramp_metals: the core value, the ramp, the surface kept; X = 1 - Y - Z 
 file = 'core/model/rescaling_kernels.f90'
 old = 'z_ramp_value = (mass_fraction_local-inner_q)*z_ramp_slope+core_z'
 new = 'z_ramp_value = (mass_fraction_local-inner_q)*z_ramp_slope-core_z'
+
+# mesh_spacing: the rezone's new mesh.
+[[mutation]]
+id = 'mesh_spacing-01'
+check = 'accumulate_chi: chi(1) = 1; the log m and L terms where L rises'
+file = 'core/model/mesh_spacing.f90'
+old = '(luminosity(j)-luminosity(j-1))/scales%luminosity - &'
+new = '(luminosity(j)-luminosity(j-1))*scales%luminosity - &'
+
+[[mutation]]
+id = 'mesh_spacing-02'
+check = 'accumulate_chi: the log P term below, inside and above the fine zone'
+file = 'core/model/mesh_spacing.f90'
+old = 'if (abs(pressure_test) < scales%base_fine_width) then'
+new = 'if (pressure_test < scales%base_fine_width) then'
+
+[[mutation]]
+id = 'mesh_spacing-03'
+check = 'sort_kept_points: ascending, a duplicate removed'
+file = 'core/model/mesh_spacing.f90'
+old = 'if (flag_point(i+1) < flag_point(i)) then'
+new = 'if (flag_point(i+1) > flag_point(i)) then'
+
+# The scan staying at a slot it has just filled, which removes every
+# duplicate: the check holds today's result and fails with it.
+[[mutation]]
+id = 'mesh_spacing-04'
+check = 'sort_kept_points: of three equal points two are left'
+file = 'core/model/mesh_spacing.f90'
+old = '''
+            flag_count = flag_count - 1
+         end if
+'''
+new = '''
+            flag_count = flag_count - 1
+            i = i - 1
+         end if
+'''
+
+[[mutation]]
+id = 'mesh_spacing-05'
+check = 'space_points_along_chi: int(Delta chi) + 1 even intervals a segment'
+file = 'core/model/mesh_spacing.f90'
+old = 'segment_point_count = int(delta_chi)+1'
+new = 'segment_point_count = int(delta_chi)+2'
+
+[[mutation]]
+id = 'mesh_spacing-06'
+check = 'space_points_along_chi: the first and the kept points are on the mesh'
+file = 'core/model/mesh_spacing.f90'
+old = 'new_log_mass(1) = log_mass(1)'
+new = 'new_log_mass(1) = log_mass(2)'
+
+[[mutation]]
+id = 'mesh_spacing-07'
+check = 'space_points_along_chi: the count needed when the arrays are too small'
+file = 'core/model/mesh_spacing.f90'
+old = 'needed_points = new_num_zones+segment_point_count'
+new = 'needed_points = segment_point_count'
+
+[[mutation]]
+id = 'mesh_spacing-08'
+check = 'spline_onto_points: a profile linear in log m is reproduced'
+file = 'core/model/mesh_spacing.f90'
+old = 'values(1) = profile(1)'
+new = 'values(1) = profile(2)'
+
+[[mutation]]
+id = 'mesh_spacing-09'
+check = 'insert_points_at_jumps: int(step/max) points, evenly in log m'
+file = 'core/model/mesh_spacing.f90'
+old = 'dble(num_new_points+1)'
+new = 'dble(num_new_points)'
+
+[[mutation]]
+id = 'mesh_spacing-10'
+check = 'insert_points_at_jumps: a fall counts with falling only'
+file = 'core/model/mesh_spacing.f90'
+old = 'outward_step = values(j-1) - values(j)'
+new = 'outward_step = values(j) - values(j-1)'
+
+[[mutation]]
+id = 'mesh_spacing-11'
+check = 'insert_points_at_jumps: none with the limit off; the count needed'
+file = 'core/model/mesh_spacing.f90'
+old = 'needed_points = working_num_zones+num_new_points'
+new = 'needed_points = num_new_points'
+
+[[mutation]]
+id = 'mesh_spacing-12'
+check = 'remove_crowded_points: within the limit of the last kept; the ends stay'
+file = 'core/model/mesh_spacing.f90'
+old = 'if (new_log_mass(k) - new_log_mass(j) > min_spacing) then'
+new = 'if (new_log_mass(k) - new_log_mass(j) > 0.0d0) then'
