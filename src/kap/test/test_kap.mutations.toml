@@ -176,8 +176,8 @@ new = '      if (electron_sum < 0.0d0) return'
 id = 'opal92-dt'
 check = 'OPAL92 (two Z): derivatives against differences'
 file = 'kap/opal92/opal92_opacity.f90'
-old = '      dlnkap_dlnt = qoti - 3.0d0*dlnkap_dlnrho'
-new = '      dlnkap_dlnt = qoti - 2.0d0*dlnkap_dlnrho'
+old = '      dlnkap_dlnt = dlnkap_dlnt_at_r - 3.0d0*dlnkap_dlnrho'
+new = '      dlnkap_dlnt = dlnkap_dlnt_at_r - 2.0d0*dlnkap_dlnrho'
 
 [[mutation]]
 id = 'blend-at-z1'
