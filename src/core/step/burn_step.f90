@@ -684,7 +684,9 @@ subroutine compute_burn_rates(s, store_start_rates, rate_by_zone)
 ! The deuterium burning rates (MHP 5/02), computed only while the surface
 ! deuterium, or with inflowing accretion the larger of it and the
 ! accreted gas's, exceeds min_deuterium_step (1e-11); zero from the
-! first shell at or below the nuclear cutoff out.
+! first shell at or below the nuclear cutoff out. With store_start_rates
+! the start-of-step rate is set at every shell as the rate is, the zeros
+! too, so that no shell keeps an earlier step's or an earlier card's.
       if (s%mass_change_active .and. s%physics%mass_accretion_rate > 0.0d0) then
          deuterium_test = max(s%xa(i_h2,s%nz), &
               s%physics%accreted_composition(i_h2))
@@ -701,10 +703,12 @@ subroutine compute_burn_rates(s, store_start_rates, rate_by_zone)
                  s%deuterium_burning_rate(zone_idx)
          else
             s%deuterium_burning_rate(zone_idx) = 0.0d0
+            if (store_start_rates) s%deuterium_burning_rate_start(zone_idx) = 0.0d0
          end if
       end do
       do clear_idx = zone_idx, s%nz
          s%deuterium_burning_rate(clear_idx) = 0.0d0
+         if (store_start_rates) s%deuterium_burning_rate_start(clear_idx) = 0.0d0
       end do
 end subroutine compute_burn_rates
 
