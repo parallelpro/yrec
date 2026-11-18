@@ -538,6 +538,11 @@ Never run two batteries (or a battery and a build) concurrently in this
 tree -- concurrent makes and shared example output/ dirs corrupt both
 (learned the hard way, twice).
 
+**Is the output right, not only unchanged?** The tiers above compare
+YREC with itself. `test_validation_*.py` compare it with laws, the Sun,
+GYRE and MESA: docs/PHYSICS_VALIDATION.md. Run them after a change to
+the physics or to the profile and pulse writers.
+
 ## Changes that move results (2026-10)
 
 1. **"Concise" means the logic is written concisely, never that

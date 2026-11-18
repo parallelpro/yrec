@@ -1,0 +1,5 @@
+! Run b: the track to central hydrogen 0.05 (history only matters).
+&controls
+   xa_central_lower_limit_species(1) = 'h1'
+   xa_central_lower_limit(1) = 0.05d0
+/

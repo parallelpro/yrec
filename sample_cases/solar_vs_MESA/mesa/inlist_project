@@ -1,0 +1,63 @@
+! The MESA side (26.04.1) of YREC's cross-code benchmark: a 1 Msun star,
+! GS98 mixture, X = 0.719620, Z = 0.016492, mixing length 1.707575, no
+! element diffusion, no rotation, no overshoot, an Eddington gray
+! atmosphere: the physics of YREC's standard solar deck
+! (examples/run_standard_solar_model/Test_solar_noGS_norot), from the
+! pre-main sequence. inlist_stop holds the end of the run.
+&star_job
+   create_pre_main_sequence_model = .true.
+   pre_ms_T_c = 9.9d5
+   pre_ms_relax_num_steps = 50
+   initial_zfracs = 3            ! GS98
+   history_columns_file = 'history_columns.list'
+   profile_columns_file = 'profile_columns.list'
+   save_pulse_data_when_terminate = .true.
+   save_pulse_data_filename = 'final.data.GYRE'
+   write_profile_when_terminate = .true.
+   filename_for_profile_when_terminate = 'final_profile.data'
+   pgstar_flag = .false.
+/ ! end of star_job namelist
+
+&eos
+   ! OPAL and SCVH tables, as YREC's deck (OPAL 2006 + SCV)
+   use_Skye = .false.
+   use_FreeEOS = .false.
+   use_OPAL_SCVH = .true.
+/ ! end of eos namelist
+
+&kap
+   ! OP GS98 (YREC: GS98.OP17, the OP tables in OPAL's format), Ferguson
+   ! et al. 2005 below (YREC: the same)
+   kap_file_prefix = 'OP_gs98'
+   kap_lowT_prefix = 'lowT_fa05_gs98'
+   Zbase = 0.016492d0
+   use_Type2_opacities = .false.
+/ ! end of kap namelist
+
+&controls
+   initial_mass = 1.0d0
+   initial_z = 0.016492d0
+   initial_y = 0.263888d0
+   mixing_length_alpha = 1.707575d0
+   MLT_option = 'Henyey'
+   use_Ledoux_criterion = .false.
+   do_element_diffusion = .false.
+   atm_option = 'T_tau'
+   atm_T_tau_relation = 'Eddington'
+   atm_T_tau_opacity = 'varying'
+   energy_eqn_option = 'dedt'
+   use_gold_tolerances = .true.
+   ! the seismic scalars, as YREC defines them
+   calculate_Brunt_N2 = .true.
+   get_delta_nu_from_scaled_solar = .false.
+   nu_max_sun = 3090d0
+   delta_nu_sun = 135.1d0
+   astero_Teff_sun = 5772d0
+   pulse_data_format = 'GYRE'
+   add_atmosphere_to_pulse_data = .true.
+   history_interval = 1
+   write_profiles_flag = .false.
+   photo_interval = 100000
+   terminal_interval = 50
+   write_header_frequency = 100
+/ ! end of controls namelist

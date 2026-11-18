@@ -1,0 +1,10 @@
+# Angular velocity (rad/s) of testsuite/Test_solarGS98_difrotmixper18p4d1p0 at landmark
+# ages and mass coordinates: YREC's own values (valid-tier at 1179afbf, 2026-11-17,
+# macOS/arm64, gfortran 15.2), made by test_validation_rotation.py with
+# YREC_VALIDATION_WRITE_LANDMARKS=1. A regression pin at 1%, not a truth.
+# age_yr   omega at m/Msun = 0.1  0.3  0.5  0.7  0.9  0.98
+1.000e+08  4.967757e-05  4.872361e-05  4.735245e-05  4.467918e-05  3.500486e-05  2.059507e-05
+5.000e+08  1.861417e-05  1.844989e-05  1.821033e-05  1.772361e-05  1.579520e-05  1.197328e-05
+1.000e+09  1.002515e-05  9.978597e-06  9.910362e-06  9.770941e-06  9.208095e-06  7.986315e-06
+2.000e+09  5.610048e-06  5.597788e-06  5.579866e-06  5.543324e-06  5.394442e-06  5.043657e-06
+4.000e+09  3.336429e-06  3.332353e-06  3.326499e-06  3.314822e-06  3.267869e-06  3.146209e-06

@@ -1,0 +1,70 @@
+&constants
+  G_GRAVITY = 6.6743000000000004e-08
+/
+&model
+  model_type = 'EVOL'
+  file = 'final.data.GYRE'
+  file_format = 'MESA'
+/
+&mode
+  l = 0
+  tag = 'l0_0'
+/
+&mode
+  l = 1
+  tag = 'l1_1'
+/
+&mode
+  l = 1
+  tag = 'l1_2'
+/
+
+&osc
+  outer_bound = 'VACUUM'
+/
+&rot
+/
+&num
+  diff_scheme = 'COLLOC_GL4'
+/
+&scan
+  grid_type = 'LINEAR'
+  freq_min = 800
+  freq_max = 4500
+  n_freq = 400
+  freq_min_units = 'UHZ'
+  freq_max_units = 'UHZ'
+  tag_list = 'l0_0'
+/
+&scan
+  grid_type = 'LINEAR'
+  freq_min = 800
+  freq_max = 4500
+  n_freq = 400
+  freq_min_units = 'UHZ'
+  freq_max_units = 'UHZ'
+  tag_list = 'l1_1'
+/
+&scan
+  grid_type = 'INVERSE'
+  freq_min = 3
+  freq_max = 150
+  n_freq = 1500
+  freq_min_units = 'UHZ'
+  freq_max_units = 'UHZ'
+  tag_list = 'l1_2'
+/
+
+&grid
+  w_osc = 10
+  w_exp = 2
+  w_ctr = 10
+/
+&ad_output
+  summary_file = 'mesa_solar_age_summary.txt'
+  summary_file_format = 'TXT'
+  summary_item_list = 'l,n_pg,n_p,n_g,freq,E_norm'
+  freq_units = 'UHZ'
+/
+&nad_output
+/

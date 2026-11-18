@@ -2,10 +2,12 @@
 
 How rotation/ is checked beyond the pinned decks: against analytic
 solutions and physical laws (unit tests), in its sub-step (a
-convergence study), against another code (MESA), and by line coverage;
-and why the Solberg-Hoiland instability, added in 2026, is off by
-default.
-Measured on yrec-next, 2026-10-28.
+convergence study), against another code (MESA), by line coverage, and
+on a full rotating solar run (section 6: a published number, the
+angular momentum budget and the spin-down law); and why the
+Solberg-Hoiland instability, added in 2026, is off by default.
+Sections 1 to 5 were measured on yrec-next, 2026-10-28; section 6 on
+valid-tier (yrec-next at 1179afbf), 2026-11-17.
 
 ## 1. Laws and analytic solutions
 
@@ -121,3 +123,88 @@ interfaces (N_T, N_mu, omega and d omega/d ln r).
 
 MESA's D_SH (D_SH_factor, default 0) is the counterpart; its source
 notes that Langer's code said "DO NOT USE".
+
+## 6. A full rotating run: a published number, a budget, a law
+
+`test_validation_rotation.py` (local, 3 minutes; part of the physics
+validation tier, docs/PHYSICS_VALIDATION.md) runs the testsuite's
+rotating solar deck, `Test_solarGS98_difrotmixper18p4d1p0` (GS98,
+diffusion, rotational mixing, the van Saders & Pinsonneault 2013 wind
+with Rossby scaling and saturation at 10 solar, disk locking at 18.4 d
+to 1 Myr), to the solar age, and checks it against things the code did
+not produce. Each check was seen to fail under a change of what it
+tests (`test_checks_can_fail`).
+
+**A published number.** The release paper (section 3.1) says of its
+solar models: L and R within 1e-4 at 4.568 Gyr, the surface Z/X within
+1% of 0.02292, and for the rotating ones the solar equatorial rotation
+period, 25.4 d, and a surface Li7 2.3 dex below the meteoritic value,
+both within 1%. The deck's parameters are that calibration's, so the
+repository holds everything needed.
+
+| | Paper | This run | |
+|---|---|---|---|
+| Rotation period at 4.568 Gyr | 25.4 d, 1% | 25.412 d (+0.05%) | reproduced |
+| L/Lsun - 1, R/Rsun - 1 | 1e-4 | +7.0e-5, +3.8e-5 | reproduced |
+| Surface Z/X | 0.02292, 1% | 0.022917 (-0.01%) | reproduced |
+| Li7 depletion (initial over final surface Li7/H) | 2.3 dex, 1% | 2.086 dex (-0.21 dex) | **not reproduced** |
+
+The lithium is an expected failure of the test (V9 in
+docs/PHYSICS_VALIDATION.md): the deck's mixing efficiency
+(`mixing_velocity_scale = 0.371`) was calibrated with the 2025 code,
+and the result-changing fixes since (docs/bug_sweep.md; the light
+elements' rates among them) moved the surface lithium, which is far
+more sensitive than the period. The deck needs its mixing recalibrated
+to stand for the paper's claim.
+
+No van Saders & Pinsonneault (2013) track was attempted: the
+repository's decks do not hold that paper's grid's parameters (its
+masses, metallicities and initial conditions), only its wind law.
+
+**The angular momentum budget.** The history gives J and, at every
+model, what the published law needs: omega, M, R, L, the photospheric
+pressure and the convective turnover time. The torque is re-derived in
+the test from the law as published (van Saders & Pinsonneault 2013:
+dJ/dt = f_K K_M omega (min(omega tau_cz/tau_sun, omega_sat)/omega_sun)^2,
+K_M ~ R^3.1 M^-0.22 L^0.56 P_phot^0.44, with Matt et al. 2012's
+centrifugal term), with the deck's constants, and integrated by the
+trapezoidal rule over the models. From the end of disk locking
+(J_0 = 4.028e49 at 1.2 Myr) to the solar age the star loses 94.8% of
+J_0, and
+
+- |J - J_0 + int torque dt| stays below 4.9e-3 of J_0 (tolerance
+  1.5e-2); it is +1.1 to +1.7% of the loss on the pre-main sequence,
+  where the steps are long against the changes of tau_cz and P_phot
+  that the code interpolates inside each step, and -0.5% afterwards;
+- per step on the main sequence, the J lost over the torque times the
+  step is 0.9993 in the median (tolerance 3e-3) and within 1.4% always.
+
+A law 5% stronger, or one without its photospheric-pressure term, does
+not close. With each row's J replaced by the previous model's (the
+state before O26 was fixed), the budget fails too: 2.4e-2 of J_0, the
+median step ratio 1.021.
+
+**The spin-down law.** Between 1 and 4.568 Gyr the surface rotation
+falls as t^-0.677, not as Skumanich's t^-1/2. The law explains the
+difference: a solid body with the run's own moment of inertia, radius,
+luminosity, photospheric pressure and turnover time, started from the
+run's omega at 1 Gyr and integrated under the published law, falls as
+t^-0.689 (the test requires the two within 0.03). The torque at fixed
+omega is 1.33 times larger at 4.568 Gyr than at 1 Gyr, because the
+Sun's radius and luminosity grow. With the structure frozen at 1 Gyr
+the same integration follows the law's analytic solution,
+omega^-2 = omega_1^-2 + 2 C (t - t_1), to 1.5e-3 at 4.568 Gyr (the
+analytic form holds the centrifugal term at its 1 Gyr value, 0.9933),
+whose exponent tends to -1/2; over this interval it is -0.640, since at
+1 Gyr the star still rotates faster than that solution's asymptote.
+
+**The internal rotation.** omega(m) at five ages and six mass
+coordinates is stored in `validation/rotation/omega_landmarks.txt` and
+compared at 1% (a regression pin by tolerance: the values are YREC's
+own, and this deck turns a 1e-9 change into 1e-6 to 1e-4 by its end).
+The core rotates 2.4 times faster than the surface at 0.1 Gyr, 1.26
+times at 1 Gyr and 1.06 times at 4 Gyr. At the last profile before the
+solar age the radiative interior is 4 to 6% faster than the surface;
+the Sun's is about 6% slower than its equator (Howe 2009: about 430 nHz
+against 456 nHz). The test holds the ratio within 0.85 to 1.15.
+
