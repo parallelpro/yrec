@@ -192,7 +192,7 @@ The pinned output is `kap/test/expected_test_kap.out`; a deliberate change means
 
 ## 5. Coverage
 
-92.5% of kap/'s 2079 executable lines run (2026-11-18), under `test_kap` and four configuration-matrix decks (`cm_base`, `cm_settle_he_z` for the 4D path under Z diffusion, `cm_atm_krishnaswamy`, `cm_core_overshoot`), measured with
+92.4% of kap/'s 2061 executable lines run (2026-11-18), under `test_kap` and four configuration-matrix decks (`cm_base`, `cm_settle_he_z` for the 4D path under Z diffusion, `cm_atm_krishnaswamy`, `cm_core_overshoot`), measured with
 ```
 YREC_INPUT=$PWD/input YREC_START=$PWD/startmodels python3 src/tools/coverage.py --work DIR --dir kap --test test_kap \
     --deck examples/run_config_matrix/cm_base.inlist --deck examples/run_config_matrix/cm_settle_he_z.inlist \
@@ -207,12 +207,12 @@ from the repository root (a -O0 --coverage build in DIR; `test_kap` needs `YREC_
 | `opacity_blending` | 41 | 41 | 100% |
 | `opacity_families` | 25 | 25 | 100% |
 | `opacity_table_files` | 33 | 32 | 97.0% |
-| `opacity_tables` | 33 | 32 | 97.0% |
+| `opacity_tables` | 50 | 49 | 98.0% |
 | `opal95_opacity` / `opal95_reader` | 295 / 108 | 285 / 89 | 96.6% / 82.4% |
 | `opal92_opacity` / `opal92_reader` | 250 / 39 | 218 / 34 | 87.2% / 87.2% |
 | `laol_opacity` / `laol_reader` | 225 / 90 | 209 / 90 | 92.9% / 100% |
-| `alex06_opacity` / `alex06_reader` | 121 / 50 | 112 / 50 | 92.6% / 100% |
-| `alex94_opacity` / `alex94_reader` | 130 / 41 | 126 / 39 | 96.9% / 95.1% |
+| `alex06_opacity` / `alex06_reader` | 108 / 50 | 99 / 50 | 91.7% / 100% |
+| `alex94_opacity` / `alex94_reader` | 108 / 41 | 104 / 39 | 96.3% / 95.1% |
 | `kurucz_opacity` / `kurucz_reader` | 144 / 60 | 125 / 51 | 86.8% / 85.0% |
 | `conductive_opacity` / `conductive_reader` | 201 / 25 | 177 / 25 | 88.1% / 100% |
 
