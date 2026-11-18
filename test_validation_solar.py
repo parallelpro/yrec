@@ -8,15 +8,29 @@ states a band and the doc gives the measured offset beside the
 literature's typical one (docs/PHYSICS_VALIDATION.md section 3).
 
   quantity            observed                 source
-  L                   3.828e33 erg/s           IAU 2015 Resolution B3 (nominal)
-  R                   6.957e10 cm              IAU 2015 Resolution B3 (nominal)
-  Teff                5772 K                   IAU 2015 Resolution B3 (nominal)
-  age                 4.568 Gyr                the deck's (meteoritic, Bouvier & Wadhwa 2010: 4.5682)
-  R_cz/R              0.713 +- 0.001           Basu & Antia 1997, MNRAS 287, 189
-  surface Y           0.2485 +- 0.0035         Basu & Antia 2004, ApJ 606, L85
-  surface Z/X         0.0229 (10%)             Grevesse & Sauval 1998, Space Sci. Rev. 85, 161
-  c(r)                MDI inversion            Rhodes et al. 1997 (validation/solar/sound_speed_mdi.txt)
-  nu(l = 0, n)        BiSON, n = 6..28         Broomhall et al. 2009 (validation/solar/bison_l0.txt)
+  L                   3.828e33 erg/s           IAU 2015 Resolution B3 (nominal; Prsa et al. 2016, AJ 152, 41)
+  R                   6.957e10 cm              the same
+  Teff                5772 K                   the same
+  age                 4.568 Gyr                the deck's (meteoritic: Bouvier & Wadhwa 2010, Nature
+                                               Geosci. 3, 637: 4568.2 Myr)
+  R_cz/R              0.713 +- 0.001           Basu & Antia 1997, MNRAS 287, 189 (its abstract)
+  surface Y           0.2485 +- 0.0035         Basu & Antia 2004, ApJ 606, L85: X = 0.7392 (GONG) and
+                                               0.7385 (MDI), each +- 0.0034, so Y = 0.2482 and 0.2489;
+                                               the mean with 0.0035 is how Serenelli et al. 2009 (ApJ
+                                               705, L123) quote it, and what solar-model papers use
+  surface Z/X         0.0229                   the GS98 value solar-model papers adopt (Serenelli et
+                                               al. 2009, table 1); the release paper's target is
+                                               0.02292. Grevesse & Sauval 1998 (Space Sci. Rev. 85,
+                                               161) itself was not read (unverified): Asplund et al.
+                                               2021 (A&A 653, A141, table 4) give its Z/X as 0.0231
+  c(r)                MDI inversion            Rhodes et al. 1997, Solar Phys. 175, 287: its electronic
+                                               table 6b (validation/solar/sound_speed_mdi.txt)
+  nu(l = 0, n)        BiSON, n = 6..28         Davies et al. 2014, MNRAS 439, 2025 (n = 6..13) and
+                                               Broomhall et al. 2009, MNRAS 396, L100, table 3
+                                               (n = 14..28; validation/solar/bison_l0.txt)
+
+Each source was read on 2026-11-17 (docs/PHYSICS_VALIDATION.md, "Sources",
+has the list with what was compared and what could not be).
 
 The frequencies need GYRE (GYRE_DIR); those tests skip without it.
 test_checks_reject_a_model_without_diffusion shows the checks can fail:
@@ -63,7 +77,8 @@ BAND = {
     # three times the helioseismic 1-sigma
     "R_cz_sigma": 3.0,          # measured -0.3 sigma (0.7127)
     "Y_surface_sigma": 3.0,     # measured -1.5 sigma (0.2434)
-    # the calibration's target, 0.02292 for GS98
+    # the calibration's target, 0.02292 for GS98 (the release paper's); with
+    # the 0.0231 that Asplund et al. 2021 give for GS98 the offset is -0.9%
     "Z_over_X": 1.0e-2,         # measured -0.02% of 0.0229
     # the profile's own base of the convection zone (gradr = grada,
     # linear between two shells 9e-4 R apart) against the history's column
@@ -73,9 +88,11 @@ BAND = {
     "sound_speed_rms": 2.0e-3,  # measured 8.9e-4
     "sound_speed_max": 5.0e-3,  # measured 2.7e-3 (below the convection zone)
     # radial modes: the low orders, least affected by the surface layers
+    # (Davies et al. 2014's frequencies)
     "low_order_relative": 2.0e-3,   # measured +3.9e-4 to +9.4e-4, n = 6..10
-    # the large separation, n = 15..25, model over observed: the surface
-    # effect raises a model's high-order frequencies
+    # the large separation, n = 15..25, model over observed (Broomhall et al.
+    # 2009's quiet-Sun frequencies): the surface effect raises a model's
+    # high-order frequencies
     "large_separation": (1.000, 1.020),   # measured 1.0093
 }
 MEASURED = {}
@@ -206,7 +223,8 @@ def test_solar_model(sun, check):
 
 
 def test_radial_modes(sun):
-    """The model's radial modes (GYRE) against BiSON's."""
+    """The model's radial modes (GYRE) against BiSON's (two published
+    tables: validation/solar/bison_l0.txt's header)."""
     if vm.gyre_program() is None:
         pytest.skip("GYRE_DIR does not name a GYRE installation (bin/gyre)")
     cols = vm.run_gyre(sun["pulse"], "GYRE", sun["tmp"] / "gyre_run",

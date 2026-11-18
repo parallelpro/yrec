@@ -5,25 +5,39 @@ GS98, diffusion, rotational mixing, the van Saders & Pinsonneault 2013
 wind, disk locking to 1 Myr at 18.4 d), run to the solar age, against
 
   a published number   the paper's solar calibration (YREC release paper,
-                       section 3.1): the equatorial rotation period 25.4 d
-                       at 4.568 Gyr within 1%, L and R within 1e-4, the
-                       surface Z/X within 1% of 0.02292, and the surface
-                       Li7 2.3 dex below its initial value within 1%
+                       section 3.1; the PDF in the repository's root):
+                       the equatorial rotation period 25.4 d at 4.568 Gyr
+                       within 1%, L and R within 1e-4, the surface Z/X
+                       within 1% of 0.02292, and the surface Li7 2.3 dex
+                       below its initial value within 1%. L and R are
+                       checked in the deck's units, the IAU nominal
+                       3.828e33 erg/s and 6.957e10 cm; the paper prints
+                       3.827e33 and 6.958e10, against which the model is
+                       outside the paper's 1e-4 (an expected failure)
   a budget             J(t) = J_0 - int torque dt, the torque re-derived
                        here from the published law (van Saders &
-                       Pinsonneault 2013, eqs. 1-3; Matt et al. 2012 for
-                       the centrifugal term) and the history's own
-                       columns (omega, M, R, L, P_phot, tau_cz)
+                       Pinsonneault 2013, ApJ 776, 67, eqs. 1 and 2, which
+                       sets the centrifugal factor to 1; Matt et al. 2012,
+                       ApJ 754, L26, whose fit of the Alfven radius gives
+                       that factor, which YREC keeps) and the history's
+                       own columns (omega, M, R, L, P_phot, tau_cz)
   a law                the spin-down exponent dln omega/dln t over 1 to
                        4.57 Gyr against a solid body with the run's
                        structure under the same law. With the structure
                        frozen that body follows the law's own solution,
                        omega^-2 = omega_1^-2 + 2 C (t - t_1), whose
-                       exponent tends to Skumanich's -1/2; the Sun's is
-                       steeper because its radius and luminosity grow
-  helioseismology      the radiative interior rotates nearly as the
-                       surface (Howe 2009, Living Rev. Solar Phys. 6, 1:
-                       about 430 nHz against 456 nHz at the equator)
+                       exponent tends to Skumanich's -1/2 (Skumanich 1972,
+                       ApJ 171, 565); the Sun's is steeper because its
+                       radius and luminosity grow
+  helioseismology      the radiative interior rotates almost as a solid
+                       body, at a rate close to the surface's (Howe 2009,
+                       Living Rev. Solar Phys. 6, 1, sections 1 and 6; its
+                       section 8 gives 452 nHz for the surface plasma at
+                       the equator. Its section 5.5's table of l = 1
+                       splittings, which measure the interior's rate,
+                       ends at 433 to 436 nHz (Bertello et al. 2000,
+                       Chaplin et al. 2001, Gelly et al. 2002): about
+                       0.96 of the surface's. The band does not use it)
 
 and, by tolerance and not by bytes, omega(m) at five landmark ages
 against validation/rotation/omega_landmarks.txt (YREC's own values of
@@ -58,11 +72,18 @@ LANDMARKS = REPO / "validation" / "rotation" / "omega_landmarks.txt"
 PROFILE_COLUMNS = "zone\nmass\nlogR\nomega\nj_rot\ni_rot\nmixing_type\n"
 SECONDS_PER_YEAR = 3.1558e7      # YREC's (state/physical_constants.f90)
 
-# The published wind law's fixed numbers: the torque exponent m of van
-# Saders & Pinsonneault (2013) and the centrifugal constant K_2 of Matt
-# et al. (2012).
+# The published wind law's fixed numbers: the torque exponent m as van
+# Saders & Pinsonneault (2013) round it (their exponents 3.1, -0.22, 0.56
+# and 0.44 are 2 + 5m, -m, 1 - 2m and 2m; Matt et al. 2012 fit m = 0.2177)
+# and the centrifugal constant K_2 of Matt et al. (2012).
 V13_M = 0.22
 MATT_K2 = 0.0506
+
+# The release paper's section 3.1 as printed: "Solar models require L =
+# Lsun, 3.827e33 erg/s, and R = Rsun, 6.958e10 cm, at the solar age,
+# 4.568 Gyr, within one part in 10^-4" (read in the repository's PDF).
+PAPER_LSUN_CGS = 3.827e33
+PAPER_RSUN_CM = 6.958e10
 
 LANDMARK_AGES = (1.0e8, 5.0e8, 1.0e9, 2.0e9, 4.0e9)
 LANDMARK_MASSES = (0.1, 0.3, 0.5, 0.7, 0.9, 0.98)
@@ -72,6 +93,8 @@ TOL = {
     # the paper's own tolerances
     "period": 0.01,                # measured +0.05% of 25.4 d (25.412 d)
     "L_and_R": 2.0e-4,             # the paper: 1e-4; measured +7.1e-5 and +3.7e-5
+    "paper_L_and_R": 1.0e-4,       # the paper's, against its printed Lsun and Rsun:
+                                   # +3.3e-4 and -1.1e-4 (an expected failure)
     "Z_over_X": 0.01,              # measured -0.1% of 0.02292
     "lithium_dex": 0.023,          # 1% of 2.3 dex; measured -0.21 dex (V9)
     # the budget, from the end of disk locking: the torque is known at
@@ -92,7 +115,7 @@ TOL = {
     # omega(m) at the landmark ages against the stored values
     "landmarks": 0.01,
     # the interior against the surface at the solar age
-    "interior_over_surface": (0.85, 1.15),   # measured 1.03 to 1.06; the Sun: 0.94
+    "interior_over_surface": (0.85, 1.15),   # measured 1.03 to 1.06; the Sun: about 0.96
 }
 MEASURED = {}
 
@@ -128,6 +151,7 @@ class Run:
         self.disk_age = _control(texts, "disk_locking_age_gyr") * 1.0e9
         self.msun = _control(texts, "solar_mass_cgs")
         self.rsun = _control(texts, "solar_radius_cgs")
+        self.lsun = _control(texts, "solar_luminosity_cgs")
         self.n = len(self.h["model_number"])
         self.t = [a * SECONDS_PER_YEAR for a in self.h["star_age"]]
 
@@ -324,6 +348,24 @@ def test_published_solar_calibration(run):
     assert abs(record("L/Lsun - 1", 10.0 ** row["log_L"] - 1.0)) <= TOL["L_and_R"]
     assert abs(record("R/Rsun - 1", 10.0 ** row["log_R"] - 1.0)) <= TOL["L_and_R"]
     assert abs(record("(Z/X)/0.02292 - 1", row["surface_z_div_x"] / 0.02292 - 1.0)) <= TOL["Z_over_X"]
+
+
+@pytest.mark.xfail(strict=True, reason="V13 (docs/PHYSICS_VALIDATION.md; not yet in docs/bug_sweep.md): the "
+                   "release paper prints Lsun = 3.827e33 erg/s and Rsun = 6.958e10 cm, the testsuite's decks set "
+                   "the IAU nominal 3.828e33 and 6.957e10; against the printed values the model's L is +3.3e-4 "
+                   "and its R -1.1e-4, outside the paper's 1e-4")
+def test_published_solar_units(run):
+    """The paper's solar L and R as it prints them, within its 1e-4. The
+    deck is calibrated to its own solar_luminosity_cgs and
+    solar_radius_cgs (test_published_solar_calibration), which are not
+    the printed numbers: the paper's text or the decks' units are to be
+    corrected (the authors' decision)."""
+    row = {k: v[-1] for k, v in run.h.items()}
+    lum = record("L/3.827e33 - 1 (the paper's printed Lsun)",
+                 10.0 ** row["log_L"] * run.lsun / PAPER_LSUN_CGS - 1.0)
+    rad = record("R/6.958e10 - 1 (the paper's printed Rsun)",
+                 10.0 ** row["log_R"] * run.rsun / PAPER_RSUN_CM - 1.0)
+    assert abs(lum) <= TOL["paper_L_and_R"] and abs(rad) <= TOL["paper_L_and_R"]
 
 
 def lithium_depletion(run):
