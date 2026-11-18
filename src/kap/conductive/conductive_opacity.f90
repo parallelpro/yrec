@@ -417,7 +417,8 @@ subroutine condopacp(tbl, ion_charge, log10_temperature, log10_density, &
       call cinterp3(tbl%temp_grid(t_index_lo),tbl%temp_grid(t_index),tbl%temp_grid(t_index+1), &
            tbl%temp_grid(t_index_hi),log10_temperature,t_index,cond_n_temp, &
            cktm,ckt0,ckt1,cktp, & ! input: values of lg kappa
-           log10_conductivity,dlnkappa_dlnt,dt2k,xt,message,ierr) ! lg kappa, d lg k / d lg T, d2 lg k / d2 lg T
+! (output: lg kappa, d lg k / d lg T, d2 lg k / d2 lg T)
+           log10_conductivity,dlnkappa_dlnt,dt2k,xt,message,ierr)
       if (ierr /= 0) return
       call cinterp3(tbl%temp_grid(t_index_lo),tbl%temp_grid(t_index),tbl%temp_grid(t_index+1), &
            tbl%temp_grid(t_index_hi),log10_temperature,t_index,cond_n_temp, &

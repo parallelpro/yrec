@@ -4,8 +4,9 @@
 ! The atomic opacities in the OPAL 1995 table layout (the OPAL and OP
 ! tables YREC ships, e.g. GS98.OP17): 126 tables in X and Z, each in
 ! log T and log R = log rho - 3 log T6.
-!     read_opal95_tables          read a table file, then build the
-!                                 fixed-Z table at the run's Z
+!     build_opal95_fixed_z_table  the tables at the run's Z
+!                                 (opal95_single_table_z), from the full
+!                                 set opal95_reader read
 !     build_opal95_surface_table  the fixed-X, fixed-Z table at the
 !                                 envelope composition (refreshed when
 !                                 the envelope X changes)
@@ -21,9 +22,9 @@
 ! the code's history are at the end of the file.
 module opal95_opacity
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use opacity_tables, only: n_opal95_d, n_opal95_t, n_opal95_tables, &
+      use opacity_tables, only: n_opal95_d, n_opal95_t, &
            n_opal95_x, n_opal95_z, opal95_composition_tol, &
-           opal95_missing_opacity, opal95_missing_test, opal95_table_set, &
+           opal95_missing_test, opal95_table_set, &
            stencil4_locate_opal95, kap_settings_t, kap_table_paths_t, &
            opacity_table_state
       use opacity_source, only: kap_point, kap_result, kap_source
@@ -71,7 +72,7 @@ contains
 
 
 !----------------------------------------------------------------------
-! build_opal95_fixed_z_table (formerly opal95_fixed_z_table)
+! build_opal95_fixed_z_table
 !----------------------------------------------------------------------
 ! Builds the fixed-Z table (in X, T and log R) by 4-point Lagrange
 ! interpolation in Z of the full set (tbl%full_opacity), for each X table
@@ -80,15 +81,14 @@ contains
 ! top node (0.1) returns ierr = 1 with the reason in message.
 subroutine build_opal95_fixed_z_table(tbl, metal_fraction, message, ierr)
       type(opal95_table_set), intent(inout) :: tbl
-
+      real(dp), intent(in) :: metal_fraction
       character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
 
-      real(dp), intent(in) :: metal_fraction
-
-      real(dp) :: table_z_nodes(4), z_weight(4), z_weight_hix(4)
-      integer :: i, j, k, z_table_index, z_table_index2
-      integer :: table1_index, table2_index, table3_index, table4_index
+! the first of the four Z tables around Z, and their weights; the same
+! for an X table that lacks the upper Z tables
+      integer :: i, ix, first_z, first_z_high_x
+      real(dp) :: z_weight(4), z_weight_high_x(4)
 
       ierr = 0
       message = ''
@@ -98,95 +98,71 @@ subroutine build_opal95_fixed_z_table(tbl, metal_fraction, message, ierr)
 ! node; only a Z above the top node is refused)
       do i = 3,n_opal95_z-1
          if (tbl%grid_z(i) >= metal_fraction) then
-            z_table_index = i - 2
+            first_z = i - 2
             exit
          end if
       end do
       if (i > (n_opal95_z-1) .and. metal_fraction <= tbl%grid_z(n_opal95_z)) then
-         z_table_index = n_opal95_z - 3
+         first_z = n_opal95_z - 3
       else if (i > (n_opal95_z-1)) then
          write(message,'(a,f10.6,a,f5.2,a)') 'opal95_single_table_z =', metal_fraction, &
               ' is above the OPAL 1995 tables'' top Z (', tbl%grid_z(n_opal95_z), ')'
          ierr = 1
          return
       end if
-!  Find interpolation factors in Z.
-      do i = 1,4
-         table_z_nodes(i) = tbl%grid_z(z_table_index+i-1)
-      end do
-      call interp(table_z_nodes, z_weight, x_eval=metal_fraction)
+      call interp(tbl%grid_z(first_z:first_z+3), z_weight, x_eval=metal_fraction)
 !  For X tables 1-8, all values of Z present; perform interpolation.
-      do i = 1,8
-! Indices for 4 desired compositions.
-         table1_index = tbl%table_start_index(z_table_index)+i
-         table2_index = tbl%table_start_index(z_table_index+1)+i
-         table3_index = tbl%table_start_index(z_table_index+2)+i
-         table4_index = tbl%table_start_index(z_table_index+3)+i
-         do j = 1,n_opal95_t
-            do k = 1,n_opal95_d
-               tbl%fixed_z_opacity(i,j,k) = z_weight(1)*tbl%full_opacity(table1_index,j,k)+ &
-               z_weight(2)*tbl%full_opacity(table2_index,j,k)+z_weight(3)*tbl%full_opacity(table3_index,j,k)+ &
-               z_weight(4)*tbl%full_opacity(table4_index,j,k)
-            end do
-         end do
+      do ix = 1,8
+         call interpolate_x_table_in_z(tbl, ix, first_z, z_weight)
       end do
 !  Table 9 (X = 0.95) exists below Z = 0.04 only: built below it, from
 !  a stencil of Z nodes below 0.04
       if (metal_fraction < no_x095_from_z) then
-      if (tbl%grid_z(z_table_index+3) > no_x095_from_z) then
-         z_table_index2 = n_opal95_z - 6
-         do i = 1,4
-            table_z_nodes(i) = tbl%grid_z(z_table_index2+i-1)
-         end do
-         call interp(table_z_nodes, z_weight_hix, x_eval=metal_fraction)
-      else
-         z_table_index2 = z_table_index
-         do i = 1,4
-            z_weight_hix(i) = z_weight(i)
-         end do
-      end if
-      table1_index = tbl%table_start_index(z_table_index2)+9
-      table2_index = tbl%table_start_index(z_table_index2+1)+9
-      table3_index = tbl%table_start_index(z_table_index2+2)+9
-      table4_index = tbl%table_start_index(z_table_index2+3)+9
-      do j = 1,n_opal95_t
-         do k = 1,n_opal95_d
-            tbl%fixed_z_opacity(9,j,k) = z_weight_hix(1)*tbl%full_opacity(table1_index,j,k)+ &
-            z_weight_hix(2)*tbl%full_opacity(table2_index,j,k)+z_weight_hix(3)*tbl%full_opacity(table3_index,j,k)+ &
-            z_weight_hix(4)*tbl%full_opacity(table4_index,j,k)
-         end do
-      end do
+         if (tbl%grid_z(first_z+3) > no_x095_from_z) then
+            first_z_high_x = n_opal95_z - 6
+            call interp(tbl%grid_z(first_z_high_x:first_z_high_x+3), z_weight_high_x, &
+                 x_eval=metal_fraction)
+         else
+            first_z_high_x = first_z
+            z_weight_high_x = z_weight
+         end if
+         call interpolate_x_table_in_z(tbl, 9, first_z_high_x, z_weight_high_x)
       end if
 !  Table 10 (X = 1-Z) is always built. There is no X = 1-Z table at
 !  Z = 0.1, so a stencil that reaches Z = 0.1 is replaced by the four
 !  nodes below it (extrapolating for Z above 0.08).
-      if (tbl%grid_z(z_table_index+3) >= no_x1mz_from_z) then
-         z_table_index2 = n_opal95_z - 4
-         do i = 1,4
-            table_z_nodes(i) = tbl%grid_z(z_table_index2+i-1)
-         end do
-         call interp(table_z_nodes, z_weight_hix, x_eval=metal_fraction)
+      if (tbl%grid_z(first_z+3) >= no_x1mz_from_z) then
+         first_z_high_x = n_opal95_z - 4
+         call interp(tbl%grid_z(first_z_high_x:first_z_high_x+3), z_weight_high_x, &
+              x_eval=metal_fraction)
       else
-         z_table_index2 = z_table_index
-         do i = 1,4
-            z_weight_hix(i) = z_weight(i)
-         end do
+         first_z_high_x = first_z
+         z_weight_high_x = z_weight
       end if
-      table1_index = tbl%table_start_index(z_table_index2)+10
-      table2_index = tbl%table_start_index(z_table_index2+1)+10
-      table3_index = tbl%table_start_index(z_table_index2+2)+10
-      table4_index = tbl%table_start_index(z_table_index2+3)+10
-      do j = 1,n_opal95_t
-         do k = 1,n_opal95_d
-            tbl%fixed_z_opacity(10,j,k) = z_weight_hix(1)*tbl%full_opacity(table1_index,j,k)+ &
-            z_weight_hix(2)*tbl%full_opacity(table2_index,j,k)+z_weight_hix(3)*tbl%full_opacity(table3_index,j,k)+ &
-            z_weight_hix(4)*tbl%full_opacity(table4_index,j,k)
-         end do
-      end do
+      call interpolate_x_table_in_z(tbl, 10, first_z_high_x, z_weight_high_x)
 end subroutine build_opal95_fixed_z_table
 
+! The fixed-Z table's X table ix: the full set's tables of that X at the
+! four Z from Z index first_z, combined with z_weight (the slot of X
+! index ix at Z index iz is table_start_index(iz) + ix).
+subroutine interpolate_x_table_in_z(tbl, ix, first_z, z_weight)
+      type(opal95_table_set), intent(inout) :: tbl
+      integer, intent(in) :: ix, first_z
+      real(dp), intent(in) :: z_weight(4)
+      integer :: slot(4), j, k
+
+      slot = tbl%table_start_index(first_z:first_z+3) + ix
+      do j = 1,n_opal95_t
+         do k = 1,n_opal95_d
+            tbl%fixed_z_opacity(ix,j,k) = z_weight(1)*tbl%full_opacity(slot(1),j,k)+ &
+                 z_weight(2)*tbl%full_opacity(slot(2),j,k)+z_weight(3)*tbl%full_opacity(slot(3),j,k)+ &
+                 z_weight(4)*tbl%full_opacity(slot(4),j,k)
+         end do
+      end do
+end subroutine interpolate_x_table_in_z
+
 !----------------------------------------------------------------------
-! build_opal95_surface_table (formerly opal95_surface_table)
+! build_opal95_surface_table
 !----------------------------------------------------------------------
 ! Builds the surface table (in T and log R) at hydrogen_fraction by
 ! 4-point Lagrange interpolation in X of the fixed-Z table set
@@ -221,8 +197,9 @@ subroutine build_opal95_surface_table(tbl, hydrogen_fraction)
       do j = 1,n_opal95_t
          do k = 1,n_opal95_d
             tbl%surface_opacity(j,k) = x_weight(1)*tbl%fixed_z_opacity(table_index(1),j,k) + &
-            x_weight(2)*tbl%fixed_z_opacity(table_index(2),j,k) + x_weight(3)*tbl%fixed_z_opacity(table_index(3),j,k) + &
-            x_weight(4)*tbl%fixed_z_opacity(table_index(4),j,k)
+                 x_weight(2)*tbl%fixed_z_opacity(table_index(2),j,k) + &
+                 x_weight(3)*tbl%fixed_z_opacity(table_index(3),j,k) + &
+                 x_weight(4)*tbl%fixed_z_opacity(table_index(4),j,k)
          end do
       end do
 end subroutine build_opal95_surface_table

@@ -4,8 +4,8 @@
 ! The low-temperature molecular opacities of Alexander & Ferguson
 ! (1994/95): seven files, one per X, each with tables in Z, log T and
 ! log R.
-!     read_alex94_tables          read the seven files, then build the
-!                                 fixed-Z tables at the run's Z
+!     build_alex94_fixed_z_table  the tables at one Z, from the full
+!                                 set alex94_reader read
 !     build_alex94_surface_table  the fixed-X table at the envelope X
 !     compute_alex94_opacity      the opacity and its log derivatives
 ! The tables, the compositions they were built at and the lookup's
@@ -32,7 +32,7 @@ contains
 
 
 !----------------------------------------------------------------------
-! build_alex94_fixed_z_table (formerly alex94_fixed_z_table)
+! build_alex94_fixed_z_table
 !----------------------------------------------------------------------
 ! Builds the fixed-Z tables tbl%opacity(1:7,:,:), one per X, by 4-point
 ! Lagrange interpolation in Z of the full set, and records their Z.
@@ -43,20 +43,20 @@ subroutine build_alex94_fixed_z_table(tbl, metal_fraction)
       real(dp), intent(in) :: metal_fraction
 
       real(dp) :: interp_z(4), weight_z(4)
-      integer :: i, jj, kk, idz, ii1, ii2, ii3, ii4
+! the first of the four Z tables around Z; the slots of the full set
+! that hold one X's four Z tables
+      integer :: i, t_row, column, first_z, z_slot(4)
 
 !     Locate four nearest tables in Z
       do i=3,n_alex94_z-1
          if (metal_fraction < tbl%grid_z(i)) then
-            idz = i - 2
+            first_z = i - 2
             exit
          end if
       end do
-      if (i > (n_alex94_z-1)) then
-      idz = n_alex94_z - 3
-      end if
+      if (i > (n_alex94_z-1)) first_z = n_alex94_z - 3
       do i = 1,4
-         interp_z(i) = tbl%grid_z(idz+i-1)
+         interp_z(i) = tbl%grid_z(first_z+i-1)
       end do
 !     Get interpolation factors for Z.
       call interp(interp_z, weight_z, x_eval=metal_fraction)
@@ -64,16 +64,16 @@ subroutine build_alex94_fixed_z_table(tbl, metal_fraction)
       do i = 1,n_alex94_x
 !        the slots of the four Z tables of this X (seven X per Z, from
 !        Z = 0 up)
-         ii1 = i + n_alex94_x*(idz-1)
-         ii2 = ii1 + n_alex94_x
-         ii3 = ii2 + n_alex94_x
-         ii4 = ii3 + n_alex94_x
-         do jj = 1,n_alex94_t
-            do kk = 1,n_alex94_d
-               tbl%opacity(i,jj,kk) = weight_z(1)*tbl%full_opacity(ii1,jj,kk)+ &
-                    weight_z(2)*tbl%full_opacity(ii2,jj,kk) + &
-                    weight_z(3)*tbl%full_opacity(ii3,jj,kk) + &
-                    weight_z(4)*tbl%full_opacity(ii4,jj,kk)
+         z_slot(1) = i + n_alex94_x*(first_z-1)
+         z_slot(2) = z_slot(1) + n_alex94_x
+         z_slot(3) = z_slot(2) + n_alex94_x
+         z_slot(4) = z_slot(3) + n_alex94_x
+         do t_row = 1,n_alex94_t
+            do column = 1,n_alex94_d
+               tbl%opacity(i,t_row,column) = weight_z(1)*tbl%full_opacity(z_slot(1),t_row,column)+ &
+                    weight_z(2)*tbl%full_opacity(z_slot(2),t_row,column) + &
+                    weight_z(3)*tbl%full_opacity(z_slot(3),t_row,column) + &
+                    weight_z(4)*tbl%full_opacity(z_slot(4),t_row,column)
             end do
          end do
       end do
@@ -81,7 +81,7 @@ subroutine build_alex94_fixed_z_table(tbl, metal_fraction)
 end subroutine build_alex94_fixed_z_table
 
 !----------------------------------------------------------------------
-! build_alex94_surface_table (formerly alex94_surface_table)
+! build_alex94_surface_table
 !----------------------------------------------------------------------
 ! Builds the surface table, tbl%opacity(alex94_surface_slot,:,:), at
 ! hydrogen_fraction by 4-point Lagrange interpolation in X of the
@@ -113,7 +113,7 @@ subroutine build_alex94_surface_table(tbl, hydrogen_fraction)
 end subroutine build_alex94_surface_table
 
 !----------------------------------------------------------------------
-! compute_alex94_opacity (formerly alex94_interp3d)
+! compute_alex94_opacity
 !----------------------------------------------------------------------
 ! The opacity at (log rho, log T, X, Z) and its log derivatives, by
 ! 4-point Lagrange interpolation in log T and log R = log rho - 3 log T6:
@@ -137,7 +137,7 @@ subroutine compute_alex94_opacity(tbl, log10_density, log10_temperature, hydroge
            dlnkap_dlnr_x(4)
       real(dp) :: delta_z, logr, saved_r
       logical :: extrapolate_linear
-      integer :: i, j, jj, ii
+      integer :: i, j, x_table, t_row
 
       delta_z = abs(metal_fraction-tbl%cached_z)
 !     tables at this Z
@@ -178,21 +178,22 @@ subroutine compute_alex94_opacity(tbl, log10_density, log10_temperature, hydroge
 !        Surface abundance table
 !        interpolate in log R at fixed T
          do i = 1,4
-            ii = tbl%index_t+i - 1
-            opacity_row(i) = weight_r(1)*tbl%opacity(alex94_surface_slot,ii,tbl%index_r) + &
-                 weight_r(2)*tbl%opacity(alex94_surface_slot,ii,tbl%index_r+1) + &
-                 weight_r(3)*tbl%opacity(alex94_surface_slot,ii,tbl%index_r+2) + &
-                 weight_r(4)*tbl%opacity(alex94_surface_slot,ii,tbl%index_r+3)
-            dlnkap_dlnr_row(i) = dweight_r(1)*tbl%opacity(alex94_surface_slot,ii,tbl%index_r) + &
-                 dweight_r(2)*tbl%opacity(alex94_surface_slot,ii,tbl%index_r+1) + &
-                 dweight_r(3)*tbl%opacity(alex94_surface_slot,ii,tbl%index_r+2) + &
-                 dweight_r(4)*tbl%opacity(alex94_surface_slot,ii,tbl%index_r+3)
+            t_row = tbl%index_t+i - 1
+            opacity_row(i) = weight_r(1)*tbl%opacity(alex94_surface_slot,t_row,tbl%index_r) + &
+                 weight_r(2)*tbl%opacity(alex94_surface_slot,t_row,tbl%index_r+1) + &
+                 weight_r(3)*tbl%opacity(alex94_surface_slot,t_row,tbl%index_r+2) + &
+                 weight_r(4)*tbl%opacity(alex94_surface_slot,t_row,tbl%index_r+3)
+            dlnkap_dlnr_row(i) = dweight_r(1)*tbl%opacity(alex94_surface_slot,t_row,tbl%index_r) + &
+                 dweight_r(2)*tbl%opacity(alex94_surface_slot,t_row,tbl%index_r+1) + &
+                 dweight_r(3)*tbl%opacity(alex94_surface_slot,t_row,tbl%index_r+2) + &
+                 dweight_r(4)*tbl%opacity(alex94_surface_slot,t_row,tbl%index_r+3)
          end do
          if (extrapolate_linear) then
             do i = 1,4
-               ii = tbl%index_t+i-1
+               t_row = tbl%index_t+i-1
                opacity_row(i) = opacity_row(i)+(saved_r-logr)* &
-                    (tbl%opacity(alex94_surface_slot,ii,n_alex94_d)-tbl%opacity(alex94_surface_slot,ii,n_alex94_d-1))/ &
+                    (tbl%opacity(alex94_surface_slot,t_row,n_alex94_d)- &
+                    tbl%opacity(alex94_surface_slot,t_row,n_alex94_d-1))/ &
                     (tbl%grid_logr(n_alex94_d)-tbl%grid_logr(n_alex94_d-1))
             end do
             logr = saved_r
@@ -215,17 +216,17 @@ subroutine compute_alex94_opacity(tbl, log10_density, log10_temperature, hydroge
          call interp(interp_nodes, weight_x, x_eval=hydrogen_fraction)
 !        Interpolate in log R at fixed T
          do j = 1,4
-            jj = tbl%index_x+j-1
+            x_table = tbl%index_x+j-1
             do i = 1,4
-               ii = tbl%index_t+i - 1
-               opacity_row(i) = weight_r(1)*tbl%opacity(jj,ii,tbl%index_r) + &
-                    weight_r(2)*tbl%opacity(jj,ii,tbl%index_r+1) + &
-                    weight_r(3)*tbl%opacity(jj,ii,tbl%index_r+2) + &
-                    weight_r(4)*tbl%opacity(jj,ii,tbl%index_r+3)
-               dlnkap_dlnr_row(i) = dweight_r(1)*tbl%opacity(jj,ii,tbl%index_r) + &
-                    dweight_r(2)*tbl%opacity(jj,ii,tbl%index_r+1) + &
-                    dweight_r(3)*tbl%opacity(jj,ii,tbl%index_r+2) + &
-                    dweight_r(4)*tbl%opacity(jj,ii,tbl%index_r+3)
+               t_row = tbl%index_t+i - 1
+               opacity_row(i) = weight_r(1)*tbl%opacity(x_table,t_row,tbl%index_r) + &
+                    weight_r(2)*tbl%opacity(x_table,t_row,tbl%index_r+1) + &
+                    weight_r(3)*tbl%opacity(x_table,t_row,tbl%index_r+2) + &
+                    weight_r(4)*tbl%opacity(x_table,t_row,tbl%index_r+3)
+               dlnkap_dlnr_row(i) = dweight_r(1)*tbl%opacity(x_table,t_row,tbl%index_r) + &
+                    dweight_r(2)*tbl%opacity(x_table,t_row,tbl%index_r+1) + &
+                    dweight_r(3)*tbl%opacity(x_table,t_row,tbl%index_r+2) + &
+                    dweight_r(4)*tbl%opacity(x_table,t_row,tbl%index_r+3)
             end do
 !           Interpolate in T
             opacity_x(j) = lagrange4(weight_t, opacity_row)

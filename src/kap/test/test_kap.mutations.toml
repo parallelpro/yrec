@@ -29,8 +29,8 @@ new = '      log10_opacity = lagrange4(st%weight_t, logcappa_at_z)'
 id = 'alex06-node'
 check = 'Alexander 2006: exact at a table node'
 file = 'kap/alex06/alex06_opacity.f90'
-old = 'call interp(interp_nodes, weight_x, x_eval=interp_target)'
-new = 'call interp(interp_nodes, weight_x, x_eval=interp_target+1.0d-3)'
+old = 'call interp(interp_nodes, weight_x, x_eval=hydrogen_fraction)'
+new = 'call interp(interp_nodes, weight_x, x_eval=hydrogen_fraction+1.0d-3)'
 
 [[mutation]]
 id = 'opal95-2d-dt'
@@ -120,8 +120,8 @@ new = '              molecular_part*molecular%dlnkap_dlnrho) / (interior_part + 
 id = 'opal95-fixed-z'
 check = 'OPAL95: the 2D path continuous with the 4D path in Z'
 file = 'kap/opal95/opal95_opacity.f90'
-old = '               z_weight(2)*tbl%full_opacity(table2_index,j,k)+z_weight(3)*tbl%full_opacity(table3_index,j,k)+ &'
-new = '               z_weight(3)*tbl%full_opacity(table2_index,j,k)+z_weight(3)*tbl%full_opacity(table3_index,j,k)+ &'
+old = '                 z_weight(2)*tbl%full_opacity(slot(2),j,k)+z_weight(3)*tbl%full_opacity(slot(3),j,k)+ &'
+new = '                 z_weight(3)*tbl%full_opacity(slot(2),j,k)+z_weight(3)*tbl%full_opacity(slot(3),j,k)+ &'
 
 [[mutation]]
 id = 'opal95-surface-x'
