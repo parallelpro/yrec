@@ -535,6 +535,7 @@ kap/opacity_blending.o: math_lib.mod opacity_source.mod physical_constants.mod
 kap/opacity_families.o: alex06_opacity.mod alex94_opacity.mod conductive_opacity.mod kurucz_opacity.mod laol_opacity.mod opacity_source.mod opacity_tables.mod opal92_opacity.mod opal95_opacity.mod
 kap/opacity_source.o: opacity_tables.mod
 kap/opacity_table_files.o: kap_messages.mod
+kap/opacity_tables.o: numerics_lib.mod
 kap/opal92/opal92_opacity.o: math_lib.mod numerics_lib.mod opacity_blending.mod opacity_source.mod opacity_tables.mod opal92_reader.mod
 kap/opal92/opal92_reader.o: kap_messages.mod math_lib.mod opacity_table_files.mod opacity_tables.mod
 kap/opal95/opal95_opacity.o: math_lib.mod numerics_lib.mod opacity_source.mod opacity_tables.mod opal95_reader.mod

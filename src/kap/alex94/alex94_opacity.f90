@@ -17,7 +17,7 @@ module alex94_opacity
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use opacity_tables, only: alex_composition_tol, alex94_surface_slot, &
            alex94_table_set, n_alex94_d, n_alex94_t, n_alex94_x, n_alex94_z, &
-           stencil4_locate, kap_settings_t, kap_table_paths_t, opacity_table_state
+           stencil4_locate, alex_table_at_point, kap_settings_t, kap_table_paths_t, opacity_table_state
       use opacity_source, only: kap_point, kap_result, kap_source
       use numerics_lib, only: interp, lagrange4
       use physical_constants, only: ln10
@@ -132,12 +132,11 @@ pure subroutine compute_alex94_opacity(tbl, log10_density, log10_temperature, hy
            dlnkap_dlnrho, dlnkap_dlnt
 
       real(dp) :: interp_nodes(4), weight_t(4), dweight_t(4), &
-           weight_r(4), dweight_r(4), weight_x(4), opacity_row(4), &
-           dlnkap_dlnr_row(4), opacity_x(4), dlnkap_dlnt_x(4), &
-           dlnkap_dlnr_x(4)
-      real(dp) :: delta_z, logr, saved_r
-      logical :: extrapolate_linear
-      integer :: i, j, x_table, t_row
+           weight_r(4), dweight_r(4), weight_x(4), opacity_x(4), &
+           dlnkap_dlnt_x(4), dlnkap_dlnr_x(4)
+      real(dp) :: delta_z, logr, logr_in_table, dlnkap_dlnt_at_r
+      logical :: at_surface_x, extrapolate_linear
+      integer :: i, j
 
       delta_z = abs(metal_fraction-tbl%cached_z)
 !     tables at this Z
@@ -159,54 +158,22 @@ pure subroutine compute_alex94_opacity(tbl, log10_density, log10_temperature, hy
       call interp(interp_nodes, weight_t, dweight_t, log10_temperature)
 !     Find nearest grid points in R = rho/T6**3
       call stencil4_locate(tbl%grid_logr, n_alex94_d, logr, tbl%index_r)
-!     Interpolation factors in log R
-      if (logr > tbl%grid_logr(n_alex94_d).and. &
-           abs(hydrogen_fraction-tbl%cached_x) < alex_composition_tol) then
-         extrapolate_linear = .true.
-         saved_r = logr
-         logr = tbl%grid_logr(n_alex94_d)
-      else
-         extrapolate_linear = .false.
-      end if
+!     Interpolation factors in log R (at the top column above it, at the
+!     surface X only)
+      at_surface_x = abs(hydrogen_fraction-tbl%cached_x) < alex_composition_tol
+      extrapolate_linear = logr > tbl%grid_logr(n_alex94_d) .and. at_surface_x
+      logr_in_table = logr
+      if (extrapolate_linear) logr_in_table = tbl%grid_logr(n_alex94_d)
       do i = 1,4
          interp_nodes(i) = tbl%grid_logr(tbl%index_r+i-1)
       end do
-      call interp(interp_nodes, weight_r, dweight_r, logr)
-!     Now either interpolate in surface X table or calculate opacity at
-!     4 different values of X and interpolate in X.
-      if (abs(hydrogen_fraction-tbl%cached_x) < alex_composition_tol) then
-!        Surface abundance table
-!        interpolate in log R at fixed T
-         do i = 1,4
-            t_row = tbl%index_t+i - 1
-            opacity_row(i) = weight_r(1)*tbl%opacity(alex94_surface_slot,t_row,tbl%index_r) + &
-                 weight_r(2)*tbl%opacity(alex94_surface_slot,t_row,tbl%index_r+1) + &
-                 weight_r(3)*tbl%opacity(alex94_surface_slot,t_row,tbl%index_r+2) + &
-                 weight_r(4)*tbl%opacity(alex94_surface_slot,t_row,tbl%index_r+3)
-            dlnkap_dlnr_row(i) = dweight_r(1)*tbl%opacity(alex94_surface_slot,t_row,tbl%index_r) + &
-                 dweight_r(2)*tbl%opacity(alex94_surface_slot,t_row,tbl%index_r+1) + &
-                 dweight_r(3)*tbl%opacity(alex94_surface_slot,t_row,tbl%index_r+2) + &
-                 dweight_r(4)*tbl%opacity(alex94_surface_slot,t_row,tbl%index_r+3)
-         end do
-         if (extrapolate_linear) then
-            do i = 1,4
-               t_row = tbl%index_t+i-1
-               opacity_row(i) = opacity_row(i)+(saved_r-logr)* &
-                    (tbl%opacity(alex94_surface_slot,t_row,n_alex94_d)- &
-                    tbl%opacity(alex94_surface_slot,t_row,n_alex94_d-1))/ &
-                    (tbl%grid_logr(n_alex94_d)-tbl%grid_logr(n_alex94_d-1))
-            end do
-            logr = saved_r
-         end if
-!        Interpolate in T
-         log10_opacity = lagrange4(weight_t, opacity_row)
-!        D ln cappa/d ln T at fixed R
-         dlnkap_dlnt = lagrange4(dweight_t, opacity_row)
-!        Interpolate in d ln cappa/ d ln R at fixed T
-         dlnkap_dlnrho = lagrange4(weight_t, dlnkap_dlnr_row)
-!        Correct from derivative at fixed R to derivative at fixed rho
-         dlnkap_dlnt = dlnkap_dlnt - 3.0d0*dlnkap_dlnrho
-         opacity = exp(ln10*log10_opacity)
+      call interp(interp_nodes, weight_r, dweight_r, logr_in_table)
+!     Either interpolate in the surface X table, or at 4 values of X and
+!     then in X.
+      if (at_surface_x) then
+         call alex_table_at_point(tbl%opacity(alex94_surface_slot,:,:), tbl%grid_logr, tbl%index_t, &
+              tbl%index_r, weight_t, dweight_t, weight_r, dweight_r, extrapolate_linear, logr, &
+              log10_opacity, dlnkap_dlnt_at_r, dlnkap_dlnrho)
       else
 !        Find 4 nearest tables in X.
          tbl%index_x = alex_x_stencil_start(tbl%grid_x, hydrogen_fraction)
@@ -214,35 +181,19 @@ pure subroutine compute_alex94_opacity(tbl, log10_density, log10_temperature, hy
             interp_nodes(i) = tbl%grid_x(tbl%index_x+i-1)
          end do
          call interp(interp_nodes, weight_x, x_eval=hydrogen_fraction)
-!        Interpolate in log R at fixed T
          do j = 1,4
-            x_table = tbl%index_x+j-1
-            do i = 1,4
-               t_row = tbl%index_t+i - 1
-               opacity_row(i) = weight_r(1)*tbl%opacity(x_table,t_row,tbl%index_r) + &
-                    weight_r(2)*tbl%opacity(x_table,t_row,tbl%index_r+1) + &
-                    weight_r(3)*tbl%opacity(x_table,t_row,tbl%index_r+2) + &
-                    weight_r(4)*tbl%opacity(x_table,t_row,tbl%index_r+3)
-               dlnkap_dlnr_row(i) = dweight_r(1)*tbl%opacity(x_table,t_row,tbl%index_r) + &
-                    dweight_r(2)*tbl%opacity(x_table,t_row,tbl%index_r+1) + &
-                    dweight_r(3)*tbl%opacity(x_table,t_row,tbl%index_r+2) + &
-                    dweight_r(4)*tbl%opacity(x_table,t_row,tbl%index_r+3)
-            end do
-!           Interpolate in T
-            opacity_x(j) = lagrange4(weight_t, opacity_row)
-!           D ln cappa/d ln T at fixed R
-            dlnkap_dlnt_x(j) = lagrange4(dweight_t, opacity_row)
-!           Interpolate in d ln cappa/ d ln R at fixed T
-            dlnkap_dlnr_x(j) = lagrange4(weight_t, dlnkap_dlnr_row)
+            call alex_table_at_point(tbl%opacity(tbl%index_x+j-1,:,:), tbl%grid_logr, tbl%index_t, &
+                 tbl%index_r, weight_t, dweight_t, weight_r, dweight_r, .false., logr, &
+                 opacity_x(j), dlnkap_dlnt_x(j), dlnkap_dlnr_x(j))
          end do
 !        Interpolate in X
          log10_opacity = lagrange4(weight_x, opacity_x)
-         dlnkap_dlnt = lagrange4(weight_x, dlnkap_dlnt_x)
+         dlnkap_dlnt_at_r = lagrange4(weight_x, dlnkap_dlnt_x)
          dlnkap_dlnrho = lagrange4(weight_x, dlnkap_dlnr_x)
-!        Correct from derivative at fixed R to derivative at fixed rho
-         dlnkap_dlnt = dlnkap_dlnt - 3.0d0*dlnkap_dlnrho
-         opacity = exp(ln10*log10_opacity)
       end if
+!     Correct from derivative at fixed R to derivative at fixed rho
+      dlnkap_dlnt = dlnkap_dlnt_at_r - 3.0d0*dlnkap_dlnrho
+      opacity = exp(ln10*log10_opacity)
 end subroutine compute_alex94_opacity
 
 ! alex_x_stencil_start

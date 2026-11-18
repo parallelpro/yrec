@@ -15,11 +15,13 @@
 !   - the settings record's type (kap_settings_t; kap_lib holds the
 !     record kap_init installs) and the tables' paths
 !     (kap_table_paths_t);
-!   - the four-point stencil locators the families share.
+!   - the four-point stencil locators the families share, and the
+!     Alexander lookups' interpolation in one table (alex_table_at_point).
 ! The grids, cursors and caches start from the F77 code's DATA values,
 ! as component initializers.
 module opacity_tables
       use, intrinsic :: iso_fortran_env, only: dp => real64
+      use numerics_lib, only: lagrange4
       implicit none
       private
 ! what the family modules and kap_lib use (each imports its names)
@@ -32,7 +34,7 @@ module opacity_tables
            n_opal95_x, n_opal95_z, opal92_missing_opacity, opal92_table_set, &
            opal92_x_match_tol, opal95_composition_tol, &
            opal95_missing_opacity, opal95_missing_test, stencil4_locate, &
-           stencil4_locate_opal95
+           stencil4_locate_opal95, alex_table_at_point
 ! OPAL92 (Livermore) table dimensions
       integer, parameter :: n_opal92_t = 50, n_opal92_d = 17, &
            n_opal92_x = 3, n_opal92_xt = 150, n_opal92_4d = 68
@@ -419,6 +421,52 @@ pure subroutine stencil4_locate_opal95(grid, n, x, idx)
          end if
       end if
 end subroutine stencil4_locate_opal95
+
+! alex_table_at_point
+! The Alexander lookups' interpolation in one table (alex94's surface
+! and fixed-Z tables, alex06's table at the composition): opacity_tr
+! holds log10 kappa by T row and log R column. In log R at each of the
+! four T rows from t_first, with the weights weight_r and dweight_r of
+! the four columns from r_first; above the top column (extrapolate_linear:
+! the weights are the top column's) the value is carried on to logr
+! with the secant of the last two columns, and d log kappa/d log R stays
+! the cubic's at the edge (the F77 code's). Then in log T with weight_t
+! and dweight_t: log10 kappa, d log kappa/d log T at fixed R, and
+! d log kappa/d log R (= d log kappa/d log rho at fixed T).
+pure subroutine alex_table_at_point(opacity_tr, grid_logr, t_first, r_first, weight_t, dweight_t, &
+     weight_r, dweight_r, extrapolate_linear, logr, log10_opacity, dlnkap_dlnt_at_r, dlnkap_dlnr)
+      real(dp), intent(in) :: opacity_tr(:,:), grid_logr(:)
+      integer, intent(in) :: t_first, r_first
+      real(dp), intent(in) :: weight_t(:), dweight_t(:), weight_r(:), dweight_r(:), logr
+      logical, intent(in) :: extrapolate_linear
+      real(dp), intent(out) :: log10_opacity, dlnkap_dlnt_at_r, dlnkap_dlnr
+      real(dp) :: opacity_row(4), dlnkap_dlnr_row(4)
+      integer :: i, t_row, n_logr
+
+      n_logr = size(grid_logr)
+      do i = 1,4
+         t_row = t_first + i - 1
+         opacity_row(i) = weight_r(1)*opacity_tr(t_row,r_first) + &
+              weight_r(2)*opacity_tr(t_row,r_first+1) + &
+              weight_r(3)*opacity_tr(t_row,r_first+2) + &
+              weight_r(4)*opacity_tr(t_row,r_first+3)
+         dlnkap_dlnr_row(i) = dweight_r(1)*opacity_tr(t_row,r_first) + &
+              dweight_r(2)*opacity_tr(t_row,r_first+1) + &
+              dweight_r(3)*opacity_tr(t_row,r_first+2) + &
+              dweight_r(4)*opacity_tr(t_row,r_first+3)
+      end do
+      if (extrapolate_linear) then
+         do i = 1,4
+            t_row = t_first + i - 1
+            opacity_row(i) = opacity_row(i)+(logr-grid_logr(n_logr))* &
+                 (opacity_tr(t_row,n_logr)-opacity_tr(t_row,n_logr-1))/ &
+                 (grid_logr(n_logr)-grid_logr(n_logr-1))
+         end do
+      end if
+      log10_opacity = lagrange4(weight_t, opacity_row)
+      dlnkap_dlnt_at_r = lagrange4(dweight_t, opacity_row)
+      dlnkap_dlnr = lagrange4(weight_t, dlnkap_dlnr_row)
+end subroutine alex_table_at_point
 
 !----------------------------------------------------------------------
 ! Sources

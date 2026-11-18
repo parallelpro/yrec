@@ -64,8 +64,8 @@ new = '         delta_logr = st%logr - st%logr_lo_edge + 1.0d0'
 id = 'alex06-dt'
 check = 'Alexander 2006: dln kappa/dln rho, dln T against differences'
 file = 'kap/alex06/alex06_opacity.f90'
-old = '      dlnkap_dlnt = dlnkap_dlnt - 3.0d0*dlnkap_dlnrho'
-new = '      dlnkap_dlnt = dlnkap_dlnt - 2.0d0*dlnkap_dlnrho'
+old = '      dlnkap_dlnt = dlnkap_dlnt_at_r - 3.0d0*dlnkap_dlnrho'
+new = '      dlnkap_dlnt = dlnkap_dlnt_at_r - 2.0d0*dlnkap_dlnrho'
 
 [[mutation]]
 id = 'conductive-dt'
@@ -204,8 +204,8 @@ new = '         row_dlnkap_dlnrho(num_rows) = (3.0d0*c4*delta_logrho+3.0d0*c3)*d
 id = 'alex94-dt'
 check = 'Alexander 1994: derivatives against differences'
 file = 'kap/alex94/alex94_opacity.f90'
-old = '         dlnkap_dlnt = lagrange4(dweight_t, opacity_row)'
-new = '         dlnkap_dlnt = lagrange4(weight_t, opacity_row)'
+old = '              tbl%index_r, weight_t, dweight_t, weight_r, dweight_r, extrapolate_linear, logr, &'
+new = '              tbl%index_r, weight_t, weight_t, weight_r, dweight_r, extrapolate_linear, logr, &'
 
 [[mutation]]
 id = 'blend-slope'
@@ -621,15 +621,15 @@ new = '''            tbl%opacity(alex94_surface_slot,i,j) = weight_x(2)*tbl%opac
 id = 'alex94-top-logr'
 check = 'Alexander 1994 above its top log R: linear from the last two'
 file = 'kap/alex94/alex94_opacity.f90'
-old = '''                    (tbl%grid_logr(n_alex94_d)-tbl%grid_logr(n_alex94_d-1))'''
-new = '''                    (tbl%grid_logr(n_alex94_d)-tbl%grid_logr(n_alex94_d-2))'''
+old = '''              tbl%index_r, weight_t, dweight_t, weight_r, dweight_r, extrapolate_linear, logr, &'''
+new = '''              tbl%index_r, weight_t, dweight_t, weight_r, dweight_r, .false., logr, &'''
 
 [[mutation]]
 id = 'alex06-top-logr'
 check = 'Alexander 2006 above its top log R: linear from the last two'
-file = 'kap/alex06/alex06_opacity.f90'
-old = '''                 (tbl%grid_logr(n_alex06_d)-tbl%grid_logr(n_alex06_d-1))'''
-new = '''                 (tbl%grid_logr(n_alex06_d)-tbl%grid_logr(n_alex06_d-2))'''
+file = 'kap/opacity_tables.f90'
+old = '''                 (grid_logr(n_logr)-grid_logr(n_logr-1))'''
+new = '''                 (grid_logr(n_logr)-grid_logr(n_logr-2))'''
 
 [[mutation]]
 id = 'kurucz-no-value'
