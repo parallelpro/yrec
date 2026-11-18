@@ -51,7 +51,7 @@
 !               starting densities, the last max_start_tries - 1 decades
 !               below the first.
 !   errors      the error contracts: the atmosphere or the envelope
-!               that cannot finish in maxstp steps (steps of 1e-6)
+!               that cannot finish in max_steps steps (steps of 1e-6)
 !               returns ierr = 1 and its maxstp event, last; the
 !               photospheric pressure stays no_photosphere_log10_pressure
 !               when the atmosphere failed. Bulirsch-Stoer limits out of range (nuse = 1)

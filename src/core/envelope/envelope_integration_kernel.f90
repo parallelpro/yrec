@@ -120,8 +120,8 @@ module envelope_integration_kernel
 !                               (counts: steps accepted, rejected;
 !                               values: the summed relative error in P)
 !   envint_atmosphere_maxstp    the atmosphere did not reach the
-!                               photosphere in maxstp steps (counts:
-!                               maxstp; ierr 1)
+!                               photosphere in max_steps steps (counts:
+!                               max_steps; ierr 1)
 !   envint_bsstep_limits        the Bulirsch-Stoer limits are out of
 !                               range (counts: max_stage_index,
 !                               extrap_order; ierr numerics_bad_input)
@@ -142,8 +142,8 @@ module envelope_integration_kernel
 !                               log(m/M), and the summed relative errors
 !                               in log m, log T and log r)
 !   envint_envelope_maxstp      the envelope did not reach the fitting
-!                               mass in maxstp steps (counts: maxstp;
-!                               ierr 1)
+!                               mass in max_steps steps (counts:
+!                               max_steps; ierr 1)
 !   envint_start_exhausted      the atmosphere's starting log tau lay
 !                               past the photosphere's at every one of
 !                               max_start_tries starting densities

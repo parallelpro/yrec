@@ -75,7 +75,7 @@ end function surface_log10_radius_cm
 !   star writes: none
 real(dp) function ambient_log10_teff(s, log_teff)
       use math_lib
-      type(star_info), intent(inout) :: s
+      type(star_info), intent(in) :: s
       real(dp), intent(in) :: log_teff
       ambient_log10_teff = log_teff - 0.25*log10(s%physics%spot_filling_factor * &
            pow(s%physics%spot_temp_contrast, 4.0) + 1.0 - s%physics%spot_filling_factor)
@@ -386,3 +386,7 @@ end module envelope_integration
 !   and build_stitched_model (2026, readability wave 2).
 ! - The kernel prints nothing since round 2 (core_messages; this driver
 !   reports its events).
+! - Round 3 (2026-11): atm_get takes its inputs intent(in) and the
+!   triangle's vertex as one record (it had 24 arguments, the vertex in
+!   six of them); the line of the fitted vertex, which no caller could
+!   reach, went with its print_flag.
