@@ -442,7 +442,7 @@ core/run/run_setup.o: control_slots.mod math_lib.mod monte_carlo.mod physical_co
 core/run/stop_conditions.o: calibration.mod core_messages.mod math_lib.mod run_cards.mod star_info_lib.mod
 core/run/yrec_capi.o: core_messages.mod run_driver.mod star_info_lib.mod yrec_reset.mod
 core/run/yrec_reset.o: run_files.mod run_messages.mod star_info_lib.mod
-core/step/burn_step.o: convection_geometry.mod li_be_burn.mod math_lib.mod net_lib.mod physical_constants.mod run_messages.mod star_info_lib.mod
+core/step/burn_step.o: convection_geometry.mod core_messages.mod li_be_burn.mod math_lib.mod net_lib.mod physical_constants.mod star_info_lib.mod
 core/step/composition_kernels.o: composition_layout.mod
 core/step/composition_step.o: burn_step.mod composition_kernels.mod convection_lib.mod core_messages.mod element_diffusion_lib.mod math_lib.mod net_lib.mod physical_constants.mod run_messages.mod star_info_lib.mod
 core/step/convection_geometry.o: math_lib.mod physical_constants.mod star_info_lib.mod
