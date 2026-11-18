@@ -5068,3 +5068,27 @@ needed").
 the shortcut's 1.4e-4 dex. Then M362 and M361 (small, one file each, an
 expected failure waiting for each) and M359; M373 and M374 (Kind A) for
 whoever runs the tests in a second worktree; then M363.
+
+**The integration (2026-11-17).** The three branches were merged into
+yrec-next with merge commits, in this order: the validation tier
+(8c66ff29), the convergence round (078df658) and this registration
+(8dba2fd6).
+- The validation tier at 8c66ff29: the builds and `make check`; CI's
+  pytest list, 133 passed, 2 skipped and 6 expected failures in both
+  modes; the whole tier with GYRE, 64 passed, 1 skipped and 9 expected
+  failures; and the contract test from a sparse clone made with
+  build-and-test's file list, without the shell's `YREC_*` variables.
+- The convergence round at 078df658: the main tree reproduced the
+  round's outputs (56 decks ALL IDENTICAL, 35 pins OK against a copy of
+  its measuring area) before its base and pins were installed (the old
+  ones are the work directory's `backups/pre_b2conv`); then `make
+  check`, the installed compare (ALL IDENTICAL, 35 pins OK), CI's
+  pytest list of 35 files (141 passed, 2 skipped, 6 expected failures,
+  both modes), mutate.py for core, eos and convection (none survived),
+  the devel build and devel_tests.py (0 failed), a release rebuild, and
+  the MESA baselines reseeded and equal to the round's.
+- The validation tier again on the new baseline: 64 passed, 1 skipped,
+  9 expected failures, as before the round. M176's part B moved the
+  solar decks by at most 4e-7 in log L, inside every band.
+- **The push**: yrec-next is pushed through 1179afbf; the eighth
+  evaluation's merge and these three wait for the owner's word.
