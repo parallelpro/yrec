@@ -71,8 +71,8 @@ new = '      dlnkap_dlnt = dlnkap_dlnt - 2.0d0*dlnkap_dlnrho'
 id = 'conductive-dt'
 check = 'Potekhin conduction (ionized): derivatives against differences'
 file = 'kap/conductive/conductive_opacity.f90'
-old = 'conductive_dlnkap_dlnt = (weight_h1*cond_h1*dlnkap_dlnt_h1 &'
-new = 'conductive_dlnkap_dlnt = (weight_h1*cond_h1*dlnkap_dlnrho_h1 &'
+old = 'mix_dlogk_dlogt = (weight_h1*cond_h1*dlogk_dlogt(i_h1) &'
+new = 'mix_dlogk_dlogt = (weight_h1*cond_h1*dlogk_dlogrho(i_h1) &'
 
 [[mutation]]
 id = 'conduction-sum-drho'
@@ -141,36 +141,36 @@ new = 'weight_he4 = number_fraction_he4 * (ion_fraction(2) + ion_fraction(3))'
 id = 'conductive-weights-normalized'
 check = 'Potekhin mixture: 1/K = sum x_i/K_i(rho_i), electron fractions'
 file = 'kap/conductive/conductive_opacity.f90'
-old = '       weight_h1 = weight_h1/electron_sum'
-new = '       weight_h1 = weight_h1'
+old = '      weight_h1 = weight_h1/electron_sum'
+new = '      weight_h1 = weight_h1'
 
 [[mutation]]
 id = 'conductive-electron-density'
 check = 'Potekhin mixture: 1/K = sum x_i/K_i(rho_i), electron fractions'
 file = 'kap/conductive/conductive_opacity.f90'
-old = '            helium_fraction*(ion_fraction(2) + 2D0*ion_fraction(3))/atomic_weight_he4 + &'
-new = '            helium_fraction*2D0/atomic_weight_he4 + &'
+old = '           helium_fraction*(ion_fraction(2) + 2D0*ion_fraction(3))/atomic_weight_he4 + &'
+new = '           helium_fraction*2D0/atomic_weight_he4 + &'
 
 [[mutation]]
-id = 'conductive-low-density-sign'
+id = 'conductive-low-density-base'
 check = 'Potekhin conduction: kappa_c continuous at log rho = -6'
 file = 'kap/conductive/conductive_opacity.f90'
-old = 'conductive_log10_opacity = log10_16_sigma_over_3+3.0D0*log10_temperature-conductive_logrho_min-mix_log10_cond'
-new = 'conductive_log10_opacity = log10_16_sigma_over_3+3.0D0*log10_temperature-conductive_logrho_min+mix_log10_cond'
+old = '      if (.not. in_table) table_logrho = conductive_logrho_min'
+new = '      if (.not. in_table) table_logrho = conductive_logrho_min + 1.0d-2'
 
 [[mutation]]
 id = 'conductive-low-density-direction'
 check = 'Potekhin conduction below log rho = -6: dln kappa/dln rho'
 file = 'kap/conductive/conductive_opacity.f90'
-old = '                conductive_dlnkap_dlnrho*(log10_density-conductive_logrho_min)'
-new = '                conductive_dlnkap_dlnrho*(conductive_logrho_min-log10_density)'
+old = '           conductive_dlnkap_dlnrho*(log10_density-conductive_logrho_min)'
+new = '           conductive_dlnkap_dlnrho*(conductive_logrho_min-log10_density)'
 
 [[mutation]]
 id = 'conductive-no-electrons'
 check = 'Potekhin conduction: none for a gas without free electrons'
 file = 'kap/conductive/conductive_opacity.f90'
-old = '       if (electron_sum <= 0.0d0) return'
-new = '       if (electron_sum < 0.0d0) return'
+old = '      if (electron_sum <= 0.0d0) return'
+new = '      if (electron_sum < 0.0d0) return'
 
 [[mutation]]
 id = 'opal92-dt'
