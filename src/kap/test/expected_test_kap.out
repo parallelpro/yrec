@@ -67,6 +67,7 @@ OPAL95 2D path (surface X, Z): exact at a table node                       0.00E
 OPAL95 3D path (X off the surface): exact at a table node                  0.00E+00  ok
 OPAL95 4D path (Z off the fixed-Z table): exact at a node                  0.00E+00  ok
 Alexander 2006: exact at a table node (log T 3.40, log R -3)               0.00E+00  ok
+OPAL95 3D path: exact at a node of the X = 1 - Z table                     0.00E+00  ok
 OPAL95 2D: dln kappa/dln rho, dln T against differences                    1.76E-08  ok
 OPAL95 3D: dln kappa/dln rho, dln T against differences                    2.21E-08  ok
 OPAL95 4D: dln kappa/dln rho, dln T against differences                    1.90E-08  ok
@@ -79,14 +80,43 @@ ramp: dln kappa/dln rho, dln T against differences                         7.62E
 OPAL95: kappa continuous at the table's lowest log R                       3.70E-11  ok
 OPAL95: the 2D path continuous with the 4D path in Z                       5.36E-05  ok
 kap_update_surface_tables: the new 2D path is the old 3D path              0.00E+00  ok
+OPAL95 surface table at X = 0.92: the 2D path is the 3D path               2.22E-16  ok
+OPAL95 surface table at Z = 0.06, X = 0.85: 2D is 3D                       2.22E-16  ok
+OPAL95 at Z = 0.04, X = 0.85: 2D continuous with 4D in Z                   7.07E-05  ok
+OPAL95 high-R shift: independent of the previous lookup's X                0.00E+00  ok
+OPAL95 high-R shift: no empty cell of the stencil's X tables read          2.10E-04  ok
+OPAL95 high-R shift (rows end at different log R): derivatives             1.16E-07  ok
+OPAL95 high-R shift: log kappa within 0.05 of its neighbours'              2.06E-02  ok
+OPAL95 past a row's last log R (extrapolated): derivatives                 4.26E-08  ok
+precedence: OPAL95 with OPAL92 also selected is OPAL95 alone               0.00E+00  ok
+precedence: Alexander 2006 with 1994 also selected is 2006's               0.00E+00  ok
+no molecular family: OPAL95 exact at a node below log T 4.1                6.66E-16  ok
 Potekhin mixture: 1/K = sum x_i/K_i(rho_i), electron fractions             6.66E-16  ok
 Potekhin conduction: kappa_c continuous at log rho = -6                    4.96E-09  ok
 Potekhin conduction below log rho = -6: dln kappa/dln rho                  6.94E-12  ok
+Potekhin conduction: none for a gas without free electrons                 0.00E+00  ok
 OPAL92 (two Z): derivatives against differences                            5.76E-08  ok
 OPAL92 two-Z blend: at opal_table_z1 it is the first table                 0.00E+00  ok
 LAOL89 (secant derivatives): against differences, to 10%                   5.89E-02  ok
 Kurucz 1990 (two Z): derivatives against differences                       2.01E-07  ok
 Alexander 1994: derivatives against differences                            1.14E-06  ok
+Alexander 1994 off the surface X: derivatives against differences          1.33E-06  ok
+Alexander 1994 at another Z: its tables rebuilt, exact at a node           0.00E+00  ok
+Alexander 1994 surface table at X = 0.62: 2D is 3D                         0.00E+00  ok
+Alexander 1994 above its top log R: linear from the last two               0.00E+00  ok
+Alexander 2006 above its top log R: linear from the last two               0.00E+00  ok
+kap_get: the Kurucz 1990 table has no value at log rho =-25.0000, log T =  3.6000
+Kurucz 1990: a density no row has returns ierr                             0.00E+00  ok
+OPAL92 between two X tables: derivatives against differences               8.02E-08  ok
+OPAL92 at an X of its grid: the X interpolation beside it                  1.21E-06  ok
+kap_get: log T = 3.000000 is outside the OPAL 1992 tables
+OPAL92: log T off the table returns ierr                                   0.00E+00  ok
+helium core (OPAL92): the Z blend of its table and the pure-Z              0.00E+00  ok
+helium core (LAOL89): the Z blend of its table and the pure-Z              0.00E+00  ok
+LAOL column: exact on a linear table, 1 dex past a row's ends              1.02E-14  ok
+LAOL column: beyond the tolerance returns ierr                             0.00E+00  ok
+LAOL column: log kappa above 35 is capped                                  0.00E+00  ok
+LAOL column: a row of fewer than four points returns ierr                  0.00E+00  ok
 blend_in_z: each table's value at its own Z                                0.00E+00  ok
 add_conduction: equal opacities halve kappa, average the slopes            0.00E+00  ok
 hubbard_lampe_opacity: derivatives against differences                     1.11E-11  ok
@@ -98,6 +128,8 @@ kap_init: molecular_opacity_logt_min ( 4.10000E+00) must be below molecular_opac
 kap_init refuses molecular_opacity_logt_min >= _max                        0.00E+00  ok
 kap_init: cannot open the conductive table no_such_table.cond
 kap_init: a missing table returns ierr (and is not created)                0.00E+00  ok
+kap_init: cannot open the OPAL 1992 table no_such_table.opal92: Cannot open file 'no_such_table.opal92': No such file or directory
+kap_init: a missing OPAL92 table returns ierr (open_table)                 0.00E+00  ok
 kap_init: the OPAL 1992 table short_table.opal92 ends early
 kap_init: a short OPAL92 table returns ierr                                0.00E+00  ok
 kap_get: log T = 8.900000 is outside the OPAL 1995 tables (log T 3.75 to 8.70)
@@ -110,4 +142,43 @@ Alexander 2006: a refused composition fails again on a retry               0.00E
 kap_init again: the first lookup is the first run's, bit for bit           0.00E+00  ok
 kap_get: a helium-burning core (Z = 0.60000 above 0.1, log T = 7.80000 above 7) needs the pure-Z table (use_pure_z_table)
 kap_get: a helium core without the pure-Z table returns ierr               0.00E+00  ok
+kap_init: the OPAL 1992 table short_table.opal92 is at Z = 0.01880, not at opal_table_z1 = 0.02000
+kap_init refuses an OPAL92 table that is not at opal_table_z1              0.00E+00  ok
+kap_init: the LAOL 1989 table head_of_table.laol is at Z = 0.01880, not at laol_table_z1 = 0.02000
+kap_init refuses a LAOL89 table that is not at laol_table_z1               0.00E+00  ok
+kap_init: laol_z_tolerance ( 0.00000E+00) must be positive: its natural log is how far the LAOL 1989 and pure-Z tables extrapolate in log rho
+kap_init refuses a laol_z_tolerance that is not positive                   0.00E+00  ok
+kap_init: the Kurucz 1990 table no_rows.kurucz has no table row
+kap_init refuses a Kurucz 1990 table without rows                          0.00E+00  ok
+kap_init: table 1 of the OPAL 1995 table doctored_header.op17 is at X = 0.1000, Z = 0.0000 where X = 0.0000, Z = 0.0000 is expected
+kap_init refuses an OPAL95 table at another X than its slot's              0.00E+00  ok
+kap_init: the Alexander 2006 table doctored_header.alex06 expects X = 0.0000 and has 0.1000, expects Z = 0.0000 and has 0.0000
+kap_init refuses an Alexander 2006 table at another X                      0.00E+00  ok
+kap_init: the Alexander 1994 table doctored_header.alex94 expects X = 0.0000 and has 0.0000, expects Z = 0.1000 and has 0.0800
+kap_init refuses an Alexander 1994 table at another Z                      0.00E+00  ok
+kap_init: the LAOL 1989 table doctored_size.laol has 12 X, 104 rho and 52 T values, more than 11, 104 and 52
+kap_init refuses a LAOL89 table with more X than fit                       0.00E+00  ok
+kap_init: the Kurucz 1990 table doctored_row.kurucz has an unreadable row after temperature row 1
+kap_init refuses a Kurucz 1990 table with an unreadable row                0.00E+00  ok
+kap_init: the OPAL 1995 table cut_inside.op17 ends inside table 1
+kap_init: an OPAL95 file that ends inside a table says so                  0.00E+00  ok
+kap_init: the OPAL 1995 table cut_after.op17 ends after 1 of its 126 tables
+kap_init: an OPAL95 file that ends after a whole table says so             0.00E+00  ok
+kap_init: cannot read a row of table 1 of the OPAL 1995 table doctored_row.op17
+kap_init: an OPAL95 row that is not numbers is refused                     0.00E+00  ok
+kap_init: the Alexander 2006 table doctored_logr.alex06 expects log R -8.000 in column 1 and has -8.500
+kap_init refuses an Alexander 2006 table with other log R columns          0.00E+00  ok
+kap_init: the Alexander 2006 table doctored_logt.alex06 expects log T  4.500 in row 85 and has  4.400
+kap_init refuses an Alexander 2006 row at another log T                    0.00E+00  ok
+kap_init: the Alexander 1994 table doctored_row.alex94 expects a row of 17 log R values at log T 4.100 from log R -7.0, and has 16 at log T 4.100 from log R -7.0
+kap_init refuses an Alexander 1994 row of another length                   0.00E+00  ok
+kap_init: the pure-Z table doctored_size.purez has 2 X, 104 rho and 52 T values, where it may have 1, up to 104 and 52
+kap_init refuses a pure-Z table with more than one X                       0.00E+00  ok
+Kurucz 1990 without a value: the interior opacity alone                    0.00E+00  ok
+kap_get: no interior opacity table chosen (use_opal95_tables, use_opal92_tables or use_laol89_tables); X = 0.70000, Z = 0.03000, log T = 6.00000
+kap_get without an interior family says so, at any Z                       0.00E+00  ok
+kap_init: use_pure_z_table needs an interior table (use_opal95_tables, use_opal92_tables or use_laol89_tables)
+kap_report: a message before the run log opens waits for it                0.00E+00  ok
+kap_get: no interior opacity at Z = 0.01880: the OPAL 1992 table is at the envelope's Z = 0.02000 (use_z_ramp or use_diffusion_z reads two)
+kap_set_envelope_metal_fraction: one Z table serves the new Z only         0.00E+00  ok
 test_kap: done

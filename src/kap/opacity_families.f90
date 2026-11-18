@@ -3,9 +3,12 @@
 !----------------------------------------------------------------------
 ! The opacity table families, as data: each role's families in
 ! precedence order, and the family of each role that a run uses. This is
-! the one place that orders them; kap_init loads, kap_update_surface_tables
-! refreshes and kap_eval looks up only the families select_families
-! returns.
+! the one place in kap that orders them; kap_init loads,
+! kap_update_surface_tables refreshes and kap_eval looks up only the
+! families select_families returns. (io orders the molecular controls a
+! second time: io/derived_controls.f90's select_eos_and_opacity_tables
+! warns when more than one is set and switches the others off before kap
+! sees them; bug_sweep M344.)
 !   interior   the atomic tables, used above molecular_opacity_logt_min:
 !              OPAL 1995-format, else OPAL 1992, else LAOL 1989
 !   molecular  the low-temperature tables, used below
@@ -33,7 +36,7 @@ module opacity_families
 contains
 
 ! the interior families, in precedence order
-function interior_families(settings) result(families)
+pure function interior_families(settings) result(families)
       type(kap_settings_t), intent(in) :: settings
       type(kap_source) :: families(3)
 
@@ -43,7 +46,7 @@ function interior_families(settings) result(families)
 end function interior_families
 
 ! the molecular families, in precedence order
-function molecular_families(settings) result(families)
+pure function molecular_families(settings) result(families)
       type(kap_settings_t), intent(in) :: settings
       type(kap_source) :: families(3)
 
@@ -58,7 +61,7 @@ end function molecular_families
 ! of the molecular ramp: the molecular family below
 ! molecular_opacity_logt_max, the interior one above
 ! molecular_opacity_logt_min.
-subroutine select_families(settings, interior, molecular, helium_core, conduction)
+pure subroutine select_families(settings, interior, molecular, helium_core, conduction)
       type(kap_settings_t), intent(in) :: settings
       type(kap_source), intent(out) :: interior, molecular, helium_core, conduction
 
@@ -70,7 +73,7 @@ subroutine select_families(settings, interior, molecular, helium_core, conductio
       conduction = conductive_source(settings)
 end subroutine select_families
 
-function first_selected(families) result(first)
+pure function first_selected(families) result(first)
       type(kap_source), intent(in) :: families(:)
       type(kap_source) :: first
       integer :: k

@@ -28,12 +28,13 @@ module opacity_blending
            hubbard_lampe_applies, hubbard_lampe_opacity, add_conduction
 
 ! Hubbard & Lampe (1969)'s conductive opacity, as the F77 code's fit:
-!   log10 kappa_c = log10(1 - 0.6 X) + c0 - (c_rho + c_rho2 log rho) log rho
-!                   + (c_t + c_t2 log T) log T + c_rho_t log rho log T,
+!   log10 kappa_c = log10(1 - x_factor X) + c0
+!                   - (c_rho + c_rho2 log rho) log rho
+!                   + (c_t - c_t2 log T) log T + c_rho_t log rho log T,
 ! used only where log T >= hubbard_lampe_logt_min and
 ! log rho >= 2 log T + hubbard_lampe_logrho_offset (degenerate enough
 ! for conduction to matter)
-      real(dp), parameter :: hubbard_lampe_c0 = -14.6196d0, &
+      real(dp), parameter :: hubbard_lampe_x_factor = 0.6d0, hubbard_lampe_c0 = -14.6196d0, &
            hubbard_lampe_c_rho = 3.5853d0, hubbard_lampe_c_rho2 = 0.1386d0, &
            hubbard_lampe_c_t = 5.1324d0, hubbard_lampe_c_t2 = 0.3219d0, &
            hubbard_lampe_c_rho_t = 0.3901d0
@@ -119,7 +120,7 @@ pure function hubbard_lampe_opacity(log10_density, log10_temperature, &
       type(kap_result) :: res
 
       res%log10_opacity = &
-           log10(1.0d0 - 0.6d0*hydrogen_fraction) + hubbard_lampe_c0 - &
+           log10(1.0d0 - hubbard_lampe_x_factor*hydrogen_fraction) + hubbard_lampe_c0 - &
            (hubbard_lampe_c_rho + hubbard_lampe_c_rho2*log10_density)*log10_density + &
            (hubbard_lampe_c_t - hubbard_lampe_c_t2*log10_temperature)*log10_temperature + &
            hubbard_lampe_c_rho_t*log10_density*log10_temperature

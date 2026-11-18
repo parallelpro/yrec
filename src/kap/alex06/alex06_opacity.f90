@@ -4,7 +4,6 @@
 ! The low-temperature molecular opacities of Ferguson et al. (2005), the
 ! 'Alexander 2006' tables: one file of tables in X and Z, each in log T
 ! and log R.
-!     read_alex06_tables       read the file
 !     compute_alex06_opacity   the opacity and its log derivatives, from
 !                              a table at the zone's (X, Z) built by
 !                              build_alex06_composition_table and
@@ -15,7 +14,7 @@
 module alex06_opacity
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use opacity_tables, only: alex_composition_tol, alex06_table_set, n_alex06_d, &
-           n_alex06_t, n_alex06_x, n_alex06_z, stencil4_locate, kap_settings_t, &
+           n_alex06_t, n_alex06_x, n_alex06_z, stencil4_locate, alex_table_at_point, kap_settings_t, &
            kap_table_paths_t, opacity_table_state
       use opacity_source, only: kap_point, kap_result, kap_source
       use numerics_lib, only: interp, lagrange4
@@ -27,11 +26,16 @@ module alex06_opacity
       public :: alex06_source
       public :: compute_alex06_opacity
 
+! The set has no X = 1 - Z table of its own at Z = 0.1 (it is the
+! X = 0.9 table), so from this Z up a stencil above the last X node
+! starts one table lower
+      real(dp), parameter :: no_x1mz_from_z = 0.1d0
+
 contains
 
 
 !----------------------------------------------------------------------
-! build_alex06_composition_table (formerly alex06tab)
+! build_alex06_composition_table
 !----------------------------------------------------------------------
 ! Builds tbl%opacity, the table (in log T and log R) at one composition,
 ! by 4-point Lagrange interpolation of the full set in Z, then in X. A
@@ -41,7 +45,7 @@ contains
 ! The table is built at (hydrogen_fraction, metal_fraction); the caller
 ! (compute_alex06_opacity) records that composition as the cache's only
 ! when the build succeeds.
-subroutine build_alex06_composition_table(tbl, hydrogen_fraction, metal_fraction, message, ierr)
+pure subroutine build_alex06_composition_table(tbl, hydrogen_fraction, metal_fraction, message, ierr)
       type(alex06_table_set), intent(inout) :: tbl
 
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction
@@ -50,8 +54,10 @@ subroutine build_alex06_composition_table(tbl, hydrogen_fraction, metal_fraction
 
       real(dp) :: interp_nodes(4), weight_z(4), weight_x(4)
       real(dp) :: opacity_by_x(4,n_alex06_t,n_alex06_d)
-      real(dp) :: x_max, z_max, interp_target
-      integer :: i, j, iz, k, kk, kk2, kk3, kk4
+      real(dp) :: x_max, z_max
+! the first of the four Z tables around Z; the slots of the full set
+! that hold a given X's four Z tables
+      integer :: i, j, iz, k, z_slot(4)
 
       ierr = 0
       message = ''
@@ -89,7 +95,7 @@ subroutine build_alex06_composition_table(tbl, hydrogen_fraction, metal_fraction
       end do
       if (i > (n_alex06_x-2)) then
 !     No table for X > 0.9 if Z =0.10 or more
-      if (metal_fraction >= 0.1d0) then
+      if (metal_fraction >= no_x1mz_from_z) then
          tbl%index_x = n_alex06_x - 4
       else
          tbl%index_x = n_alex06_x - 3
@@ -99,41 +105,39 @@ subroutine build_alex06_composition_table(tbl, hydrogen_fraction, metal_fraction
       do i = 1,4
          interp_nodes(i) = tbl%grid_z(iz+i-1)
       end do
-      interp_target = metal_fraction
-      call interp(interp_nodes, weight_z, x_eval=interp_target)
+      call interp(interp_nodes, weight_z, x_eval=metal_fraction)
 !     The Z = 0.1 case has one table fewer (its X = 1 - Z table is the
 !     X = 0.9 one), which only the fourth X position meets: the first
 !     three take the four consecutive Z slots of their X.
       do k = 1,3
-         kk = n_alex06_z*(tbl%index_x+k-2)+iz
+         z_slot(1) = n_alex06_z*(tbl%index_x+k-2)+iz
          do i = 1,n_alex06_t
             do j = 1,n_alex06_d
-               opacity_by_x(k,i,j) = lagrange4(weight_z, tbl%full_opacity(kk:kk+3,i,j))
+               opacity_by_x(k,i,j) = lagrange4(weight_z, &
+                    tbl%full_opacity(z_slot(1):z_slot(1)+3,i,j))
             end do
          end do
       end do
 !     At the top X position and the top Z stencil, the Z = 0.1 table of
 !     the X = 1 - Z family is the X = 0.9 table (slot n_alex06_z (X index
 !     + 2), its first).
+      z_slot(1) = n_alex06_z*(tbl%index_x+2)+iz
+      z_slot(2) = z_slot(1) + 1
+      z_slot(3) = z_slot(2) + 1
       if (tbl%index_x == n_alex06_x-3.and.iz == n_alex06_z-3) then
 !        Use different indexing for the last table
-         kk = n_alex06_z*(tbl%index_x+2)+iz
-         kk2 = kk + 1
-         kk3 = kk2 + 1
-         kk4 = n_alex06_z*(tbl%index_x+2)
+         z_slot(4) = n_alex06_z*(tbl%index_x+2)
       else
-         kk = n_alex06_z*(tbl%index_x+2)+iz
-         kk2 = kk + 1
-         kk3 = kk2 + 1
-         kk4 = kk3 + 1
+         z_slot(4) = z_slot(3) + 1
       end if
-!     (Inline rather than lagrange4: kk4 is not kk+3 in the Z=0.10 case.)
+!     (Inline rather than lagrange4 of a section: the fourth slot is not
+!     the third's neighbour in the Z = 0.10 case.)
       do i = 1,n_alex06_t
          do j = 1,n_alex06_d
-            opacity_by_x(4,i,j) = weight_z(1)*tbl%full_opacity(kk,i,j)+ &
-                 weight_z(2)*tbl%full_opacity(kk2,i,j) + &
-                 weight_z(3)*tbl%full_opacity(kk3,i,j) + &
-                 weight_z(4)*tbl%full_opacity(kk4,i,j)
+            opacity_by_x(4,i,j) = weight_z(1)*tbl%full_opacity(z_slot(1),i,j)+ &
+                 weight_z(2)*tbl%full_opacity(z_slot(2),i,j) + &
+                 weight_z(3)*tbl%full_opacity(z_slot(3),i,j) + &
+                 weight_z(4)*tbl%full_opacity(z_slot(4),i,j)
          end do
       end do
 !     Now do X interpolation
@@ -148,8 +152,7 @@ subroutine build_alex06_composition_table(tbl, hydrogen_fraction, metal_fraction
       else
          interp_nodes(4) = tbl%grid_x(tbl%index_x+3)
       end if
-      interp_target = hydrogen_fraction
-      call interp(interp_nodes, weight_x, x_eval=interp_target)
+      call interp(interp_nodes, weight_x, x_eval=hydrogen_fraction)
       do i = 1,n_alex06_t
          do j = 1,n_alex06_d
             tbl%opacity(i,j) = lagrange4(weight_x, opacity_by_x(1:4,i,j))
@@ -158,7 +161,7 @@ subroutine build_alex06_composition_table(tbl, hydrogen_fraction, metal_fraction
 end subroutine build_alex06_composition_table
 
 !----------------------------------------------------------------------
-! compute_alex06_opacity (formerly getalex06)
+! compute_alex06_opacity
 !----------------------------------------------------------------------
 ! The opacity at (log rho, log T, X, Z) and its log derivatives, by
 ! 4-point Lagrange interpolation in log T and log R = log rho - 3 log T6
@@ -167,7 +170,7 @@ end subroutine build_alex06_composition_table
 ! the top log R the opacity is extrapolated linearly from the last two
 ! columns. A composition off the tables returns ierr with the reason in
 ! message.
-subroutine compute_alex06_opacity(tbl, log10_density, log10_temperature, hydrogen_fraction, &
+pure subroutine compute_alex06_opacity(tbl, log10_density, log10_temperature, hydrogen_fraction, &
      metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, message, ierr)
       type(alex06_table_set), intent(inout) :: tbl
 
@@ -180,10 +183,10 @@ subroutine compute_alex06_opacity(tbl, log10_density, log10_temperature, hydroge
       integer, intent(out) :: ierr
 
       real(dp) :: interp_nodes(4), weight_t(4), dweight_t(4), &
-           weight_r(4), dweight_r(4), opacity_row(4), dlnkap_dlnr_row(4)
-      real(dp) :: delta_z, delta_x, logr, saved_r
+           weight_r(4), dweight_r(4)
+      real(dp) :: delta_z, delta_x, logr, logr_in_table, dlnkap_dlnt_at_r
       logical :: extrapolate_linear
-      integer :: i, ii
+      integer :: i
 
       ierr = 0
       message = ''
@@ -213,47 +216,19 @@ subroutine compute_alex06_opacity(tbl, log10_density, log10_temperature, hydroge
       if ((tbl%index_r+2) > n_alex06_d) tbl%index_r=n_alex06_d-2
 !     Find nearest grid points in R = rho/T6**3
       call stencil4_locate(tbl%grid_logr, n_alex06_d, logr, tbl%index_r)
-!     Interpolation factors in log R
-      if (logr > tbl%grid_logr(n_alex06_d)) then
-         extrapolate_linear = .true.
-         saved_r = logr
-         logr = tbl%grid_logr(n_alex06_d)
-      else
-         extrapolate_linear = .false.
-      end if
+!     Interpolation factors in log R (at the top column above it)
+      extrapolate_linear = logr > tbl%grid_logr(n_alex06_d)
+      logr_in_table = logr
+      if (extrapolate_linear) logr_in_table = tbl%grid_logr(n_alex06_d)
       do i = 1,4
          interp_nodes(i) = tbl%grid_logr(tbl%index_r+i-1)
       end do
-      call interp(interp_nodes, weight_r, dweight_r, logr)
-!     Interpolate in log R at fixed T
-      do i = 1,4
-         ii = tbl%index_t + i - 1
-         opacity_row(i) = weight_r(1)*tbl%opacity(ii,tbl%index_r) + &
-              weight_r(2)*tbl%opacity(ii,tbl%index_r+1) + &
-              weight_r(3)*tbl%opacity(ii,tbl%index_r+2) + &
-              weight_r(4)*tbl%opacity(ii,tbl%index_r+3)
-         dlnkap_dlnr_row(i) = dweight_r(1)*tbl%opacity(ii,tbl%index_r) + &
-              dweight_r(2)*tbl%opacity(ii,tbl%index_r+1) + &
-              dweight_r(3)*tbl%opacity(ii,tbl%index_r+2) + &
-              dweight_r(4)*tbl%opacity(ii,tbl%index_r+3)
-      end do
-      if (extrapolate_linear) then
-         do i = 1,4
-            ii = tbl%index_t+i-1
-            opacity_row(i) = opacity_row(i)+(saved_r-logr)* &
-                 (tbl%opacity(ii,n_alex06_d)-tbl%opacity(ii,n_alex06_d-1))/ &
-                 (tbl%grid_logr(n_alex06_d)-tbl%grid_logr(n_alex06_d-1))
-         end do
-         logr = saved_r
-      end if
-!     Interpolate in T
-      log10_opacity = lagrange4(weight_t, opacity_row)
-!     D ln cappa/d ln T at fixed R
-      dlnkap_dlnt = lagrange4(dweight_t, opacity_row)
-!     Interpolate in d ln cappa/ d ln R at fixed T
-      dlnkap_dlnrho = lagrange4(weight_t, dlnkap_dlnr_row)
+      call interp(interp_nodes, weight_r, dweight_r, logr_in_table)
+!     Interpolate in log R at the four T rows, then in log T
+      call alex_table_at_point(tbl%opacity, tbl%grid_logr, tbl%index_t, tbl%index_r, weight_t, dweight_t, &
+           weight_r, dweight_r, extrapolate_linear, logr, log10_opacity, dlnkap_dlnt_at_r, dlnkap_dlnrho)
 !     Correct from derivative at fixed R to derivative at fixed rho
-      dlnkap_dlnt = dlnkap_dlnt - 3.0d0*dlnkap_dlnrho
+      dlnkap_dlnt = dlnkap_dlnt_at_r - 3.0d0*dlnkap_dlnrho
       opacity = exp(ln10*log10_opacity)
 end subroutine compute_alex06_opacity
 
@@ -262,7 +237,7 @@ end subroutine compute_alex06_opacity
 !----------------------------------------------------------------------
 ! A molecular family that interpolates in X and Z itself (a table built
 ! at each new composition).
-function alex06_source(settings) result(source)
+pure function alex06_source(settings) result(source)
       type(kap_settings_t), intent(in) :: settings
       type(kap_source) :: source
 
@@ -286,7 +261,7 @@ subroutine load_alex06(settings, paths, envelope_hydrogen_fraction, tables, mess
       call read_alex06_tables(tables%alex06, paths%alex06, ierr)
 end subroutine load_alex06
 
-subroutine lookup_alex06(settings, tables, point, res, in_table, message, ierr)
+pure subroutine lookup_alex06(settings, tables, point, res, in_table, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(opacity_table_state), intent(inout) :: tables
       type(kap_point), intent(in) :: point

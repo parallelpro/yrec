@@ -4,7 +4,8 @@
 ! The atomic opacities of the 1992 OPAL (Livermore) tables, one file per
 ! Z with tables in X, log T and log R; a second file at another Z when
 ! the run blends two Z tables.
-!     read_opal92_tables          read the table file(s) and spline them
+!     prepare_opal92_tables       each (X, T) row's spline in log R, from
+!                                 the table(s) opal92_reader read
 !     build_opal92_surface_table  the fixed-X table at the envelope
 !                                 composition, per Z table
 !     compute_opal92_opacity      the opacity and its log derivatives by
@@ -28,148 +29,147 @@ module opal92_opacity
       public :: opal92_source
       public :: prepare_opal92_tables, build_opal92_surface_table, compute_opal92_opacity
 
+! The X table a lookup reads is one of the file's n_opal92_x tables or,
+! by this index, the surface table built at the envelope X
+      integer, parameter :: opal92_surface_slot = n_opal92_x + 1
+! Below the second X table a point is interpolated with the first one
+! only up to this log R; above it, it is extrapolated in X from the
+! second and third tables (the F77 code's rule)
+      real(dp), parameter :: first_x_table_logr_max = -1.0d0
+! the spline coefficient work array's interval count, more than any
+! row's log R columns
+      integer, parameter :: max_spline_intervals = 100
+
 contains
 
 
 !----------------------------------------------------------------------
-! prepare_opal92_tables (formerly opal92_table_prep)
+! prepare_opal92_tables
 !----------------------------------------------------------------------
 ! Builds the natural cubic splines in log R of every (X, T) row of the
-! table(s) (the internal prep_table), as coefficients per interval: the
-! second table's with two_z_tables. Note the two strides for the same
-! row: index1 uses the number of temperature rows read, while
-! log10_opacity is addressed with the fixed n_opal92_t stride that
-! read_opal92_tables stores with (the two are equal: a short table is
-! refused). A row that does not start at the first log R returns ierr
-! with the reason in message.
-subroutine prepare_opal92_tables(tables, two_z_tables, message, ierr)
+! table(s) (spline_opal92_rows), as coefficients per interval: the
+! second table's with two_z_tables. A row that does not start at the
+! first log R returns ierr with the reason in message.
+pure subroutine prepare_opal92_tables(tables, two_z_tables, message, ierr)
       type(opal92_table_set), intent(inout) :: tables(:)
       logical, intent(in) :: two_z_tables
       character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
-! (np: the coefficient array's interval count, more than any row's)
-      integer, parameter :: np = 100
 
-      real(dp) :: spline_work(4,np), density_nodes(n_opal92_d), &
+      call spline_opal92_rows(tables(1), message, ierr)
+      if (ierr /= 0) return
+      if (two_z_tables) call spline_opal92_rows(tables(2), message, ierr)
+end subroutine prepare_opal92_tables
+
+! One table set's splines in log R: for each (X, T) row, the cells with
+! data (above opal92_missing_opacity), which must start at the first
+! log R; their count and the row's natural cubic spline, as four
+! coefficients per interval (tbl%spline_coeffs). A row is addressed as
+! T row + (X index - 1) x the number of T rows: by the rows read for
+! the spline's arrays and by n_opal92_t in log10_opacity, where the
+! reader stored it (the two are equal: a short table is refused).
+pure subroutine spline_opal92_rows(tbl, message, ierr)
+      type(opal92_table_set), intent(inout) :: tbl
+      character(len=*), intent(out) :: message
+      integer, intent(out) :: ierr
+      real(dp) :: spline_work(4,max_spline_intervals), logr_nodes(n_opal92_d), &
            row_opacity(n_opal92_d), row_second_derivs(n_opal92_d)
-      integer :: ix, it, index1, jd, id, index2, j, i
-      real(dp) :: chkd, chko
+      integer :: ix, t_row, row, column, num_filled, interval, i
+      real(dp) :: log10_opacity
 
       ierr = 0
       message = ''
-
-      call prep_table(tables(1), ierr)
-      if (ierr /= 0) return
-      if (two_z_tables) then
-         call prep_table(tables(2), ierr)
-      end if
-
-      return
-
-contains
-
-! prep_table: density-spline coefficients for every (X,T) row of tbl.
-subroutine prep_table(tbl, ierr)
-      type(opal92_table_set), intent(inout) :: tbl
-      integer, intent(inout) :: ierr   ! left at the caller's 0 on success
-
       do ix = 1,tbl%num_x
-      do it = 1,tbl%num_temps
-       index1 = it + (ix-1)*tbl%num_temps
-       jd = 0
-        do id = 1,n_opal92_d
-          chkd = tbl%grid_logr(id)
-          chko = tbl%log10_opacity(it+n_opal92_t*(ix-1),id)
+         do t_row = 1,tbl%num_temps
+            row = t_row + (ix-1)*tbl%num_temps
+            num_filled = 0
+            do column = 1,n_opal92_d
+               log10_opacity = tbl%log10_opacity(t_row+n_opal92_t*(ix-1),column)
 ! (an empty cell)
-          if (chko <= opal92_missing_opacity) cycle
-          if (jd <= 0) then
-             tbl%density_start_index(index1) = id
-             if (id /= 1) then
-                write(message,'(a,f6.3,a)') 'the OPAL 1992 table''s row at log T6', &
-                     tbl%grid_logt(it), ' does not start at its first log R'
-                ierr = 1
-                return
-             end if
-          end if
-          jd = jd + 1
-          density_nodes(jd) = chkd
-          row_opacity(jd) = chko
-        end do
-        tbl%density_count(index1) = jd
-        if (jd <= 1) cycle
+               if (log10_opacity <= opal92_missing_opacity) cycle
+               if (num_filled <= 0) then
+                  tbl%density_start_index(row) = column
+                  if (column /= 1) then
+                     write(message,'(a,f6.3,a)') 'the OPAL 1992 table''s row at log T6', &
+                          tbl%grid_logt(t_row), ' does not start at its first log R'
+                     ierr = 1
+                     return
+                  end if
+               end if
+               num_filled = num_filled + 1
+               logr_nodes(num_filled) = tbl%grid_logr(column)
+               row_opacity(num_filled) = log10_opacity
+            end do
+            tbl%density_count(row) = num_filled
+            if (num_filled <= 1) cycle
 ! the row's natural cubic spline in log R, as coefficients per interval
-        call natural_spline(density_nodes, row_opacity, jd, row_second_derivs)
-        call compute_spline_coefficients(density_nodes, row_opacity, &
-             row_second_derivs, jd, spline_work)
-        do j = 1,jd
-        do i = 1,4
-         index2 = i + (j-1)*4
-         tbl%spline_coeffs(index1,index2) = spline_work(i,j)
-        end do
-        end do
+            call natural_spline(logr_nodes, row_opacity, num_filled, row_second_derivs)
+            call compute_spline_coefficients(logr_nodes, row_opacity, &
+                 row_second_derivs, num_filled, spline_work)
+            do interval = 1,num_filled
+               do i = 1,4
+                  tbl%spline_coeffs(row,i + (interval-1)*4) = spline_work(i,interval)
+               end do
+            end do
+         end do
       end do
-      end do
-end subroutine prep_table
-
-end subroutine prepare_opal92_tables
+end subroutine spline_opal92_rows
 
 !----------------------------------------------------------------------
-! build_opal92_surface_table (formerly opal92_surface_table)
+! build_opal92_surface_table
 !----------------------------------------------------------------------
 ! Builds each table set's surface table (its "4th X table", at the
-! envelope X, so that lookups there need no X interpolation): log kappa
-! at every (T, log R) node interpolated linearly in X between the two X
-! tables around the envelope X, then splined in log R (only log kappa is
-! kept; interpolate_opal92_2d's derivatives are not used here). The
-! internal build_surface_table does one set; the density cursor
-! rho_search_index carries from the first set into the second. A surface X
-! off the tables' X grid, or a row that does not start at the first log
-! R, returns ierr with the reason in message.
-subroutine build_opal92_surface_table(tables, hydrogen_fraction, table_z, &
+! envelope X, so that lookups there need no X interpolation) with
+! build_opal92_surface_rows: the second set's with two_z_tables. The
+! density cursor carries from the first set into the second. A row that
+! does not start at the first log R returns ierr with the reason in
+! message.
+pure subroutine build_opal92_surface_table(tables, hydrogen_fraction, table_z, &
      two_z_tables, message, ierr)
 ! (1) at table_z(1) and, with two_z_tables, (2) at table_z(2)
 ! (opal_table_z1 and opal_table_z2)
       type(opal92_table_set), intent(inout) :: tables(:)
-      real(dp), intent(in) :: table_z(:)
+      real(dp), intent(in) :: hydrogen_fraction, table_z(:)
       logical, intent(in) :: two_z_tables
-! (np: the coefficient array's interval count, more than any row's)
-      integer, parameter :: np = 100
-
-      real(dp), intent(in) :: hydrogen_fraction
       character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
-
-      real(dp) :: coeff(4,np), row_opacity(n_opal92_d), &
-           row_second_derivs(n_opal92_d)
-      integer :: x_index, temp_index, rho_search_index, im2, im3, &
-           row_index, coeff_base_index, density_start, density_end, j, i
-      real(dp) :: temp6, density_rhot3, opacity0, log10_opacity0, &
-           dlnkap_dlnrho0, dlnkap_dlnt0, opacity1, log10_opacity1, &
-           dlnkap_dlnrho1, dlnkap_dlnt1, x_fraction_within, log10_opacity_final
+! findex's starting guesses: none (0)
+      integer :: x_index, logr_cursor
 
       ierr = 0
       message = ''
-! findex's starting guesses: none (0); the density cursor then carries
-! from the first table set into the second
       x_index = 0
-      rho_search_index = 0
-      call build_surface_table(tables(1), table_z(1), ierr)
+      logr_cursor = 0
+      call build_opal92_surface_rows(tables(1), hydrogen_fraction, table_z(1), x_index, &
+           logr_cursor, message, ierr)
       if (ierr /= 0) return
-
       if (two_z_tables) then
-         call build_surface_table(tables(2), table_z(2), ierr)
+         call build_opal92_surface_rows(tables(2), hydrogen_fraction, table_z(2), x_index, &
+              logr_cursor, message, ierr)
       end if
+end subroutine build_opal92_surface_table
 
-      return
-
-contains
-
-! build_surface_table: build tbl's surface-X spline table at Z = table_z.
-subroutine build_surface_table(tbl, table_z, ierr)
+! One table set's surface table at hydrogen_fraction (and Z = table_z,
+! recorded): log kappa at every (T, log R) node interpolated linearly in
+! X between the two X tables around the surface X (the last two above
+! the grid, the first two below it), then splined in log R (only
+! log kappa is kept; interpolate_opal92_2d's derivatives are not used
+! here). x_index and logr_cursor are findex's cursors, the caller's.
+pure subroutine build_opal92_surface_rows(tbl, hydrogen_fraction, table_z, x_index, logr_cursor, &
+     message, ierr)
       type(opal92_table_set), intent(inout) :: tbl
-      real(dp), intent(in) :: table_z
+      real(dp), intent(in) :: hydrogen_fraction, table_z
+      integer, intent(inout) :: x_index, logr_cursor
+      character(len=*), intent(out) :: message
       integer, intent(inout) :: ierr   ! left at the caller's 0 on success
+      real(dp) :: spline_work(4,max_spline_intervals), row_opacity(n_opal92_d), &
+           row_second_derivs(n_opal92_d)
+      integer :: t_row, row, column, first_column, last_column, interval, i
+      real(dp) :: log_t6, log_r, x_fraction
+! the lookups in the two X tables (kappa and the derivatives are not used)
+      real(dp) :: opacity, log10_opacity_lo, log10_opacity_hi, dlnkap_dlnrho, dlnkap_dlnt
 
+      message = ''
 !     the surface table's composition
       tbl%surface_x=hydrogen_fraction
       tbl%surface_z=table_z
@@ -183,258 +183,249 @@ subroutine build_surface_table(tbl, table_z, ierr)
          return
       end if
       tbl%surface_x_index=x_index
-      do im2=1,tbl%num_temps
+      do t_row=1,tbl%num_temps
          x_index=tbl%surface_x_index
-         temp6=tbl%grid_logt(im2)
-         temp_index=im2
-         row_index=im2+(x_index-1)*tbl%num_temps
-         density_start=tbl%density_start_index(row_index)
-         if (density_start /= 1) then
-            write(message,'(a,f6.3,a)') 'the OPAL 1992 table''s row at log T6', temp6, &
+         log_t6=tbl%grid_logt(t_row)
+         row=t_row+(x_index-1)*tbl%num_temps
+         first_column=tbl%density_start_index(row)
+         if (first_column /= 1) then
+            write(message,'(a,f6.3,a)') 'the OPAL 1992 table''s row at log T6', log_t6, &
                  ' does not start at its first log R'
             ierr = 1
             return
          end if
-         density_end=density_start+tbl%density_count(row_index)-1
-         do im3=density_start,density_end
-            density_rhot3=tbl%grid_logr(im3)
-            call interpolate_opal92_2d(tbl,temp6,density_rhot3,x_index,temp_index,rho_search_index, &
-                 opacity0,log10_opacity0,dlnkap_dlnrho0,dlnkap_dlnt0, message, ierr)
+         last_column=first_column+tbl%density_count(row)-1
+         do column=first_column,last_column
+            log_r=tbl%grid_logr(column)
+            call interpolate_opal92_2d(tbl,log_t6,log_r,x_index,t_row,logr_cursor, &
+                 opacity,log10_opacity_lo,dlnkap_dlnrho,dlnkap_dlnt, message, ierr)
             if (ierr /= 0) return
-            call interpolate_opal92_2d(tbl,temp6,density_rhot3,x_index+1,temp_index,rho_search_index, &
-                 opacity1,log10_opacity1,dlnkap_dlnrho1,dlnkap_dlnt1, message, ierr)
+            call interpolate_opal92_2d(tbl,log_t6,log_r,x_index+1,t_row,logr_cursor, &
+                 opacity,log10_opacity_hi,dlnkap_dlnrho,dlnkap_dlnt, message, ierr)
             if (ierr /= 0) return
-            x_fraction_within=(hydrogen_fraction-tbl%grid_x(x_index))/ &
+            x_fraction=(hydrogen_fraction-tbl%grid_x(x_index))/ &
                  (tbl%grid_x(x_index+1)-tbl%grid_x(x_index))
-            log10_opacity_final=(log10_opacity1-log10_opacity0)*x_fraction_within+log10_opacity0
-            row_opacity(im3)=log10_opacity_final
+            row_opacity(column)=(log10_opacity_hi-log10_opacity_lo)*x_fraction+log10_opacity_lo
          end do
-         call natural_spline(tbl%grid_logr, row_opacity, density_end, row_second_derivs)
+         call natural_spline(tbl%grid_logr, row_opacity, last_column, row_second_derivs)
          call compute_spline_coefficients(tbl%grid_logr, row_opacity, &
-              row_second_derivs, density_end, coeff)
-         do j=1,density_end
+              row_second_derivs, last_column, spline_work)
+         do interval=1,last_column
             do i=1,4
-               coeff_base_index=i+(j-1)*4
-               tbl%surface_spline_coeffs(im2,coeff_base_index)=coeff(i,j)
+               tbl%surface_spline_coeffs(t_row,i+(interval-1)*4)=spline_work(i,interval)
             end do
          end do
       end do
-end subroutine build_surface_table
-
-end subroutine build_opal92_surface_table
+end subroutine build_opal92_surface_rows
 
 !----------------------------------------------------------------------
-! compute_opal92_opacity (formerly opal92_interp3d)
+! compute_opal92_opacity
 !----------------------------------------------------------------------
 ! The opacity at (log rho, log T, X) and its log derivatives from table
 ! set tbl (the first or the second Z's): in the table's coordinates
 ! (log T6 and log R = log rho - 3 log T6), by cubic splines in log R and
 ! log T (interpolate_opal92_2d) in one X table where X matches it (the
-! surface table, or a table of the grid), else in the two X tables
-! around X, interpolated (or extrapolated) linearly in X. A point off
-! the tables returns ierr = 1 with the reason in message.
-subroutine compute_opal92_opacity(tbl, log10_density, log10_temperature, hydrogen_fraction, &
+! surface table, or a table of the grid, within opal92_x_match_tol),
+! else in the two X tables around X, interpolated (or extrapolated)
+! linearly in X. A point off the tables returns ierr = 1 with the reason
+! in message. tbl%index_x, index_t and index_rho are the warm-start
+! cursors.
+pure subroutine compute_opal92_opacity(tbl, log10_density, log10_temperature, hydrogen_fraction, &
      opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, message, ierr)
-
       type(opal92_table_set), intent(inout) :: tbl
       real(dp), intent(in) :: log10_density, log10_temperature, &
            hydrogen_fraction
-      character(len=*), intent(out) :: message
-      integer, intent(out) :: ierr
       real(dp), intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
+      character(len=*), intent(out) :: message
+      integer, intent(out) :: ierr
 
-! (tbl%index_x, index_t and index_rho are the warm-start cursors)
       logical :: single_x_table
-      real(dp) :: t6, rhot3
-      integer :: im1
-      real(dp) :: o0, ol0, qod0, qot0, o1, ol1, qod1, qot1
-      real(dp) :: qodi, qoti, grdnt
+      real(dp) :: log_t6, log_r, x_fraction
+      integer :: ix
+! the lookups in the X table (and the next one): kappa, log10 kappa and
+! its derivatives at constant log R
+      real(dp) :: opacity_lo, log10_opacity_lo, dlnkap_dlnr_lo, dlnkap_dlnt_lo
+      real(dp) :: opacity_hi, log10_opacity_hi, dlnkap_dlnr_hi, dlnkap_dlnt_hi
+      real(dp) :: dlnkap_dlnr, dlnkap_dlnt_at_r
 
       ierr = 0
       message = ''
       single_x_table = .false.
-! the table's coordinates: t6 = log10(T/1e6)
-      t6 = log10_temperature - 6.0d0
-! and rhot3 = log R = log10(rho/T6**3)
-      rhot3 = log10_density - 3.0d0*t6
+! the table's coordinates: log T6 = log10(T/1e6 K) and log R =
+! log10(rho/T6**3)
+      log_t6 = log10_temperature - 6.0d0
+      log_r = log10_density - 3.0d0*log_t6
 
       if (abs(tbl%surface_x-hydrogen_fraction) <= opal92_x_match_tol) then
-         tbl%index_x = 4
+         tbl%index_x = opal92_surface_slot
          single_x_table = .true.
       end if
       if (.not. single_x_table) then
-      do im1 = 1,n_opal92_x
-         if (abs(tbl%grid_x(im1)-hydrogen_fraction) <= opal92_x_match_tol) then
-            tbl%index_x = im1
-            single_x_table = .true.
-            exit
-         end if
-      end do
+         do ix = 1,n_opal92_x
+            if (abs(tbl%grid_x(ix)-hydrogen_fraction) <= opal92_x_match_tol) then
+               tbl%index_x = ix
+               single_x_table = .true.
+               exit
+            end if
+         end do
       end if
       if (.not. single_x_table) then
-      call findex(tbl%grid_x, n_opal92_x, hydrogen_fraction, tbl%index_x)
-      if (tbl%index_x < 0) tbl%index_x = -tbl%index_x
-      if (tbl%index_x <= 1.and.rhot3 > -1.0d0) tbl%index_x = 2
-      if (tbl%index_x >= 3) tbl%index_x = 2
-      if (tbl%index_x <= 0) then
-         write(message,'(a,f8.5,a)') 'X =', hydrogen_fraction, &
-              ' is outside the OPAL 1992 tables'' X grid'
-         ierr = 1
-         return
+         call findex(tbl%grid_x, n_opal92_x, hydrogen_fraction, tbl%index_x)
+         if (tbl%index_x < 0) tbl%index_x = -tbl%index_x
+         if (tbl%index_x <= 1.and.log_r > first_x_table_logr_max) tbl%index_x = 2
+         if (tbl%index_x >= 3) tbl%index_x = 2
+         if (tbl%index_x <= 0) then
+            write(message,'(a,f8.5,a)') 'X =', hydrogen_fraction, &
+                 ' is outside the OPAL 1992 tables'' X grid'
+            ierr = 1
+            return
+         end if
       end if
-      end if
-      call findex(tbl%grid_logt, tbl%num_temps, t6, tbl%index_t)
-      if (tbl%index_t < 0.and.tbl%grid_logt(tbl%num_temps) == t6) tbl%index_t = -tbl%index_t
+      call findex(tbl%grid_logt, tbl%num_temps, log_t6, tbl%index_t)
+      if (tbl%index_t < 0.and.tbl%grid_logt(tbl%num_temps) == log_t6) tbl%index_t = -tbl%index_t
       if (tbl%index_t < 0) then
          write(message,'(a,f9.6,a)') 'log T =', log10_temperature, &
               ' is outside the OPAL 1992 tables'
          ierr = 1
          return
       end if
-      call interpolate_opal92_2d(tbl, t6, rhot3, tbl%index_x, tbl%index_t, tbl%index_rho, o0, ol0, qod0, qot0, &
-           message, ierr)
+      call interpolate_opal92_2d(tbl, log_t6, log_r, tbl%index_x, tbl%index_t, tbl%index_rho, &
+           opacity_lo, log10_opacity_lo, dlnkap_dlnr_lo, dlnkap_dlnt_lo, message, ierr)
       if (ierr /= 0) return
       if (single_x_table) then
 ! Use only one X table
-         log10_opacity = ol0
-         opacity = o0
-         qodi = qod0
-         qoti = qot0
+         log10_opacity = log10_opacity_lo
+         opacity = opacity_lo
+         dlnkap_dlnr = dlnkap_dlnr_lo
+         dlnkap_dlnt_at_r = dlnkap_dlnt_lo
       else
-! Linear extrapolation in X
-         call interpolate_opal92_2d(tbl, t6, rhot3, tbl%index_x+1, tbl%index_t, tbl%index_rho, o1, ol1, qod1, qot1, &
-              message, ierr)
-      if (ierr /= 0) return
-         grdnt = (hydrogen_fraction-tbl%grid_x(tbl%index_x))/(tbl%grid_x(tbl%index_x+1)-tbl%grid_x(tbl%index_x))
-         log10_opacity = (ol1-ol0)*grdnt + ol0
-         qodi = (qod1-qod0)*grdnt + qod0
-         qoti = (qot1-qot0)*grdnt + qot0
+! Linear interpolation (or extrapolation) in X
+         call interpolate_opal92_2d(tbl, log_t6, log_r, tbl%index_x+1, tbl%index_t, tbl%index_rho, &
+              opacity_hi, log10_opacity_hi, dlnkap_dlnr_hi, dlnkap_dlnt_hi, message, ierr)
+         if (ierr /= 0) return
+         x_fraction = (hydrogen_fraction-tbl%grid_x(tbl%index_x))/ &
+              (tbl%grid_x(tbl%index_x+1)-tbl%grid_x(tbl%index_x))
+         log10_opacity = (log10_opacity_hi-log10_opacity_lo)*x_fraction + log10_opacity_lo
+         dlnkap_dlnr = (dlnkap_dlnr_hi-dlnkap_dlnr_lo)*x_fraction + dlnkap_dlnr_lo
+         dlnkap_dlnt_at_r = (dlnkap_dlnt_hi-dlnkap_dlnt_lo)*x_fraction + dlnkap_dlnt_lo
          opacity = exp10(log10_opacity)
       end if
 ! from the derivative at constant log R to that at constant rho
-      dlnkap_dlnrho = qodi
-      dlnkap_dlnt = qoti - 3.0d0*dlnkap_dlnrho
+      dlnkap_dlnrho = dlnkap_dlnr
+      dlnkap_dlnt = dlnkap_dlnt_at_r - 3.0d0*dlnkap_dlnrho
 
 end subroutine compute_opal92_opacity
 
 !----------------------------------------------------------------------
-! interpolate_opal92_2d (formerly opal92_interp2d)
+! interpolate_opal92_2d
 !----------------------------------------------------------------------
-! The opacity in one X table of tbl (abund_index; 4 is the surface
-! table) at (log T6, log R) = (temperature, density): on up to six T rows
-! around temp_index, log kappa and its log R derivative from the row's
-! spline in log R (extrapolated linearly outside the row), then natural
-! splines in log T6 through those, for log kappa, dlnkap_dlnt (at
-! constant log R) and dlnkap_dlnrho. dens_index is the density cursor.
-! A row that does not start at the first density, a log T6 outside the
-! rows or a failed spline returns ierr with the reason in message.
-subroutine interpolate_opal92_2d(tbl, temperature, density, abund_index, temp_index, &
-     dens_index, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, message, ierr)
-
-
+! The opacity in one X table of tbl (x_table; opal92_surface_slot is the
+! surface table) at (log T6, log R): on up to six T rows around t_index,
+! log kappa and its log R derivative from the row's spline in log R
+! (extrapolated linearly outside the row), then natural splines in
+! log T6 through those, for log kappa, dlnkap_dlnt (at constant log R)
+! and dlnkap_dlnrho. logr_cursor is the density cursor. A row that does
+! not start at the first density, a log T6 outside the rows or a failed
+! spline returns ierr with the reason in message.
+pure subroutine interpolate_opal92_2d(tbl, log_t6, log_r, x_table, t_index, &
+     logr_cursor, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, message, ierr)
       type(opal92_table_set), intent(inout) :: tbl
-      real(dp), intent(in) :: temperature, density
-      character(len=*), intent(out) :: message
-      integer, intent(out) :: ierr
-      integer, intent(in) :: abund_index, temp_index
-      integer, intent(inout) :: dens_index
+      real(dp), intent(in) :: log_t6, log_r
+      integer, intent(in) :: x_table, t_index
+      integer, intent(inout) :: logr_cursor
       real(dp), intent(out) :: opacity, log10_opacity, &
            dlnkap_dlnrho, dlnkap_dlnt
+      character(len=*), intent(out) :: message
+      integer, intent(out) :: ierr
 
-      real(dp) :: xt(n_opal92_t), yto(n_opal92_t)
-      real(dp) :: aqod(n_opal92_t), second_derivs(n_opal92_t)
-      integer :: jt, it, its, itf
-      integer :: mm1, index1, ndss, ndf, knot, index2
-      real(dp) :: dx, c1, c2, c3, c4, ol0, qodi
-      real(dp) :: ol00
+! the rows used: their log T6, and log kappa and its log R derivative
+! at log R on each; the T splines' second derivatives
+      real(dp) :: row_log_t6(n_opal92_t), row_log10_opacity(n_opal92_t)
+      real(dp) :: row_dlnkap_dlnr(n_opal92_t), second_derivs(n_opal92_t)
+      integer :: num_rows, t_row, first_row, last_row
+      integer :: x_index, row, first_column, last_column, coeff_base
+      real(dp) :: delta_logr, c1, c2, c3, c4
 
       ierr = 0
       message = ''
 ! For six grid points of temperature
-      its = temp_index - 2
-      if (its <= 0) its = 1
-      itf = temp_index + 3
-      if (itf > tbl%num_temps) itf = tbl%num_temps
-      if (abund_index < 4) then
-         mm1 = abund_index
+      first_row = t_index - 2
+      if (first_row <= 0) first_row = 1
+      last_row = t_index + 3
+      if (last_row > tbl%num_temps) last_row = tbl%num_temps
+      if (x_table < opal92_surface_slot) then
+         x_index = x_table
       else
-         mm1 = tbl%surface_x_index
+         x_index = tbl%surface_x_index
       end if
-      jt = 0
-      do it = its,itf
-         index1 = it + (mm1-1)*tbl%num_temps
-         ndss = tbl%density_start_index(index1)
-         if (ndss /= 1) then
+      num_rows = 0
+      do t_row = first_row,last_row
+         row = t_row + (x_index-1)*tbl%num_temps
+         first_column = tbl%density_start_index(row)
+         if (first_column /= 1) then
             write(message,'(a,f6.3,a)') 'the OPAL 1992 table''s row at log T6', &
-                 tbl%grid_logt(it), ' does not start at its first log R'
+                 tbl%grid_logt(t_row), ' does not start at its first log R'
             ierr = 1
             return
          end if
-         ndf = ndss + tbl%density_count(index1) - 1
-         call findex(tbl%grid_logr, ndf, density, dens_index)
-         if (dens_index < 0) then
-! outside the row: linear extrapolation
-            dens_index = -dens_index
-            knot = dens_index - ndss + 1
-            index2 = 4*(knot-1)
-            dx = density - tbl%grid_logr(dens_index)
-            if (abund_index < 4) then
-               c1 = tbl%spline_coeffs(index1,index2+1)
-               c2 = tbl%spline_coeffs(index1,index2+2)
+         last_column = first_column + tbl%density_count(row) - 1
+         call findex(tbl%grid_logr, last_column, log_r, logr_cursor)
+         num_rows = num_rows + 1
+         row_log_t6(num_rows) = tbl%grid_logt(t_row)
+         if (logr_cursor < 0) then
+! outside the row: linear extrapolation from its end
+            logr_cursor = -logr_cursor
+            coeff_base = 4*(logr_cursor - first_column)
+            delta_logr = log_r - tbl%grid_logr(logr_cursor)
+            if (x_table < opal92_surface_slot) then
+               c1 = tbl%spline_coeffs(row,coeff_base+1)
+               c2 = tbl%spline_coeffs(row,coeff_base+2)
             else
-               c1 = tbl%surface_spline_coeffs(it,index2+1)
-               c2 = tbl%surface_spline_coeffs(it,index2+2)
+               c1 = tbl%surface_spline_coeffs(t_row,coeff_base+1)
+               c2 = tbl%surface_spline_coeffs(t_row,coeff_base+2)
             end if
-            ol0 = c2*dx + c1
-            qodi = c2
+            row_log10_opacity(num_rows) = c2*delta_logr + c1
+            row_dlnkap_dlnr(num_rows) = c2
          else
-! inside: the spline
-            knot = dens_index - ndss + 1
-            index2 = 4*(knot-1)
-            dx = density - tbl%grid_logr(dens_index)
-            if (abund_index < 4) then
-               c1 = tbl%spline_coeffs(index1,index2+1)
-               c2 = tbl%spline_coeffs(index1,index2+2)
-               c3 = tbl%spline_coeffs(index1,index2+3)
-               c4 = tbl%spline_coeffs(index1,index2+4)
+! inside: the spline's cubic on the interval that holds log R, and its
+! derivative
+            coeff_base = 4*(logr_cursor - first_column)
+            delta_logr = log_r - tbl%grid_logr(logr_cursor)
+            if (x_table < opal92_surface_slot) then
+               c1 = tbl%spline_coeffs(row,coeff_base+1)
+               c2 = tbl%spline_coeffs(row,coeff_base+2)
+               c3 = tbl%spline_coeffs(row,coeff_base+3)
+               c4 = tbl%spline_coeffs(row,coeff_base+4)
             else
-               c1 = tbl%surface_spline_coeffs(it,index2+1)
-               c2 = tbl%surface_spline_coeffs(it,index2+2)
-               c3 = tbl%surface_spline_coeffs(it,index2+3)
-               c4 = tbl%surface_spline_coeffs(it,index2+4)
+               c1 = tbl%surface_spline_coeffs(t_row,coeff_base+1)
+               c2 = tbl%surface_spline_coeffs(t_row,coeff_base+2)
+               c3 = tbl%surface_spline_coeffs(t_row,coeff_base+3)
+               c4 = tbl%surface_spline_coeffs(t_row,coeff_base+4)
             end if
-! Interpolation for opacity(ol) in the entry d and the each T-grid
-! estimates the partial derivative of ol wrt d
-! evaluates the interpolation value in the sub-range we determined.
-            ol0 = ((c4*dx+c3)*dx+c2)*dx + c1
-            qodi = (3.0d0*c4*dx+2.0d0*c3)*dx + c2
+            row_log10_opacity(num_rows) = ((c4*delta_logr+c3)*delta_logr+c2)*delta_logr + c1
+            row_dlnkap_dlnr(num_rows) = (3.0d0*c4*delta_logr+2.0d0*c3)*delta_logr + c2
          end if
-!
-         jt = jt + 1
-         xt(jt) = tbl%grid_logt(it)
-         yto(jt) = ol0
-         aqod(jt) = qodi
       end do
-      if (xt(1) > temperature.or.xt(jt) < temperature) then
-         write(message,'(a,f10.6,a)') 'log T6 =', temperature, &
+      if (row_log_t6(1) > log_t6.or.row_log_t6(num_rows) < log_t6) then
+         write(message,'(a,f10.6,a)') 'log T6 =', log_t6, &
               ' is outside the OPAL 1992 table''s rows around it'
          ierr = 1
          return
       end if
 ! log kappa and its T derivative from the spline in log T6
-      call natural_spline(xt, yto, jt, second_derivs)
-      call splint(xt, yto, jt, second_derivs, temperature, ol00, ierr, dy=dlnkap_dlnt)
+      call natural_spline(row_log_t6, row_log10_opacity, num_rows, second_derivs)
+      call splint(row_log_t6, row_log10_opacity, num_rows, second_derivs, log_t6, log10_opacity, &
+           ierr, dy=dlnkap_dlnt)
       if (ierr /= 0) then
          message = 'the OPAL 1992 table''s spline in log T failed: ' // &
               trim(numerics_status_text(ierr))
          return
       end if
-      log10_opacity = ol00
       opacity = exp10(log10_opacity)
 ! and the log R derivative, from its own spline in log T6
-      call natural_spline(xt, aqod, jt, second_derivs)
-      call splint(xt, aqod, jt, second_derivs, temperature, dlnkap_dlnrho, ierr)
+      call natural_spline(row_log_t6, row_dlnkap_dlnr, num_rows, second_derivs)
+      call splint(row_log_t6, row_dlnkap_dlnr, num_rows, second_derivs, log_t6, dlnkap_dlnrho, ierr)
       if (ierr /= 0) then
          message = 'the OPAL 1992 table''s spline in log T failed: ' // &
               trim(numerics_status_text(ierr))
@@ -449,7 +440,7 @@ end subroutine interpolate_opal92_2d
 ! An interior family of one table per Z: with use_two_z_tables, a second
 ! table at opal_table_z2, blended linearly in Z with the first; in a
 ! helium-burning core, the first table alone, at opal_table_z1.
-function opal92_source(settings) result(source)
+pure function opal92_source(settings) result(source)
       type(kap_settings_t), intent(in) :: settings
       type(kap_source) :: source
 
@@ -475,7 +466,7 @@ subroutine load_opal92(settings, paths, envelope_hydrogen_fraction, tables, mess
 ! (the reader reports its own errors)
       message = ''
       call read_opal92_tables(tables%opal92, paths%opal92, paths%opal92_z2, &
-           settings%use_two_z_tables, ierr)
+           settings%use_two_z_tables, [settings%opal_table_z1, settings%opal_table_z2], ierr)
       if (ierr /= 0) return
       call prepare_opal92_tables(tables%opal92, settings%use_two_z_tables, message, ierr)
       if (ierr /= 0) return
@@ -484,7 +475,7 @@ subroutine load_opal92(settings, paths, envelope_hydrogen_fraction, tables, mess
            settings%use_two_z_tables, message, ierr)
 end subroutine load_opal92
 
-subroutine refresh_opal92(settings, hydrogen_fraction, tables, message, ierr)
+pure subroutine refresh_opal92(settings, hydrogen_fraction, tables, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       real(dp), intent(in) :: hydrogen_fraction
       type(opacity_table_state), intent(inout) :: tables
@@ -496,7 +487,7 @@ subroutine refresh_opal92(settings, hydrogen_fraction, tables, message, ierr)
            settings%use_two_z_tables, message, ierr)
 end subroutine refresh_opal92
 
-subroutine lookup_opal92(settings, tables, point, res, in_table, message, ierr)
+pure subroutine lookup_opal92(settings, tables, point, res, in_table, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(opacity_table_state), intent(inout) :: tables
       type(kap_point), intent(in) :: point
@@ -521,7 +512,7 @@ subroutine lookup_opal92(settings, tables, point, res, in_table, message, ierr)
       end if
 end subroutine lookup_opal92
 
-subroutine core_lookup_opal92(settings, tables, point, res, table_z, message, ierr)
+pure subroutine core_lookup_opal92(settings, tables, point, res, table_z, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(opacity_table_state), intent(inout) :: tables
       type(kap_point), intent(in) :: point

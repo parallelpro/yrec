@@ -11,7 +11,7 @@ module alex94_reader
       use opacity_tables, only: alex94_table_set, n_alex94_d, n_alex94_t, n_alex94_x, &
            n_alex94_z
       use kap_messages, only: kap_report, message_length, unwritten_line
-      use opacity_table_files, only: open_table, read_failed
+      use opacity_table_files, only: open_table, read_failed, iomsg_length
       implicit none
       private
       public :: read_alex94_tables
@@ -33,7 +33,7 @@ subroutine read_alex94_tables(tbl, alex95_table_paths, ierr)
 
 ! the table file's unit
       integer :: table_unit
-      character(len=256), intent(in) :: alex95_table_paths(:)
+      character(len=*), intent(in) :: alex95_table_paths(:)
 
 ! a row as read (its index goes to tbl%index_t, as in the F77 code, so
 ! the last row read seeds the T cursor)
@@ -42,7 +42,7 @@ subroutine read_alex94_tables(tbl, alex95_table_paths, ierr)
       real(dp) :: header_x, header_z, row_temp, row_logr0
       character(len=message_length) :: lines(1)
       integer :: ios
-      character(len=256) :: iomsg
+      character(len=iomsg_length) :: iomsg
 
       do table_index=1,n_alex94_x
 !        the file of the table_index-th X, with every Z
@@ -54,7 +54,8 @@ subroutine read_alex94_tables(tbl, alex95_table_paths, ierr)
             ii = table_index + 7*(i-1)
 !           Header information: X and Z
             read(table_unit,10,iostat=ios,iomsg=iomsg) header_x, header_z
-            if (read_failed(ios, iomsg, 'Alexander 1994', alex95_table_paths(table_index), table_unit, ierr)) return
+            if (read_failed(ios, iomsg, 'Alexander 1994', alex95_table_paths(table_index), &
+                 table_unit, ierr)) return
    10       format(18x,f6.2,2x,f7.2)
             if (header_x /= tbl%grid_x(table_index) .or. &
                  header_z /= tbl%grid_z(i)) then
@@ -73,7 +74,8 @@ subroutine read_alex94_tables(tbl, alex95_table_paths, ierr)
             do j = n_alex94_t,1,-1
                read(table_unit,30,iostat=ios,iomsg=iomsg) tbl%index_t, row_density_count, &
                     row_temp, row_logr0, (row_opacity_temp(k),k=1,n_alex94_d)
-               if (read_failed(ios, iomsg, 'Alexander 1994', alex95_table_paths(table_index), table_unit, ierr)) return
+               if (read_failed(ios, iomsg, 'Alexander 1994', alex95_table_paths(table_index), &
+                 table_unit, ierr)) return
                do k = 1, n_alex94_d
                   tbl%full_opacity(ii,j,k) = row_opacity_temp(k)
                end do

@@ -12,13 +12,16 @@
 !     kap_lib writes (the family routines get their sets as arguments);
 !   - the table dimensions, empty-cell markers and composition-cache
 !     tolerances;
-!   - the settings record (kap_settings_t, and kap_settings, installed by
-!     kap_init) and the tables' paths (kap_table_paths_t);
-!   - the four-point stencil locators the families share.
+!   - the settings record's type (kap_settings_t; kap_lib holds the
+!     record kap_init installs) and the tables' paths
+!     (kap_table_paths_t);
+!   - the four-point stencil locators the families share, and the
+!     Alexander lookups' interpolation in one table (alex_table_at_point).
 ! The grids, cursors and caches start from the F77 code's DATA values,
 ! as component initializers.
 module opacity_tables
       use, intrinsic :: iso_fortran_env, only: dp => real64
+      use numerics_lib, only: lagrange4
       implicit none
       private
 ! what the family modules and kap_lib use (each imports its names)
@@ -31,7 +34,7 @@ module opacity_tables
            n_opal95_x, n_opal95_z, opal92_missing_opacity, opal92_table_set, &
            opal92_x_match_tol, opal95_composition_tol, &
            opal95_missing_opacity, opal95_missing_test, stencil4_locate, &
-           stencil4_locate_opal95
+           stencil4_locate_opal95, alex_table_at_point
 ! OPAL92 (Livermore) table dimensions
       integer, parameter :: n_opal92_t = 50, n_opal92_d = 17, &
            n_opal92_x = 3, n_opal92_xt = 150, n_opal92_4d = 68
@@ -58,9 +61,10 @@ module opacity_tables
 ! Number of tables in an OPAL95 table file (read_opal95_tables reads exactly this
 ! many; 8 X columns at all 13 Z, X=0.95 at 10 Z, X=1-Z at 12 Z).
       integer, parameter :: n_opal95_tables = 126
-! Empty-cell markers. OPAL95 cells with no data are stored as
-! opal95_missing_opacity and detected with ".ge./.gt. opal95_missing_test".
-! OPAL92 tables use opal92_missing_opacity ("<= -9.999" tests).
+! Empty-cell markers (log10 kappa). An OPAL95 cell with no data holds
+! opal95_missing_opacity, and a cell at or above opal95_missing_test
+! counts as empty; an OPAL92 cell with no data holds
+! opal92_missing_opacity, and a cell at or below it counts as empty.
       real(dp), parameter :: opal95_missing_opacity = 9.999d0
       real(dp), parameter :: opal95_missing_test = 9.9d0
       real(dp), parameter :: opal92_missing_opacity = -9.999d0
@@ -105,7 +109,7 @@ module opacity_tables
 ! table as read (opacity, grid_x, grid_rho in g/cm^3, grid_t, which
 ! build_laol_splines converts to log10 T in place, and the extents), the
 ! rows' splines in log rho (slaol_*), and table_number (2 for the second
-! Z's, whose run-log lines say "#2" and "SECOND").
+! Z's, which a lookup's message then calls the second LAOL 1989 table).
       type, public :: laol_table_set
            real(dp) :: opacity(n_laol_x,n_laol_rho,n_laol_t), &
                 grid_x(n_laol_x), grid_t(n_laol_t), grid_rho(n_laol_rho)
@@ -133,17 +137,15 @@ module opacity_tables
            real(dp) :: spline_coeffs(n_opal92_xt,n_opal92_4d)
            integer :: density_start_index(n_opal92_xt), &
                 density_count(n_opal92_xt)
-! former common/llot4/ (the surface-X table built by
-! build_opal92_surface_table)
+! the surface-X table (build_opal92_surface_table)
            real(dp) :: surface_x, surface_z
            real(dp) :: surface_spline_coeffs(n_opal92_t,n_opal92_4d)
            integer :: surface_x_index
-! former common/kipmll/ (cached grid indices)
+! the lookup's cursors
            integer :: index_x = 1, index_t = 1, index_rho = 1
       end type opal92_table_set
 
-! opal95_table_set: the OPAL 1995-format tables (former common
-! /llot95a/, /llot95/, /llot95e/ and /op95indx/): the full set in X and
+! opal95_table_set: the OPAL 1995-format tables: the full set in X and
 ! Z, the fixed-Z table built from it at opal95_single_table_z, the
 ! fixed-X, fixed-Z surface table at the envelope composition, and the
 ! lookup's warm-start cursors. The grids in X and Z and the slot layout
@@ -170,6 +172,9 @@ module opacity_tables
            real(dp) :: fixed_z
            real(dp) :: surface_opacity(n_opal95_t,n_opal95_d)
            real(dp) :: surface_x
+! the four X tables of the fixed-Z table that the surface table was
+! built from (build_opal95_surface_table)
+           integer :: surface_x_tables(4) = 1
 ! the warm-start cursors: the first index of the Z stencil, of each Z
 ! row's X stencil, of the T stencil and of each T row's log R stencil
            integer :: index_z = 1
@@ -178,8 +183,8 @@ module opacity_tables
            integer :: index_rho(4) = 1
       end type opal95_table_set
 
-! alex94_table_set: the seven Alexander & Ferguson (1994) files (former
-! common /galot/, /alot/, /alotall/): every table in X and Z
+! alex94_table_set: the seven Alexander & Ferguson (1994) files: every
+! table in X and Z
 ! (full_opacity, slot = X index + 7 (Z index - 1)), the fixed-Z tables
 ! per X built from them (opacity(1:7,:,:)) and the surface-X table
 ! (opacity(surface_slot,:,:)); the compositions those were built at, and
@@ -206,9 +211,9 @@ module opacity_tables
            real(dp) :: full_opacity(n_alex94_xz,n_alex94_t,n_alex94_d)
       end type alex94_table_set
 
-! alex06_table_set: the Alexander 2006 (Ferguson et al. 2005) file
-! (former common /galot06/, /alot06/, /alot06all/): every table in X and
-! Z (full_opacity, slot = n_alex06_z (X index - 1) + Z index), the table
+! alex06_table_set: the Alexander 2006 (Ferguson et al. 2005) file:
+! every table in X and Z (full_opacity, slot = n_alex06_z (X index - 1)
+! + Z index), the table
 ! at one composition built from them (opacity), that composition (the
 ! cache), and the lookup's cursors.
       type, public :: alex06_table_set
@@ -240,8 +245,8 @@ module opacity_tables
            real(dp) :: full_opacity(n_alex06_xz,n_alex06_t,n_alex06_d)
       end type alex06_table_set
 
-! pure_z_table_set: the LAOL pure-Z table (Z = 1, pure C and O; former
-! common /zlaol/, /zslaol/): the table as read (opacity in density and T,
+! pure_z_table_set: the LAOL pure-Z table (Z = 1, pure C and O): the
+! table as read (opacity in density and T,
 ! the density grid in g/cm^3 and the T grid, converted to log10 T by
 ! build_pure_z_splines) and its splines in log rho, one per T row.
       type, public :: pure_z_table_set
@@ -273,32 +278,33 @@ module opacity_tables
 ! (the components run from the smallest to the largest: on arm64 Mach-O
 ! a static instance's components must start within 8 MB of it, and the
 ! whole is about 8.7 MB)
-! the envelope metal fraction the tables were loaded for (kap_init's),
-! which a single-Z interior table (OPAL92, LAOL89 without a second Z)
-! must match
+! the envelope's metal fraction (kap_init's, then kap_lib's
+! kap_set_envelope_metal_fraction's whenever it changes), which a zone's
+! Z must match where the interior family has a single table (OPAL92,
+! LAOL89 without a second Z)
            real(dp) :: envelope_metal_fraction = 0.0d0
            type(conductive_table_set) :: conductive
 ! OPAL92 (Livermore) tables: (1) at opal_table_z1, (2) at
-! opal_table_z2 (read only when kap_settings%use_two_z_tables). See
+! opal_table_z2 (read only when the settings' use_two_z_tables). See
 ! opal92_table_set.
            type(opal92_table_set) :: opal92(2)
 ! Kurucz90 tables: (1) at kurucz_table_z1, (2) at kurucz_table_z2
-! (read only when kap_settings%use_two_z_tables). See kurucz_table_set.
+! (read only when the settings' use_two_z_tables). See kurucz_table_set.
            type(kurucz_table_set) :: kurucz(2)
            type(pure_z_table_set) :: pure_z
            type(alex94_table_set) :: alex94
            type(opal95_table_set) :: opal95
            type(alex06_table_set) :: alex06
 ! LAOL89 tables: (1) at laol_table_z1, (2) at laol_table_z2 (read
-! only when kap_settings%use_two_z_tables). See laol_table_set.
+! only when the settings' use_two_z_tables). See laol_table_set.
            type(laol_table_set) :: laol(2)
       end type opacity_table_state
 
 ! ---- the opacity settings ----
 ! Everything kap needs from the run's configuration, in one record,
-! installed by kap_init (from the star layer's kap_settings_from_star,
-! setup/kap_settings_builder.f90) or kap_lib's set_kap_settings, through
-! install_kap_settings; nothing else writes it.
+! which the star layer builds (kap_settings_from_star,
+! setup/kap_settings_builder.f90) and kap_lib holds: kap_init or
+! set_kap_settings installs it, and the families get it as an argument.
       type, public :: kap_settings_t
 ! the interior tables (OPAL95-format, OPAL92, LAOL89) and the pure-Z
 ! table for helium-burning cores; the molecular tables (Alexander 2006
@@ -326,9 +332,9 @@ module opacity_tables
          real(dp) :: metal_fraction_match_tolerance = 0.0d0, &
               laol_extrapolation_tolerance = 0.0d0
       end type kap_settings_t
-      type(kap_settings_t), public, protected :: kap_settings
-      public :: install_kap_settings
 
+! the length of a table's path (the controls' own)
+      integer, parameter, public :: path_length = 256
 ! The tables kap_init reads, by path (blank: not given): the interior
 ! tables (OPAL 1995-format; OPAL 1992 and LAOL 1989, each with a second-Z
 ! table for use_two_z_tables; the pure-Z table), the molecular tables
@@ -337,22 +343,14 @@ module opacity_tables
 ! layer fills it from the controls (kap_table_paths_from_star,
 ! setup/kap_settings_builder.f90).
       type, public :: kap_table_paths_t
-         character(len=256) :: opal95 = '', opal92 = '', opal92_z2 = '', &
+         character(len=path_length) :: opal95 = '', opal92 = '', opal92_z2 = '', &
               laol = '', laol_z2 = '', pure_z = ''
-         character(len=256) :: alex06 = '', alex94(7) = '', kurucz = '', &
+         character(len=path_length) :: alex06 = '', alex94(7) = '', kurucz = '', &
               kurucz_z2 = ''
-         character(len=256) :: conductive = ''
+         character(len=path_length) :: conductive = ''
       end type kap_table_paths_t
 
 contains
-
-! install_kap_settings: install the run's opacity settings (kap_lib's
-! set_kap_settings, which also chooses their families).
-subroutine install_kap_settings(settings)
-      type(kap_settings_t), intent(in) :: settings
-      kap_settings = settings
-end subroutine install_kap_settings
-
 
 ! stencil4_locate
 ! Warm-start search for the first index idx of the 4-point stencil
@@ -424,5 +422,61 @@ pure subroutine stencil4_locate_opal95(grid, n, x, idx)
       end if
 end subroutine stencil4_locate_opal95
 
+! alex_table_at_point
+! The Alexander lookups' interpolation in one table (alex94's surface
+! and fixed-Z tables, alex06's table at the composition): opacity_tr
+! holds log10 kappa by T row and log R column. In log R at each of the
+! four T rows from t_first, with the weights weight_r and dweight_r of
+! the four columns from r_first; above the top column (extrapolate_linear:
+! the weights are the top column's) the value is carried on to logr
+! with the secant of the last two columns, and d log kappa/d log R stays
+! the cubic's at the edge (the F77 code's). Then in log T with weight_t
+! and dweight_t: log10 kappa, d log kappa/d log T at fixed R, and
+! d log kappa/d log R (= d log kappa/d log rho at fixed T).
+pure subroutine alex_table_at_point(opacity_tr, grid_logr, t_first, r_first, weight_t, dweight_t, &
+     weight_r, dweight_r, extrapolate_linear, logr, log10_opacity, dlnkap_dlnt_at_r, dlnkap_dlnr)
+      real(dp), intent(in) :: opacity_tr(:,:), grid_logr(:)
+      integer, intent(in) :: t_first, r_first
+      real(dp), intent(in) :: weight_t(:), dweight_t(:), weight_r(:), dweight_r(:), logr
+      logical, intent(in) :: extrapolate_linear
+      real(dp), intent(out) :: log10_opacity, dlnkap_dlnt_at_r, dlnkap_dlnr
+      real(dp) :: opacity_row(4), dlnkap_dlnr_row(4)
+      integer :: i, t_row, n_logr
+
+      n_logr = size(grid_logr)
+      do i = 1,4
+         t_row = t_first + i - 1
+         opacity_row(i) = weight_r(1)*opacity_tr(t_row,r_first) + &
+              weight_r(2)*opacity_tr(t_row,r_first+1) + &
+              weight_r(3)*opacity_tr(t_row,r_first+2) + &
+              weight_r(4)*opacity_tr(t_row,r_first+3)
+         dlnkap_dlnr_row(i) = dweight_r(1)*opacity_tr(t_row,r_first) + &
+              dweight_r(2)*opacity_tr(t_row,r_first+1) + &
+              dweight_r(3)*opacity_tr(t_row,r_first+2) + &
+              dweight_r(4)*opacity_tr(t_row,r_first+3)
+      end do
+      if (extrapolate_linear) then
+         do i = 1,4
+            t_row = t_first + i - 1
+            opacity_row(i) = opacity_row(i)+(logr-grid_logr(n_logr))* &
+                 (opacity_tr(t_row,n_logr)-opacity_tr(t_row,n_logr-1))/ &
+                 (grid_logr(n_logr)-grid_logr(n_logr-1))
+         end do
+      end if
+      log10_opacity = lagrange4(weight_t, opacity_row)
+      dlnkap_dlnt_at_r = lagrange4(dweight_t, opacity_row)
+      dlnkap_dlnr = lagrange4(weight_t, dlnkap_dlnr_row)
+end subroutine alex_table_at_point
+
+!----------------------------------------------------------------------
+! Sources
+!----------------------------------------------------------------------
+! The table sets hold what the F77 code kept in COMMON blocks, with the
+! blocks' DATA values as the components' initial values: OPAL 1992's
+! /llot4/ (the surface table) and /kipmll/ (the cursors); OPAL 1995's
+! /llot95a/, /llot95/, /llot95e/ and /op95indx/; Alexander 1994's
+! /galot/, /alot/ and /alotall/; Alexander 2006's /galot06/, /alot06/
+! and /alot06all/; the pure-Z table's /zlaol/ and /zslaol/. The types
+! came in 2026 (the state private to kap_lib since round 1, KA-12).
 
 end module opacity_tables

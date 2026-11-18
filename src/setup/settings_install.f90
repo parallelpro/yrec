@@ -6,7 +6,8 @@
 ! <domain>_init for the domains that also load their tables, and the
 ! setters of the state that follows the surface mixture:
 ! set_convection_envelope_metals, eos_set_mixture,
-! kap_update_surface_tables) is here, and tools/check_boundaries.py
+! kap_set_envelope_metal_fraction, kap_update_surface_tables) is here,
+! and tools/check_boundaries.py
 ! (INSTALL_FILES) keeps it so. Each procedure builds the records with
 ! setup/'s builders (<x>_settings_from_star, in <x>_settings_builder) or
 ! takes the star's surface mixture, and installs them in a fixed order,
@@ -31,6 +32,7 @@
 !   install_surface_z_settings        its Z (run_setup's run-plan Z, before
 !                                     kap_init; a Z rescale,
 !                                     rescale_interior_z): the EOS mixture
+!                                     and kap's envelope Z
 !   install_surface_x_settings        its X (each card's model read; a
 !                                     rezone that moved the surface X,
 !                                     refresh_surface_opacity): kap's
@@ -130,7 +132,9 @@ end subroutine install_surface_mixture_settings
 !----------------------------------------------------------------------
 ! install_surface_z_settings: the EOS mixture (eos_set_mixture) for the
 ! star's envelope X, Z, inverse mean atomic weight and number fractions:
-! with SCV on, the EOS builds its envelope table for that X and Z. Called
+! with SCV on, the EOS builds its envelope table for that X and Z; and
+! kap's envelope Z (kap_set_envelope_metal_fraction), which a zone's Z
+! must match where the interior opacity has a single table. Called
 ! whenever the envelope Z changes: the run plan's Z (run_setup), a Z
 ! rescale (rescale_interior_z), and with the whole mixture.
 !   star reads: envelope_hydrogen_fraction,
@@ -139,11 +143,13 @@ end subroutine install_surface_mixture_settings
 !   star writes: none
 subroutine install_surface_z_settings(s)
       use eos_lib, only: eos_set_mixture
+      use kap_lib, only: kap_set_envelope_metal_fraction
       type(star_info), intent(in) :: s
 
       call eos_set_mixture(s%envelope_hydrogen_fraction, &
            s%envelope_metal_fraction, s%envelope_inverse_atomic_weight, &
            s%envelope_number_fractions)
+      call kap_set_envelope_metal_fraction(s%envelope_metal_fraction)
 end subroutine install_surface_z_settings
 
 !----------------------------------------------------------------------
