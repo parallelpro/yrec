@@ -65,7 +65,8 @@ contains
 ! mixture does not conduct better (M278). got_conductive_opacity is .false.
 ! outside the
 ! table's reach (log T 3-9, log rho up to 9.75, and below log rho = -6
-! only where log R >= 0), where kappa_c = 10**no_conduction_log10_opacity
+! only where log R >= 0) and for a gas without free electrons (Z = 0 and
+! no ionized H or He), where kappa_c = 10**no_conduction_log10_opacity
 ! is returned unused. A lookup the table cannot give returns ierr with
 ! the reason in message (written nowhere).
 subroutine compute_conductive_opacity(tbl, log10_density, log10_temperature, &
@@ -126,12 +127,6 @@ subroutine compute_conductive_opacity(tbl, log10_density, log10_temperature, &
        weight_he4 = number_fraction_he4 * (ion_fraction(2) + 2D0*ion_fraction(3))
        weight_ox = number_fraction_ox * charge_ox
        electron_sum = weight_h1 + weight_he4 + weight_ox
-       weight_h1 = weight_h1/electron_sum
-       weight_he4 = weight_he4/electron_sum
-       weight_ox = weight_ox/electron_sum
-       electrons_per_amu = hydrogen_fraction*ion_fraction(1)/atomic_weight_h1 + &
-            helium_fraction*(ion_fraction(2) + 2D0*ion_fraction(3))/atomic_weight_he4 + &
-            metal_fraction*charge_ox/atomic_weight_ox
 
 ! no conduction until the table gives one
        got_conductive_opacity=.FALSE.
@@ -139,6 +134,17 @@ subroutine compute_conductive_opacity(tbl, log10_density, log10_temperature, &
        conductive_opacity = pow(10D0, conductive_log10_opacity)
        conductive_dlnkap_dlnrho = conductive_opacity
        conductive_dlnkap_dlnt = conductive_opacity
+! a gas without free electrons (no metals, H and He neutral) does not
+! conduct: no conductive opacity, as outside the table's reach (the
+! shares below would be 0/0)
+       if (electron_sum <= 0.0d0) return
+
+       weight_h1 = weight_h1/electron_sum
+       weight_he4 = weight_he4/electron_sum
+       weight_ox = weight_ox/electron_sum
+       electrons_per_amu = hydrogen_fraction*ion_fraction(1)/atomic_weight_h1 + &
+            helium_fraction*(ion_fraction(2) + 2D0*ion_fraction(3))/atomic_weight_he4 + &
+            metal_fraction*charge_ox/atomic_weight_ox
 
        extrapolation_indicator = log10_density - 3.0D0*(log10_temperature-6.0D0)
 ! within the table's reach, each species fully ionized, at the density

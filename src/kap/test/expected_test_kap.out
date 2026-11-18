@@ -82,6 +82,7 @@ kap_update_surface_tables: the new 2D path is the old 3D path              0.00E
 Potekhin mixture: 1/K = sum x_i/K_i(rho_i), electron fractions             6.66E-16  ok
 Potekhin conduction: kappa_c continuous at log rho = -6                    4.96E-09  ok
 Potekhin conduction below log rho = -6: dln kappa/dln rho                  6.94E-12  ok
+Potekhin conduction: none for a gas without free electrons                 0.00E+00  ok
 OPAL92 (two Z): derivatives against differences                            5.76E-08  ok
 OPAL92 two-Z blend: at opal_table_z1 it is the first table                 0.00E+00  ok
 LAOL89 (secant derivatives): against differences, to 10%                   5.89E-02  ok

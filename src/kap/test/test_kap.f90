@@ -412,6 +412,7 @@ contains
          call kap_update_surface_tables(0.70d0, ierr2)
          call conductive_mixture_check()
          call conductive_low_density_check()
+         call conductive_no_electrons_check()
 
 ! --- other families' derivatives
          call configure("opal92 checks", opal92=.true., z1=0.0188d0, z2=0.0200d0, two_z=.true., &
@@ -693,6 +694,27 @@ contains
                  abs(dr - (ol_plus - ol_minus)/(2.0d0*h))/max(1.0d0, abs(dr)), 1.0d-8, &
                  ierr == 0 .and. got)
          end subroutine conductive_low_density_check
+
+! A gas without free electrons (X = 1, Z = 0, hydrogen neutral) does
+! not conduct: no conductive opacity (got false), ierr 0 and a finite
+! value returned, inside the table's reach (log rho -3, log T 3.7)
+         subroutine conductive_no_electrons_check()
+            use opacity_tables, only: conductive_table_set
+            use conductive_reader, only: read_conductive_table
+            use conductive_opacity, only: compute_conductive_opacity
+            type(conductive_table_set), save :: cond
+            double precision :: o, ol, dr, dt, f(3)
+            logical :: got
+            character(len=512) :: msg
+            integer :: ierr, k
+            call read_conductive_table(cond, trim(yrec_input)// &
+                 "/opacity/conductive/potekhin/condall06.d", ierr)
+            f = 0.0d0
+            call compute_conductive_opacity(cond, -3.0d0, 3.7d0, 1.0d0, 0.0d0, o, ol, dr, dt, &
+                 f, got, msg, k)
+            call report("Potekhin conduction: none for a gas without free electrons", 0.0d0, &
+                 0.0d0, ierr + k == 0 .and. .not. got .and. o == o .and. ol == ol)
+         end subroutine conductive_no_electrons_check
 
 ! an OPAL95 node: the lookup's log kappa against the file's entry at
 ! TABLE #table_number's row log T and column log R

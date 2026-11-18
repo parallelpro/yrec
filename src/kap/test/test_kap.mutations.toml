@@ -166,6 +166,13 @@ old = '                conductive_dlnkap_dlnrho*(log10_density-conductive_logrho
 new = '                conductive_dlnkap_dlnrho*(conductive_logrho_min-log10_density)'
 
 [[mutation]]
+id = 'conductive-no-electrons'
+check = 'Potekhin conduction: none for a gas without free electrons'
+file = 'kap/conductive/conductive_opacity.f90'
+old = '       if (electron_sum <= 0.0d0) return'
+new = '       if (electron_sum < 0.0d0) return'
+
+[[mutation]]
 id = 'opal92-dt'
 check = 'OPAL92 (two Z): derivatives against differences'
 file = 'kap/opal92/opal92_opacity.f90'
