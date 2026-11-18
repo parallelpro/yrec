@@ -287,3 +287,52 @@ check = 'retry: it stops after max_start_tries densities'
 file = 'core/envelope/envelope_integration_kernel.f90'
 old = 'call add_envint_event(events, envint_start_exhausted, counts=[max_start_tries, 0], &'
 new = 'call add_envint_event(events, envint_start_exhausted, counts=[max_start_tries-1, 0], &'
+
+[[mutation]]
+id = 'envelope-table-01'
+check = 'table: ierr = 0; no atmosphere points, no atmosphere event'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = '         st%tabulated_surface = .true.'
+new = '         st%tabulated_surface = .false.'
+
+[[mutation]]
+id = 'envelope-table-02'
+check = "table: the surface point is the table's"
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = 'call atm_get_surface_pt(st%eqs%atm_choice, st%eqs%log10_teff, &'
+new = 'call atm_get_surface_pt(st%eqs%atm_choice, st%eqs%log10_teff+0.01d0, &'
+
+[[mutation]]
+id = 'envelope-table-03'
+check = 'table: the envelope starts at the surface point'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = 'st%y(2) = st%eqs%atm_point%log10_temperature'
+new = 'st%y(2) = st%eqs%atm_point%log10_temperature + 1.0d-6'
+
+[[mutation]]
+id = 'envelope-fallback-01'
+check = 'fallback: above the table: switched to gray, ierr = 0'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = '         switched_to_gray = .true.'
+new = '         switched_to_gray = .false.'
+
+[[mutation]]
+id = 'envelope-fallback-02'
+check = "fallback: the integration is the gray atmosphere's"
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = 'st%eqs%atm_choice = atm_eddington_gray'
+new = 'st%eqs%atm_choice = 1'
+
+[[mutation]]
+id = 'envelope-driver-01'
+check = "atm_get: on the table: photosphere_logP the table's"
+file = 'core/envelope/envelope_integration.f90'
+old = 's%photosphere_logP = log10_photo_pressure'
+new = 's%photosphere_logP = 0.0d0'
+
+[[mutation]]
+id = 'envelope-driver-02'
+check = 'atm_get: above the table: the choice in use is gray'
+file = 'core/envelope/envelope_integration.f90'
+old = 'if (switched_to_gray) s%atm_choice_in_use = atm_eddington_gray'
+new = 'if (.false.) s%atm_choice_in_use = atm_eddington_gray'

@@ -76,6 +76,20 @@
 !               1e-6); the star's atmosphere point, atmosphere points,
 !               photospheric pressure and atmosphere choice are left as
 !               they were.
+!   table       a tabulated surface, on a synthetic file in the Allard
+!               layout that the program writes and atm_init reads (log P
+!               a polynomial in log Teff and log g, 4000 to 7000 K, log g
+!               3 to 5.5): no atmosphere is integrated (no points, no
+!               event); the surface point is the table's (log P within
+!               1e-7 of the polynomial, the file's digits; log T = log
+!               Teff), and the envelope starts there. A surface above the
+!               table (7300 K): the kernel switches to gray, and the
+!               integration is the gray atmosphere's, bit for bit.
+!               Through atm_get: on the table the star's photospheric
+!               pressure is the table's and its choice in use stays;
+!               above it the choice in use becomes gray. (atm's and
+!               core's lines for the point above the table are part of
+!               the report.)
 !
 ! Usage: test_envelope_integration [DECK.inlist]   (run with YREC_INPUT
 ! and YREC_START set and YREC_OUTPUT pointing at a directory the deck
@@ -102,14 +116,14 @@ program test_envelope_integration
            envint_atmosphere_done, envint_atmosphere_maxstp, &
            envint_bsstep_limits, envint_bsstep_failed, envint_vertex, &
            envint_envelope_done, envint_envelope_maxstp
-      use atm_lib, only: atm_eddington_gray, hsra_t_tau_offset, &
-           ttau_photosphere_x_limit
+      use atm_lib, only: atm_eddington_gray, atm_allard, hsra_t_tau_offset, &
+           ttau_photosphere_x_limit, atm_init, atm_settings_t, atm_table_paths_t
       use numerics_lib, only: numerics_bad_input, numerics_step_underflow, &
            numerics_derivatives_failed
       use physical_constants, only: ln10, cgl, c4pil, csigl
       use model_rescaling, only: compute_envelope_mixture
       use settings_install, only: install_surface_mixture_settings
-      use envelope_integration, only: gray_photosphere
+      use envelope_integration, only: gray_photosphere, atm_get
       implicit none
 ! the test's star (star_info_lib declares no instance); static, as it
 ! is too large for the stack
@@ -167,6 +181,8 @@ program test_envelope_integration
       call check_errors()
       write(*,'(a)') '-- gray photosphere'
       call check_gray_photosphere()
+      write(*,'(a)') '-- table'
+      call check_table_surface()
       if (nfail > 0) then
          write(*,'(a,i0,a)') 'test_envelope_integration: ', nfail, ' FAIL'
          stop 1
@@ -755,5 +771,125 @@ subroutine check_gray_photosphere()
            star%atm_choice_in_use == atm_eddington_gray
       call report('gray photosphere: the star''s atmosphere untouched', 0.0_dp, untouched)
 end subroutine check_gray_photosphere
+
+! ---------------------------------------------------------------
+! log P of the synthetic table at (log Teff, log g): cubic in log g and
+! quadratic in log Teff, which the Allard lookup's 4-point Lagrange
+! interpolations reproduce; about the solar photosphere's 5.0.
+pure real(dp) function synthetic_log10_pressure(log_teff, log_g) result(log_p)
+      real(dp), intent(in) :: log_teff, log_g
+      real(dp) :: t, g
+      t = log_teff - 3.76_dp
+      g = log_g - 4.4_dp
+      log_p = 5.0_dp + 0.62_dp*g - 2.1_dp*t + 0.05_dp*g**2 - 0.01_dp*g**3 + &
+           0.3_dp*t**2 + 0.1_dp*g*t
+end function synthetic_log10_pressure
+
+! A file in the Allard layout (atm's allard_table_reader): 13 Teff from
+! 4000 K by 250 K, log g 3.0 to 5.5 by 0.5, at [Fe/H] = [alpha/Fe] = 0;
+! log P, and log P + 1 and log Teff + 0.1 at tau = 100 (not used).
+subroutine write_synthetic_table(path)
+      character(len=*), intent(in) :: path
+      integer :: unit, row, column
+      real(dp) :: teff, log_g
+      open(newunit=unit, file=path, status='replace')
+      write(unit,'(a)') ' 2 ALLARD # synthetic test table'
+      write(unit,'(a)') 'Teff  logg  [M/H] [a/M] log P            log P(tau=100)   log T(tau=100)'
+      do row = 1, 13
+         teff = 4000.0_dp + 250.0_dp*(row - 1)
+         do column = 1, 6
+            log_g = 2.5_dp + 0.5_dp*column
+            write(unit,'(f6.0,3f6.2,1p3d16.8)') teff, log_g, 0.0_dp, 0.0_dp, &
+                 synthetic_log10_pressure(log10(teff), log_g), &
+                 synthetic_log10_pressure(log10(teff), log_g) + 1.0_dp, log10(teff) + 0.1_dp
+         end do
+      end do
+      close(unit)
+end subroutine write_synthetic_table
+
+! ---------------------------------------------------------------
+! A tabulated surface and the fallback to gray above the table, in the
+! kernel and through atm_get.
+subroutine check_table_surface()
+      character(len=*), parameter :: table_path = 'synthetic_allard_surface.all'
+      real(dp), parameter :: unset = -7.0_dp
+      type(atm_settings_t) :: settings
+      type(envint_config) :: cfg
+      type(fitting_vertex) :: fallback_vertex
+      real(dp) :: expected, off, hot_log10_teff, fallback_pressure, fit_pressure
+      integer :: n, fallback_points, saha_iterations
+
+      call write_synthetic_table(table_path)
+      settings%atm_choice = atm_allard
+      call atm_init(settings, atm_table_paths_t('', table_path), ierr)
+      if (ierr /= 0) call die('atm_init on the synthetic table')
+
+! On the table.
+      cfg = base_cfg
+      cfg%atm_choice = atm_allard
+      call integrate(cfg)
+      call report('table: ierr = 0; no atmosphere points, no atmosphere event', &
+           real(ierr, dp), ierr == 0 .and. atm_points%num_atm_points == 0 .and. &
+           events%num_events == 2 .and. event_kind(1) == envint_vertex .and. &
+           event_kind(2) == envint_envelope_done .and. .not. switched_to_gray)
+      expected = synthetic_log10_pressure(log10_teff, log10_gravity)
+      off = abs(atm_point%log10_pressure - expected)
+      call report('table: the surface point is the table''s', &
+           off, off <= 1.0e-7_dp .and. atm_point%log10_temperature == log10_teff .and. &
+           log10_photo_pressure == atm_point%log10_pressure)
+      n = env_points%num_env_points
+      call report('table: the envelope starts at the surface point', &
+           abs(env_points%env_log10_pressure(max(n, 1)) - atm_point%log10_pressure), &
+           n > 2 .and. env_points%env_log10_pressure(max(n, 1)) == atm_point%log10_pressure &
+           .and. env_points%env_log10_temperature(max(n, 1)) == log10_teff .and. &
+           env_points%env_log10_radius(max(n, 1)) == log10_radius_surface .and. &
+           env_points%env_log10_mass(max(n, 1)) == 0.0_dp)
+      fit_pressure = vertex%log10_pressure
+
+! Above the table: the kernel's fallback, against the gray atmosphere at
+! the same surface.
+      hot_log10_teff = log10(7300.0_dp)
+      call integrate(cfg, teff=hot_log10_teff)
+      call report('fallback: above the table: switched to gray, ierr = 0', real(ierr, dp), &
+           ierr == 0 .and. switched_to_gray .and. event_kind(1) == envint_atmosphere_done)
+      fallback_pressure = log10_photo_pressure
+      fallback_points = atm_points%num_atm_points
+      fallback_vertex = vertex
+      cfg%atm_choice = atm_eddington_gray
+      call integrate(cfg, teff=hot_log10_teff)
+      call report('fallback: the integration is the gray atmosphere''s', &
+           abs(fallback_pressure - log10_photo_pressure), ierr == 0 .and. &
+           .not. switched_to_gray .and. fallback_pressure == log10_photo_pressure .and. &
+           fallback_points == atm_points%num_atm_points .and. &
+           fallback_vertex%log10_pressure == vertex%log10_pressure .and. &
+           fallback_vertex%log10_temperature == vertex%log10_temperature .and. &
+           fallback_vertex%log10_radius == vertex%log10_radius)
+
+! Through atm_get, on a star whose choice in use is the table; the
+! guess at the fitting point's pressure is the kernel's fitting point.
+      star%log_total_mass = log10_star_mass
+      star%log_fit_point_mass_fraction = log10_fit_mass
+      star%atm_choice_in_use = atm_allard
+      star%photosphere_logP = unset
+      saha_iterations = 0
+      call atm_get(star, 1.0_dp, 1.0_dp, 1.0_dp, log10_gravity, log10_radius_surface, &
+           log10_teff, x_surface, z_surface, composition, fit_pressure, saha_iterations, &
+           ierr)
+      off = abs(star%photosphere_logP - expected)
+      call report('atm_get: on the table: photosphere_logP the table''s', &
+           off, ierr == 0 .and. off <= 1.0e-7_dp .and. star%atm_choice_in_use == atm_allard &
+           .and. star%atm_points%num_atm_points == 0)
+      call atm_get(star, 1.0_dp, 1.0_dp, 1.0_dp, log10_gravity, log10_radius_surface, &
+           hot_log10_teff, x_surface, z_surface, composition, fit_pressure, &
+           saha_iterations, ierr)
+      call report('atm_get: above the table: the choice in use is gray', &
+           real(star%atm_choice_in_use, dp), ierr == 0 .and. &
+           star%atm_choice_in_use == atm_eddington_gray .and. &
+           star%photosphere_logP == fallback_pressure)
+
+! The run's own settings again (no table).
+      settings%atm_choice = atm_eddington_gray
+      call atm_init(settings, atm_table_paths_t('', ''), ierr)
+end subroutine check_table_surface
 
 end program test_envelope_integration

@@ -46,4 +46,15 @@ gray photosphere: ierr = 0                                   0.0E+00  ok
 gray photosphere: log P = the kernel's                       0.0E+00  ok
 gray photosphere: T = Teff                                   1.6E-11  ok
 gray photosphere: the star's atmosphere untouched            0.0E+00  ok
+-- table
+table: ierr = 0; no atmosphere points, no atmosphere event   0.0E+00  ok
+table: the surface point is the table's                      2.7E-09  ok
+table: the envelope starts at the surface point              0.0E+00  ok
+atm_get_surface_pt: log Teff = 3.863323 is above the Allard tables (log Teff 3.575731 to 3.860892)
+fallback: above the table: switched to gray, ierr = 0        0.0E+00  ok
+fallback: the integration is the gray atmosphere's           0.0E+00  ok
+atm_get: on the table: photosphere_logP the table's          2.7E-09  ok
+atm_get_surface_pt: log Teff = 3.863323 is above the Allard tables (log Teff 3.575731 to 3.860892)
+ note: Allard table lookup out of range; switching to a gray atmosphere
+atm_get: above the table: the choice in use is gray          0.0E+00  ok
 test_envelope_integration: done
