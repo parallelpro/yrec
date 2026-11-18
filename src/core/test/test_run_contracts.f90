@@ -37,6 +37,8 @@
 !       (ierr 1), and a complete one reads every run's samples;
 !   the C entry (yrec_capi's yrec_run) and the re-entrancy prologue
 !   (yrec_reset), called here as a C or Fortran host would:
+!     - NULL pointers are read as empty paths (the default decks;
+!       M331);
 !     - a unit the host opened stays open across calls, and the run's
 !       own units (the run log, the final model) are closed after one;
 !     - a namelist path of exactly 256 characters (the override slots)
@@ -50,7 +52,7 @@
 ! with "./" components after its leading "/". Prints one line per check
 ! and exits with status 1 when one fails.
 program test_run_contracts
-      use, intrinsic :: iso_c_binding, only: c_char, c_int, c_loc, c_null_char
+      use, intrinsic :: iso_c_binding, only: c_char, c_int, c_loc, c_null_char, c_null_ptr
       use star_info_lib, only: star_info
       use control_slots, only: max_runs, i_target_x, i_target_z
       use composition_layout, only: i_h1, i_he4
@@ -461,9 +463,9 @@ end subroutine new_monte_carlo_star
 ! a re-entry), then the deck at exactly 256 characters, then 257.
 subroutine c_entry_checks()
       integer, parameter :: host_unit = 42, slot_length = 256
-      integer(c_int) :: status
+      integer(c_int) :: status, status_null
       character(len=:), allocatable :: path_256, path_long
-      character(kind=c_char), allocatable, target :: missing(:), deck_256(:), deck_long(:)
+      character(kind=c_char), allocatable, target :: missing(:), deck_256(:), deck_long(:), empty(:)
       logical :: host_open, log_open, model_open
 
       open(unit=host_unit, status='scratch')
@@ -477,6 +479,14 @@ subroutine c_entry_checks()
       status = yrec_run(c_loc(missing), c_loc(missing))
       inquire(unit=host_unit, opened=host_open)
       call run_contract_check_that('yrec_run_prologue: the host''s unit stays open at a re-entry', host_open)
+
+! NULL for "the default decks" (M331): read as empty paths, so the call
+! returns what a call with empty strings returns.
+      empty = c_path('')
+      status = yrec_run(c_loc(empty), c_loc(empty))
+      status_null = yrec_run(c_null_ptr, c_null_ptr)
+      call run_contract_check_that('yrec_run: NULL paths are read as empty ones (the default decks)', &
+           status_null == status)
 
       path_256 = padded_path(trim(deck), slot_length)
       path_long = path_256 // 'x'

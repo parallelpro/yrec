@@ -132,22 +132,22 @@ new = 's%solar_luminosity_cgs = 3.844D33*s%mc_samples%luminosity_factor(monte_ca
 id = 'capi-01'
 check = 'yrec_run: a control path over 256 characters is refused (status 1)'
 file = 'core/run/yrec_capi.f90'
-old = 'if (c_strlen(control_nml) > len(control_nml_override) .or. &'
-new = 'if (c_strlen(control_nml) > len(control_nml_override) + 1 .or. &'
+old = 'if (c_string_length(control_nml) > len(control_nml_override) .or. &'
+new = 'if (c_string_length(control_nml) > len(control_nml_override) + 1 .or. &'
 
 [[mutation]]
 id = 'capi-02'
 check = 'yrec_run: a physics path over 256 characters is refused (status 1)'
 file = 'core/run/yrec_capi.f90'
-old = 'c_strlen(physics_nml) > len(physics_nml_override)) then'
-new = 'c_strlen(physics_nml) > len(physics_nml_override) + 1) then'
+old = 'c_string_length(physics_nml) > len(physics_nml_override)) then'
+new = 'c_string_length(physics_nml) > len(physics_nml_override) + 1) then'
 
 [[mutation]]
 id = 'capi-03'
 check = 'yrec_run: a path of exactly 256 characters runs (status 0)'
 file = 'core/run/yrec_capi.f90'
-old = 'c_strlen(control_nml) > len(control_nml_override) .or. &'
-new = 'c_strlen(control_nml) >= len(control_nml_override) .or. &'
+old = 'c_string_length(control_nml) > len(control_nml_override) .or. &'
+new = 'c_string_length(control_nml) >= len(control_nml_override) .or. &'
 
 [[mutation]]
 id = 'capi-04'
@@ -288,3 +288,10 @@ check = 'abundance stops: central Y below its stop ends the card'
 file = 'core/run/stop_conditions.f90'
 old = 'case default;  stop_value = s%card_central_helium_stop(nk)'
 new = 'case default;  stop_value = s%card_central_hydrogen_stop(nk)'
+
+[[mutation]]
+id = 'capi-10'
+check = 'yrec_run: NULL paths are read as empty ones (the default decks)'
+file = 'core/run/yrec_capi.f90'
+old = 'if (c_associated(cstr)) n = int(c_strlen(cstr))'
+new = 'n = int(c_strlen(cstr))'
