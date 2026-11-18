@@ -133,3 +133,11 @@ new = '''
       if (ierr /= 0) then
          failed_spline = scale_height_spline_failed
 '''
+
+# bug_sweep M329: the flags beyond the walk's last point.
+[[mutation]]
+id = 'turnover_walk-16'
+check = "a zone at the walk's last points: nothing beyond the walk is read"
+file = 'core/diagnostics/turnover_walk.f90'
+old = 'if (k <= num_points) convective_at = convective_flag(k)'
+new = 'convective_at = convective_flag(k)'

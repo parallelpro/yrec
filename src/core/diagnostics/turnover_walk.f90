@@ -99,7 +99,9 @@ contains
 !----------------------------------------------------------------------
 ! The base of the surface convection zone and its turnover time, on the
 ! points 1 (centre) to num_points, the first num_interior_points of them
-! the interior model's and the rest the envelope's. Per point: the mass
+! the interior model's and the rest the envelope's; a point beyond
+! num_points is not part of the model, and is not read, whatever the
+! arrays hold there (convective_at). Per point: the mass
 ! inside it shell_mass (any unit), the convective flag, log10 of r (cm),
 ! P (dyn/cm^2) and rho (g/cm^3), the local gravity G m/r^2 (cm/s^2), the
 ! convective velocity (cm/s) and the radiative and adiabatic gradients.
@@ -139,10 +141,10 @@ subroutine time_surface_convection_zone(shell_mass, convective_flag, log10_radiu
                search_start_index = zone%base_index + 1
                cycle search
             end if
-            if (.not. zone_is_thick_enough(convective_flag, zone%base_index)) then
+            if (.not. zone_is_thick_enough(convective_flag, num_points, zone%base_index)) then
 !              Likely a single convective shell deep in the interior:
 !              restart above it.
-               if (.not. convective_flag(zone%base_index+1)) then
+               if (.not. convective_at(convective_flag, num_points, zone%base_index+1)) then
                   search_start_index = zone%base_index + 1
                else
                   search_start_index = zone%base_index + 2
@@ -207,7 +209,8 @@ pure subroutine scan_for_cz_base_from_below(convective_flag, num_points, &
       integer, intent(inout) :: core_top_index
       integer :: i
 
-      scan_ended_radiative = .not. convective_flag(search_start_index)
+      scan_ended_radiative = .not. convective_at(convective_flag, num_points, &
+           search_start_index)
       do i = search_start_index, num_points
          if (.not. scan_ended_radiative .and. .not. convective_flag(i)) then
             core_top_index = i - 1
@@ -269,12 +272,28 @@ end function zone_hugs_convective_core
 ! ---------------------------------------------------------------
 ! Whether the zone is at least min_zone_points thick: the base point and
 ! the points above it, min_zone_points in all, are convective.
-pure logical function zone_is_thick_enough(convective_flag, base_index)
+pure logical function zone_is_thick_enough(convective_flag, num_points, base_index)
       logical, intent(in) :: convective_flag(:)
-      integer, intent(in) :: base_index
+      integer, intent(in) :: num_points, base_index
+      integer :: k
 
-      zone_is_thick_enough = all(convective_flag(base_index:base_index+min_zone_points-1))
+      zone_is_thick_enough = .true.
+      do k = base_index, base_index + min_zone_points - 1
+         zone_is_thick_enough = zone_is_thick_enough .and. &
+              convective_at(convective_flag, num_points, k)
+      end do
 end function zone_is_thick_enough
+
+! ---------------------------------------------------------------
+! Whether point k is convective; a point beyond the walk's last,
+! num_points, is not part of the model and counts as radiative.
+pure logical function convective_at(convective_flag, num_points, k)
+      logical, intent(in) :: convective_flag(:)
+      integer, intent(in) :: num_points, k
+
+      convective_at = .false.
+      if (k <= num_points) convective_at = convective_flag(k)
+end function convective_at
 
 ! ---------------------------------------------------------------
 ! An interior-only walk takes the uppermost zone's base and treats the

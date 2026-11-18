@@ -21,8 +21,10 @@
 ! convective and a fully radiative model; a zone of two points, which is
 ! skipped; a zone within a dex of a convective core's top, which is
 ! skipped on a walk with envelope points; a zone whose time exceeds 1e20
-! s, which is skipped; and a spline on coincident points, which returns
-! the spline's status and names the spline.
+! s, which is skipped; a zone at the walk's last two points, with
+! convective points beyond the walk that it must not read (bug_sweep
+! M329); and a spline on coincident points, which returns the spline's
+! status and names the spline.
 ! Prints one line per check and exits with status 1 when one fails.
 program test_turnover
       use, intrinsic :: iso_fortran_env, only: dp => real64
@@ -155,6 +157,16 @@ program test_turnover
       call turnover_check('a zone slower than 1e20 s is skipped', &
            ierr == 0 .and. turnover%base_index == 26 .and. &
            abs(turnover%turnover_time/scale_height_tau(base_radius) - 1.0_dp) < tol)
+
+! A walk of 38 of the 40 points whose last two are convective, as the
+! two beyond it are: the zone has two points, not four, and is no zone.
+      call set_profile()
+      call set_zone(37, n)
+      call time_surface_convection_zone(mass, convective, log_radius, log_pressure, &
+           log_density, gravity, velocity, gradr, grada, 38, 38, turnover, ierr)
+      call turnover_check('a zone at the walk''s last points: nothing beyond the walk is read', &
+           ierr == 0 .and. turnover%timing == timing_none .and. &
+           turnover%turnover_time == 0.0_dp)
 
 ! Four convective points, the first two at one radius, with H above the
 ! model's radius: no point lies one H_P above the base, and the bottom

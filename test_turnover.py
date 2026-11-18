@@ -14,7 +14,7 @@ import pytest
 
 REPO = pathlib.Path(__file__).parent
 BINARY = REPO / "src" / "test_turnover"
-NUM_CHECKS = 11
+NUM_CHECKS = 12
 
 
 def test_turnover(tmp_path):
