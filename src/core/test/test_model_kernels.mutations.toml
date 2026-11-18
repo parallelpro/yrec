@@ -382,3 +382,31 @@ new = '''
          log_temperature(i) = outer_log_temperature+dlogp_dlogm* &
               log_mass_spacing
 '''
+
+# bug_sweep M326 (the A part): the core extension's one-point case and
+# its control check.
+[[mutation]]
+id = 'starting_model-01'
+check = "extend_core_toward_center: one added point takes the old points' gradient"
+file = 'core/model/starting_model.f90'
+old = '''
+      first_original_shell = num_added+1
+'''
+new = '''
+      first_original_shell = num_added+1
+      actual_gradient = (s%logT(2)-s%logT(1))/(s%logP(2)-s%logP(1))
+'''
+
+[[mutation]]
+id = 'starting_model-02'
+check = 'extend_core_toward_center: thirteen points, the old ones moved up'
+file = 'core/model/starting_model.f90'
+old = 's%logP(i+num_added) = s%logP(i)'
+new = 's%logP(i+num_added) = s%logP(i+1)'
+
+[[mutation]]
+id = 'starting_model-03'
+check = 'extend_core_toward_center: a factor of 1 is refused, the model untouched'
+file = 'core/model/starting_model.f90'
+old = 'if (.not. s%physics%core_mass_reduction_factor > 1.0d0) then'
+new = 'if (.not. s%physics%core_mass_reduction_factor > 0.0d0) then'

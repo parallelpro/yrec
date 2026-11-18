@@ -45,6 +45,11 @@
 !   to m; the pressure rising inward by the hydrostatic amount, to the
 !   10% of the two-stage step; log T along the given gradient; the
 !   density estimate).
+!   starting_model's extend_core_toward_center on a star set up here, a
+!   20-point model: one added point (a factor of 1.1), whose log T
+!   follows the gradient of the two innermost old points (bug_sweep M326:
+!   it was 0/0); thirteen (a factor of 10), the old points moved up by
+!   thirteen slots; and a factor of 1, the default, refused with ierr 1.
 ! (regridding's kernels have test_regrid.)
 ! Prints one line per check and exits with status 1 when one fails.
 program test_model_kernels
@@ -185,6 +190,7 @@ program test_model_kernels
       call rescaling_checks()
       call mesh_checks()
       call core_extension_checks()
+      call core_extension_driver_checks()
 
       if (num_failed > 0) then
          write(*,'(a,i0,a)') 'test_model_kernels: ', num_failed, ' checks FAIL'
@@ -476,6 +482,82 @@ subroutine core_extension_checks()
            all([(abs(log_density(j) - (log_pressure(j) - log_temperature(j) - offset)) < tol, &
            j = 1, num_added)]))
 end subroutine core_extension_checks
+
+! ---------------------------------------------------------------
+! extend_core_toward_center on a star of 20 points set up here: m(k) =
+! 2e29 (1.2)^(k-1) g, log P and log T falling outward, card 1 reading its
+! model from file.
+subroutine core_extension_driver_checks()
+      use star_info_lib, only: star_info
+      use starting_model, only: extend_core_toward_center
+      integer, parameter :: num_old = 20
+      real(dp), parameter :: tol = 1.0e-12_dp
+      type(star_info), allocatable :: star
+      real(dp) :: old_log_p(num_old), old_log_t(num_old), old_log_mass(num_old), gradient
+      integer :: ierr
+
+! One point: a factor of 1.1 with a spacing of 0.08.
+      call core_extension_star(star, 1.1_dp, old_log_mass, old_log_p, old_log_t)
+      ierr = 0
+      call extend_core_toward_center(star, ierr)
+      gradient = (old_log_t(2) - old_log_t(1))/(old_log_p(2) - old_log_p(1))
+      call model_kernel_check('extend_core_toward_center: one added point takes the old points'' gradient', &
+           ierr == 0 .and. star%nz == num_old + 1 .and. star%num_core_points_added == 1 .and. &
+           abs(star%logT(1) - old_log_t(1) - gradient*(star%logP(1) - old_log_p(1))) < tol &
+           .and. star%logP(1) > old_log_p(1))
+! Thirteen points: a factor of 10.
+      call core_extension_star(star, 10.0_dp, old_log_mass, old_log_p, old_log_t)
+      ierr = 0
+      call extend_core_toward_center(star, ierr)
+      call model_kernel_check('extend_core_toward_center: thirteen points, the old ones moved up', &
+           ierr == 0 .and. star%nz == num_old + 13 .and. &
+           all(star%log_mass(14:num_old+13) == old_log_mass) .and. &
+           all(star%logP(14:num_old+13) == old_log_p) .and. &
+           abs(star%log_mass(1) - (old_log_mass(1) - 13.0_dp*0.08_dp)) < tol .and. &
+           abs(star%logT(13) - old_log_t(1) - gradient*(star%logP(13) - old_log_p(1))) < tol)
+! A factor of 1, the control's default: no extension is asked for.
+      call core_extension_star(star, 1.0_dp, old_log_mass, old_log_p, old_log_t)
+      ierr = 0
+      call extend_core_toward_center(star, ierr)
+      call model_kernel_check('extend_core_toward_center: a factor of 1 is refused, the model untouched', &
+           ierr == 1 .and. star%nz == num_old .and. all(star%logT(1:num_old) == old_log_t))
+end subroutine core_extension_driver_checks
+
+! A star of size(old_log_mass) points for the core extension, with the
+! deck's mass factor: its log m, log P and log T are returned.
+subroutine core_extension_star(star, factor, old_log_mass, old_log_p, old_log_t)
+      use star_info_lib, only: star_info
+      use control_slots, only: ichi_dm_max
+      type(star_info), allocatable, intent(inout) :: star
+      real(dp), intent(in) :: factor
+      real(dp), intent(out) :: old_log_mass(:), old_log_p(:), old_log_t(:)
+      integer :: j, num_old
+
+      num_old = size(old_log_mass)
+      if (allocated(star)) deallocate(star)
+      allocate(star)
+      star%nz = num_old
+      star%current_card = 1
+      star%card_from_starting_model(1) = .true.
+      star%physics%extend_core_inward = .true.
+      star%physics%core_mass_reduction_factor = factor
+      star%physics%chi_grid_scale(ichi_dm_max) = 0.08_dp
+      do j = 1, num_old
+         old_log_mass(j) = log10(2.0e29_dp) + real(j - 1, dp)*log10(1.2_dp)
+         old_log_p(j) = 17.3_dp - 0.011_dp*real(j - 1, dp)**1.5_dp
+         old_log_t(j) = 7.2_dp - 0.004_dp*real(j - 1, dp)**1.4_dp
+      end do
+      star%log_mass(1:num_old) = old_log_mass
+      star%logP(1:num_old) = old_log_p
+      star%logT(1:num_old) = old_log_t
+      star%logRho(1:num_old) = old_log_p - old_log_t - 8.1_dp
+      star%logR(1:num_old) = (old_log_mass - log10(4.0_dp*3.14159265358979324_dp/3.0_dp) - &
+           star%logRho(1))/3.0_dp
+      star%luminosity_lsun(1:num_old) = [(1.0e-3_dp*1.2_dp**(j - 1), j = 1, num_old)]
+      star%convective_flag(1:num_old) = .false.
+      star%omega(1:num_old) = 0.0_dp
+      star%xa(:,1:num_old) = 0.0_dp
+end subroutine core_extension_star
 
 subroutine boundaries()
       call find_shell_boundaries(h1, luminosity, convective, n, x_core_min, core_edge, &

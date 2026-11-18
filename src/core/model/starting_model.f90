@@ -561,8 +561,10 @@ end subroutine set_isotope_ratios
 ! reads its model from file, not only the first, so that auto-calibrated
 ! solar models keep the change (MHP 9/14). The density profile is not
 ! moved with the points (bug_sweep M326). ierr = 1 when the model would
-! need more than json shells. Public for test_model_kernels; the card is
-! the star's current_card.
+! need more than json shells, and when the factor is not above 1: a
+! factor of 1, the control's default, asks for no extension, and one
+! below it for a shallower core. Public for test_model_kernels; the card
+! is the star's current_card.
 !   star reads: card_from_starting_model, current_card,
 !     physics%chi_grid_scale, physics%core_mass_reduction_factor,
 !     physics%extend_core_inward
@@ -579,6 +581,15 @@ subroutine extend_core_toward_center(s, ierr)
 
       if (.not. (s%physics%extend_core_inward .and. &
            s%card_from_starting_model(s%current_card))) return
+      if (.not. s%physics%core_mass_reduction_factor > 1.0d0) then
+         lines = unwritten_line
+         write(lines,'(a,1pe10.3,a)') ' ERROR: core extension: extend_core_inward needs' &
+              //' core_mass_reduction_factor above 1 (it is', &
+              s%physics%core_mass_reduction_factor, '); run stopped'
+         call core_report(lines)
+         ierr = 1
+         return
+      end if
       core_shell_spacing = s%physics%chi_grid_scale(ichi_dm_max)
       s%num_core_points_added = core_extension_count( &
            s%physics%core_mass_reduction_factor, core_shell_spacing)
@@ -592,6 +603,13 @@ subroutine extend_core_toward_center(s, ierr)
          ierr = 1
          return
       end if
+! What the new points start from, taken before the points move: the old
+! central density, del = d log T/d log P between the two innermost old
+! points, and the innermost point's luminosity.
+      central_log_density = s%logRho(1)
+      actual_gradient = (s%logT(2)-s%logT(1))/ &
+           (s%logP(2)-s%logP(1))
+      central_shell_luminosity = s%luminosity_lsun(1)
 ! Move every old point up by N slots (logRho is not moved).
       do i=s%nz,1, -1
          s%log_mass(i+num_added) = s%log_mass(i)
@@ -606,14 +624,6 @@ subroutine extend_core_toward_center(s, ierr)
          s%omega(i+num_added) = s%omega(i)
       end do
       first_original_shell = num_added+1
-! What the new points start from. Slots 1 and 2 still hold the two
-! innermost old points here, so rho_c is the old central density and
-! del = d log T/d log P is taken between them (for N = 1, slot 2 has
-! already been overwritten and del is 0/0).
-      central_log_density = s%logRho(1)
-      actual_gradient = (s%logT(2)-s%logT(1))/ &
-           (s%logP(2)-s%logP(1))
-      central_shell_luminosity = s%luminosity_lsun(1)
 ! The offset of the density estimate log rho = log P - log T - offset,
 ! taken at slot N+1 (its log rho is old point N+1's: M326).
       density_estimate_offset = s%logP(first_original_shell)- &
