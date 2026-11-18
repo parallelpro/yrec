@@ -50,6 +50,10 @@
 !   follows the gradient of the two innermost old points (bug_sweep M326:
 !   it was 0/0); thirteen (a factor of 10), the old points moved up by
 !   thirteen slots; and a factor of 1, the default, refused with ierr 1.
+!   rezoning's check_envelope_temperature_range on a star set up here: a
+!   surface hotter than the envelope window gains a point outside it, and
+!   a model that already has json points is refused with ierr 1 (bug_sweep
+!   M330: it wrote past the arrays).
 ! (regridding's kernels have test_regrid.)
 ! Prints one line per check and exits with status 1 when one fails.
 program test_model_kernels
@@ -191,6 +195,7 @@ program test_model_kernels
       call mesh_checks()
       call core_extension_checks()
       call core_extension_driver_checks()
+      call outer_point_checks()
 
       if (num_failed > 0) then
          write(*,'(a,i0,a)') 'test_model_kernels: ', num_failed, ' checks FAIL'
@@ -558,6 +563,53 @@ subroutine core_extension_star(star, factor, old_log_mass, old_log_p, old_log_t)
       star%omega(1:num_old) = 0.0_dp
       star%xa(:,1:num_old) = 0.0_dp
 end subroutine core_extension_star
+
+! ---------------------------------------------------------------
+! check_envelope_temperature_range on a star set up here, whose outer
+! point is hotter than the window's upper edge, with a stored envelope
+! state to add a point from.
+subroutine outer_point_checks()
+      use star_info_lib, only: star_info, json, n_species_basic
+      use rezoning, only: check_envelope_temperature_range
+      type(star_info), allocatable :: star
+      integer :: ierr
+
+      call outer_point_star(star, 30)
+      ierr = 0
+      call check_envelope_temperature_range(star, n_species_basic, ierr)
+      call model_kernel_check('check_envelope_temperature_range: a hot surface gains a point outside it', &
+           ierr == 0 .and. star%nz == 31 .and. star%reset_triangle .and. &
+           abs(star%logP(31) - (star%logP(30) - 0.4_dp)) < 1.0e-12_dp .and. &
+           abs(star%logT(31) - (star%logT(30) - 0.1_dp)) < 1.0e-12_dp)
+      call outer_point_star(star, json)
+      ierr = 0
+      call check_envelope_temperature_range(star, n_species_basic, ierr)
+      call model_kernel_check('check_envelope_temperature_range: no point beyond json (ierr 1)', &
+           ierr == 1 .and. star%nz == json)
+end subroutine outer_point_checks
+
+! A star of num_points points whose surface is hotter than the envelope
+! window, with a stored envelope state.
+subroutine outer_point_star(star, num_points)
+      use star_info_lib, only: star_info
+      type(star_info), allocatable, intent(inout) :: star
+      integer, intent(in) :: num_points
+      if (allocated(star)) deallocate(star)
+      allocate(star)
+      star%nz = num_points
+      star%physics%rezone_env_logt0 = 5.0_dp
+      star%physics%rezone_env_logt1 = 6.0_dp
+      star%logT(1:num_points) = 7.0_dp
+      star%logP(1:num_points) = 12.0_dp
+      star%logR(1:num_points) = 10.5_dp
+      star%luminosity_lsun(1:num_points) = 1.0_dp
+      star%log_total_mass = 33.3_dp
+      star%stored_vertex_index = 1
+      star%fit_point_logP(1) = 11.9_dp
+      star%fit_point_logR(1) = 10.6_dp
+      star%stored_envelope_state = [11.5_dp, 0.0_dp, 10.7_dp, -1.0e-5_dp]
+      star%reset_triangle = .false.
+end subroutine outer_point_star
 
 subroutine boundaries()
       call find_shell_boundaries(h1, luminosity, convective, n, x_core_min, core_edge, &

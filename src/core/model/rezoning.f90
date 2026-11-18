@@ -37,7 +37,7 @@ module rezoning
            remove_crowded_points
       implicit none
       private
-      public :: rezone
+      public :: rezone, check_envelope_temperature_range
 
 ! The most points flag_fixed_points keeps (append_flag_point guards
 ! every append; one slot stays for the star%nz terminator).
@@ -135,7 +135,7 @@ subroutine rezone(s, ierr)
 ! The number of species carried, with or without the extended composition.
       rz%num_species_tracked = n_species_basic
       if (s%physics%use_extended_composition) rz%num_species_tracked = n_species_extended
-      call check_envelope_temperature_range(s, rz, ierr)
+      call check_envelope_temperature_range(s, rz%num_species_tracked, ierr)
       if (ierr /= 0) return
       call flag_fixed_points(s, rz, ierr)
       if (ierr /= 0) return
@@ -157,16 +157,19 @@ end subroutine rezone
 ! tenv0 < log T < tenv1. If it is cooler than tenv0, the outer points
 ! down to the first one hotter than tenv0 are deleted; if it is hotter
 ! than tenv1 and a stored envelope state exists, one point is added
-! outside it. Either sets star%reset_triangle (and star%log_fit_point_mass_fraction); ierr if the
-! whole model is cooler than tenv0.
+! outside it, with the first num_species species of the old outer point.
+! Either sets star%reset_triangle (and star%log_fit_point_mass_fraction).
+! ierr = 1 if the whole model is cooler than tenv0, and if the added point
+! would be more than the json the arrays hold. Public for
+! test_model_kernels.
 !   star reads: fit_point_logP, fit_point_logR, log_total_mass,
 !     physics%rezone_env_logt0, physics%rezone_env_logt1,
 !     stored_envelope_state, stored_vertex_index
 !   star writes: log_fit_point_mass_fraction, log_mass, logP, logR,
 !     logRho, logT, luminosity_lsun, nz, reset_triangle, xa
-subroutine check_envelope_temperature_range(s, rz, ierr)
+subroutine check_envelope_temperature_range(s, num_species, ierr)
       type(star_info), intent(inout) :: s
-      type(rezone_state), intent(inout) :: rz
+      integer, intent(in) :: num_species
       integer, intent(inout) :: ierr
       integer :: i
       integer :: j
@@ -204,6 +207,11 @@ subroutine check_envelope_temperature_range(s, rz, ierr)
 ! (added_point_log_density_offset).
       else if (s%logT(s%nz) > s%physics%rezone_env_logt1.and. &
            s%stored_vertex_index /= 0) then
+         if (s%nz + 1 > json) then
+            call report_mesh_overflow(s%nz + 1)
+            ierr = 1
+            return
+         end if
          s%nz = s%nz + 1
          s%log_fit_point_mass_fraction = s%stored_envelope_state(4)
          s%log_mass(s%nz) = s%log_total_mass + s%log_fit_point_mass_fraction
@@ -215,7 +223,7 @@ subroutine check_envelope_temperature_range(s, rz, ierr)
          s%logR(s%nz) = s%logR(s%nz-1) + &
               (s%stored_envelope_state(3) - s%fit_point_logR(s%stored_vertex_index))
          s%luminosity_lsun(s%nz) = s%luminosity_lsun(s%nz-1)
-         do i = 1,rz%num_species_tracked
+         do i = 1,num_species
             s%xa(i,s%nz) = s%xa(i,s%nz-1)
          end do
          s%logRho(s%nz) = s%logP(s%nz) - &

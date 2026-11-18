@@ -16,7 +16,7 @@ import pytest
 
 REPO = pathlib.Path(__file__).parent
 BINARY = REPO / "src" / "test_model_kernels"
-NUM_CHECKS = 50
+NUM_CHECKS = 52
 
 
 def test_model_kernels(tmp_path):

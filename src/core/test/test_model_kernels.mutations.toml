@@ -410,3 +410,18 @@ check = 'extend_core_toward_center: a factor of 1 is refused, the model untouche
 file = 'core/model/starting_model.f90'
 old = 'if (.not. s%physics%core_mass_reduction_factor > 1.0d0) then'
 new = 'if (.not. s%physics%core_mass_reduction_factor > 0.0d0) then'
+
+# bug_sweep M330: the rezone's added outer point and the arrays' size.
+[[mutation]]
+id = 'rezoning-01'
+check = 'check_envelope_temperature_range: a hot surface gains a point outside it'
+file = 'core/model/rezoning.f90'
+old = 's%fit_point_logP(s%stored_vertex_index))*added_point_dlogt_dlogp'
+new = 's%fit_point_logP(s%stored_vertex_index))'
+
+[[mutation]]
+id = 'rezoning-02'
+check = 'check_envelope_temperature_range: no point beyond json (ierr 1)'
+file = 'core/model/rezoning.f90'
+old = 'if (s%nz + 1 > json) then'
+new = 'if (s%nz + 1 > json + 1) then'
