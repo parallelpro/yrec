@@ -3,6 +3,10 @@
 # `make tests` in src/: python3 src/tools/mutate.py core --program
 # test_envelope_integration (src/tools/mutate.py describes this format and
 # the verdicts). The program reads the TAMS deck of test_structure.
+# One check has no mutation: "gray photosphere: the star's atmosphere
+# untouched". gray_photosphere takes the star intent(in), so a mutant
+# that writes the star does not compile; the check stands for a change
+# of that intent.
 program = "test_envelope_integration"
 timeout = 120
 args = ["{repo}/src/core/test/test_structure_tams.inlist"]
@@ -336,3 +340,17 @@ check = 'atm_get: above the table: the choice in use is gray'
 file = 'core/envelope/envelope_integration.f90'
 old = 'if (switched_to_gray) s%atm_choice_in_use = atm_eddington_gray'
 new = 'if (.false.) s%atm_choice_in_use = atm_eddington_gray'
+
+[[mutation]]
+id = 'envelope-gray-02'
+check = 'gray photosphere: ierr = 0'
+file = 'core/envelope/envelope_integration.f90'
+old = 'cfg%atm_choice = atm_eddington_gray'
+new = 'cfg%atm_choice = 3'
+
+[[mutation]]
+id = 'envelope-gray-03'
+check = 'gray photosphere: T = Teff'
+file = 'core/envelope/envelope_integration.f90'
+old = 'log10_temperature = atm_point%log10_temperature'
+new = 'log10_temperature = atm_point%log10_pressure'
