@@ -114,11 +114,13 @@ contains
 ! integrated at all when the envelope triangle interpolated, so the
 ! envelope and atmosphere are integrated afresh at the converged values
 ! with the fixed output step sizes (integrate_converged_envelope).
-! Without an envelope (calc_envelope_flag off), and when that
-! integration fails (its error has been reported; bug_sweep M327), the
-! grid is the interior alone, and lamb_S2, gradL and gradr_div_grada
-! keep what the last full build left (brunt_N2 is the pulse points' N^2
-! of this grid). ierr = 1 when a profile column has no value in a region
+! Without an envelope (calc_envelope_flag off) the grid is the interior
+! alone, and lamb_S2, gradL and gradr_div_grada keep what the last full
+! build left (brunt_N2 is the pulse points' N^2 of this grid). When the
+! envelope integration fails, the grid is the interior alone too, and
+! ierr is atm_get's code, which has been reported: a positive one stops
+! the run, and envelope_termination (-2) ends it as the solver's does.
+! ierr = 1 when a profile column has no value in a region
 ! (fill_stitched_arrays).
 !   star reads: atm_points, env_points, logR, nz,
 !     physics%calc_envelope_flag
@@ -138,6 +140,7 @@ subroutine build_stitched_model(s, ierr)
          call map_extended_grid(s%nz, s%logR(s%nz), no_points, no_points, &
               s%stitched%region, s%stitched%index, s%stitched%n_ie, s%stitched%n_ext)
          call fill_stitched_arrays(s, ierr)
+         if (ierr == 0) ierr = envelope_ierr
          return
       end if
 

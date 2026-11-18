@@ -29,7 +29,7 @@
 !       (fill_stitched_arrays, ierr = 1);
 !     - when the envelope integration fails (an atmosphere step size that
 !       needs more steps than the integration allows), the grid is the
-!       interior alone.
+!       interior alone, and the failure is returned (bug_sweep M327).
 ! Four of the kernels' checks hold values that an open defect's fix will
 ! change, and say so: bug_sweep M359 (the envelope point above the
 ! interior's top), M361 (the zero thermal value), M363 (the innermost
@@ -248,6 +248,8 @@ subroutine star_checks()
       call stitched_check('envelope integration fails: the grid is the interior alone', &
            star%stitched%n_ext == nz .and. star%stitched%n_ie == nz .and. &
            all(star%stitched%region(1:nz) == region_interior))
+      call stitched_check('envelope integration fails: build_stitched_model returns the error', &
+           ierr == 1)
 end subroutine star_checks
 
 ! ---------------------------------------------------------------

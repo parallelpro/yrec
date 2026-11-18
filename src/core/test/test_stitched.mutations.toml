@@ -179,3 +179,11 @@ check = 'envelope integration fails: the grid is the interior alone'
 file = 'core/diagnostics/stitched_model.f90'
 old = 'if (.not. s%physics%calc_envelope_flag .or. envelope_ierr /= 0) then'
 new = 'if (.not. s%physics%calc_envelope_flag) then'
+
+# bug_sweep M327: the failed envelope integration's code is returned.
+[[mutation]]
+id = 'stitched_model-07'
+check = 'envelope integration fails: build_stitched_model returns the error'
+file = 'core/diagnostics/stitched_model.f90'
+old = 'if (ierr == 0) ierr = envelope_ierr'
+new = 'if (ierr == 0) ierr = 0'
