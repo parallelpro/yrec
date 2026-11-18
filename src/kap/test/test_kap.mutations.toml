@@ -595,3 +595,114 @@ check = 'OPAL95 surface table at Z = 0.06, X = 0.85: 2D is 3D'
 file = 'kap/opal95/opal95_opacity.f90'
 old = '''      call interp(table_x_nodes, x_weight, x_eval=hydrogen_fraction)'''
 new = '''      call interp(table_x_nodes, x_weight, x_eval=hydrogen_fraction + 1.0d-3*tbl%fixed_z)'''
+
+[[mutation]]
+id = 'alex94-x-drho'
+check = 'Alexander 1994 off the surface X: derivatives against differences'
+file = 'kap/alex94/alex94_opacity.f90'
+old = '''         dlnkap_dlnrho = lagrange4(weight_x, dlnkap_dlnr_x)'''
+new = '''         dlnkap_dlnrho = lagrange4(weight_x, dlnkap_dlnt_x)'''
+
+[[mutation]]
+id = 'alex94-rebuild-at-z'
+check = 'Alexander 1994 at another Z: its tables rebuilt, exact at a node'
+file = 'kap/alex94/alex94_opacity.f90'
+old = '''      if (delta_z > alex_composition_tol) then'''
+new = '''      if (delta_z > 1.0d0) then'''
+
+[[mutation]]
+id = 'alex94-surface-x'
+check = 'Alexander 1994 surface table at X = 0.62: 2D is 3D'
+file = 'kap/alex94/alex94_opacity.f90'
+old = '''            tbl%opacity(alex94_surface_slot,i,j) = weight_x(1)*tbl%opacity(tbl%index_x,i,j)+ &'''
+new = '''            tbl%opacity(alex94_surface_slot,i,j) = weight_x(2)*tbl%opacity(tbl%index_x,i,j)+ &'''
+
+[[mutation]]
+id = 'alex94-top-logr'
+check = 'Alexander 1994 above its top log R: linear from the last two'
+file = 'kap/alex94/alex94_opacity.f90'
+old = '''                    (tbl%grid_logr(n_alex94_d)-tbl%grid_logr(n_alex94_d-1))'''
+new = '''                    (tbl%grid_logr(n_alex94_d)-tbl%grid_logr(n_alex94_d-2))'''
+
+[[mutation]]
+id = 'alex06-top-logr'
+check = 'Alexander 2006 above its top log R: linear from the last two'
+file = 'kap/alex06/alex06_opacity.f90'
+old = '''                 (tbl%grid_logr(n_alex06_d)-tbl%grid_logr(n_alex06_d-1))'''
+new = '''                 (tbl%grid_logr(n_alex06_d)-tbl%grid_logr(n_alex06_d-2))'''
+
+[[mutation]]
+id = 'kurucz-no-value'
+check = 'Kurucz 1990: a density no row has returns ierr'
+file = 'kap/kurucz90/kurucz_opacity.f90'
+old = '''                 log10_density, ', log T =', log10_temperature
+            ierr = 1'''
+new = '''                 log10_density, ', log T =', log10_temperature
+            ierr = 0'''
+
+[[mutation]]
+id = 'opal92-x-interpolation'
+check = 'OPAL92 between two X tables: derivatives against differences'
+file = 'kap/opal92/opal92_opacity.f90'
+old = '''         dlnkap_dlnr = (dlnkap_dlnr_hi-dlnkap_dlnr_lo)*x_fraction + dlnkap_dlnr_lo'''
+new = '''         dlnkap_dlnr = (dlnkap_dlnr_hi-dlnkap_dlnr_lo)*x_fraction + dlnkap_dlnr_hi'''
+
+[[mutation]]
+id = 'opal92-grid-x-table'
+check = 'OPAL92 at an X of its grid: the X interpolation beside it'
+file = 'kap/opal92/opal92_opacity.f90'
+old = '''               tbl%index_x = ix'''
+new = '''               tbl%index_x = 1'''
+
+[[mutation]]
+id = 'opal92-t-range'
+check = 'OPAL92: log T off the table returns ierr'
+file = 'kap/opal92/opal92_opacity.f90'
+old = '''              ' is outside the OPAL 1992 tables'
+         ierr = 1'''
+new = '''              ' is outside the OPAL 1992 tables'
+         ierr = 0'''
+
+[[mutation]]
+id = 'opal92-core-table-z'
+check = 'helium core (OPAL92): the Z blend of its table and the pure-Z'
+file = 'kap/opal92/opal92_opacity.f90'
+old = '''      table_z = settings%opal_table_z1'''
+new = '''      table_z = settings%opal_table_z2'''
+
+[[mutation]]
+id = 'laol-core-table-z'
+check = 'helium core (LAOL89): the Z blend of its table and the pure-Z'
+file = 'kap/laol89/laol_opacity.f90'
+old = '''      table_z = settings%laol_table_z1'''
+new = '''      table_z = settings%laol_table_z2'''
+
+[[mutation]]
+id = 'laol-column-low-end'
+check = "LAOL column: exact on a linear table, 1 dex past a row's ends"
+file = 'kap/laol89/laol_opacity.f90'
+old = '''            log10_opacity_value = row_log10_opacity(1)+slope*(log10_density-row_log_rho(1))'''
+new = '''            log10_opacity_value = row_log10_opacity(2)+slope*(log10_density-row_log_rho(1))'''
+
+[[mutation]]
+id = 'laol-column-tolerance'
+check = 'LAOL column: beyond the tolerance returns ierr'
+file = 'kap/laol89/laol_opacity.f90'
+old = '''         else if (log10_density > row_log_rho(1)-log_extrapolation_tolerance .and. &'''
+new = '''         else if (log10_density > row_log_rho(1)-2.0d0*log_extrapolation_tolerance .and. &'''
+
+[[mutation]]
+id = 'laol-column-short-row'
+check = 'LAOL column: a row of fewer than four points returns ierr'
+file = 'kap/laol89/laol_opacity.f90'
+old = '''         if (num_valid_rho < min_spline_points) then
+            status = laol_column_outside_density'''
+new = '''         if (num_valid_rho < 0) then
+            status = laol_column_outside_density'''
+
+[[mutation]]
+id = 'laol-cap'
+check = 'LAOL column: log kappa above 35 is capped'
+file = 'kap/laol89/laol_opacity.f90'
+old = '''      if (log10_opacity_value > laol_log10_opacity_cap) then'''
+new = '''      if (log10_opacity_value > 2.0d0*laol_log10_opacity_cap) then'''

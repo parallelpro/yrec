@@ -100,6 +100,23 @@ OPAL92 two-Z blend: at opal_table_z1 it is the first table                 0.00E
 LAOL89 (secant derivatives): against differences, to 10%                   5.89E-02  ok
 Kurucz 1990 (two Z): derivatives against differences                       2.01E-07  ok
 Alexander 1994: derivatives against differences                            1.14E-06  ok
+Alexander 1994 off the surface X: derivatives against differences          1.33E-06  ok
+Alexander 1994 at another Z: its tables rebuilt, exact at a node           0.00E+00  ok
+Alexander 1994 surface table at X = 0.62: 2D is 3D                         0.00E+00  ok
+Alexander 1994 above its top log R: linear from the last two               0.00E+00  ok
+Alexander 2006 above its top log R: linear from the last two               0.00E+00  ok
+kap_get: the Kurucz 1990 table has no value at log rho =-25.0000, log T =  3.6000
+Kurucz 1990: a density no row has returns ierr                             0.00E+00  ok
+OPAL92 between two X tables: derivatives against differences               8.02E-08  ok
+OPAL92 at an X of its grid: the X interpolation beside it                  1.21E-06  ok
+kap_get: log T = 3.000000 is outside the OPAL 1992 tables
+OPAL92: log T off the table returns ierr                                   0.00E+00  ok
+helium core (OPAL92): the Z blend of its table and the pure-Z              0.00E+00  ok
+helium core (LAOL89): the Z blend of its table and the pure-Z              0.00E+00  ok
+LAOL column: exact on a linear table, 1 dex past a row's ends              1.02E-14  ok
+LAOL column: beyond the tolerance returns ierr                             0.00E+00  ok
+LAOL column: log kappa above 35 is capped                                  0.00E+00  ok
+LAOL column: a row of fewer than four points returns ierr                  0.00E+00  ok
 blend_in_z: each table's value at its own Z                                0.00E+00  ok
 add_conduction: equal opacities halve kappa, average the slopes            0.00E+00  ok
 hubbard_lampe_opacity: derivatives against differences                     1.11E-11  ok

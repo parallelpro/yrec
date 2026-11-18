@@ -181,7 +181,6 @@ contains
 ! Each point prints kappa, log kappa, dln kappa/dln rho, dln kappa/dln T.
       subroutine check_families()
          character(len=256) :: in, mol, atom, paths7(7)
-         integer :: k
          in = yrec_input
          atom = trim(in)//"/opacity/atomic/"
          mol = trim(in)//"/opacity/molecular/"
@@ -337,7 +336,7 @@ contains
          use opacity_blending, only: blend_in_z, add_conduction, hubbard_lampe_opacity
          character(len=256) :: cond_path
          real(dp) :: r(num_kap_results), r2(num_kap_results), r_off(num_kap_results)
-         real(dp) :: logd, value, value2, err
+         real(dp) :: value, value2, err
          type(kap_result) :: radiative, conductive, total, hl_plus, hl_minus
          integer :: ierr, ierr2, u, log_unit
          logical :: exists
@@ -476,6 +475,7 @@ contains
               alex95_paths=alex95_paths(), quiet=.true.)
          call derivative_check("Alexander 1994: derivatives against differences", &
               0.70d0, 0.016232d0, 3.62d0, -3.3d0, 1.0d-5)
+         call more_family_checks()
 
 ! --- the formulas (opacity_blending)
          value = 1.234d0
@@ -1001,6 +1001,184 @@ contains
             call report("precedence: Alexander 2006 with 1994 also selected is 2006's", &
                  maxval(abs(both - first)), 0.0d0, ierr + k == 0)
          end subroutine precedence_checks
+
+! The families the decks do not use, off the pinned points. Called with
+! Alexander 1994 over OPAL95 loaded (alex_table_z1 = 0.016232, surface
+! X = 0.70).
+         subroutine more_family_checks()
+            use opacity_tables, only: pure_z_table_set
+            use laol_reader, only: read_pure_z_table
+            use laol_opacity, only: build_pure_z_splines, compute_pure_z_opacity
+            type(pure_z_table_set), save :: pure_z
+            real(dp) :: r(num_kap_results), r2(num_kap_results)
+            real(dp) :: pz, pz_log, pz_drho, pz_dt
+            character(len=256) :: pure_z_path
+            character(len=512) :: msg
+            integer :: ierr, ierr2, ierr3
+! --- Alexander 1994: the path off the surface X; the tables rebuilt at
+! another Z (at the nodes Z = 0.02, X = 0.70, log T 3.40, log R -3 the
+! file's 3-decimal entry); the surface table refreshed at X = 0.62; and
+! above the top log R (1.0), at the surface X and a T node, log kappa
+! linear from the last two columns: kappa(1.5) = 2 kappa(1.0) - kappa(0.5)
+            call derivative_check("Alexander 1994 off the surface X: derivatives against differences", &
+                 0.62d0, 0.016232d0, 3.62d0, -3.3d0, 1.0d-5)
+            call node_check("Alexander 1994 at another Z: its tables rebuilt, exact at a node", &
+                 0.70d0, 0.02d0, 3.40d0, -3.0d0)
+! (a lookup at the surface X first: the lookup at another Z above left
+! the tables at that Z, and the first lookup back at this Z rebuilds
+! them with the surface table at its own X)
+            call get_point(0.70d0, 0.016232d0, 3.62d0, logd_of(3.62d0, -3.3d0), r, ierr)
+            call get_point(0.62d0, 0.016232d0, 3.62d0, logd_of(3.62d0, -3.3d0), r, ierr)
+            call kap_update_surface_tables(0.62d0, ierr2)
+            call get_point(0.62d0, 0.016232d0, 3.62d0, logd_of(3.62d0, -3.3d0), r2, ierr3)
+            call report("Alexander 1994 surface table at X = 0.62: 2D is 3D", &
+                 abs(r(i_log10_kap) - r2(i_log10_kap)), 1.0d-12, ierr + ierr2 + ierr3 == 0)
+            call kap_update_surface_tables(0.70d0, ierr2)
+            call top_logr_check("Alexander 1994 above its top log R: linear from the last two")
+! --- Alexander 2006: the same above its top log R (a 0.03 Msun deck's
+! photosphere is there)
+            call configure("alex06", opal95=.true., alex06=.true., z1=0.016232d0, z2=0.0d0, &
+                 two_z=.false., opal95_path=trim(atom_dir)//"legacy/opal95/GS98.OP17", &
+                 alex06_path=trim(mol_dir)//"alexmol06gs98.tab", quiet=.true.)
+            call top_logr_check("Alexander 2006 above its top log R: linear from the last two")
+! --- Kurucz 1990: no row of the table has the density
+            call configure("kurucz90", opal95=.true., kurucz90=.true., z1=0.0188d0, z2=0.0d0, &
+                 two_z=.false., opal95_path=trim(atom_dir)//"legacy/opal95/GS98.OP17", &
+                 kurucz_path=trim(mol_dir)//"legacy/kurmol/kapp00.ross", quiet=.true.)
+            call get_point(0.70d0, 0.016232d0, 3.6d0, -25.0d0, r, ierr)
+            call report("Kurucz 1990: a density no row has returns ierr", 0.0d0, 0.0d0, &
+                 ierr == 1 .and. index(last_log_line(), 'has no value') > 0)
+! --- OPAL 1992 (one table at Z = 0.0188, surface X = 0.70; its X tables
+! are 0, 0.35 and 0.70): between two X tables; at the grid's X = 0.35,
+! one table, against the linear X interpolation 2e-5 beside it; log T
+! off the table; and a helium core, where the opacity is the Z blend of
+! the table's own (at opal_table_z1) and the pure-Z table's (at Z = 1)
+            pure_z_path = trim(atom_dir)//"lanl/PURECO.DBGLAOL"
+            call read_pure_z_table(pure_z, pure_z_path, 10.0d0, ierr)
+            call build_pure_z_splines(pure_z)
+            call compute_pure_z_opacity(pure_z, 2.0d0, 7.8d0, pz, pz_log, pz_drho, pz_dt, msg, ierr2)
+            call configure("opal92 and pure Z", opal92=.true., pure_z=.true., z1=0.0188d0, z2=0.0d0, &
+                 two_z=.false., opal92_path=trim(atom_dir)//"legacy/opal92/Z0188.OPALN", &
+                 pure_z_path=pure_z_path, quiet=.true.)
+            call derivative_check("OPAL92 between two X tables: derivatives against differences", &
+                 0.50d0, 0.0188d0, 5.53d0, -3.3d0, 1.0d-5)
+            call get_point(0.35d0, 0.0188d0, 5.53d0, logd_of(5.53d0, -3.3d0), r, ierr3)
+            call get_point(0.35d0 + 2.0d-5, 0.0188d0, 5.53d0, logd_of(5.53d0, -3.3d0), r2, ierr3)
+            call report("OPAL92 at an X of its grid: the X interpolation beside it", &
+                 abs(r(i_log10_kap) - r2(i_log10_kap)), 1.0d-4, ierr3 == 0)
+            call get_point(0.70d0, 0.0188d0, 3.0d0, logd_of(3.0d0, -3.3d0), r, ierr3)
+            call report("OPAL92: log T off the table returns ierr", 0.0d0, 0.0d0, &
+                 ierr3 == 1 .and. index(last_log_line(), 'is outside the OPAL 1992 tables') > 0)
+            call helium_core_blend_check("helium core (OPAL92): the Z blend of its table and the pure-Z", &
+                 pz_log, pz_drho, pz_dt, ierr2)
+! --- LAOL 1989 (one table at Z = 0.0188): the same helium core
+            call configure("laol89 and pure Z", laol89=.true., pure_z=.true., z1=0.0188d0, z2=0.0d0, &
+                 two_z=.false., laol_path=trim(atom_dir)//"legacy/opal92/Z0188AG89.DBGLAOL", &
+                 pure_z_path=pure_z_path, quiet=.true.)
+            call helium_core_blend_check("helium core (LAOL89): the Z blend of its table and the pure-Z", &
+                 pz_log, pz_drho, pz_dt, ierr2)
+            call laol_column_checks()
+         end subroutine more_family_checks
+
+! at the surface X and the T node log T 3.60, above the molecular
+! table's top log R (1.0): kappa(1.5) against 2 kappa(1.0) - kappa(0.5)
+         subroutine top_logr_check(label)
+            character(len=*), intent(in) :: label
+            real(dp) :: at_05(num_kap_results), at_10(num_kap_results), at_15(num_kap_results)
+            integer :: ierr, k
+            call get_point(0.70d0, 0.016232d0, 3.60d0, logd_of(3.60d0, 0.5d0), at_05, ierr)
+            call get_point(0.70d0, 0.016232d0, 3.60d0, logd_of(3.60d0, 1.0d0), at_10, k)
+            ierr = ierr + k
+            call get_point(0.70d0, 0.016232d0, 3.60d0, logd_of(3.60d0, 1.5d0), at_15, k)
+            call report(label, abs(at_15(i_log10_kap) - (2.0d0*at_10(i_log10_kap) - at_05(i_log10_kap))), &
+                 1.0d-12, ierr + k == 0)
+         end subroutine top_logr_check
+
+! X = 0, Z = 0.6 at log T 7.8, log rho 2 (no conduction there: below
+! Hubbard & Lampe's density): the interior table's opacity
+! there (a lookup at its own Z, 0.0188) blended linearly in Z with the
+! pure-Z table's (pz_log, pz_drho, pz_dt, at Z = 1, read with status
+! pz_ierr): log kappa and both derivatives
+         subroutine helium_core_blend_check(label, pz_log, pz_drho, pz_dt, pz_ierr)
+            use opacity_blending, only: blend_in_z
+            character(len=*), intent(in) :: label
+            real(dp), intent(in) :: pz_log, pz_drho, pz_dt
+            integer, intent(in) :: pz_ierr
+            real(dp) :: interior(num_kap_results), core(num_kap_results), expected(3)
+            integer :: ierr, k
+            call get_point(0.0d0, 0.0188d0, 7.8d0, 2.0d0, interior, ierr)
+            call get_point(0.0d0, 0.60d0, 7.8d0, 2.0d0, core, k)
+            expected = interior(2:4)
+            call blend_in_z(expected(1), pz_log, 0.60d0, 0.0188d0, 1.0d0)
+            call blend_in_z(expected(2), pz_drho, 0.60d0, 0.0188d0, 1.0d0)
+            call blend_in_z(expected(3), pz_dt, 0.60d0, 0.0188d0, 1.0d0)
+            call report(label, maxval(abs(core(2:4) - expected)), 1.0d-12, ierr + k + pz_ierr == 0)
+         end subroutine helium_core_blend_check
+
+! The LAOL column kernel (the LAOL 1989 and pure-Z lookups' own) on a
+! table the test makes: log kappa = 1 + 0.4 log rho - 2.5 (log T - 6) at
+! eight densities (log rho -3 to 4) and six temperatures (log T 6 to 7).
+! A spline through linear data is that line, and so is the linear
+! extrapolation past a row's ends, so inside the table and 1 dex past
+! either end log kappa and both derivatives are the line's, exactly;
+! beyond the tolerance (ln 10 = 2.3 dex) the lookup returns ierr; a row
+! left with three points is refused; and log kappa above 35 is capped.
+         subroutine laol_column_checks()
+            use opacity_tables, only: pure_z_table_set, laol_opacity_cap
+            use laol_opacity, only: build_pure_z_splines, compute_pure_z_opacity
+            type(pure_z_table_set), save :: tbl
+            real(dp), parameter :: a = 1.0d0, b = 0.4d0, c = -2.5d0
+            real(dp) :: o, ol, dr, dt, err, logrho(3)
+            character(len=512) :: msg
+            integer :: ierr, k, it
+            call fill_linear_table(tbl, a, b, c)
+            logrho = [0.3d0, -4.0d0, 5.0d0]
+            err = 0.0d0
+            ierr = 0
+            do k = 1, 3
+               call compute_pure_z_opacity(tbl, logrho(k), 6.5d0, o, ol, dr, dt, msg, it)
+               ierr = ierr + it
+               err = max(err, abs(ol - (a + b*logrho(k) + c*0.5d0)), abs(dr - b), abs(dt - c))
+            end do
+            call report("LAOL column: exact on a linear table, 1 dex past a row's ends", err, 1.0d-11, ierr == 0)
+            call compute_pure_z_opacity(tbl, -3.0d0 - 2.4d0, 6.5d0, o, ol, dr, dt, msg, ierr)
+            call compute_pure_z_opacity(tbl, -3.0d0 - 2.2d0, 6.5d0, o, ol, dr, dt, msg, k)
+            call report("LAOL column: beyond the tolerance returns ierr", 0.0d0, 0.0d0, &
+                 ierr == 1 .and. k == 0)
+            call fill_linear_table(tbl, a + 40.0d0, b, c)
+            call compute_pure_z_opacity(tbl, 0.3d0, 6.5d0, o, ol, dr, dt, msg, ierr)
+            call report("LAOL column: log kappa above 35 is capped", 0.0d0, 0.0d0, &
+                 ierr == 0 .and. o == laol_opacity_cap .and. ol == 35.0d0)
+            call fill_linear_table(tbl, a, b, c, short_row=3)
+            call compute_pure_z_opacity(tbl, 0.3d0, 6.5d0, o, ol, dr, dt, msg, ierr)
+            call report("LAOL column: a row of fewer than four points returns ierr", 0.0d0, 0.0d0, &
+                 ierr == 1 .and. index(msg, 'in log rho') > 0)
+         end subroutine laol_column_checks
+
+! tbl made the table with log kappa = offset + b log rho + c (log T - 6)
+! at log rho -3 to 4 and log T 6 to 7, splined; with short_row, its T
+! row of that index left with three densities
+         subroutine fill_linear_table(tbl, offset, b, c, short_row)
+            use opacity_tables, only: pure_z_table_set
+            use laol_opacity, only: build_pure_z_splines
+            type(pure_z_table_set), intent(inout) :: tbl
+            real(dp), intent(in) :: offset, b, c
+            integer, intent(in), optional :: short_row
+            integer :: ir, it
+            tbl%num_rho = 8
+            tbl%num_t = 6
+            tbl%log_extrapolation_tolerance = log(10.0d0)
+            tbl%opacity = 0.0d0
+            do it = 1, tbl%num_t
+               tbl%logt_grid(it) = 10.0d0**(6.0d0 + 0.2d0*(it - 1))
+               do ir = 1, tbl%num_rho
+                  tbl%rho_grid(ir) = 10.0d0**(-3.0d0 + (ir - 1))
+                  tbl%opacity(ir,it) = 10.0d0**(offset + b*(-3.0d0 + (ir - 1)) + c*0.2d0*(it - 1))
+               end do
+            end do
+            if (present(short_row)) tbl%opacity(4:8,short_row) = 0.0d0
+            call build_pure_z_splines(tbl)
+         end subroutine fill_linear_table
 
 ! A copy of GS98.OP17 at target in which, in every table whose header
 ! holds x_text, the row that starts with row_text has no value (9.999)
