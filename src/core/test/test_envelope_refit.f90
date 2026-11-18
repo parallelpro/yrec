@@ -267,7 +267,10 @@ subroutine check_append_at_fit_mass()
       off = off_profile(nz, point_mass_fraction(3))
       call report('append: a point at the fitting mass, not accepted: interpolated', off, &
            ierr == 0 .and. nz == num_zones + 3 .and. off <= 1.0e-11_dp)
+! (Point 2 convective: an interpolated zone would be convective, which
+! point 3 is not.)
       call set_model()
+      env%env_convective_flag(2) = .true.
       call append_envelope_shells(env, point_mass_fraction(3), log_total_mass, .true., &
            n_species_extended, nz, log_mass, logP, logT, logR, logRho, luminosity_lsun, &
            convective_flag, xa, ierr)
@@ -355,18 +358,17 @@ end subroutine check_shift
 ! The masses after an append: the model's own weights, with the centre's
 ! dm(1) = (m(1) + m(2))/2, telescope to M.
 subroutine check_masses()
+      real(dp), parameter :: untouched = -7.0_dp
       real(dp) :: m(max_zones), dm(max_zones), total, worst
       integer :: k
 
+! The old zones' m, and markers for what the kernel must not write: dm
+! below first_new, and everything above the model.
       call set_model()
-      m = -1.0_dp
-      dm = -1.0_dp
+      m = untouched
+      dm = untouched
       do k = 1, num_zones
          m(k) = 10.0_dp**log_mass(k)
-      end do
-      dm(1) = 0.5_dp*(m(1) + m(2))
-      do k = 2, num_zones - 1
-         dm(k) = 0.5_dp*(m(k+1) - m(k-1))
       end do
       dm(num_zones) = 12345.0_dp
       call append_envelope_shells(env, -0.0025_dp, log_total_mass, .false., &
@@ -383,14 +385,18 @@ subroutine check_masses()
          worst = max(worst, abs(dm(k)/(0.5_dp*(m(k+1) - m(k-1))) - 1.0_dp))
       end do
       call report('masses: dm(k) = (m(k+1) - m(k-1))/2', worst, worst <= 1.0e-14_dp)
-      total = sum(dm(1:nz))
+! The weights below first_new, as the model has them (the centre's is
+! (m(1) + m(2))/2), with the kernel's from first_new on.
+      total = 0.5_dp*(m(1) + m(2)) + sum(dm(num_zones:nz))
+      do k = 2, num_zones - 1
+         total = total + 0.5_dp*(m(k+1) - m(k-1))
+      end do
       call report('masses: the zones'' masses sum to the star''s', &
            abs(total/10.0_dp**log_total_mass - 1.0_dp), &
            abs(total/10.0_dp**log_total_mass - 1.0_dp) <= 1.0e-14_dp)
       call report('masses: the zones below first_new are untouched', 0.0_dp, &
-           dm(1) == 0.5_dp*(10.0_dp**log_mass(1) + 10.0_dp**log_mass(2)) .and. &
-           all(m(nz+1:) == -1.0_dp) .and. all(dm(nz+1:) == -1.0_dp) .and. &
-           dm(num_zones-1) == 0.5_dp*(m(num_zones) - m(num_zones-2)))
+           all(dm(:num_zones-1) == untouched) .and. &
+           all(m(nz+1:) == untouched) .and. all(dm(nz+1:) == untouched))
 end subroutine check_masses
 
 ! ---------------------------------------------------------------

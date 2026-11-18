@@ -164,8 +164,8 @@ new = 'if (cz_rotation_law_exponent < -2.0d0) then'
 id = 'refit-23'
 check = 'rotation: exponent 0: solid body, j = omega i'
 file = 'core/envelope/envelope_refit_kernel.f90'
-old = 'else if (cz_rotation_law_exponent >= 0.0d0) then'
-new = 'else if (cz_rotation_law_exponent > 0.0d0) then'
+old = '            omega(k) = omega(last_old)'
+new = '            omega(k) = 0.5d0*omega(last_old)'
 
 [[mutation]]
 id = 'refit-24'

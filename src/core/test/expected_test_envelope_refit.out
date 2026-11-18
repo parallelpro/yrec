@@ -22,7 +22,7 @@ shift: a point within the mass step is dropped, the rest contiguous  4.0E+00  ok
 -- masses
 masses: m = 10^log m for the new zones                               0.0E+00  ok
 masses: dm(k) = (m(k+1) - m(k-1))/2                                  0.0E+00  ok
-masses: the zones' masses sum to the star's                          2.2E-16  ok
+masses: the zones' masses sum to the star's                          0.0E+00  ok
 masses: the zones below first_new are untouched                      0.0E+00  ok
 -- rotation
 rotation: exponent -2: constant j, omega = j/i                       0.0E+00  ok
