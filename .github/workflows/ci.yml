@@ -152,7 +152,7 @@ jobs:
         run: >
           python3 -m pytest -v -rs
           test_numerics.py test_math.py test_io.py test_controls.py
-          test_generated_files.py test_boundaries.py test_structure.py
+          test_generated_files.py test_boundaries.py test_harness.py test_structure.py
           test_rotation.py test_rotation_kernels.py test_element_diffusion.py
           test_convection.py test_triangle_fit.py test_mass_change.py
           test_henyey_elimination.py test_envelope_integration.py

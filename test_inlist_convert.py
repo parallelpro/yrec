@@ -16,6 +16,8 @@ import sys
 
 import pytest
 
+from conftest import INPUT_ROOT, START_ROOT
+
 REPO = pathlib.Path(__file__).parent
 YREC = REPO / "src" / "yrec"
 CONVERTER = REPO / "src" / "tools" / "upgrade_inlist.py"
@@ -26,7 +28,7 @@ PAIRS = [
      "Test_solar_GS_rot_gray_OPALSCV_SF2_GS98_OP_CF10.nml2"),
     ("Test_solarcal_noGS_norot.nml1", "Test_solarcal_noGS_norot.nml2"),
 ]
-ENV = {"YREC_INPUT": REPO / "input", "YREC_START": REPO / "startmodels"}
+ENV = {"YREC_INPUT": INPUT_ROOT, "YREC_START": START_ROOT}
 
 
 def _strip(path):
@@ -49,7 +51,7 @@ def _run(workdir, args):
 def test_converted_inlist_is_byte_identical(tmp_path, nml1, nml2):
     if not YREC.exists():
         pytest.skip("build src/yrec first")
-    if not (REPO / "input").exists():
+    if not INPUT_ROOT.exists():
         pytest.skip("needs the full input/ tree (local only)")
 
     newstyle = tmp_path / "newstyle"

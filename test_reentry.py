@@ -22,6 +22,8 @@ import sys
 
 import pytest
 
+from conftest import INPUT_ROOT, START_ROOT
+
 REPO = pathlib.Path(__file__).parent
 YREC = REPO / "src" / "yrec"
 REENTRY = REPO / "src" / "test_reentry"
@@ -47,8 +49,8 @@ def _run(binary, workdir, inlists):
     (workdir / "output").mkdir()
     _write_solar_inlist(workdir)
     env = dict(os.environ)
-    env["YREC_INPUT"] = str(REPO / "input")
-    env["YREC_START"] = str(REPO / "startmodels")
+    env["YREC_INPUT"] = str(INPUT_ROOT)
+    env["YREC_START"] = str(START_ROOT)
     result = subprocess.run(
         [str(binary), *inlists], cwd=workdir,
         env=env, capture_output=True, text=True, timeout=600,

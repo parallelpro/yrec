@@ -28,6 +28,8 @@ import sys
 
 import pytest
 
+from conftest import INPUT_ROOT
+
 REPO = pathlib.Path(__file__).parent
 CASE = REPO / "sample_cases" / "solar_vs_MESA"
 sys.path.insert(0, str(REPO / "src" / "tools"))
@@ -35,8 +37,8 @@ sys.path.insert(0, str(CASE))
 import validate_model as vm  # noqa: E402
 import compare  # noqa: E402
 
-# this repository's own build, whatever the environment names (to validate
-# another build, run these tests from its tree)
+# this repository's own build (to validate another build, run these tests
+# from its tree); the tables and starting models are conftest.py's roots
 YREC = REPO / "src" / "yrec"
 
 # not in CI (minutes): deselect with `pytest -m "not local"`
@@ -83,7 +85,7 @@ def mesa():
 def yrec(tmp_path_factory):
     if not YREC.exists():
         pytest.skip("build src/yrec first")
-    if not (REPO / "input" / "opacity" / "atomic" / "legacy" / "opal95" / "GS98.OP17").exists():
+    if not (INPUT_ROOT / "opacity" / "atomic" / "legacy" / "opal95" / "GS98.OP17").exists():
         pytest.skip("needs the standard solar deck's tables under input/")
     tmp = tmp_path_factory.mktemp("mesa")
     deck = (CASE / "one_msun_no_diffusion.inlist").read_text()

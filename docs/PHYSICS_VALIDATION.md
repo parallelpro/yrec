@@ -40,8 +40,11 @@ python3 -m pytest -s test_validation_gyre.py                        # -s prints 
 - The four files CI does not run carry the pytest marker `local`:
   `pytest -m "not local"` leaves them out of a run of everything.
 - The tests run this repository's own `src/yrec` with its `input/` and
-  `startmodels/`, whatever `YREC_INPUT` and the like name in the
-  environment. To validate another build, run them from its tree.
+  `startmodels/`, whatever `YREC_INPUT` and `YREC_START` name in the
+  shell, as every root test does (conftest.py; pytest's header prints
+  the two roots). `YREC_TEST_EXTERNAL_ROOTS=1` is the one opt-in that
+  takes them from the environment. To validate another build, run the
+  tests from its tree.
 - `YREC_TEST_HDF5=1`, when `src/yrec` is an HDF5 build, adds the GSM
   file to the contract and GYRE tests.
 - `YREC_VALIDATION_REPORT=<file>` writes a test file's measured values.

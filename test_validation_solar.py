@@ -38,9 +38,10 @@ import pytest
 REPO = pathlib.Path(__file__).parent
 sys.path.insert(0, str(REPO / "src" / "tools"))
 import validate_model as vm  # noqa: E402
+from conftest import INPUT_ROOT  # noqa: E402
 
-# this repository's own build, whatever the environment names (to validate
-# another build, run these tests from its tree)
+# this repository's own build (to validate another build, run these tests
+# from its tree); the tables and starting models are conftest.py's roots
 YREC = REPO / "src" / "yrec"
 
 # not in CI (minutes, the full input tree): deselect with `pytest -m "not local"`
@@ -103,19 +104,19 @@ def _need_yrec(table):
     if not YREC.exists():
         pytest.skip("build src/yrec first")
     if not table.exists():
-        pytest.skip(f"needs the full input/ tree ({table.relative_to(REPO)})")
+        pytest.skip(f"needs the full input/ tree ({table})")
 
 
 @pytest.fixture(scope="module")
 def sun(tmp_path_factory):
-    _need_yrec(REPO / "input" / "eos" / "opal2006" / "EOSOPAL06Z0.018776")
+    _need_yrec(INPUT_ROOT / "eos" / "opal2006" / "EOSOPAL06Z0.018776")
     deck = REPO / "testsuite" / "Test_solarGS98_dif.inlist"
     return _final_model(tmp_path_factory.mktemp("solar"), deck.read_text())
 
 
 @pytest.fixture(scope="module")
 def sun_without_diffusion(tmp_path_factory):
-    _need_yrec(REPO / "input" / "eos" / "opal2006" / "EOSOPAL06Z0.016492")
+    _need_yrec(INPUT_ROOT / "eos" / "opal2006" / "EOSOPAL06Z0.016492")
     tmp = tmp_path_factory.mktemp("solar_nodif")
     case = REPO / "examples" / "run_standard_solar_model"
     conv = subprocess.run(

@@ -26,7 +26,7 @@ import subprocess
 
 import pytest
 
-from conftest import compare_output
+from conftest import INPUT_ROOT, compare_output
 
 REPO = pathlib.Path(__file__).parent
 BINARY = REPO / "src" / "test_atm"
@@ -37,7 +37,7 @@ def test_atm_standalone(tmp_path):
     if not BINARY.exists():
         pytest.skip("src/test_atm not built (run `make tests` in src/)")
     env = dict(os.environ)
-    (tmp_path / "input").symlink_to(REPO / "input")
+    (tmp_path / "input").symlink_to(INPUT_ROOT)
     env["YREC_INPUT"] = "input"
     result = subprocess.run(
         [str(BINARY)], cwd=tmp_path, env=env, capture_output=True, text=True

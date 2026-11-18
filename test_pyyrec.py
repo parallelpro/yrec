@@ -26,12 +26,14 @@ import sys
 
 import pytest
 
+from conftest import INPUT_ROOT, START_ROOT
+
 REPO = pathlib.Path(__file__).parent
 YREC = REPO / "src" / "yrec"
 CASE = REPO / "examples" / "run_standard_solar_model"
 NML1 = "Test_solar_noGS_norot.nml1"
 NML2 = "Test_solar_noGS_norot.nml2"
-ENV = {"YREC_INPUT": REPO / "input", "YREC_START": REPO / "startmodels"}
+ENV = {"YREC_INPUT": INPUT_ROOT, "YREC_START": START_ROOT}
 
 sys.path.insert(0, str(REPO))
 import pyyrec  # noqa: E402
@@ -86,7 +88,7 @@ def test_two_inprocess_runs_match_cli(tmp_path):
         pytest.skip("build libyrec first (`make lib` in src/)")
     if not YREC.exists():
         pytest.skip("build src/yrec first")
-    if not (REPO / "input").exists():
+    if not INPUT_ROOT.exists():
         pytest.skip("needs the full input/ tree (local only)")
 
     oracle = _run_cli(tmp_path / "cli")

@@ -16,6 +16,8 @@ import subprocess
 
 import pytest
 
+from conftest import INPUT_ROOT, START_ROOT
+
 REPO = pathlib.Path(__file__).parent
 BINARY = REPO / "src" / "test_run_contracts"
 DECK = REPO / "examples" / "run_config_matrix" / "cm_base.inlist"
@@ -27,8 +29,8 @@ def test_run_contracts(tmp_path):
         pytest.skip("src/test_run_contracts not built (run `make tests` in src/)")
     (tmp_path / "output").mkdir()
     env = dict(os.environ)
-    env["YREC_INPUT"] = str(REPO / "input")
-    env["YREC_START"] = str(REPO / "startmodels")
+    env["YREC_INPUT"] = str(INPUT_ROOT)
+    env["YREC_START"] = str(START_ROOT)
     env.pop("YREC_OUTPUT", None)
     result = subprocess.run(
         [str(BINARY), str(DECK.resolve())], cwd=tmp_path, env=env,

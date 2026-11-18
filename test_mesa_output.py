@@ -26,13 +26,15 @@ import sys
 
 import pytest
 
+from conftest import INPUT_ROOT, START_ROOT
+
 REPO = pathlib.Path(__file__).parent
 YREC = REPO / "src" / "yrec"
 CONVERTER = REPO / "src" / "tools" / "upgrade_inlist.py"
 CASE = REPO / "examples" / "run_standard_solar_model"
 NML1 = "Test_solar_noGS_norot.nml1"
 NML2 = "Test_solar_noGS_norot.nml2"
-ENV = {"YREC_INPUT": REPO / "input", "YREC_START": REPO / "startmodels"}
+ENV = {"YREC_INPUT": INPUT_ROOT, "YREC_START": START_ROOT}
 BASE = NML1.rsplit(".", 1)[0]
 
 
@@ -61,7 +63,7 @@ def _parse_mesa_file(path):
 def test_mesa_output_contract(tmp_path):
     if not YREC.exists():
         pytest.skip("build src/yrec first")
-    if not (REPO / "input").exists():
+    if not INPUT_ROOT.exists():
         pytest.skip("needs the full input/ tree (local only)")
 
     inlist = tmp_path / "inlist_conv"
@@ -274,7 +276,7 @@ def test_gsm_pulse_output(tmp_path):
     renamed to its path, so none of the run's own (*.tmp) is left."""
     if os.environ.get("YREC_TEST_HDF5") != "1":
         pytest.skip("set YREC_TEST_HDF5=1 (and build with USE_HDF5=1)")
-    if not YREC.exists() or not (REPO / "input").exists():
+    if not YREC.exists() or not INPUT_ROOT.exists():
         pytest.skip("needs src/yrec and the full input/ tree")
     inlist = tmp_path / "inlist_conv"
     conv = subprocess.run(
@@ -313,7 +315,7 @@ def test_output_directory_is_created(tmp_path):
     """The run log's directory, the output directory, is created with
     its parents, whatever characters its path holds (it was a shell
     `mkdir -p` with the path unquoted)."""
-    if not YREC.exists() or not (REPO / "input").exists():
+    if not YREC.exists() or not INPUT_ROOT.exists():
         pytest.skip("needs src/yrec and the full input/ tree")
     deck = REPO / "examples" / "run_config_matrix" / "cm_base.inlist"
     (tmp_path / "cm_base.inlist").write_text(deck.read_text())
@@ -331,7 +333,7 @@ def test_output_directory_is_created(tmp_path):
 def test_columns_file_path_is_expanded(tmp_path):
     """history_columns_file may start with a {YREC_...} placeholder,
     like every path control."""
-    if not YREC.exists() or not (REPO / "input").exists():
+    if not YREC.exists() or not INPUT_ROOT.exists():
         pytest.skip("needs src/yrec and the full input/ tree")
     deck = REPO / "examples" / "run_config_matrix" / "cm_base.inlist"
     text = deck.read_text().replace(

@@ -19,6 +19,8 @@ import sys
 
 import pytest
 
+from conftest import INPUT_ROOT, START_ROOT
+
 REPO = pathlib.Path(__file__).parent
 YREC = REPO / "src" / "yrec"
 CASE_DIR = REPO / "examples" / "run_standard_solar_model"
@@ -39,8 +41,8 @@ def test_config_error_exits_nonzero(tmp_path):
     nml2.write_text(text)
     (tmp_path / "output").mkdir()
     env = dict(os.environ)
-    env["YREC_INPUT"] = str(REPO / "input")
-    env["YREC_START"] = str(REPO / "startmodels")
+    env["YREC_INPUT"] = str(INPUT_ROOT)
+    env["YREC_START"] = str(START_ROOT)
     result = subprocess.run(
         [str(YREC), NML1, NML2], cwd=tmp_path,
         env=env, capture_output=True, text=True, timeout=120,
@@ -85,8 +87,8 @@ def test_bad_opacity_table_exits_nonzero(tmp_path):
     nml1.write_text(text)
     (tmp_path / "output").mkdir()
     env = dict(os.environ)
-    env["YREC_INPUT"] = str(REPO / "input")
-    env["YREC_START"] = str(REPO / "startmodels")
+    env["YREC_INPUT"] = str(INPUT_ROOT)
+    env["YREC_START"] = str(START_ROOT)
     result = subprocess.run(
         [str(YREC), NML1, NML2], cwd=tmp_path,
         env=env, capture_output=True, text=True, timeout=120,
@@ -124,8 +126,8 @@ def test_advective_transport_rejected(tmp_path):
     nml2.write_text(text)
     (tmp_path / "output").mkdir()
     env = dict(os.environ)
-    env["YREC_INPUT"] = str(REPO / "input")
-    env["YREC_START"] = str(REPO / "startmodels")
+    env["YREC_INPUT"] = str(INPUT_ROOT)
+    env["YREC_START"] = str(START_ROOT)
     result = subprocess.run(
         [str(YREC), rot + ".nml1", rot + ".nml2"], cwd=tmp_path,
         env=env, capture_output=True, text=True, timeout=600,
@@ -159,8 +161,8 @@ def test_old_group_names_refused(tmp_path):
     inlist.write_text(old)
     (tmp_path / "output").mkdir()
     env = dict(os.environ)
-    env["YREC_INPUT"] = str(REPO / "input")
-    env["YREC_START"] = str(REPO / "startmodels")
+    env["YREC_INPUT"] = str(INPUT_ROOT)
+    env["YREC_START"] = str(START_ROOT)
     result = subprocess.run(
         [str(YREC), "deck.inlist"], cwd=tmp_path,
         env=env, capture_output=True, text=True, timeout=120,
@@ -194,8 +196,8 @@ def test_nonpositive_triangle_size_refused(tmp_path):
     nml2.write_text(text)
     (tmp_path / "output").mkdir()
     env = dict(os.environ)
-    env["YREC_INPUT"] = str(REPO / "input")
-    env["YREC_START"] = str(REPO / "startmodels")
+    env["YREC_INPUT"] = str(INPUT_ROOT)
+    env["YREC_START"] = str(START_ROOT)
     result = subprocess.run(
         [str(YREC), NML1, NML2], cwd=tmp_path,
         env=env, capture_output=True, text=True, timeout=120,
@@ -222,7 +224,7 @@ def test_too_many_transport_iterations_exits_nonzero(tmp_path):
     assert n == 1
     nml2.write_text(text)
     (tmp_path / "output").mkdir()
-    env = dict(os.environ, YREC_INPUT=str(REPO / "input"), YREC_START=str(REPO / "startmodels"))
+    env = dict(os.environ, YREC_INPUT=str(INPUT_ROOT), YREC_START=str(START_ROOT))
     result = subprocess.run([str(YREC), f"{rot}.nml1", f"{rot}.nml2"], cwd=tmp_path,
                             env=env, capture_output=True, text=True, timeout=120)
     assert result.returncode == 1, (
@@ -244,7 +246,7 @@ def test_unknown_pulse_format_exits_nonzero(tmp_path):
     inlist.write_text(inlist.read_text().replace(
         "&physics", "&physics\n write_pulse_flag = .true.\n pulse_format = 'GYR'\n", 1))
     (tmp_path / "output").mkdir()
-    env = dict(os.environ, YREC_INPUT=str(REPO / "input"), YREC_START=str(REPO / "startmodels"))
+    env = dict(os.environ, YREC_INPUT=str(INPUT_ROOT), YREC_START=str(START_ROOT))
     result = subprocess.run([str(YREC), "inlist"], cwd=tmp_path,
                             env=env, capture_output=True, text=True, timeout=120)
     assert result.returncode == 1, (
@@ -268,7 +270,7 @@ def test_malformed_starting_model_exits_nonzero(tmp_path, damage, needle):
         pytest.skip("src/yrec not built")
     for name in (NML1, NML2):
         shutil.copy(CASE_DIR / name, tmp_path / name)
-    model = REPO / "startmodels" / "dbl" / "m1000gs98z018804_Dbl.first"
+    model = START_ROOT / "dbl" / "m1000gs98z018804_Dbl.first"
     lines = model.read_text().splitlines(keepends=True)
     assert lines[0].startswith("MOD2")
     if damage == "zones":
@@ -284,7 +286,7 @@ def test_malformed_starting_model_exits_nonzero(tmp_path, damage, needle):
     assert n == 1
     nml1.write_text(text)
     (tmp_path / "output").mkdir()
-    env = dict(os.environ, YREC_INPUT=str(REPO / "input"), YREC_START=str(REPO / "startmodels"))
+    env = dict(os.environ, YREC_INPUT=str(INPUT_ROOT), YREC_START=str(START_ROOT))
     result = subprocess.run([str(YREC), NML1, NML2], cwd=tmp_path,
                             env=env, capture_output=True, text=True, timeout=120)
     assert result.returncode == 1, (
@@ -311,7 +313,7 @@ def test_bulirsch_stoer_controls_out_of_range(tmp_path, control, value):
     assert n == 1, f"expected one {control} in the solar deck"
     nml2.write_text(text)
     (tmp_path / "output").mkdir()
-    env = dict(os.environ, YREC_INPUT=str(REPO / "input"), YREC_START=str(REPO / "startmodels"))
+    env = dict(os.environ, YREC_INPUT=str(INPUT_ROOT), YREC_START=str(START_ROOT))
     result = subprocess.run([str(YREC), NML1, NML2], cwd=tmp_path,
                             env=env, capture_output=True, text=True, timeout=120)
     assert result.returncode == 1, (
@@ -334,7 +336,7 @@ def test_num_runs_out_of_range(tmp_path, value):
     assert n == 1, "expected one NUMRUN in the solar deck"
     nml1.write_text(text)
     (tmp_path / "output").mkdir()
-    env = dict(os.environ, YREC_INPUT=str(REPO / "input"), YREC_START=str(REPO / "startmodels"))
+    env = dict(os.environ, YREC_INPUT=str(INPUT_ROOT), YREC_START=str(START_ROOT))
     result = subprocess.run([str(YREC), NML1, NML2], cwd=tmp_path,
                             env=env, capture_output=True, text=True, timeout=120)
     assert result.returncode == 1, (
@@ -356,7 +358,7 @@ def test_unwritable_output_directory_exits_nonzero(tmp_path):
     locked = tmp_path / "locked"
     locked.mkdir()
     locked.chmod(0o555)
-    env = dict(os.environ, YREC_INPUT=str(REPO / "input"), YREC_START=str(REPO / "startmodels"),
+    env = dict(os.environ, YREC_INPUT=str(INPUT_ROOT), YREC_START=str(START_ROOT),
                YREC_OUTPUT=str(locked))
     try:
         result = subprocess.run([str(YREC), NML1, NML2], cwd=tmp_path,
@@ -396,7 +398,7 @@ def test_read_only_history_file_exits_nonzero(tmp_path):
     locked = tmp_path / "output" / "locked.data"
     locked.write_text("")
     locked.chmod(0o444)
-    env = dict(os.environ, YREC_INPUT=str(REPO / "input"), YREC_START=str(REPO / "startmodels"))
+    env = dict(os.environ, YREC_INPUT=str(INPUT_ROOT), YREC_START=str(START_ROOT))
     result = subprocess.run([str(YREC), "inlist"], cwd=tmp_path, env=env,
                             capture_output=True, text=True, timeout=600)
     assert result.returncode == 1, (
@@ -421,7 +423,7 @@ def test_missing_starting_model_leaves_a_run_log(tmp_path):
     assert n == 1
     nml1.write_text(text)
     (tmp_path / "output").mkdir()
-    env = dict(os.environ, YREC_INPUT=str(REPO / "input"), YREC_START=str(REPO / "startmodels"))
+    env = dict(os.environ, YREC_INPUT=str(INPUT_ROOT), YREC_START=str(START_ROOT))
     result = subprocess.run([str(YREC), NML1, NML2], cwd=tmp_path,
                             env=env, capture_output=True, text=True, timeout=120)
     assert result.returncode == 1, (
@@ -446,7 +448,7 @@ def test_controls_error_leaves_a_run_log(tmp_path):
     text, n = re.subn(r"(?im)^(\s*TRIDT\s*=\s*)[-+.0-9dDeE]+", r"\g<1>0.0", nml2.read_text())
     assert n == 1
     nml2.write_text(text)
-    env = dict(os.environ, YREC_INPUT=str(REPO / "input"), YREC_START=str(REPO / "startmodels"))
+    env = dict(os.environ, YREC_INPUT=str(INPUT_ROOT), YREC_START=str(START_ROOT))
     result = subprocess.run([str(YREC), NML1, NML2], cwd=tmp_path,
                             env=env, capture_output=True, text=True, timeout=120)
     assert result.returncode == 1, (
@@ -475,7 +477,7 @@ def test_early_read_error_after_a_run_opens_no_run_log(tmp_path):
     old = re.sub(r"(?m)^&control\b", "&star_job", deck, count=1)
     (tmp_path / "b.inlist").write_text(re.sub(r"(?m)^&physics\b", "&controls", old, count=1))
     (tmp_path / "output").mkdir()
-    env = dict(os.environ, YREC_INPUT=str(REPO / "input"), YREC_START=str(REPO / "startmodels"))
+    env = dict(os.environ, YREC_INPUT=str(INPUT_ROOT), YREC_START=str(START_ROOT))
     result = subprocess.run([str(reentry), "a.inlist", "b.inlist"], cwd=tmp_path,
                             env=env, capture_output=True, text=True, timeout=600)
     assert result.returncode == 1 and "SECOND run failed" in result.stdout, result.stdout[-300:]

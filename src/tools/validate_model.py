@@ -38,6 +38,10 @@ import shutil
 import subprocess
 import sys
 
+# a sibling module: `python3 -I` leaves the script's directory off sys.path
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import harness  # noqa: E402
+
 # YREC's default G: log10 G = -7.17571 (state/physical_constants.f90). The
 # GYRE text and GSM files carry no G, so a pulsation code must be told
 # this value (GYRE: &constants G_GRAVITY); FGONG carries it as global 15.
@@ -539,12 +543,11 @@ def run_yrec(yrec, workdir, inlist_text, timeout=3600):
     (workdir / "inlist").write_text(inlist_text)
     (workdir / "profile_all.list").write_text(all_columns_file("profile_columns.list"))
     (workdir / "history_all.list").write_text(all_columns_file("history_columns.list"))
-    # this repository's tables and starting models, whatever the caller's
-    # environment names (a user's shell may export YREC_INPUT for another
-    # checkout)
+    # this repository's tables and starting models, whatever YREC_INPUT and
+    # YREC_START name in the caller's environment (harness.py has the
+    # rule and its one opt-in)
     env = dict(os.environ)
-    env["YREC_INPUT"] = str(REPO / "input")
-    env["YREC_START"] = str(REPO / "startmodels")
+    harness.apply(REPO, env)
     env["YREC_OUTPUT"] = "output"
     r = subprocess.run([str(yrec), "inlist"], cwd=workdir, env=env,
                        capture_output=True, text=True, timeout=timeout)

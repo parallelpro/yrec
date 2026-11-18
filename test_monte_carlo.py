@@ -20,6 +20,8 @@ import subprocess
 
 import pytest
 
+from conftest import INPUT_ROOT, START_ROOT
+
 REPO = pathlib.Path(__file__).parent
 YREC = REPO / "src" / "yrec"
 DECK = REPO / "examples" / "run_config_matrix"
@@ -63,7 +65,7 @@ def two_identical_runs(tmp_path, edit):
     history rows, which must be the same"""
     if not YREC.exists():
         pytest.skip("src/yrec not built (run `make` in src/)")
-    if not (REPO / "input" / "eos").exists():
+    if not (INPUT_ROOT / "eos").exists():
         pytest.skip("needs the full input/ tree")
     text = edit((DECK / f"{STEM}.inlist").read_text())
     assert re.search(r"(?m)^ mc_run_end = 1\s*$", text), "cm_monte_carlo no longer makes one run"
@@ -74,7 +76,7 @@ def two_identical_runs(tmp_path, edit):
     (tmp_path / "mc_input.dat").write_text(
         "\n".join(record + [record[0].replace("run  1", "run  2", 1), record[1]]) + "\n")
     (tmp_path / "output").mkdir()
-    env = dict(os.environ, YREC_INPUT=str(REPO / "input"), YREC_START=str(REPO / "startmodels"))
+    env = dict(os.environ, YREC_INPUT=str(INPUT_ROOT), YREC_START=str(START_ROOT))
     result = subprocess.run([str(YREC), "mc_twice.inlist"], cwd=tmp_path, env=env,
                             capture_output=True, text=True, timeout=600)
     assert result.returncode == 0, result.stdout[-2000:] + result.stderr[-2000:]

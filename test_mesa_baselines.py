@@ -25,12 +25,14 @@ import sys
 
 import pytest
 
+from conftest import INPUT_ROOT, START_ROOT
+
 REPO = pathlib.Path(__file__).parent
 YREC = REPO / "src" / "yrec"
 CONVERTER = REPO / "src" / "tools" / "upgrade_inlist.py"
 CASE_DIR = REPO / "examples" / "run_standard_solar_model"
 REF_ROOT = CASE_DIR / "standard" / "mesa"
-ENV = {"YREC_INPUT": REPO / "input", "YREC_START": REPO / "startmodels"}
+ENV = {"YREC_INPUT": INPUT_ROOT, "YREC_START": START_ROOT}
 
 # noGS_norot pins the baseline physics; the GS_rot case additionally
 # exercises the rotation history/profile columns (omega, j_rot, D_omega,

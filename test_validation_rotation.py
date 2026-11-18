@@ -45,9 +45,10 @@ import pytest
 REPO = pathlib.Path(__file__).parent
 sys.path.insert(0, str(REPO / "src" / "tools"))
 import validate_model as vm  # noqa: E402
+from conftest import INPUT_ROOT  # noqa: E402
 
-# this repository's own build, whatever the environment names (to validate
-# another build, run these tests from its tree)
+# this repository's own build (to validate another build, run these tests
+# from its tree); the tables and starting models are conftest.py's roots
 YREC = REPO / "src" / "yrec"
 
 # not in CI (minutes, the full input tree): deselect with `pytest -m "not local"`
@@ -135,7 +136,7 @@ class Run:
 def run(tmp_path_factory):
     if not YREC.exists():
         pytest.skip("build src/yrec first")
-    if not (REPO / "input" / "eos" / "opal2006" / "EOSOPAL06Z0.018127060").exists():
+    if not (INPUT_ROOT / "eos" / "opal2006" / "EOSOPAL06Z0.018127060").exists():
         pytest.skip("needs the full input/ tree")
     tmp = tmp_path_factory.mktemp("rotation")
     text = vm.edit_inlist(DECK.read_text(), "&control", [

@@ -27,7 +27,7 @@ picks one). A manifest is TOML (tomllib, Python 3.11 or later):
 
 For each mutation it writes the mutant, runs `make <program>` in src/,
 runs src/<program> in a fresh temporary directory (holding an empty
-output/; YREC_INPUT and YREC_START are the repository's unless set), and
+output/; YREC_INPUT and YREC_START are the repository's: harness.py), and
 reads the lines of its standard output that start with `check`. The
 mutation is caught when one of those lines ends in FAIL; when no such
 line is printed and the program exits nonzero (a crash, an error stop);
@@ -60,6 +60,10 @@ try:
     import tomllib
 except ImportError:  # Python < 3.11
     sys.exit("mutate.py needs Python 3.11 or later (tomllib)")
+
+# a sibling module: `python3 -I` leaves the script's directory off sys.path
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import harness  # noqa: E402
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
 SRC = REPO / "src"
@@ -121,8 +125,7 @@ def run(cmd, **kw):
 def run_program(m, binary):
     """(stdout, return code), or None after the timeout."""
     env = dict(os.environ)
-    env.setdefault("YREC_INPUT", str(REPO / "input"))
-    env.setdefault("YREC_START", str(REPO / "startmodels"))
+    harness.apply(REPO, env)
     env.update({k: str(v) for k, v in m.get("env", {}).items()})
     args = [a.replace("{repo}", str(REPO)) for a in m.get("args", [])]
     with tempfile.TemporaryDirectory(prefix="mutate_") as work:
@@ -190,6 +193,7 @@ def main():
             return 1
     for sig in (signal.SIGTERM, signal.SIGHUP):
         signal.signal(sig, interrupt)
+    print("\n".join(harness.describe(REPO)), flush=True)
     failed = skipped = 0
     built = set()
     try:

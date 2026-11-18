@@ -20,6 +20,8 @@ import subprocess
 
 import pytest
 
+from conftest import INPUT_ROOT, START_ROOT
+
 REPO = pathlib.Path(__file__).parent
 YREC = REPO / "src" / "yrec"
 
@@ -63,8 +65,8 @@ def test_low_mass_deck_reaches_its_stop(deck, reason, min_models, tmp_path):
     for sub in set(re.findall(r'\{YREC_OUTPUT\}/([^"]*)/[^/"]*"', text)):
         (out / sub).mkdir(parents=True, exist_ok=True)
     env = dict(os.environ)
-    env.update({"YREC_INPUT": str(REPO / "input"),
-                "YREC_START": str(REPO / "startmodels"),
+    env.update({"YREC_INPUT": str(INPUT_ROOT),
+                "YREC_START": str(START_ROOT),
                 "YREC_OUTPUT": str(out)})
     result = subprocess.run([str(YREC), source.name], cwd=work, env=env,
                             capture_output=True, text=True, timeout=1200)
