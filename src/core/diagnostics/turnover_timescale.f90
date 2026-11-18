@@ -5,12 +5,14 @@
 ! convection zone, from the stitched model: compute_turnover_timescale
 ! gathers the points and stores the result; the walk itself is the
 ! star-blind kernel time_surface_convection_zone (turnover_walk.f90).
+! initialize_turnover_timescale does it for a card's starting model, with
+! the step-start copies the first step reads.
 module turnover_timescale
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use star_info_lib, only: star_info
       implicit none
       private
-      public :: compute_turnover_timescale
+      public :: compute_turnover_timescale, initialize_turnover_timescale
 
 ! The walk takes the envelope's points with the interior's when the
 ! surface convection zone's base lies less than this in log P below the
@@ -34,7 +36,7 @@ contains
 ! During the next step the wind reads the value between the copy the
 ! step stored at its end (the _prev member) and the current member, and
 ! the deuterium limiter reads the current member.
-! Called by read_starting_model and by evolve_step's
+! Called by initialize_turnover_timescale and by evolve_step's
 ! refresh_turnover_timescale (core/step/step_driver.f90). A spline of
 ! the walk that fails is reported here, and its status returned in ierr.
 !   star reads: convective_flag, logP, nz, solar_mass_cgs,
@@ -120,5 +122,35 @@ subroutine compute_turnover_timescale(s, ierr)
       s%convective_turnover_timescale = turnover%turnover_time
       s%envelope_radius_rsun = turnover%base_radius/s%solar_radius_cgs
 end subroutine compute_turnover_timescale
+
+!----------------------------------------------------------------------
+! initialize_turnover_timescale
+!----------------------------------------------------------------------
+! The turnover time of a card's starting model, with the state the
+! first step's wind reads. The stitched model (the interior and a fresh
+! envelope) is built first: it sets star%photosphere_logP, and
+! compute_turnover_timescale walks it, returning the radius of the
+! convection zone's base in star%envelope_radius_rsun. The wind takes
+! photosphere_logP and the turnover time at the fraction
+! substep_time_fraction of the step, between the step-start copies
+! (*_prev) and the current values. Called by run_yrec's begin_kind_card
+! right after read_starting_model; ierr is build_stitched_model's or
+! compute_turnover_timescale's.
+!   star reads: convective_turnover_timescale, photosphere_logP
+!   star writes: convective_turnover_timescale_prev,
+!     photosphere_logP_prev, substep_time_fraction
+subroutine initialize_turnover_timescale(s, ierr)
+      use stitched_model, only: build_stitched_model
+      type(star_info), intent(inout) :: s
+      integer, intent(out) :: ierr
+
+      call build_stitched_model(s, ierr)
+      if (ierr /= 0) return
+      call compute_turnover_timescale(s, ierr)
+      if (ierr /= 0) return
+      s%convective_turnover_timescale_prev = s%convective_turnover_timescale
+      s%photosphere_logP_prev = s%photosphere_logP
+      s%substep_time_fraction = 0.5d0
+end subroutine initialize_turnover_timescale
 
 end module turnover_timescale

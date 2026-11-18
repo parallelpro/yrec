@@ -12,8 +12,6 @@
 ! first compute_timestep reads (its header). The turnover time, which
 ! the wind and the deuterium cap read, is refreshed by the step
 ! (step_driver's refresh_turnover_timescale, after compute_observables).
-! The module also holds shell_masses_from_log_mass, the m and dm of a
-! log-mass grid.
 !
 ! The order of the themes matters: the central conditions precede the
 ! base of the surface convection zone (whose fully convective branch
@@ -34,7 +32,6 @@ module observables
       implicit none
       private
       public :: compute_observables
-      public :: shell_masses_from_log_mass
 
 ! The eight solar-neutrino fluxes a detector captures (pp, pep, hep, 7Be,
 ! 8B, 13N, 15O, 17F: neutrino_flux_layout's slots i_nu_pp to i_nu_f17;
@@ -88,40 +85,16 @@ subroutine compute_observables(s, ierr)
 end subroutine compute_observables
 
 ! ---------------------------------------------------------------
-! The shell-center masses m(1:nz) (g) and the shell masses dm(1:nz)
-! of the log10 mass grid log_mass: dm(i) = (m(i+1) - m(i-1))/2, with a
-! mirror point m(0) = -m(1) below the center, and the last shell reaching
-! the total mass, dm(nz) = M - (m(nz-1) + m(nz))/2. Shared by
-! read_starting_model (build_shell_masses: star%m, star%dm) and
-! write_neutrino_flux_table (its local copies).
-subroutine shell_masses_from_log_mass(log_mass, log_total_mass, nz, m, dm)
-      use math_lib
-      real(dp), intent(in) :: log_mass(:), log_total_mass
-      integer, intent(in) :: nz
-      real(dp), intent(inout) :: m(:), dm(:)
-      real(dp) :: prev_mass, curr_mass, next_mass
-      integer :: i
-
-      next_mass = exp(ln10*log_mass(1))
-      curr_mass = - next_mass
-      do i = 2,nz
-       prev_mass = curr_mass
-       curr_mass = next_mass
-       next_mass = exp(ln10*log_mass(i))
-       m(i-1) = curr_mass
-       dm(i-1) = 0.5d0*(next_mass-prev_mass)
-      end do
-      m(nz) = next_mass
-      dm(nz) = exp(ln10*log_total_mass) - 0.5d0*(curr_mass+ &
-           next_mass)
-end subroutine shell_masses_from_log_mass
-
-! ---------------------------------------------------------------
 ! Rescales the luminosity channels star%luminosity_breakdown_lsun so that
 ! they sum to the surface luminosity: each channel times
 ! L(nz)/sum of channels (structure_equations' luminosity_channel_sum,
 ! with the extra energy sources' channel when there are any). Skipped
-! during the helium flash. (This changes the model.)
+! during the helium flash. This changes the model, after the step's
+! compute_timestep has read the solver's channels: the rescaled values
+! are what the model file stores and what the next card's first
+! compute_timestep reads (the hydrogen and helium burning limits and the
+! sign of L_grav). The factor is 1 to within the solver's last
+! correction.
 !   star reads: luminosity_lsun, nz, physics%helium_flash_active
 !   star writes: luminosity_breakdown_lsun
 subroutine renormalize_luminosity_breakdown(s)

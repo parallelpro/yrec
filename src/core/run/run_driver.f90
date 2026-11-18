@@ -11,6 +11,7 @@ module run_driver
       use run_setup, only: prepare_run
       use shell_boundaries, only: locate_shell_boundaries
       use starting_model, only: read_starting_model
+      use turnover_timescale, only: initialize_turnover_timescale
       use calibration, only: check_solar_calibration, setup_solar_calibration, setup_star_calibration, &
            end_star_calibration_card
       implicit none
@@ -353,6 +354,8 @@ subroutine begin_kind_card
 ! Read the starting model, or reuse the one in memory, and rescale it
 ! if the card asks for that.
        call read_starting_model(s, ierr)
+       if (ierr /= 0) return
+       call initialize_turnover_timescale(s, ierr)
        if (ierr /= 0) return
 
 ! A fresh starting-model load restarts the model counter, so the

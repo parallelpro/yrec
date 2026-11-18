@@ -6,9 +6,9 @@
 ! and set up with the state the first step needs.
 module starting_model
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use turnover_timescale, only: compute_turnover_timescale
       use shell_physics, only: compute_shell_physics
       use model_rescaling, only: rescale_model
+      use regridding, only: compute_shell_masses
       use rescaling_kernels, only: compute_envelope_mixture
       use star_info_lib, only: star_info
       use run_cards, only: card_evolve
@@ -34,7 +34,6 @@ module starting_model
       use physical_constants, only: c4pi3l, c4pil, cc13, cc23, cgl, csigl, ln10, seconds_per_year
       use eos_lib, only: eos_get, eos_result
       use kap_lib, only: kap_get, num_kap_results
-      use stitched_model, only: build_stitched_model
       implicit none
       private
       public :: read_starting_model
@@ -101,9 +100,11 @@ contains
 !   build_shell_masses, initialize_rotation_state, snapshot_step_start
 !                               shell masses, rotation totals, step-start
 !                               copies.
-! Then shell_physics, am_convective_regions and
-! compute_turnover_timescale give the gradients, opacities, convection
-! zones and turnover time of the starting model.
+! Then shell_physics and am_convective_regions give the gradients,
+! opacities and convection zones of the starting model. Its stitched
+! model and turnover time are the caller's next call
+! (core/diagnostics/turnover_timescale.f90's
+! initialize_turnover_timescale): model/ calls nothing of diagnostics/.
 ! Called with the star's model_diverged_flag set (a step failed to
 ! converge), it only stops the run with ierr = 1.
 !
@@ -119,15 +120,10 @@ contains
 ! mass of each shell, in g; mean_radius, unused_di_domega and
 ! mean_gravity are the rotation geometry); the single-point physics in
 ! set_new_last_shell_convection uses shell_physics' log10_* names.
-!   star reads: convective_turnover_timescale, current_card, log_mass,
-!     logP, logR, logRho, logT, model_diverged_flag, nz,
-!     photosphere_logP, xa
+!   star reads: current_card, log_mass, logP, logR, logRho, logT,
+!     model_diverged_flag, nz, xa
 !   star writes: am_transport_convective_flag, convective_flag,
-!     convective_turnover_timescale_prev,
-!     envelope_overshoot_bottom_index, envelope_overshoot_top_index,
-!     photosphere_logP_prev, substep_time_fraction
-!   star reads: none
-!   star writes: none
+!     envelope_overshoot_bottom_index, envelope_overshoot_top_index
 subroutine read_starting_model(s, ierr)
       implicit none
       type(star_info), intent(inout) :: s
@@ -143,7 +139,7 @@ subroutine read_starting_model(s, ierr)
       ierr = 0
       sm%run_index = s%current_card
 
-! model_failed_flag (legacy LARGE) means the last model failed to
+! model_diverged_flag (legacy LARGE) means the last model failed to
 ! converge: stop the run.
       if (s%model_diverged_flag) then
          lines = unwritten_line
@@ -183,26 +179,6 @@ subroutine read_starting_model(s, ierr)
            convective_zone_bounds,num_radiative_zones, &
            num_convective_zones, s%envelope_overshoot_bottom_index, &
            s%envelope_overshoot_top_index, ierr)
-      if (ierr /= 0) return
-! Initialize the convective turnover time (legacy TAUCZ), the
-! photospheric pressure photosphere_logP and substep_time_fraction. The
-! stitched model (interior plus a fresh envelope) is built first: it sets
-! star%photosphere_logP, and compute_turnover_timescale walks it,
-! returning the radius of the convection-zone base in
-! star%envelope_radius_rsun. (starin passed the envelope radius array
-! there, overwriting its first element.) The wind takes photosphere_logP
-! and the turnover time at the fraction substep_time_fraction of the step,
-! between the step-start copies (*_prev) and the current values.
-      call build_stitched_model(s, ierr)
-      if (ierr /= 0) return
-      call compute_turnover_timescale(s, ierr)
-      if (ierr /= 0) return
-      s%convective_turnover_timescale_prev = s%convective_turnover_timescale
-      s%photosphere_logP_prev = s%photosphere_logP
-      s%substep_time_fraction = 0.5
-
-      return
-
 end subroutine read_starting_model
 
 
@@ -1109,14 +1085,14 @@ end subroutine append_envelope_as_shells
 
 ! ---------------------------------------------------------------
 ! The unlogged mass coordinate m and the mass dm of each shell (g),
-! from the (possibly extended or refitted) log-mass grid.
+! from the (possibly extended or refitted) log-mass grid (regridding's
+! compute_shell_masses, as the rezone sets them).
 !   star reads: log_mass, log_total_mass, nz
 !   star writes: dm, m
 subroutine build_shell_masses(s)
-      use observables, only: shell_masses_from_log_mass
       type(star_info), intent(inout) :: s
-      call shell_masses_from_log_mass(s%log_mass, s%log_total_mass, &
-           s%nz, s%m, s%dm)
+      call compute_shell_masses(s%log_mass(1:s%nz), s%log_total_mass, &
+           s%m(1:s%nz), s%dm(1:s%nz))
 end subroutine build_shell_masses
 
 

@@ -828,13 +828,13 @@ module star_info_lib
 ! at the start of the step [cm]; step_driver, evolve_rotation
             real(dp) :: envelope_overshoot_depth_start
 ! convective_turnover_timescale of the previous model [s]; step_driver,
-! starting_model. Copied after each converged model (and at a model
+! turnover_timescale. Copied after each converged model (and at a model
 ! read); the wind interpolates between it and the current value at
 ! substep_time_fraction.
             real(dp) :: convective_turnover_timescale_prev
 ! photosphere_logP of the previous model, copied with
 ! convective_turnover_timescale_prev [log10 dyn/cm^2]; step_driver,
-! starting_model
+! turnover_timescale
             real(dp) :: photosphere_logP_prev
 ! j_rot at the start of the structure-rotation iteration [cm^2/s];
 ! step_driver. Restored on each repeat pass when
@@ -885,7 +885,7 @@ module star_info_lib
 ! inside atm_get, i.e. by any envelope integration (the triangle's too).
             real(dp) :: photosphere_logP
 ! fraction of the step elapsed at the current rotation sub-step [-];
-! evolve_rotation, starting_model. 0.5 after a model read.
+! evolve_rotation, turnover_timescale. 0.5 after a model read.
             real(dp) :: substep_time_fraction
 ! omega of the latest rotation sub-step's model, the structure
 ! interpolated to the sub-step's end [rad/s]; mid_timestep_model,
