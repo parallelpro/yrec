@@ -16,13 +16,15 @@
 !              2|w - w0|/(w + w0) and dt = dt_prev max_domega_global/that;
 !              no change -> unlimited;
 !   hydrogen   L_H at or below 1e-34 -> unlimited; the core branch
-!              E_H Delta X m_cc/(L_cc Lsun) with the smaller Delta X; the
+!              E_H Delta X m_cc/(L_cc Lsun) with the smaller Delta X,
+!              and none where L_cc <= 0; the
 !              shell branch E_H atime(dx_total) X_surf Msun/(L_H Lsun),
 !              and atime(dx_shell)/|dX/dt| at a shell midpoint that
 !              burns (dX/dt from the network), which is off for
 !              atime(dx_shell) <= 0;
 !   helium     off -> unlimited; the flash's 1e15/eps_3alpha, the rate
-!              floored at 1e-22; the core branch; the shell branch's
+!              floored at 1e-22; the core branch, and none where the
+!              core edge's L <= 0; the shell branch's
 !              smaller limit, and none where L <= 0; the hottest zone;
 !   hr         off unless asked for with the structure limits off; f from
 !              log Teff or log L over the triangle's size; nothing
@@ -237,6 +239,10 @@ subroutine check_hydrogen()
       expected = 6.0e18_dp/lsun*(m(2)/l0(2))*delta_x
       call report('hydrogen: core dX = atime(dx_core_frac) X_cc', &
            relerr(dt, expected), relerr(dt, expected) <= 1.0e-14_dp)
+      l0(2) = -0.6_dp
+      dt = hydrogen_burning_limit(set, 1.0_dp, xa, xa, lrho, lt0, m, l0, 2, 3, n)
+      call report('hydrogen: core with L <= 0 at its edge -> unlimited', dt, dt == dt_unlimited)
+      l0(2) = 0.6_dp
 ! Shell burning (central X below atime(core_min)); the shell midpoint,
 ! point 4, lies below the network's first cutoff (log T 6.3 < 6.5).
       xa(i_h1,1) = 1.0e-4_dp
@@ -295,6 +301,10 @@ subroutine check_helium()
       expected = (5.85e17_dp/lsun)*set%timestep_factors(itime_dy_core_tot)*(m(2)/l0(2))
       call report('helium: core E_He dY m_cc/(L_cc Lsun)', relerr(dt, expected), &
            relerr(dt, expected) <= 1.0e-14_dp)
+      l0(2) = 0.0_dp
+      dt = helium_burning_limit(set, 1.0_dp, 0.0_dp, xa, lrho, m, l0, 2, 3)
+      call report('helium: core with L <= 0 at its edge -> unlimited', dt, dt == dt_unlimited)
+      l0(2) = 0.6_dp
 ! Shell burning: core helium gone (1 - Z below atime(core_min)).
       xa(i_metals,2) = 1.0_dp
       dt = helium_burning_limit(set, 1.0_dp, 0.0_dp, xa, lrho, m, l0, 2, 4)

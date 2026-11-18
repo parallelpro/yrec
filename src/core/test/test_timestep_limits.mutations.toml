@@ -254,3 +254,20 @@ check = 'hydrogen: shell no depletion bound for atime(dx_shell) <= 0'
 file = 'core/step/timestep_limits.f90'
 old = 'if (dx_dt < 0.0d0 .and. set%timestep_factors(itime_dx_shell) > 0.0d0) &'
 new = 'if (dx_dt < 0.0d0) &'
+
+[[mutation]]
+id = 'timestep-36'
+check = 'hydrogen: core with L <= 0 at its edge -> unlimited'
+file = 'core/step/timestep_limits.f90'
+old = '''         if (luminosity(core_edge) <= 0.0d0) return
+         delta_x = min('''
+new = '''         delta_x = min('''
+
+[[mutation]]
+id = 'timestep-37'
+check = 'helium: core with L <= 0 at its edge -> unlimited'
+file = 'core/step/timestep_limits.f90'
+old = '''         if (luminosity(core_edge) <= 0.0d0) return
+         dt = min('''
+new = '''         if (luminosity(core_edge) < 0.0d0) return
+         dt = min('''
