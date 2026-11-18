@@ -32,7 +32,7 @@ turns into a failure of this file (XPASS) when the defect is fixed, at
 which point the xfail mark is removed.
 
 YREC_EXE names another yrec to validate (default src/yrec). Run time:
-about 35 s. Needs only the tables CI's sparse checkout has.
+about 45 s. Needs only the tables CI's sparse checkout has.
 """
 import copy
 import math
@@ -115,6 +115,20 @@ TOL = {
     # the photosphere: the hydrostatic and gradient defects of the pair
     # that straddles it, as in the atmosphere
     "photosphere_hydrostatic_pair": 1.0e-2,   # measured 2.8e-3
+    # the opacity's derivative columns against the opacity's own change
+    # along the model, dln kap/dln P = (kap_T/kap) dlnT/dlnP +
+    # (kap_rho/kap) dlnrho/dlnP where the composition is uniform, by
+    # centred differences (absolute; the left side is of order 1.5 in the
+    # interior and reaches 8 in the hydrogen ionization zone, which the
+    # output mesh of the envelope resolves poorly)
+    "kap_derivatives_interior": 4.0e-2,       # measured 1.2e-2
+    "kap_derivatives_outer": 1.0,             # measured 0.41
+    # the energy generation's: eps_rho/eps is 1 for two-body reactions
+    # (measured 1.02 to 1.08, the screening), eps_T/eps is the
+    # temperature exponent at fixed composition (measured 4.9 to 13.8:
+    # the He3 reactions are not in equilibrium)
+    "eps_rho_over_eps": (0.95, 1.20),
+    "eps_T_over_eps": (3.0, 25.0),
 }
 
 # measured values, filled by the checks (pytest -s prints them at the end;
@@ -462,6 +476,46 @@ def check_derived_columns(b):
             assert p["grada"][j] * (1 - 1e-9) <= p["gradT"][j] <= p["gradr"][j] * (1 + 1e-9), (b.label, j)
 
 
+def check_opacity_and_energy_derivatives(b):
+    """The pulse file's kap_kap_T and kap_kap_rho are the opacity's
+    derivatives (times kap): they reproduce the opacity's change along
+    the model wherever the composition is uniform, in all three regions.
+    eps_eps_T and eps_eps_rho are eps times exponents of the size nuclear
+    burning has, and zero with eps above the fitting point."""
+    c = b.cols
+    lnp = [math.log(x) for x in c["P"]]
+    dk = vm.centered([math.log(x) for x in c["kap"]], lnp)
+    dt = vm.centered([math.log(x) for x in c["T"]], lnp)
+    dr = vm.centered([math.log(x) for x in c["rho"]], lnp)
+    x = b.prof["h1"]
+    worst_by_region = {}
+    for name, lo, hi in (("interior", 2, b.nz - 2), ("outer", b.nz + 2, b.n - 2)):
+        worst_here, count = 0.0, 0
+        for k in range(lo, hi):
+            if abs(x[k - 1] - x[-1]) > 1.0e-6 or abs(x[k + 1] - x[-1]) > 1.0e-6 or k in (b.iph - 1, b.iph, b.iph + 1):
+                continue
+            along = c["kap_kap_T"][k] / c["kap"][k] * dt[k] + c["kap_kap_rho"][k] / c["kap"][k] * dr[k]
+            worst_here = max(worst_here, abs(dk[k] - along))
+            count += 1
+        assert count >= 40, (b.label, name, count)
+        worst_by_region[name] = worst_here
+    assert record("kap derivatives vs dln kap/dln P along the model, interior",
+                  worst_by_region["interior"]) <= TOL["kap_derivatives_interior"], b.label
+    assert record("kap derivatives vs dln kap/dln P along the model, envelope and atmosphere",
+                  worst_by_region["outer"]) <= TOL["kap_derivatives_outer"], b.label
+    burning = [k for k in range(b.nz) if c["eps"][k] > 1.0e-3 * max(c["eps"])]
+    if max(c["eps"]) > 1.0e-2:   # (the pre-main-sequence models burn only deuterium)
+        rho_exp = [c["eps_eps_rho"][k] / c["eps"][k] for k in burning]
+        t_exp = [c["eps_eps_T"][k] / c["eps"][k] for k in burning]
+        record("eps_eps_rho/eps, largest", max(rho_exp))
+        record("eps_eps_T/eps, largest", max(t_exp))
+        lo, hi = TOL["eps_rho_over_eps"]
+        assert lo <= min(rho_exp) and max(rho_exp) <= hi, (b.label, min(rho_exp), max(rho_exp))
+        lo, hi = TOL["eps_T_over_eps"]
+        assert lo <= min(t_exp) and max(t_exp) <= hi, (b.label, min(t_exp), max(t_exp))
+    assert all(v == 0.0 for name in ("eps", "eps_eps_T", "eps_eps_rho") for v in c[name][b.nz:]), b.label
+
+
 PROFILE_TO_PULSE = (("Gamma_1", "gamma1"), ("nabla", "gradT"), ("nabla_ad", "grada"),
                     ("delta", "delta"), ("kap", "opacity"), ("Omega_rot", "omega"))
 
@@ -527,7 +581,8 @@ def check_fit_join_density(b):
 
 CHECKS = [check_header, check_monotonic, check_interior_equations, check_envelope_equations,
           check_atmosphere_equations, check_luminosity_equation, check_brunt,
-          check_derived_columns, check_profile_vs_pulse, check_fit_join]
+          check_derived_columns, check_profile_vs_pulse, check_fit_join,
+          check_opacity_and_energy_derivatives]
 
 
 @pytest.mark.parametrize("check", CHECKS, ids=lambda f: f.__name__)
@@ -762,6 +817,28 @@ def mutate_radius_order(b):
         b.cols[name][b.iph + 2], b.cols[name][b.iph + 3] = b.cols[name][b.iph + 3], b.cols[name][b.iph + 2]
 
 
+def mutate_kap_derivatives_above_fit(b):
+    """kap_kap_T and kap_kap_rho zero above the fitting point
+    (stitched_model Sources 3, the state before 2026)."""
+    for name in ("kap_kap_T", "kap_kap_rho"):
+        for k in range(b.nz, b.n):
+            b.cols[name][k] = 0.0
+
+
+def mutate_kap_derivatives_logarithmic(b):
+    """kap_kap_T and kap_kap_rho written as the bare logarithmic
+    derivatives, without the factor kap."""
+    for name in ("kap_kap_T", "kap_kap_rho"):
+        b.cols[name] = [v / k for v, k in zip(b.cols[name], b.cols["kap"])]
+
+
+def mutate_eps_derivatives_times_eps(b):
+    """eps_eps_T and eps_eps_rho multiplied by eps once more
+    (stitched_model Sources 4, the state before the 2026-10 audit)."""
+    for name in ("eps_eps_T", "eps_eps_rho"):
+        b.cols[name] = [v * e for v, e in zip(b.cols[name], b.cols["eps"])]
+
+
 MUTATIONS = [
     (mutate_gravitational_constant, check_interior_equations),
     (mutate_density_units, check_interior_equations),
@@ -779,6 +856,9 @@ MUTATIONS = [
     (mutate_fit_temperature, check_fit_join),
     (mutate_profile_pressure, check_profile_vs_pulse),
     (mutate_radius_order, check_monotonic),
+    (mutate_kap_derivatives_above_fit, check_opacity_and_energy_derivatives),
+    (mutate_kap_derivatives_logarithmic, check_opacity_and_energy_derivatives),
+    (mutate_eps_derivatives_times_eps, check_opacity_and_energy_derivatives),
 ]
 
 
