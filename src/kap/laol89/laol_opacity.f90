@@ -5,13 +5,12 @@
 ! another Z when the run blends two), and the LAOL pure-Z table (Z = 1,
 ! a pure mixture of equal numbers of C and O, PURECO.DBGLAOL) that
 ! helium-burning cores blend toward.
-!     read_laol_tables, build_laol_splines    load and spline the
-!                                             LAOL89 tables
-!     compute_laol_opacity                    the opacity and its log
-!                                             derivatives from them
-!     read_pure_z_table, build_pure_z_splines,
-!     compute_pure_z_opacity                  the same for the pure-Z
-!                                             table
+!     build_laol_splines        each row's spline in log rho, from the
+!                               LAOL89 tables laol_reader read
+!     compute_laol_opacity      the opacity and its log derivatives
+!                               from them
+!     build_pure_z_splines,
+!     compute_pure_z_opacity    the same for the pure-Z table
 ! Both interpolate a column (laol_column_opacity) with cubic splines in
 ! log rho and in T, extrapolating up to ln(laol_extrapolation_tolerance)
 ! in log rho past a row's ends (a natural log on a log10 axis, as the F77
@@ -22,7 +21,7 @@
 module laol_opacity
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use opacity_tables, only: laol_log10_opacity_cap, laol_opacity_cap, laol_table_set, n_laol_rho, &
-           n_laol_t, n_laol_x, pure_z_table_set, kap_settings_t, kap_table_paths_t, &
+           n_laol_t, pure_z_table_set, kap_settings_t, kap_table_paths_t, &
            opacity_table_state
       use opacity_source, only: kap_point, kap_result, kap_source
       use opacity_blending, only: blend_results_in_z
@@ -37,76 +36,89 @@ module laol_opacity
            laol_column_outside_temperature = 2, laol_column_splint_failed = 3
       public :: build_laol_splines, compute_laol_opacity, &
            build_pure_z_splines, compute_pure_z_opacity
+! A row needs this many points with data for its spline in log rho, and
+! a column this many T rows with a value at the density for its spline
+! in log T
+      integer, parameter :: min_spline_points = 4
 
 contains
 
 
 !----------------------------------------------------------------------
-! build_laol_splines (formerly sulaol)
+! build_laol_splines
 !----------------------------------------------------------------------
 ! Converts each table's T grid to log10 T and builds the natural cubic
-! spline in log rho of every (X, T) row (the internal spline_laol_table),
-! for compute_laol_opacity; the second table with two_z_tables.
+! spline in log rho of every (X, T) row (spline_laol_table), for
+! compute_laol_opacity; the second table with two_z_tables.
 subroutine build_laol_splines(tables, two_z_tables)
       type(laol_table_set), intent(inout) :: tables(:)
       logical, intent(in) :: two_z_tables
 
-      real(dp) :: row_log10_opacity(n_laol_rho), row_log_rho(n_laol_rho), &
-           row_d2opacity(n_laol_rho)
-      integer :: it, ix, ir, num_valid_rho
-
-      do it=1, tables(1)%num_t
-         tables(1)%grid_t(it) = log10(tables(1)%grid_t(it))
-      end do
       call spline_laol_table(tables(1))
-      if (two_z_tables) then
-       do it=1, tables(2)%num_t
-          tables(2)%grid_t(it) = log10(tables(2)%grid_t(it))
-       end do
-         call spline_laol_table(tables(2))
-      end if
-      return
+      if (two_z_tables) call spline_laol_table(tables(2))
+end subroutine build_laol_splines
 
-contains
-
-! spline_laol_table: the natural cubic spline in log rho of every
-! (X, T) row of tbl with at least 4 points (fewer: none, num_points 0).
+! One table: its T grid to log10 T, and each (X, T) row's spline in
+! log rho (spline_row_in_log_rho).
 subroutine spline_laol_table(tbl)
       type(laol_table_set), intent(inout) :: tbl
+      integer :: ix, it
 
+      do it=1, tbl%num_t
+         tbl%grid_t(it) = log10(tbl%grid_t(it))
+      end do
       do ix=1, tbl%num_x
          do it=1, tbl%num_t
-            num_valid_rho=0
-            do ir=1, tbl%num_rho
-                tbl%slaol_opacity(ix,ir,it) = 0.0d0
-                tbl%slaol_log_rho(ix,ir,it) = 0.0d0
-                tbl%slaol_d2opacity(ix,ir,it) = 0.0d0
-                if (tbl%opacity(ix,ir,it) /= 0.0d0) then
-                   num_valid_rho = num_valid_rho+1
-                   row_log10_opacity(num_valid_rho) = log10(tbl%opacity(ix,ir,it))
-                   row_log_rho(num_valid_rho) = log10(tbl%grid_rho(ir))
-                end if
-            end do
-            if (num_valid_rho >= 4) then
-               tbl%slaol_num_points(ix,it)=num_valid_rho
-               call natural_spline(row_log_rho, row_log10_opacity, num_valid_rho, &
-                    row_d2opacity)
-               do ir=1,num_valid_rho
-                   tbl%slaol_opacity(ix,ir,it) = row_log10_opacity(ir)
-                   tbl%slaol_log_rho(ix,ir,it) = row_log_rho(ir)
-                   tbl%slaol_d2opacity(ix,ir,it) = row_d2opacity(ir)
-               end do
-            else
-               tbl%slaol_num_points(ix,it) = 0
-            end if
+            call spline_row_in_log_rho(tbl%opacity(ix,:,it), tbl%grid_rho, tbl%num_rho, &
+                 tbl%slaol_opacity(ix,:,it), tbl%slaol_log_rho(ix,:,it), &
+                 tbl%slaol_d2opacity(ix,:,it), tbl%slaol_num_points(ix,it))
          end do
       end do
 end subroutine spline_laol_table
 
-end subroutine build_laol_splines
+! One row of an LAOL table (kappa at the table's num_rho densities, 0
+! where it has no data): the points with data as log10 kappa against
+! log10 rho, packed at the front of spline_opacity and spline_log_rho
+! (0 behind them), with the natural cubic spline's second derivatives;
+! num_points of them, or 0 (no spline) for a row with fewer than
+! min_spline_points.
+subroutine spline_row_in_log_rho(opacity, grid_rho, num_rho, spline_opacity, spline_log_rho, &
+     spline_d2opacity, num_points)
+      real(dp), intent(in) :: opacity(:), grid_rho(:)
+      integer, intent(in) :: num_rho
+      real(dp), intent(inout) :: spline_opacity(:), spline_log_rho(:), spline_d2opacity(:)
+      integer, intent(out) :: num_points
+      real(dp) :: row_log10_opacity(n_laol_rho), row_log_rho(n_laol_rho), &
+           row_d2opacity(n_laol_rho)
+      integer :: ir, num_valid_rho
+
+      num_valid_rho=0
+      do ir=1, num_rho
+         spline_opacity(ir) = 0.0d0
+         spline_log_rho(ir) = 0.0d0
+         spline_d2opacity(ir) = 0.0d0
+         if (opacity(ir) /= 0.0d0) then
+            num_valid_rho = num_valid_rho+1
+            row_log10_opacity(num_valid_rho) = log10(opacity(ir))
+            row_log_rho(num_valid_rho) = log10(grid_rho(ir))
+         end if
+      end do
+      if (num_valid_rho >= min_spline_points) then
+         num_points = num_valid_rho
+         call natural_spline(row_log_rho, row_log10_opacity, num_valid_rho, &
+              row_d2opacity)
+         do ir=1,num_valid_rho
+            spline_opacity(ir) = row_log10_opacity(ir)
+            spline_log_rho(ir) = row_log_rho(ir)
+            spline_d2opacity(ir) = row_d2opacity(ir)
+         end do
+      else
+         num_points = 0
+      end if
+end subroutine spline_row_in_log_rho
 
 !----------------------------------------------------------------------
-! compute_laol_opacity (formerly gtlaol)
+! compute_laol_opacity
 !----------------------------------------------------------------------
 ! The LAOL89 opacity at (log rho, log T, X) from table tbl (laol(1) or
 ! laol(2)): the two X columns bracketing X each give log kappa and its
@@ -168,49 +180,27 @@ end subroutine compute_laol_opacity
 
 
 !----------------------------------------------------------------------
-! build_pure_z_splines (formerly zsulaol)
+! build_pure_z_splines
 !----------------------------------------------------------------------
 ! Converts the pure-Z table's T grid to log10 T and builds the natural
-! cubic spline in log rho of each T row, for compute_pure_z_opacity.
+! cubic spline in log rho of each T row (spline_row_in_log_rho), for
+! compute_pure_z_opacity.
 subroutine build_pure_z_splines(tbl)
       type(pure_z_table_set), intent(inout) :: tbl
-
-      real(dp) :: row_log10_opacity(n_laol_rho), row_log_rho(n_laol_rho), &
-           row_d2opacity(n_laol_rho)
-      integer :: it, ir, num_valid_rho
+      integer :: it
 
       do it=1, tbl%num_t
          tbl%logt_grid(it) = log10(tbl%logt_grid(it))
       end do
-        do it=1, tbl%num_t
-            num_valid_rho=0
-            do ir=1, tbl%num_rho
-                  tbl%spline_opacity(ir,it) = 0.0d0
-                  tbl%spline_log_rho(ir,it) = 0.0d0
-                  tbl%spline_d2opacity(ir,it) = 0.0d0
-                  if (tbl%opacity(ir,it) /= 0.0d0) then
-                     num_valid_rho = num_valid_rho+1
-                     row_log10_opacity(num_valid_rho) = log10(tbl%opacity(ir,it))
-                     row_log_rho(num_valid_rho) = log10(tbl%rho_grid(ir))
-                  end if
-            end do
-            if (num_valid_rho >= 4) then
-               tbl%spline_num_points(it)=num_valid_rho
-               call natural_spline(row_log_rho, row_log10_opacity, num_valid_rho, &
-                    row_d2opacity)
-               do ir=1,num_valid_rho
-                     tbl%spline_opacity(ir,it) = row_log10_opacity(ir)
-                     tbl%spline_log_rho(ir,it) = row_log_rho(ir)
-                     tbl%spline_d2opacity(ir,it) = row_d2opacity(ir)
-               end do
-            else
-               tbl%spline_num_points(it) = 0
-            end if
-        end do
+      do it=1, tbl%num_t
+         call spline_row_in_log_rho(tbl%opacity(:,it), tbl%rho_grid, tbl%num_rho, &
+              tbl%spline_opacity(:,it), tbl%spline_log_rho(:,it), tbl%spline_d2opacity(:,it), &
+              tbl%spline_num_points(it))
+      end do
 end subroutine build_pure_z_splines
 
 !----------------------------------------------------------------------
-! compute_pure_z_opacity (formerly gtpurz)
+! compute_pure_z_opacity
 !----------------------------------------------------------------------
 ! The pure-Z table's opacity at (log rho, log T): its one column
 ! (laol_column_opacity), log10 kappa capped as compute_laol_opacity's.
@@ -280,7 +270,7 @@ subroutine laol_column_opacity(spline_opacity, spline_log_rho, spline_d2opacity,
       call select_four_point_window(t_locate_guess, num_t, t_range_lo, t_range_hi)
       do t_index = t_range_lo, t_range_hi
          num_valid_rho = spline_num_points(t_index)
-         if (num_valid_rho < 4) then
+         if (num_valid_rho < min_spline_points) then
             status = laol_column_outside_density
             return
          end if
@@ -325,7 +315,7 @@ subroutine laol_column_opacity(spline_opacity, spline_log_rho, spline_d2opacity,
             dlnkap_dlnrho_by_t(num_valid_t) = slope
          end if
       end do
-      if (num_valid_t < 4) then
+      if (num_valid_t < min_spline_points) then
          status = laol_column_outside_temperature
          return
       end if
@@ -347,8 +337,6 @@ subroutine laol_column_opacity(spline_opacity, spline_log_rho, spline_d2opacity,
            (logt_values(spline_index_hi)-logt_values(spline_index_lo))
 end subroutine laol_column_opacity
 
-! kappa and log10 kappa from log10_opacity_value, capped at
-! laol_opacity_cap (log10 kappa laol_log10_opacity_cap) where it overflows
 ! The reason a column lookup failed (status, laol_column_opacity's), for
 ! the table named: a spline's numerics status (jerr), or the point off
 ! the table's rows in log rho or its columns in log T, beyond the
@@ -372,6 +360,8 @@ subroutine laol_column_message(status, jerr, table_name, log10_density, &
       end if
 end subroutine laol_column_message
 
+! kappa and log10 kappa from log10_opacity_value, capped at
+! laol_opacity_cap (log10 kappa laol_log10_opacity_cap) where it overflows
 pure subroutine cap_laol_opacity(log10_opacity_value, opacity, log10_opacity)
       real(dp), intent(in) :: log10_opacity_value
       real(dp), intent(out) :: opacity, log10_opacity
@@ -386,7 +376,7 @@ pure subroutine cap_laol_opacity(log10_opacity_value, opacity, log10_opacity)
 end subroutine cap_laol_opacity
 
 !----------------------------------------------------------------------
-! select_four_point_window (formerly util/xrng4)
+! select_four_point_window
 !----------------------------------------------------------------------
 ! The four table points window_start..window_end around grid point
 ! grid_index of a grid of grid_size points, for a 4-point interpolation:
