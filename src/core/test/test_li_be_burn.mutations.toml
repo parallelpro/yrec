@@ -1,0 +1,155 @@
+# Mutations of test_li_be_burn: each check must print FAIL under
+# a mutation of the code it covers (core/README.md, the tests). Run, after
+# `make tests` in src/: python3 src/tools/mutate.py core --program
+# test_li_be_burn (src/tools/mutate.py describes this format and
+# the verdicts). One mutation per check, in the report's order.
+program = "test_li_be_burn"
+timeout = 60
+
+[[mutation]]
+id = 'li_be-01'
+check = 'average: the mass-weighted mean abundance'
+file = 'core/step/li_be_burn.f90'
+old = 'x_mean = x_mean/region_mass'
+new = 'x_mean = x_mean/shell_mass(base_zone)'
+
+[[mutation]]
+id = 'li_be-02'
+check = "average: the region's mass with the base zone's edge"
+file = 'core/step/li_be_burn.f90'
+old = 'mass = mass + base_frac* &'
+new = 'mass = mass - base_frac* &'
+
+[[mutation]]
+id = 'li_be-03'
+check = "average: ln of the mean rate, the base zone's moved to the edge"
+file = 'core/step/li_be_burn.f90'
+old = 'zone_rate + 0.5d0*base_frac*(rate(:,base_zone-1) - zone_rate)'
+new = 'zone_rate + 1.0d0*base_frac*(rate(:,base_zone-1) - zone_rate)'
+
+[[mutation]]
+id = 'li_be-04'
+check = 'average: no edge for a base at the outermost shell'
+file = 'core/step/li_be_burn.f90'
+old = '              base_zone < num_zones) then'
+new = '              base_zone <= num_zones) then'
+
+[[mutation]]
+id = 'li_be-05'
+check = 'li/be radiative: X exp(-Lambda), the rate log-linear in time'
+file = 'core/step/li_be_burn.f90'
+old = 'surviving_fraction(rate_start(isp,zone_idx), rate_end(isp,zone_idx), &'
+new = 'surviving_fraction(rate_start(isp,zone_idx), rate_start(isp,zone_idx), &'
+
+[[mutation]]
+id = 'li_be-06'
+check = 'li/be radiative: X exp(-lambda dt) at a constant rate'
+file = 'core/step/li_be_burn.f90'
+old = '''
+            cycle
+         end if
+         do isp = 1,num_li_be'''
+new = '''
+            cycle
+         end if
+         do isp = 2,num_li_be'''
+
+[[mutation]]
+id = 'li_be-07'
+check = 'li/be radiative: a shell hotter than log T = 7 is cleared'
+file = 'core/step/li_be_burn.f90'
+old = 'if(log_temperature(zone_idx) > li_be_cleared_log_temperature)then'
+new = 'if(log_temperature(zone_idx) > li_be_cleared_log_temperature + 1.0d0)then'
+
+[[mutation]]
+id = 'li_be-08'
+check = 'li/be radiative: the burn stops at the first shell too cool'
+file = 'core/step/li_be_burn.f90'
+old = 'rate_start(k_be9,zone_idx) <= min_li_be_rate)exit'
+new = 'rate_start(k_be9,zone_idx) <= min_li_be_rate)cycle'
+
+[[mutation]]
+id = 'li_be-09'
+check = 'li/be radiative: an abundance below 1e-24 becomes zero'
+file = 'core/step/li_be_burn.f90'
+old = '''timestep, linear_in_log)
+            if(composition(li_be_species(isp),zone_idx) < min_li_be_abundance) &'''
+new = '''timestep, linear_in_log)
+            if(composition(li_be_species(isp),zone_idx) < 0.0d0) &'''
+
+[[mutation]]
+id = 'li_be-10'
+check = 'li/be radiative: a depleted shell is skipped'
+file = 'core/step/li_be_burn.f90'
+old = 'if(all(composition(li_be_species,zone_idx) < min_li_be_abundance))cycle'
+new = 'if(all(composition(li_be_species,zone_idx) < 0.0d0))cycle'
+
+[[mutation]]
+id = 'li_be-11'
+check = 'li/be mixed: uniform at the mean times exp(-Lambda)'
+file = 'core/step/li_be_burn.f90'
+old = 'do zone_idx = max_zone,num_zones'
+new = 'do zone_idx = max_zone+1,num_zones'
+
+[[mutation]]
+id = 'li_be-12'
+check = 'li/be mixed: the mixing conserves each species'
+file = 'core/step/li_be_burn.f90'
+old = 'x_mean = x_mean + composition(li_be_species,zone_idx)*mass'
+new = 'x_mean = x_mean + composition(li_be_species,zone_idx)*shell_mass(base_zone)'
+
+[[mutation]]
+id = 'li_be-13'
+check = 'li/be mixed: nothing changes when its base is too cool'
+file = 'core/step/li_be_burn.f90'
+old = 'if (rate_start(k_be9,base%zone_start) <= min_li_be_rate .or. &'
+new = 'if (rate_start(k_be9,base%zone_start) < 0.0d0 .or. &'
+
+[[mutation]]
+id = 'li_be-14'
+check = 'li/be accretion: the zone gains the accreted share, x_acc M_acc'
+file = 'core/step/li_be_burn.f90'
+old = '(cz_mass_end + accretion%mass)'
+new = '(cz_mass_end)'
+
+[[mutation]]
+id = 'li_be-15'
+check = 'li/be accretion: the accreted gas burns from its arrival on'
+file = 'core/step/li_be_burn.f90'
+old = 'accreted_survival(exp(log_rate_cz_start(isp)), exp(log_rate_cz_end(isp)), &'
+new = 'surviving_fraction(exp(log_rate_cz_start(isp)), exp(log_rate_cz_end(isp)), &'
+
+[[mutation]]
+id = 'li_be-16'
+check = 'li/be accretion: none without inflow'
+file = 'core/step/li_be_burn.f90'
+old = 'if (accretion%inflow) x_cz_end(isp) = (x_cz_end(isp)*cz_mass_end + &'
+new = 'if (.true.) x_cz_end(isp) = (x_cz_end(isp)*cz_mass_end + &'
+
+[[mutation]]
+id = 'li_be-17'
+check = 'li/be retreat: a shell left burns on its time-weighted rate'
+file = 'core/step/li_be_burn.f90'
+old = 'rate = exp(radiative_frac*log(rate_end(isp,zone_idx)) + &'
+new = 'rate = exp((1.0d0-radiative_frac)*log(rate_end(isp,zone_idx)) + &'
+
+[[mutation]]
+id = 'li_be-18'
+check = 'li/be retreat: the region keeps its start mean times exp(-Lambda)'
+file = 'core/step/li_be_burn.f90'
+old = 'rate_start, base%zone_start, base%frac_start, num_zones, &'
+new = 'rate_start, base%zone_end, base%frac_start, num_zones, &'
+
+[[mutation]]
+id = 'li_be-19'
+check = 'li/be deepening: starts from the mean over the deeper region'
+file = 'core/step/li_be_burn.f90'
+old = 'if(base%zone_end < base%zone_start) x_cz_start = x_cz_end'
+new = 'if(base%zone_end > base%zone_start) x_cz_start = x_cz_end'
+
+[[mutation]]
+id = 'li_be-20'
+check = 'li/be deepening: the shells between the bases are left'
+file = 'core/step/li_be_burn.f90'
+old = 'max_zone = max(base%zone_end,base%zone_start)'
+new = 'max_zone = min(base%zone_end,base%zone_start)'

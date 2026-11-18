@@ -1,0 +1,27 @@
+test_li_be_burn report
+-- average
+average: the mass-weighted mean abundance                            0.0E+00  ok
+average: the region's mass with the base zone's edge                 1.3E-16  ok
+average: ln of the mean rate, the base zone's moved to the edge      0.0E+00  ok
+average: no edge for a base at the outermost shell                   0.0E+00  ok
+-- radiative shells
+li/be radiative: X exp(-Lambda), the rate log-linear in time         8.0E-16  ok
+li/be radiative: X exp(-lambda dt) at a constant rate                0.0E+00  ok
+li/be radiative: a shell hotter than log T = 7 is cleared            0.0E+00  ok
+li/be radiative: the burn stops at the first shell too cool          0.0E+00  ok
+li/be radiative: an abundance below 1e-24 becomes zero               0.0E+00  ok
+li/be radiative: a depleted shell is skipped                         5.0E-25  ok
+-- the mixed region
+li/be mixed: uniform at the mean times exp(-Lambda)                  1.7E-15  ok
+li/be mixed: the mixing conserves each species                       1.7E-16  ok
+li/be mixed: nothing changes when its base is too cool               0.0E+00  ok
+-- accretion
+li/be accretion: the zone gains the accreted share, x_acc M_acc      1.2E-16  ok
+li/be accretion: the accreted gas burns from its arrival on          1.7E-08  ok
+li/be accretion: none without inflow                                 0.0E+00  ok
+-- a base that moves
+li/be retreat: a shell left burns on its time-weighted rate          0.0E+00  ok
+li/be retreat: the region keeps its start mean times exp(-Lambda)    1.8E-15  ok
+li/be deepening: starts from the mean over the deeper region         1.8E-15  ok
+li/be deepening: the shells between the bases are left               0.0E+00  ok
+test_li_be_burn: done
