@@ -133,8 +133,9 @@ subroutine evolve_step(s, output, model_iteration, step_status, ierr)
 ! A diverged solve cycles retry_step, but the step is never retried:
 ! nothing cuts the timestep, and on the next pass reload_model_if_diverged
 ! hands the divergence flag to read_starting_model, which stops the run
-! ("MODEL FAILED TO CONVERGE", ierr = 1), as the legacy code did. (The
-! loop replaces the legacy backward goto 15.)
+! ("ERROR: starting model: the previous model failed to converge; run
+! stopped", ierr = 1), as the legacy code did. (The loop replaces the
+! legacy backward goto 15.)
       retry_step: do
          call reload_model_if_diverged
          if (ierr /= 0) return
@@ -317,7 +318,7 @@ subroutine rezone_or_snapshot
                s%envelope_cz_bottom_index_start = s%envelope_cz_bottom_index
             else
 ! Keep the start-of-step structure, which the structure-change timestep
-! limit (timestep_limit_structure, formerly ptime) compares against.
+! limit (structure_change_limit, formerly ptime) compares against.
                do i=1, s%nz
                   s%logP_start(i) = s%logP(i)
                   s%logT_start(i) = s%logT(i)
@@ -397,8 +398,8 @@ subroutine solve_structure
                end do
             else
 ! Improved first guess: extrapolate each variable by its rate of change
-! over the previous step (the *_entropy_term arrays, which are rates, not
-! entropies):
+! over the previous step (dlog_temperature_dt, dlog_pressure_dt,
+! dln_luminosity_dt and dlog_radius_dt):
 !   log T += (d log T/dt) dt,  log P += (d log P/dt) dt,
 !   L += L (d ln L/dt) dt,     log R += (d log R/dt) dt,
 ! and start the changes of log T and log P over the step at those values.

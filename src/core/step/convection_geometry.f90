@@ -47,7 +47,6 @@ end function cz_base_fraction
 ! radius_limit gives k + 1; the result is 1 if every zone down to the
 ! centre lies above the limit. log_radius is log10 r.
 integer function first_zone_above(log_radius, start_zone, radius_limit)
-      use star_info_lib, only: json
       use physical_constants, only: ln10
       use math_lib
       real(dp), intent(in) :: log_radius(:), radius_limit
@@ -84,7 +83,6 @@ end function first_zone_above
 !     envelope_cz_base_zone_last_call
 subroutine locate_surface_mixing_base(s, radius, grada, gradr, env_cz_zone, &
      env_cz_zone_old, num_zones, cz_base_zone, cz_base_zone_old, cz_base_frac)
-      use star_info_lib, only: json
       use physical_constants, only: ln10
       use math_lib
       implicit none

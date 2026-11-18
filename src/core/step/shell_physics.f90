@@ -13,9 +13,8 @@ module shell_physics
 
 contains
 
-! ---------------------------------------------------------------
 !----------------------------------------------------------------------
-! shell_physics (legacy physic)
+! compute_shell_physics (legacy physic)
 !----------------------------------------------------------------------
 ! The local physics of every zone, for the rotation code and the
 ! convection-zone edges: the equation of state (eos_get), the opacity

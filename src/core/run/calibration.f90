@@ -1,10 +1,12 @@
 !----------------------------------------------------------------------
 ! calibration
 !----------------------------------------------------------------------
-! The two halves of the calibration loops: the run-list setup before a
-! calibration (setup_solar_calibration, setup_star_calibration) and the
-! check after each run that declares convergence or sets up the next
-! trial (check_solar_calibration, check_star_calibration).
+! The calibration loops: the run-list setup before a calibration
+! (setup_solar_calibration, setup_star_calibration), the check after
+! each run that declares convergence or sets up the next trial
+! (check_solar_calibration, check_star_calibration), and the star
+! calibration's verdict at the end of a card
+! (end_star_calibration_card).
 module calibration
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use star_info_lib, only: star_info
