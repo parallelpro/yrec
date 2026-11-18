@@ -1,0 +1,143 @@
+# Mutations of test_turnover: each check must print FAIL under a mutation
+# of the turnover walk (core/diagnostics/turnover_walk.f90). Run, after
+# `make tests` in src/: python3 src/tools/mutate.py core --program
+# test_turnover (src/tools/mutate.py describes this format and the
+# verdicts).
+program = "test_turnover"
+timeout = 60
+
+[[mutation]]
+id = 'turnover_walk-01'
+check = 'unique zone: its base point and radius'
+file = 'core/diagnostics/turnover_walk.f90'
+old = 'gap_below = radiative_gradient(k-1) - adiabatic_gradient(k-1)'
+new = 'gap_below = radiative_gradient(k-1) + adiabatic_gradient(k-1)'
+
+[[mutation]]
+id = 'turnover_walk-02'
+check = 'unique zone: its base point and radius'
+file = 'core/diagnostics/turnover_walk.f90'
+old = 'zone%upper_base_index = j + 1'
+new = 'zone%upper_base_index = j'
+
+[[mutation]]
+id = 'turnover_walk-03'
+check = 'unique zone: its base point and radius'
+file = 'core/diagnostics/turnover_walk.f90'
+old = 'zone%has_mass = mass_at_cz_top - mass_at_cz_bottom > 0.0d0'
+new = 'zone%has_mass = mass_at_cz_top - mass_at_cz_bottom < 0.0d0'
+
+[[mutation]]
+id = 'turnover_walk-04'
+check = 'unique zone: tau = H_P/v_c one scale height above the base'
+file = 'core/diagnostics/turnover_walk.f90'
+old = 'turnover_time = scale_height_there/velocity_at_scale_height'
+new = 'turnover_time = scale_height_there*velocity_at_scale_height'
+
+[[mutation]]
+id = 'turnover_walk-05'
+check = 'unique zone: tau = H_P/v_c one scale height above the base'
+file = 'core/diagnostics/turnover_walk.f90'
+old = 'height_above_base = exp(ln10*log10_radius(k)) - base_radius'
+new = 'height_above_base = exp(ln10*log10_radius(k)) + base_radius'
+
+# The fix of bug_sweep M324 (the innermost-point branch keeps its H_P/v_c):
+# the check holds today's value, the bottom cell's, and fails with the fix.
+[[mutation]]
+id = 'turnover_walk-06'
+check = "innermost point above H_P: the bottom cell's crossing time (M324)"
+file = 'core/diagnostics/turnover_walk.f90'
+old = '''
+              convective_velocity, base_index, turnover_time)
+         return
+'''
+new = '''
+              convective_velocity, base_index, turnover_time)
+         timed = .true.
+         return
+'''
+
+[[mutation]]
+id = 'turnover_walk-07'
+check = "two cells, envelope walk: the lower cell's width over v_c at its middle"
+file = 'core/diagnostics/turnover_walk.f90'
+old = 'log_middle_radius = log10(base_radius + 0.5d0*cell_width)'
+new = 'log_middle_radius = log10(base_radius + 0.25d0*cell_width)'
+
+[[mutation]]
+id = 'turnover_walk-08'
+check = "two cells, envelope walk: the lower cell's width over v_c at its middle"
+file = 'core/diagnostics/turnover_walk.f90'
+old = 'cell_width = top_radius - base_radius'
+new = 'cell_width = top_radius'
+
+[[mutation]]
+id = 'turnover_walk-09'
+check = 'two cells, interior walk: the upper zone, one scale height above its base'
+file = 'core/diagnostics/turnover_walk.f90'
+old = 'if (zone%index_gap /= 0 .and. num_points == num_interior_points) then'
+new = 'if (zone%index_gap /= 0 .and. num_points /= num_interior_points) then'
+
+[[mutation]]
+id = 'turnover_walk-10'
+check = 'fully convective: the base is the centre (10 cm), timed above it'
+file = 'core/diagnostics/turnover_walk.f90'
+old = 'log_base_radius = central_log_radius'
+new = 'log_base_radius = 0.0d0'
+
+[[mutation]]
+id = 'turnover_walk-11'
+check = 'fully radiative: no zone, tau = 0 and base radius 0'
+file = 'core/diagnostics/turnover_walk.f90'
+old = '''
+            zone%has_mass = .false.
+            zone%base_index = num_points
+'''
+new = '''
+            zone%has_mass = .true.
+            zone%base_index = num_points
+'''
+
+[[mutation]]
+id = 'turnover_walk-12'
+check = 'a zone of two points is skipped'
+file = 'core/diagnostics/turnover_walk.f90'
+old = 'integer, parameter :: min_zone_points = 3, stencil_size = 4'
+new = 'integer, parameter :: min_zone_points = 2, stencil_size = 4'
+
+[[mutation]]
+id = 'turnover_walk-13'
+check = "a zone within a dex of a convective core's top is skipped"
+file = 'core/diagnostics/turnover_walk.f90'
+old = 'real(dp), parameter :: min_core_separation_dex = 1.0d0, &'
+new = 'real(dp), parameter :: min_core_separation_dex = 0.5d0, &'
+
+[[mutation]]
+id = 'turnover_walk-14'
+check = 'a zone slower than 1e20 s is skipped'
+file = 'core/diagnostics/turnover_walk.f90'
+old = 'max_turnover_time = 1.0d20, central_log_radius = 1.0d0'
+new = 'max_turnover_time = 1.0d30, central_log_radius = 1.0d0'
+
+[[mutation]]
+id = 'turnover_walk-15'
+check = "coincident points: the spline's status, and which spline"
+file = 'core/diagnostics/turnover_walk.f90'
+old = '''
+      call spline_stencil_value(radius, velocity, middle_radius, velocity_at_middle, ierr)
+      if (ierr /= 0) then
+         failed_spline = velocity_spline_failed
+'''
+new = '''
+      call spline_stencil_value(radius, velocity, middle_radius, velocity_at_middle, ierr)
+      if (ierr /= 0) then
+         failed_spline = scale_height_spline_failed
+'''
+
+# bug_sweep M329: the flags beyond the walk's last point.
+[[mutation]]
+id = 'turnover_walk-16'
+check = "a zone at the walk's last points: nothing beyond the walk is read"
+file = 'core/diagnostics/turnover_walk.f90'
+old = 'if (k <= num_points) convective_at = convective_flag(k)'
+new = 'convective_at = convective_flag(k)'

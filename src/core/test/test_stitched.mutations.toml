@@ -1,0 +1,189 @@
+# Mutations of test_stitched: each check must print FAIL under a mutation
+# of the code it covers (core/diagnostics/stitched_kernels.f90 and
+# stitched_model.f90). Run, after `make tests` in src/: python3
+# src/tools/mutate.py core --program test_stitched (src/tools/mutate.py
+# describes this format and the verdicts).
+program = "test_stitched"
+timeout = 300
+args = ["{repo}/src/core/test/test_structure_tams.inlist"]
+
+[env]
+YREC_OUTPUT = "output"
+
+[[mutation]]
+id = 'stitched_kernels-01'
+check = 'atmosphere heights: the sum of the steps below each point'
+file = 'core/diagnostics/stitched_kernels.f90'
+old = 'height(i) = height(i+1) + step_length(i+1)'
+new = 'height(i) = height(i+1) + step_length(i)'
+
+[[mutation]]
+id = 'stitched_kernels-02'
+check = 'index map: the two repeated points at the joins are skipped'
+file = 'core/diagnostics/stitched_kernels.f90'
+old = 'if (atmosphere_height(i) <= 0.0d0) cycle'
+new = 'if (atmosphere_height(i) < 0.0d0) cycle'
+
+[[mutation]]
+id = 'stitched_kernels-03'
+check = "index map: an envelope point below the interior's top is skipped"
+file = 'core/diagnostics/stitched_kernels.f90'
+old = 'if (envelope_log_radius(i) <= interior_top_log_radius) cycle'
+new = 'if (envelope_log_radius(i) == interior_top_log_radius) cycle'
+
+# The fix of bug_sweep M359 (the envelope's first point skipped by its
+# index): the check holds today's map and fails with the fix.
+[[mutation]]
+id = 'stitched_kernels-04'
+check = "index map: an envelope first point above the interior's top is kept (M359)"
+file = 'core/diagnostics/stitched_kernels.f90'
+old = 'if (envelope_log_radius(i) <= interior_top_log_radius) cycle'
+new = 'if (i == 1 .or. envelope_log_radius(i) <= interior_top_log_radius) cycle'
+
+[[mutation]]
+id = 'stitched_kernels-05'
+check = 'index map: it stops at the size of its arrays'
+file = 'core/diagnostics/stitched_kernels.f90'
+old = '''
+      do i = size(atmosphere_height), 1, -1
+         if (num_points >= size(region)) exit
+'''
+new = '''
+      do i = size(atmosphere_height), 1, -1
+         if (num_points >= size(region) - 1) exit
+'''
+
+[[mutation]]
+id = 'stitched_kernels-06'
+check = 'thermal N^2 = g^2 (rho/P) delta (nabla_ad - nabla)'
+file = 'core/diagnostics/stitched_kernels.f90'
+old = 'thermal_brunt_n2 = gravity*gravity*(density/pressure)*delta*(nabla_ad - nabla)'
+new = 'thermal_brunt_n2 = gravity*gravity*(density/pressure)*delta*(nabla - nabla_ad)'
+
+[[mutation]]
+id = 'stitched_kernels-07'
+check = 'N^2: the centred difference where the thermal form is positive'
+file = 'core/diagnostics/stitched_kernels.f90'
+old = '(log(pressure(j+1)) - log(pressure(j-1)))/gamma1(j) - &'
+new = '(log(pressure(j+1)) - log(pressure(j-1)))*gamma1(j) - &'
+
+[[mutation]]
+id = 'stitched_kernels-08'
+check = 'N^2: a negative thermal value is kept'
+file = 'core/diagnostics/stitched_kernels.f90'
+old = 'if (brunt_n2(j) >= 0.0d0 .and. radius(j) > 0.0d0 .and. &'
+new = 'if (brunt_n2(j) >= -2.0d0 .and. radius(j) > 0.0d0 .and. &'
+
+# The fix of bug_sweep M361 (the difference only where the thermal form
+# is positive): the check holds today's rule and fails with the fix.
+[[mutation]]
+id = 'stitched_kernels-09'
+check = 'N^2: a thermal value of exactly zero takes the difference (M361)'
+file = 'core/diagnostics/stitched_kernels.f90'
+old = 'if (brunt_n2(j) >= 0.0d0 .and. radius(j) > 0.0d0 .and. &'
+new = 'if (brunt_n2(j) > 0.0d0 .and. radius(j) > 0.0d0 .and. &'
+
+[[mutation]]
+id = 'stitched_kernels-10'
+check = 'N^2: the end points copy their neighbours (M363)'
+file = 'core/diagnostics/stitched_kernels.f90'
+old = 'brunt_n2(1) = brunt_n2(2)'
+new = 'brunt_n2(1) = 0.0d0'
+
+[[mutation]]
+id = 'stitched_kernels-11'
+check = 'acoustic radius of a constant sound speed: (r_n - r_1)/c (M362)'
+file = 'core/diagnostics/stitched_kernels.f90'
+old = 'acoustic_radius = acoustic_radius + dr*0.5d0 &'
+new = 'acoustic_radius = acoustic_radius + dr*0.25d0 &'
+
+[[mutation]]
+id = 'stitched_kernels-12'
+check = 'acoustic radius: an interval without a sound speed is left out'
+file = 'core/diagnostics/stitched_kernels.f90'
+old = 'if (sound_speed(k) <= 0.0d0 .or. sound_speed(k-1) <= 0.0d0) cycle'
+new = 'if (sound_speed(k) <= 0.0d0) cycle'
+
+[[mutation]]
+id = 'stitched_kernels-13'
+check = 'buoyancy radius of N = a r: a times the span the sum covers (M362)'
+file = 'core/diagnostics/stitched_kernels.f90'
+old = '+ sqrt(brunt_n2(k))/r_here*0.5d0*(r_outer - r_inner)'
+new = '+ sqrt(brunt_n2(k))/r_here*0.5d0*(r_outer - r_here)'
+
+[[mutation]]
+id = 'stitched_kernels-14'
+check = 'buoyancy radius: the innermost cavity only'
+file = 'core/diagnostics/stitched_kernels.f90'
+old = '''
+         else if (entered_g_mode_cavity) then
+            exit
+'''
+new = '''
+         else if (entered_g_mode_cavity) then
+            cycle
+'''
+
+[[mutation]]
+id = 'stitched_model-01'
+check = 'stitched model: interior, envelope and atmosphere, in order'
+file = 'core/diagnostics/stitched_kernels.f90'
+old = 'region(num_points) = region_envelope'
+new = 'region(num_points) = region_atmosphere'
+
+[[mutation]]
+id = 'stitched_model-02'
+check = 'stitched model: the radius increases across both joins'
+file = 'core/diagnostics/stitched_model.f90'
+old = 'atmosphere_radius_cm = exp(ln10*photosphere_log10_radius) + s%stitched%atm_height(i)'
+new = 'atmosphere_radius_cm = exp(ln10*photosphere_log10_radius) - s%stitched%atm_height(i)'
+
+[[mutation]]
+id = 'stitched_model-03'
+check = "stitched model: each point is its region's point"
+file = 'core/diagnostics/stitched_model.f90'
+old = 'case (ip_logR);         value = s%env_points%env_log10_radius(i)'
+new = 'case (ip_logR);         value = s%env_points%env_log10_radius(i) + 1.0d-9'
+
+[[mutation]]
+id = 'stitched_model-04'
+check = "stitched model: the profile's brunt_N2 is the pulse points' N^2"
+file = 'core/diagnostics/stitched_model.f90'
+old = '''
+         s%stitched%seismic(ip_brunt_N2-ip_seismic_first+1, j) = &
+              s%stitched%pulse(ipul_N2, j)
+'''
+new = '''
+         s%stitched%seismic(ip_brunt_N2-ip_seismic_first+1, j) = &
+              2.0d0*s%stitched%pulse(ipul_N2, j)
+'''
+
+[[mutation]]
+id = 'stitched_model-05'
+check = 'a profile column without a value in a region: ierr = 1'
+file = 'core/diagnostics/stitched_model.f90'
+old = '''
+               call core_report(lines)
+               ierr = 1
+               return
+'''
+new = '''
+               call core_report(lines)
+               ierr = 0
+               return
+'''
+
+[[mutation]]
+id = 'stitched_model-06'
+check = 'envelope integration fails: the grid is the interior alone'
+file = 'core/diagnostics/stitched_model.f90'
+old = 'if (.not. s%physics%calc_envelope_flag .or. envelope_ierr /= 0) then'
+new = 'if (.not. s%physics%calc_envelope_flag) then'
+
+# bug_sweep M327: the failed envelope integration's code is returned.
+[[mutation]]
+id = 'stitched_model-07'
+check = 'envelope integration fails: build_stitched_model returns the error'
+file = 'core/diagnostics/stitched_model.f90'
+old = 'if (ierr == 0) ierr = envelope_ierr'
+new = 'if (ierr == 0) ierr = 0'

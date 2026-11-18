@@ -13,7 +13,6 @@ module neutrino_flux_output
 
 contains
 
-! ---------------------------------------------------------------
 !----------------------------------------------------------------------
 ! write_neutrino_flux_table (formerly the LNUTAB block of program
 ! main, MHP 2/04)
@@ -21,9 +20,8 @@ contains
 ! An optional diagnostic (compute_neutrino_fluxes, default .false.),
 ! called by run_yrec once per kind card right after
 ! read_starting_model, so the table describes each card's starting
-! model. It writes to the run log, each line through run_messages'
-! log_line (the run log is checked on disk at each model, run_files'
-! check_run_log):
+! model. It writes to the run log, each line through core_messages'
+! core_log:
 !  1. for each shell from the center out, as long as log T >= 6 and
 !     log T is above the nuclear cutoff: the shell index, the shell
 !     mass (g) and the shell's contributions to the ten flux slots (the
@@ -37,8 +35,10 @@ contains
 ! The fluxes are those at the Earth, in units of 10^10 cm^-2 s^-1 (see
 ! compute_solar_neutrino_fluxes). Slots 1-8 are pp, pep, hep, Be7, B8,
 ! N13, O15 and F17; slots 9-10 are the He3+He3 and He3+He4 reaction
-! rates in the same units. The shell masses are local arrays, so the
-! model's star%m and star%dm are not touched.
+! rates in the same units. The shell masses are the mesh's
+! (regridding's compute_shell_masses), in local arrays, so the model's
+! star%m and star%dm are not touched. The table's limits are
+! parameters below.
 !   star reads: log_mass, log_total_mass, logR, logRho, logT,
 !     physics%nuclear_logT_cutoffs, solar_mass_cgs, solar_radius_cgs, xa
 !   star writes: neutrino_flux_total_e10_per_cm2_s, nz
@@ -51,9 +51,14 @@ subroutine write_neutrino_flux_table(s)
       use net_lib, only: nuclear_energy_result
       use burn_step, only: compute_zone_energy
       use math_lib
-      use observables, only: shell_masses_from_log_mass
+      use regridding, only: compute_shell_masses
       implicit none
       type(star_info), intent(inout) :: s
+! The first part of the table ends at the first shell cooler than
+! min_table_log_temperature [log10 K]; the second at the first cooler
+! than min_profile_t6 [1e6 K], with T6 = T/t6_log_unit.
+      real(dp), parameter :: min_table_log_temperature = 6.0d0, min_profile_t6 = 5.0d0, &
+           t6_log_unit = 6.0d0
 
       real(dp) :: shell_center_mass(json), shell_mass(json)
 ! each shell's X(Be7), and its contributions to the fluxes, then their
@@ -73,8 +78,8 @@ subroutine write_neutrino_flux_table(s)
 ! The shell masses from the log m grid: shell_center_mass is the mass
 ! (g) inside each shell center, and shell_mass the mass (g) of each
 ! shell.
-      call shell_masses_from_log_mass(s%log_mass, s%log_total_mass, &
-           s%nz, shell_center_mass, shell_mass)
+      call compute_shell_masses(s%log_mass(1:s%nz), s%log_total_mass, &
+           shell_center_mass(1:s%nz), shell_mass(1:s%nz))
 
       allocate(be7_mass_fraction(s%nz), flux_zone(n_nu_fluxes,s%nz))
       be7_mass_fraction = 0.0d0
@@ -89,7 +94,7 @@ subroutine write_neutrino_flux_table(s)
          shell_log_temperature = s%logT(i)
 ! Stop at the first shell cooler than log T = 6, or at or below the
 ! nuclear cutoff, where nothing burns.
-         if (shell_log_temperature < 6.0d0 .or. &
+         if (shell_log_temperature < min_table_log_temperature .or. &
               shell_log_temperature <= s%physics%nuclear_logT_cutoffs(1)) exit
          call compute_zone_energy(s, shell_log_density, &
               shell_log_temperature, s%xa(:,i), i, burn)
@@ -125,8 +130,8 @@ subroutine write_neutrino_flux_table(s)
       end do
       do i = 1,s%nz
 ! T6 = T/1e6 K; stop below 5e6 K.
-         t6_million_k = exp(ln10*(s%logT(i)-6.0d0))
-         if (t6_million_k < 5.0d0) exit
+         t6_million_k = exp(ln10*(s%logT(i)-t6_log_unit))
+         if (t6_million_k < min_profile_t6) exit
 ! The electron density for full ionization,
 ! log(n_e/N_A) = log[rho (1+X)/2].
          log_electron_density = s%logRho(i)+log10((1.0d0+s%xa(i_h1,i))/2.0d0)

@@ -70,6 +70,7 @@ program test_structure
       use rotation_configuration, only: set_rotation_settings
       use rotation_settings_builder, only: rotation_settings_from_star
       use starting_model, only: read_starting_model
+      use turnover_timescale, only: initialize_turnover_timescale
       use star_info_lib, only: star_info, control_nml_override, physics_nml_override
       use shell_equations, only: henyey_shell_terms, shell_state, &
            structure_settings, shell_diagnostics, evaluate_shell_equations
@@ -148,6 +149,8 @@ subroutine load_deck_model(path)
       star%total_rotational_ke = 0.0d0
       call read_starting_model(star, ierr)
       if (ierr /= 0) call die('read_starting_model')
+      call initialize_turnover_timescale(star, ierr)
+      if (ierr /= 0) call die('initialize_turnover_timescale')
 end subroutine load_deck_model
 
 ! Register the 'extra' case's source.

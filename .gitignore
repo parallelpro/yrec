@@ -33,6 +33,10 @@ src/test_envelope_integration
 src/test_timestep_limits
 src/test_run_contracts
 src/test_model_kernels
+src/test_composition_kernels
+src/test_li_be_burn
+src/test_turnover
+src/test_stitched
 src/test_regrid
 src/test_controls
 src/test_io

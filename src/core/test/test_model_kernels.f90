@@ -8,7 +8,7 @@
 !   convection zone, a fully convective model, and the hydrogen shell's
 !   beginning, middle and end (by the luminosity's step and by the
 !   surface X), with the central X on either side of x_core_min;
-!   compute_envelope_mixture (model_rescaling.f90) on a mixture of ten
+!   compute_envelope_mixture (rescaling_kernels.f90) on a mixture of ten
 !   metals with unequal weights: Y = 1 - X - Z - X(He3); the number
 !   fractions sum to 1; the mass fractions they give back (n_i A_i/
 !   sum n_j A_j) are X for H, 1 - X - Z for He and Z w_i/S for each
@@ -20,12 +20,46 @@
 !   m(k-1)); the fraction comes back from the base's mass (1e-12); a base a
 !   zone away clips to 0.5 or -0.5; no base, or the first or last zone,
 !   gives 0.
+!   rescaling_kernels' arithmetic of rescale_model on a 40-point model
+!   of 0.8 Msun with m(k) = M (k/41)^1.5, whose hydrogen shell is points
+!   21 to 25: hb_region_masses, whose core, shell and envelope add up to
+!   M; a total mass of 0.9 Msun by stretching the mass above the shell
+!   (mass_stretch_factor, stretch_masses_above: every point above the
+!   base moves by the factor, the points below not at all); a core mass
+!   raised by 0.02 Msun at fixed shell mass and fixed outer point
+!   (move_core_mass); scale_hydrogen, shift_metals, ramp_metals and
+!   set_helium_by_difference against their formulas.
+!   mesh_spacing's arithmetic of the rezone's new mesh: accumulate_chi on
+!   40 points with uniform steps (the mass, luminosity and pressure terms,
+!   the three pressure regions); sort_kept_points (order, duplicates, and
+!   the two it leaves of three equal points); space_points_along_chi on a
+!   mesh whose log m is linear in chi (int(Delta chi) + 1 even intervals
+!   per segment, the kept points on the mesh, the count needed when the
+!   arrays are too small); spline_onto_points on a profile linear in
+!   log m; insert_points_at_jumps (int(step/max) points, evenly in log m,
+!   for a rise or with falling for a fall, none when the limit is off, the
+!   count needed when they do not fit); remove_crowded_points.
+!   core_extension: the count of points for a mass factor, and thirteen
+!   points inward of an innermost point on a constant-density sphere
+!   (log m in steps of the spacing; m = (4 pi/3) rho r^3; L proportional
+!   to m; the pressure rising inward by the hydrostatic amount, to the
+!   10% of the two-stage step; log T along the given gradient; the
+!   density estimate).
+!   starting_model's extend_core_toward_center on a star set up here, a
+!   20-point model: one added point (a factor of 1.1), whose log T
+!   follows the gradient of the two innermost old points (bug_sweep M326:
+!   it was 0/0); thirteen (a factor of 10), the old points moved up by
+!   thirteen slots; and a factor of 1, the default, refused with ierr 1.
+!   rezoning's check_envelope_temperature_range on a star set up here: a
+!   surface hotter than the envelope window gains a point outside it, and
+!   a model that already has json points is refused with ierr 1 (bug_sweep
+!   M330: it wrote past the arrays).
 ! (regridding's kernels have test_regrid.)
 ! Prints one line per check and exits with status 1 when one fails.
 program test_model_kernels
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use shell_boundaries, only: find_shell_boundaries
-      use model_rescaling, only: compute_envelope_mixture
+      use rescaling_kernels, only: compute_envelope_mixture
       use convection_geometry, only: mixed_base_mass, mixed_base_fraction
       use composition_layout, only: n_mix_species, ix_h, ix_he, ix_c, ix_n, ix_o
       implicit none
@@ -157,6 +191,12 @@ program test_model_kernels
            mixed_base_fraction(zone_mass, shell_mass, 1, base_mass, n) == 0.0_dp .and. &
            mixed_base_fraction(zone_mass, shell_mass, n, base_mass, n) == 0.0_dp)
 
+      call rescaling_checks()
+      call mesh_checks()
+      call core_extension_checks()
+      call core_extension_driver_checks()
+      call outer_point_checks()
+
       if (num_failed > 0) then
          write(*,'(a,i0,a)') 'test_model_kernels: ', num_failed, ' checks FAIL'
          stop 1
@@ -172,6 +212,404 @@ pure function atomic_weights() result(a)
       a = [23.0_dp, 26.99_dp, 24.32_dp, 55.86_dp, 28.1_dp, 12.015_dp, 1.008_dp, &
            16.0_dp, 14.01_dp, 39.96_dp, 20.19_dp, 4.004_dp]
 end function atomic_weights
+
+! ---------------------------------------------------------------
+! rescaling_kernels on a 40-point model of 0.8 Msun.
+subroutine rescaling_checks()
+      use rescaling_kernels, only: hb_masses, scale_hydrogen, shift_metals, ramp_metals, &
+           set_helium_by_difference, hb_region_masses, mass_stretch_factor, &
+           stretch_masses_above, move_core_mass
+      use composition_layout, only: i_h1, i_he4, i_metals, i_he3, i_c12, i_o18, i_h2, &
+           n_species_extended
+      real(dp), parameter :: solar_mass = 2.0e33_dp, total_msun = 0.8_dp, tol = 1.0e-10_dp
+      integer, parameter :: shell_begin = 21, shell_end = 25
+      real(dp) :: log_mass(n), old_mass(n), new_mass(n), log_total_mass, factor, &
+           xa(n_species_extended,n), old_xa(n_species_extended,n), q(n), ramp_z
+      type(hb_masses) :: masses
+      logical :: ok
+      integer :: j
+
+      old_mass = [(total_msun*solar_mass*(real(j, dp)/real(n + 1, dp))**1.5_dp, j = 1, n)]
+      log_mass = log10(old_mass)
+      log_total_mass = log10(total_msun*solar_mass)
+
+! The regions' masses.
+      masses = hb_region_masses(log_mass, log_total_mass, shell_begin, shell_end, solar_mass)
+      call model_kernel_check('hb_region_masses: core, shell and envelope add up to M', &
+           abs((masses%core + masses%shell + masses%envelope)/total_msun - 1.0_dp) < tol .and. &
+           abs(masses%core/(old_mass(shell_begin-1)/solar_mass) - 1.0_dp) < tol .and. &
+           abs(masses%inner_envelope/((old_mass(n) - old_mass(shell_end))/solar_mass) - 1.0_dp) &
+           < tol)
+
+! A total mass of 0.9 Msun, the mass above the shell's end stretched.
+      factor = mass_stretch_factor(log_mass(shell_end), 0.9_dp, total_msun, solar_mass)
+      call stretch_masses_above(log_mass, log_total_mass, shell_end, factor)
+      new_mass = 10.0_dp**log_mass
+      call model_kernel_check('stretch_masses_above: the new total mass, the base and below unmoved', &
+           abs(10.0_dp**log_total_mass/(0.9_dp*solar_mass) - 1.0_dp) < tol .and. &
+           all(new_mass(1:shell_end) == 10.0_dp**log10(old_mass(1:shell_end))))
+      call model_kernel_check('stretch_masses_above: every point above moves by (M_new - m_b)/(M_old - m_b)', &
+           all(abs((new_mass(shell_end+1:n) - new_mass(shell_end))/ &
+           (old_mass(shell_end+1:n) - old_mass(shell_end))/ &
+           ((0.9_dp*solar_mass - old_mass(shell_end))/(total_msun*solar_mass - old_mass(shell_end))) &
+           - 1.0_dp) < tol))
+
+! The core mass raised by 0.02 Msun.
+      log_mass = log10(old_mass)
+      masses = hb_region_masses(log_mass, log10(total_msun*solar_mass), shell_begin, shell_end, &
+           solar_mass)
+      call move_core_mass(log_mass, shell_begin, shell_end, masses%core + 0.02_dp, masses%core, &
+           solar_mass)
+      new_mass = 10.0_dp**log_mass
+      call model_kernel_check('move_core_mass: the new core mass, its points scaled alike', &
+           abs(new_mass(shell_begin-1)/((masses%core + 0.02_dp)*solar_mass) - 1.0_dp) < tol .and. &
+           all(abs(new_mass(1:shell_begin-1)/old_mass(1:shell_begin-1)/ &
+           ((masses%core + 0.02_dp)/masses%core) - 1.0_dp) < tol))
+      call model_kernel_check('move_core_mass: the shell keeps its mass', &
+           all(abs((new_mass(shell_begin:shell_end) - new_mass(shell_begin-1))/ &
+           (old_mass(shell_begin:shell_end) - old_mass(shell_begin-1)) - 1.0_dp) < tol))
+      ok = abs(new_mass(n)/old_mass(n) - 1.0_dp) < tol
+      do j = shell_end + 1, n - 1
+         ok = ok .and. abs((new_mass(n) - new_mass(j))/(old_mass(n) - old_mass(j))/ &
+              ((new_mass(n) - new_mass(shell_end))/(old_mass(n) - old_mass(shell_end))) - 1.0_dp) &
+              < tol
+      end do
+      call model_kernel_check('move_core_mass: the outer point stays, the envelope shrinks toward it', ok)
+
+! The composition: X rising from 0.5 at the centre to 0.7, Z from 0.03 to
+! 0.02, with CNO isotopes and deuterium.
+      do j = 1, n
+         xa(:,j) = 0.0_dp
+         xa(i_h1,j) = 0.5_dp + 0.2_dp*real(j - 1, dp)/real(n - 1, dp)
+         xa(i_metals,j) = 0.03_dp - 0.01_dp*real(j - 1, dp)/real(n - 1, dp)
+         xa(i_he3,j) = 1.0e-4_dp
+         xa(i_c12:i_o18,j) = 1.0e-3_dp*real(j, dp)
+         xa(i_h2,j) = 2.0e-5_dp
+         xa(i_he4,j) = 0.123_dp
+      end do
+      old_xa = xa
+      call scale_hydrogen(xa(i_h1,:), 0.6_dp, 0.7_dp)
+      call model_kernel_check('scale_hydrogen: X_i X_new/X_surf, the surface at X_new', &
+           abs(xa(i_h1,n)/0.6_dp - 1.0_dp) < tol .and. &
+           all(abs(xa(i_h1,:)/(old_xa(i_h1,:)*0.6_dp/0.7_dp) - 1.0_dp) < tol))
+      xa = old_xa
+      call scale_hydrogen(xa(i_h1,:), 0.6_dp, 0.55_dp)
+      call model_kernel_check('scale_hydrogen: no shell above X_new', &
+           all(xa(i_h1,:) <= 0.6_dp) .and. xa(i_h1,n) == 0.6_dp .and. &
+           abs(xa(i_h1,1)/(0.5_dp*0.6_dp/0.55_dp) - 1.0_dp) < tol)
+      xa = old_xa
+      call shift_metals(xa, -0.025_dp)
+      call model_kernel_check('shift_metals: Z + dZ, not below 0; CNO by Z_new/Z_old; the rest kept', &
+           all(abs(xa(i_metals,1:n/2) - (old_xa(i_metals,1:n/2) - 0.025_dp)) < 1.0e-15_dp) .and. &
+           xa(i_metals,n) == 0.0_dp .and. xa(i_c12,n) == 0.0_dp .and. &
+           all(abs(xa(i_o18,1:n/2)/old_xa(i_o18,1:n/2)/ &
+           (xa(i_metals,1:n/2)/old_xa(i_metals,1:n/2)) - 1.0_dp) < tol) .and. &
+           all(xa(i_h2,:) == old_xa(i_h2,:)) .and. all(xa(i_he3,:) == old_xa(i_he3,:)) .and. &
+           all(xa(i_h1,:) == old_xa(i_h1,:)))
+      xa = old_xa
+      call set_helium_by_difference(xa)
+      call model_kernel_check('set_helium_by_difference: X + Y + Z + X(He3) = 1', &
+           all(abs(xa(i_h1,:) + xa(i_he4,:) + xa(i_metals,:) + xa(i_he3,:) - 1.0_dp) < 1.0e-15_dp))
+! A ramp from Z = 0.04 inside q = 0.2 to the surface's 0.02 at q = 0.6.
+      log_mass = log10(old_mass)
+      q = old_mass/(total_msun*solar_mass)
+      call ramp_metals(xa, log_mass, total_msun*solar_mass, 0.04_dp, 0.2_dp, 0.6_dp, 0.02_dp)
+      ok = .true.
+      do j = 1, n
+         if (q(j) < 0.2_dp) then
+            ramp_z = 0.04_dp
+         else if (q(j) < 0.6_dp) then
+            ramp_z = 0.04_dp + (q(j) - 0.2_dp)*(0.02_dp - 0.04_dp)/(0.6_dp - 0.2_dp)
+         else
+            ramp_z = old_xa(i_metals,j)
+         end if
+         ok = ok .and. abs(xa(i_metals,j) - ramp_z) < 1.0e-14_dp .and. &
+              abs(xa(i_c12,j)/old_xa(i_c12,j)/(ramp_z/old_xa(i_metals,j)) - 1.0_dp) < tol
+         if (q(j) < 0.6_dp) ok = ok .and. abs(xa(i_h1,j) + xa(i_he4,j) + xa(i_metals,j) + &
+              xa(i_he3,j) - 1.0_dp) < 1.0e-15_dp
+      end do
+      call model_kernel_check('ramp_metals: the core value, the ramp, the surface kept; X = 1 - Y - Z - He3', &
+           ok .and. count(q < 0.2_dp) > 3 .and. count(q >= 0.6_dp) > 3)
+end subroutine rescaling_checks
+
+! ---------------------------------------------------------------
+! mesh_spacing: the rezone's new mesh.
+subroutine mesh_checks()
+      use mesh_spacing, only: chi_scales, accumulate_chi, sort_kept_points, &
+           space_points_along_chi, spline_onto_points, insert_points_at_jumps, &
+           remove_crowded_points
+      real(dp), parameter :: tol = 1.0e-12_dp
+      type(chi_scales) :: scales
+      real(dp) :: log_mass(n), lum(n), log_pressure(n), chi(n), new_log_mass(200), &
+           small_mesh(50), values(200), mesh(12), steps(6), crowded(6)
+      integer :: kept(5), triple(4), count, new_count, needed, ierr, j
+      logical :: ok
+
+! 40 points: log m rises by 0.1 a point, log P falls by 0.05, L rises by
+! 1 up to point 20 and is flat beyond. The fine zone is within 0.275 dex
+! of log P(30): points 25 to 35.
+      log_mass = [(30.0_dp + 0.1_dp*real(j - 1, dp), j = 1, n)]
+      log_pressure = [(17.0_dp - 0.05_dp*real(j - 1, dp), j = 1, n)]
+      lum = [(real(min(j, 20), dp), j = 1, n)]
+      scales = chi_scales(log_mass=0.2_dp, luminosity=4.0_dp, log_pressure_core=0.1_dp, &
+           log_pressure_base=0.02_dp, log_pressure_envelope=0.25_dp, base_fine_width=0.275_dp)
+      call accumulate_chi(log_mass, lum, log_pressure, log_pressure(30), scales, chi)
+      call model_kernel_check('accumulate_chi: chi(1) = 1; the log m and L terms where L rises', &
+           chi(1) == 1.0_dp .and. abs(chi(2) - chi(1) - (0.5_dp + 0.25_dp + 0.5_dp)) < tol .and. &
+           abs(chi(22) - chi(21) - (0.5_dp + 0.5_dp)) < tol)
+      call model_kernel_check('accumulate_chi: the log P term below, inside and above the fine zone', &
+           abs(chi(24) - chi(23) - (0.5_dp + 0.5_dp)) < tol .and. &
+           abs(chi(25) - chi(24) - (0.5_dp + 2.5_dp)) < tol .and. &
+           abs(chi(35) - chi(34) - (0.5_dp + 2.5_dp)) < tol .and. &
+           abs(chi(36) - chi(35) - (0.5_dp + 0.2_dp)) < tol)
+
+! The kept points.
+      kept = [7, 3, 40, 3, 12]
+      count = 5
+      call sort_kept_points(kept, count)
+      call model_kernel_check('sort_kept_points: ascending, a duplicate removed', &
+           count == 4 .and. all(kept(1:4) == [3, 7, 12, 40]))
+! Three equal points: the scan moves on after a removal, so two are left
+! (reported with this round; the check holds today's result).
+      triple = [5, 9, 5, 5]
+      count = 4
+      call sort_kept_points(triple, count)
+      call model_kernel_check('sort_kept_points: of three equal points two are left', &
+           count == 3 .and. all(triple(1:3) == [5, 5, 9]))
+
+! The new mesh: chi rises by 2.5 a point, so log m is linear in chi;
+! points 11 and 40 are kept. The segments are 25 and 72.5 long in chi:
+! 26 and 73 intervals.
+      chi = [(1.0_dp + 2.5_dp*real(j - 1, dp), j = 1, n)]
+      call space_points_along_chi(chi, log_mass, [11, 40], new_log_mass, new_count, needed, ierr)
+      ok = ierr == 0 .and. needed == 0 .and. new_count == 1 + 26 + 73
+      if (ok) then
+         ok = all(abs(new_log_mass(2:27) - new_log_mass(1:26) - 1.0_dp/26.0_dp) < 1.0e-11_dp) &
+              .and. all(abs(new_log_mass(28:100) - new_log_mass(27:99) - 2.9_dp/73.0_dp) &
+              < 1.0e-11_dp)
+      end if
+      call model_kernel_check('space_points_along_chi: int(Delta chi) + 1 even intervals a segment', ok)
+      call model_kernel_check('space_points_along_chi: the first and the kept points are on the mesh', &
+           new_log_mass(1) == log_mass(1) .and. abs(new_log_mass(27) - log_mass(11)) < 1.0e-11_dp &
+           .and. abs(new_log_mass(100) - log_mass(40)) < 1.0e-11_dp)
+      call space_points_along_chi(chi, log_mass, [11, 40], small_mesh, new_count, needed, ierr)
+      call model_kernel_check('space_points_along_chi: the count needed when the arrays are too small', &
+           needed == 100 .and. ierr == 0)
+
+! A profile linear in log m at the new points.
+      call space_points_along_chi(chi, log_mass, [11, 40], new_log_mass, new_count, needed, ierr)
+      call spline_onto_points(log_mass, 0.7_dp - 0.01_dp*(log_mass - 30.0_dp), &
+           new_log_mass(1:new_count), values(1:new_count), ierr)
+      call model_kernel_check('spline_onto_points: a profile linear in log m is reproduced', &
+           ierr == 0 .and. all(abs(values(1:new_count) - (0.7_dp - 0.01_dp* &
+           (new_log_mass(1:new_count) - 30.0_dp))) < 1.0e-12_dp))
+
+! Points at jumps: six points at log m = 1..6; the profile rises by 0.25
+! into point 3 and by 0.34 into point 6; the limit is 0.1.
+      steps = [0.1_dp, 0.1_dp, 0.35_dp, 0.36_dp, 0.36_dp, 0.7_dp]
+      mesh = 0.0_dp
+      mesh(1:6) = [(real(j, dp), j = 1, 6)]
+      new_count = 6
+      call insert_points_at_jumps(steps, .false., 0.1_dp, mesh, new_count, needed)
+      call model_kernel_check('insert_points_at_jumps: int(step/max) points, evenly in log m', &
+           needed == 0 .and. new_count == 11 .and. &
+           all(abs(mesh(1:11) - [1.0_dp, 2.0_dp, 2.0_dp + 1.0_dp/3.0_dp, 2.0_dp + 2.0_dp/3.0_dp, &
+           3.0_dp, 4.0_dp, 5.0_dp, 5.25_dp, 5.5_dp, 5.75_dp, 6.0_dp]) < tol))
+! The same profile falling outward: nothing with the rise, the same
+! points with falling.
+      mesh(1:6) = [(real(j, dp), j = 1, 6)]
+      new_count = 6
+      call insert_points_at_jumps(-steps, .false., 0.1_dp, mesh, new_count, needed)
+      ok = new_count == 6
+      call insert_points_at_jumps(-steps, .true., 0.1_dp, mesh, new_count, needed)
+      call model_kernel_check('insert_points_at_jumps: a fall counts with falling only', &
+           ok .and. new_count == 11 .and. abs(mesh(8) - 5.25_dp) < tol)
+      mesh(1:6) = [(real(j, dp), j = 1, 6)]
+      new_count = 6
+      call insert_points_at_jumps(steps, .false., 0.0_dp, mesh, new_count, needed)
+      ok = new_count == 6 .and. needed == 0
+      call insert_points_at_jumps(steps, .false., 0.1_dp, mesh(1:8), new_count, needed)
+      call model_kernel_check('insert_points_at_jumps: none with the limit off; the count needed', &
+           ok .and. needed == 9)
+
+! Crowded points: within 0.01 of the last point kept; the last stays.
+      crowded = [1.0_dp, 1.005_dp, 1.02_dp, 1.021_dp, 1.5_dp, 1.501_dp]
+      new_count = 6
+      call remove_crowded_points(crowded, new_count, 0.01_dp)
+      call model_kernel_check('remove_crowded_points: within the limit of the last kept; the ends stay', &
+           new_count == 4 .and. all(crowded(1:4) == [1.0_dp, 1.02_dp, 1.5_dp, 1.501_dp]))
+end subroutine mesh_checks
+
+! ---------------------------------------------------------------
+! core_extension: thirteen points inward of the innermost point of a
+! sphere of constant density 100 g/cm^3, at 1e-4 of 2e33 g, where
+! P = 2e17 dyn/cm^2 and log T = 7.2.
+subroutine core_extension_checks()
+      use core_extension, only: core_extension_count, extend_core_points
+      integer, parameter :: num_added = 13
+      real(dp), parameter :: pi = 3.14159265358979324_dp, newton_g = 6.67e-8_dp, &
+           density = 100.0_dp, spacing = 0.08_dp, gradient = 0.35_dp, offset = 8.1_dp, &
+           inner_mass = 2.0e29_dp, inner_pressure = 2.0e17_dp, inner_log_t = 7.2_dp, &
+           inner_lum = 3.0e-3_dp, tol = 1.0e-12_dp
+      real(dp) :: log_mass(num_added), log_radius(num_added), lum(num_added), &
+           log_pressure(num_added), log_temperature(num_added), log_density(num_added)
+      real(dp) :: inner_radius, exact_rise, kernel_rise
+      integer :: j
+
+      call model_kernel_check('core_extension_count: int(log10(factor)/spacing) + 1 (13 for 10, 1 for 1.1)', &
+           core_extension_count(10.0_dp, 0.08_dp) == 13 .and. &
+           core_extension_count(1.1_dp, 0.08_dp) == 1)
+      call extend_core_points(log10(inner_mass), log10(inner_pressure), inner_log_t, inner_lum, &
+           log10(density), gradient, offset, spacing, log10(newton_g), log_mass, log_radius, &
+           lum, log_pressure, log_temperature, log_density)
+      call model_kernel_check('extend_core_points: log m in steps of the spacing, from the old point', &
+           abs(log_mass(num_added) - (log10(inner_mass) - spacing)) < tol .and. &
+           all(abs(log_mass(2:num_added) - log_mass(1:num_added-1) - spacing) < tol))
+      call model_kernel_check('extend_core_points: constant density, m = (4 pi/3) rho r^3; L proportional to m', &
+           all(abs(4.0_dp*pi/3.0_dp*density*(10.0_dp**log_radius)**3/10.0_dp**log_mass - 1.0_dp) &
+           < 1.0e-10_dp) .and. &
+           all(abs(lum/10.0_dp**log_mass/(inner_lum/inner_mass) - 1.0_dp) < 1.0e-10_dp))
+! Hydrostatic equilibrium in a sphere of constant density:
+! P(r) - P(r_0) = (2 pi/3) G rho^2 (r_0^2 - r^2). The kernel's step takes
+! the slope at its inner end, 6% low for a spacing of 0.08.
+      inner_radius = (3.0_dp*inner_mass/(4.0_dp*pi*density))**(1.0_dp/3.0_dp)
+      exact_rise = 2.0_dp*pi/3.0_dp*newton_g*density**2* &
+           (inner_radius**2 - (10.0_dp**log_radius(1))**2)
+      kernel_rise = 10.0_dp**log_pressure(1) - inner_pressure
+      call model_kernel_check('extend_core_points: the pressure rises inward by the hydrostatic amount', &
+           all(log_pressure(1:num_added-1) > log_pressure(2:num_added)) .and. &
+           abs(kernel_rise/exact_rise - 1.0_dp) < 0.1_dp)
+      call model_kernel_check('extend_core_points: log T along the gradient; the density estimate', &
+           abs(log_temperature(num_added) - inner_log_t - gradient* &
+           (log_pressure(num_added) - log10(inner_pressure))) < tol .and. &
+           all(abs(log_temperature(1:num_added-1) - log_temperature(2:num_added) - gradient* &
+           (log_pressure(1:num_added-1) - log_pressure(2:num_added))) < tol) .and. &
+           all([(abs(log_density(j) - (log_pressure(j) - log_temperature(j) - offset)) < tol, &
+           j = 1, num_added)]))
+end subroutine core_extension_checks
+
+! ---------------------------------------------------------------
+! extend_core_toward_center on a star of 20 points set up here: m(k) =
+! 2e29 (1.2)^(k-1) g, log P and log T falling outward, card 1 reading its
+! model from file.
+subroutine core_extension_driver_checks()
+      use star_info_lib, only: star_info
+      use starting_model, only: extend_core_toward_center
+      integer, parameter :: num_old = 20
+      real(dp), parameter :: tol = 1.0e-12_dp
+      type(star_info), allocatable :: star
+      real(dp) :: old_log_p(num_old), old_log_t(num_old), old_log_mass(num_old), gradient
+      integer :: ierr
+
+! One point: a factor of 1.1 with a spacing of 0.08.
+      call core_extension_star(star, 1.1_dp, old_log_mass, old_log_p, old_log_t)
+      ierr = 0
+      call extend_core_toward_center(star, ierr)
+      gradient = (old_log_t(2) - old_log_t(1))/(old_log_p(2) - old_log_p(1))
+      call model_kernel_check('extend_core_toward_center: one added point takes the old points'' gradient', &
+           ierr == 0 .and. star%nz == num_old + 1 .and. star%num_core_points_added == 1 .and. &
+           abs(star%logT(1) - old_log_t(1) - gradient*(star%logP(1) - old_log_p(1))) < tol &
+           .and. star%logP(1) > old_log_p(1))
+! Thirteen points: a factor of 10.
+      call core_extension_star(star, 10.0_dp, old_log_mass, old_log_p, old_log_t)
+      ierr = 0
+      call extend_core_toward_center(star, ierr)
+      call model_kernel_check('extend_core_toward_center: thirteen points, the old ones moved up', &
+           ierr == 0 .and. star%nz == num_old + 13 .and. &
+           all(star%log_mass(14:num_old+13) == old_log_mass) .and. &
+           all(star%logP(14:num_old+13) == old_log_p) .and. &
+           abs(star%log_mass(1) - (old_log_mass(1) - 13.0_dp*0.08_dp)) < tol .and. &
+           abs(star%logT(13) - old_log_t(1) - gradient*(star%logP(13) - old_log_p(1))) < tol)
+! A factor of 1, the control's default: no extension is asked for.
+      call core_extension_star(star, 1.0_dp, old_log_mass, old_log_p, old_log_t)
+      ierr = 0
+      call extend_core_toward_center(star, ierr)
+      call model_kernel_check('extend_core_toward_center: a factor of 1 is refused, the model untouched', &
+           ierr == 1 .and. star%nz == num_old .and. all(star%logT(1:num_old) == old_log_t))
+end subroutine core_extension_driver_checks
+
+! A star of size(old_log_mass) points for the core extension, with the
+! deck's mass factor: its log m, log P and log T are returned.
+subroutine core_extension_star(star, factor, old_log_mass, old_log_p, old_log_t)
+      use star_info_lib, only: star_info
+      use control_slots, only: ichi_dm_max
+      type(star_info), allocatable, intent(inout) :: star
+      real(dp), intent(in) :: factor
+      real(dp), intent(out) :: old_log_mass(:), old_log_p(:), old_log_t(:)
+      integer :: j, num_old
+
+      num_old = size(old_log_mass)
+      if (allocated(star)) deallocate(star)
+      allocate(star)
+      star%nz = num_old
+      star%current_card = 1
+      star%card_from_starting_model(1) = .true.
+      star%physics%extend_core_inward = .true.
+      star%physics%core_mass_reduction_factor = factor
+      star%physics%chi_grid_scale(ichi_dm_max) = 0.08_dp
+      do j = 1, num_old
+         old_log_mass(j) = log10(2.0e29_dp) + real(j - 1, dp)*log10(1.2_dp)
+         old_log_p(j) = 17.3_dp - 0.011_dp*real(j - 1, dp)**1.5_dp
+         old_log_t(j) = 7.2_dp - 0.004_dp*real(j - 1, dp)**1.4_dp
+      end do
+      star%log_mass(1:num_old) = old_log_mass
+      star%logP(1:num_old) = old_log_p
+      star%logT(1:num_old) = old_log_t
+      star%logRho(1:num_old) = old_log_p - old_log_t - 8.1_dp
+      star%logR(1:num_old) = (old_log_mass - log10(4.0_dp*3.14159265358979324_dp/3.0_dp) - &
+           star%logRho(1))/3.0_dp
+      star%luminosity_lsun(1:num_old) = [(1.0e-3_dp*1.2_dp**(j - 1), j = 1, num_old)]
+      star%convective_flag(1:num_old) = .false.
+      star%omega(1:num_old) = 0.0_dp
+      star%xa(:,1:num_old) = 0.0_dp
+end subroutine core_extension_star
+
+! ---------------------------------------------------------------
+! check_envelope_temperature_range on a star set up here, whose outer
+! point is hotter than the window's upper edge, with a stored envelope
+! state to add a point from.
+subroutine outer_point_checks()
+      use star_info_lib, only: star_info, json, n_species_basic
+      use rezoning, only: check_envelope_temperature_range
+      type(star_info), allocatable :: star
+      integer :: ierr
+
+      call outer_point_star(star, 30)
+      ierr = 0
+      call check_envelope_temperature_range(star, n_species_basic, ierr)
+      call model_kernel_check('check_envelope_temperature_range: a hot surface gains a point outside it', &
+           ierr == 0 .and. star%nz == 31 .and. star%reset_triangle .and. &
+           abs(star%logP(31) - (star%logP(30) - 0.4_dp)) < 1.0e-12_dp .and. &
+           abs(star%logT(31) - (star%logT(30) - 0.1_dp)) < 1.0e-12_dp)
+      call outer_point_star(star, json)
+      ierr = 0
+      call check_envelope_temperature_range(star, n_species_basic, ierr)
+      call model_kernel_check('check_envelope_temperature_range: no point beyond json (ierr 1)', &
+           ierr == 1 .and. star%nz == json)
+end subroutine outer_point_checks
+
+! A star of num_points points whose surface is hotter than the envelope
+! window, with a stored envelope state.
+subroutine outer_point_star(star, num_points)
+      use star_info_lib, only: star_info
+      type(star_info), allocatable, intent(inout) :: star
+      integer, intent(in) :: num_points
+      if (allocated(star)) deallocate(star)
+      allocate(star)
+      star%nz = num_points
+      star%physics%rezone_env_logt0 = 5.0_dp
+      star%physics%rezone_env_logt1 = 6.0_dp
+      star%logT(1:num_points) = 7.0_dp
+      star%logP(1:num_points) = 12.0_dp
+      star%logR(1:num_points) = 10.5_dp
+      star%luminosity_lsun(1:num_points) = 1.0_dp
+      star%log_total_mass = 33.3_dp
+      star%stored_vertex_index = 1
+      star%fit_point_logP(1) = 11.9_dp
+      star%fit_point_logR(1) = 10.6_dp
+      star%stored_envelope_state = [11.5_dp, 0.0_dp, 10.7_dp, -1.0e-5_dp]
+      star%reset_triangle = .false.
+end subroutine outer_point_star
 
 subroutine boundaries()
       call find_shell_boundaries(h1, luminosity, convective, n, x_core_min, core_edge, &

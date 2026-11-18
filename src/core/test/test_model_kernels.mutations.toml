@@ -1,5 +1,5 @@
 # Mutations of test_model_kernels: each check must print FAIL under a
-# mutation of the kernel it covers (find_shell_boundaries,
+# mutation of the kernel it covers (find_shell_boundaries, rescaling_kernels, mesh_spacing,
 # compute_envelope_mixture, and step/convection_geometry's
 # mixed_base_mass and mixed_base_fraction). Run, after `make tests` in src/: python3 src/tools/mutate.py core --program
 # test_model_kernels (src/tools/mutate.py describes this format and the
@@ -79,28 +79,28 @@ new = 'hydrogen_surface_tol = 1.0e-3_dp'
 [[mutation]]
 id = 'envelope_mixture-01'
 check = 'compute_envelope_mixture: Y = 1 - X - Z - X(He3)'
-file = 'core/model/model_rescaling.f90'
+file = 'core/model/rescaling_kernels.f90'
 old = 'y_env = 1.0d0 - x_env - z_env - he3_env'
 new = 'y_env = 1.0d0 - x_env - z_env'
 
 [[mutation]]
 id = 'envelope_mixture-02'
 check = 'compute_envelope_mixture: the number fractions sum to 1'
-file = 'core/model/model_rescaling.f90'
+file = 'core/model/rescaling_kernels.f90'
 old = 'number_fractions(i) = weights(i)*scale_factor'
 new = 'number_fractions(i) = weights(i)*scale_factor*1.001d0'
 
 [[mutation]]
 id = 'envelope_mixture-03'
 check = 'compute_envelope_mixture: X(H) and X(He) = 1 - X - Z back'
-file = 'core/model/model_rescaling.f90'
+file = 'core/model/rescaling_kernels.f90'
 old = 'weights(ix_he) = (1.0d0-x_env-z_env)/scale_factor'
 new = 'weights(ix_he) = (1.0d0-x_env-z_env-he3_env)/scale_factor'
 
 [[mutation]]
 id = 'envelope_mixture-04'
 check = 'compute_envelope_mixture: each metal Z w_i/S back'
-file = 'core/model/model_rescaling.f90'
+file = 'core/model/rescaling_kernels.f90'
 old = '''           weights(ix_ar)+weights(ix_ne)
       metals_no_cno'''
 new = '''           weights(ix_ar)
@@ -109,14 +109,14 @@ new = '''           weights(ix_ar)
 [[mutation]]
 id = 'envelope_mixture-05'
 check = 'compute_envelope_mixture: 1/mu_ion = sum X_i/A_i'
-file = 'core/model/model_rescaling.f90'
+file = 'core/model/rescaling_kernels.f90'
 old = 'inverse_atomic_weight = weight_sum'
 new = 'inverse_atomic_weight = weight_sum*1.001d0'
 
 [[mutation]]
 id = 'envelope_mixture-06'
 check = 'compute_envelope_mixture: Z without C, N, O = Z (S-wC-wN-wO)/S'
-file = 'core/model/model_rescaling.f90'
+file = 'core/model/rescaling_kernels.f90'
 old = 'weights(ix_c)-weights(ix_o)-'
 new = 'weights(ix_c)-'
 
@@ -151,3 +151,277 @@ old = '''
            num_zones) - base_mass)/(mass_coordinate(base_zone) - mass_coordinate(base_zone-1))'''
 new = '''
            num_zones) - base_mass)/(mass_coordinate(base_zone+1) - mass_coordinate(base_zone-1))'''
+
+# rescaling_kernels: the arithmetic of rescale_model.
+[[mutation]]
+id = 'rescaling_kernels-01'
+check = 'hb_region_masses: core, shell and envelope add up to M'
+file = 'core/model/rescaling_kernels.f90'
+old = 'masses%core = exp(ln10*log_mass(shell_begin-1))/solar_mass'
+new = 'masses%core = exp(ln10*log_mass(shell_begin))/solar_mass'
+
+[[mutation]]
+id = 'rescaling_kernels-02'
+check = 'stretch_masses_above: the new total mass, the base and below unmoved'
+file = 'core/model/rescaling_kernels.f90'
+old = 'log_total_mass = log10(base_mass+stretch_factor*(exp10(log_total_mass)-base_mass))'
+new = 'log_total_mass = log10(stretch_factor*(exp10(log_total_mass)-base_mass))'
+
+[[mutation]]
+id = 'rescaling_kernels-03'
+check = 'stretch_masses_above: every point above moves by (M_new - m_b)/(M_old - m_b)'
+file = 'core/model/rescaling_kernels.f90'
+old = 'mass_stretch_factor = (new_total_msun-exp(ln10*log_base_mass)/solar_mass)/ &'
+new = 'mass_stretch_factor = (new_total_msun+exp(ln10*log_base_mass)/solar_mass)/ &'
+
+[[mutation]]
+id = 'rescaling_kernels-04'
+check = 'move_core_mass: the new core mass, its points scaled alike'
+file = 'core/model/rescaling_kernels.f90'
+old = 'log_mass_shift = log10(new_core_msun/old_core_msun)'
+new = 'log_mass_shift = log10(old_core_msun/new_core_msun)'
+
+[[mutation]]
+id = 'rescaling_kernels-05'
+check = 'move_core_mass: the shell keeps its mass'
+file = 'core/model/rescaling_kernels.f90'
+old = 'mass_shift_grams = (new_core_msun - old_core_msun)*solar_mass'
+new = 'mass_shift_grams = 0.5d0*(new_core_msun - old_core_msun)*solar_mass'
+
+[[mutation]]
+id = 'rescaling_kernels-06'
+check = 'move_core_mass: the outer point stays, the envelope shrinks toward it'
+file = 'core/model/rescaling_kernels.f90'
+old = 'mass_scale_factor = (exp(ln10*log_mass(nz))-exp(ln10*log_mass(shell_end)))/ &'
+new = 'mass_scale_factor = (exp(ln10*log_mass(nz))+exp(ln10*log_mass(shell_end)))/ &'
+
+[[mutation]]
+id = 'rescaling_kernels-07'
+check = 'scale_hydrogen: X_i X_new/X_surf, the surface at X_new'
+file = 'core/model/rescaling_kernels.f90'
+old = 'x_rescale_factor = new_surface_x/max(old_surface_x, x_floor)'
+new = 'x_rescale_factor = old_surface_x/max(new_surface_x, x_floor)'
+
+[[mutation]]
+id = 'rescaling_kernels-08'
+check = 'scale_hydrogen: no shell above X_new'
+file = 'core/model/rescaling_kernels.f90'
+old = 'hydrogen(zone_idx) = min(new_surface_x, hydrogen(zone_idx)*x_rescale_factor)'
+new = 'hydrogen(zone_idx) = max(new_surface_x, hydrogen(zone_idx)*x_rescale_factor)'
+
+[[mutation]]
+id = 'rescaling_kernels-09'
+check = 'shift_metals: Z + dZ, not below 0; CNO by Z_new/Z_old; the rest kept'
+file = 'core/model/rescaling_kernels.f90'
+old = '''
+         xa(i_metals,zone_idx) = max(0.0d0, xa(i_metals,zone_idx)+delta_z)
+         do species_idx = i_c12, i_o18
+'''
+new = '''
+         xa(i_metals,zone_idx) = max(0.0d0, xa(i_metals,zone_idx)+delta_z)
+         do species_idx = i_c12, i_o18 - 1
+'''
+
+[[mutation]]
+id = 'rescaling_kernels-10'
+check = 'set_helium_by_difference: X + Y + Z + X(He3) = 1'
+file = 'core/model/rescaling_kernels.f90'
+old = 'xa(i_he4,zone_idx) = 1.0d0-xa(i_h1,zone_idx)-xa(i_metals,zone_idx)- &'
+new = 'xa(i_he4,zone_idx) = 1.0d0-xa(i_h1,zone_idx)+xa(i_metals,zone_idx)- &'
+
+[[mutation]]
+id = 'rescaling_kernels-11'
+check = 'ramp_metals: the core value, the ramp, the surface kept; X = 1 - Y - Z - He3'
+file = 'core/model/rescaling_kernels.f90'
+old = 'z_ramp_value = (mass_fraction_local-inner_q)*z_ramp_slope+core_z'
+new = 'z_ramp_value = (mass_fraction_local-inner_q)*z_ramp_slope-core_z'
+
+# mesh_spacing: the rezone's new mesh.
+[[mutation]]
+id = 'mesh_spacing-01'
+check = 'accumulate_chi: chi(1) = 1; the log m and L terms where L rises'
+file = 'core/model/mesh_spacing.f90'
+old = '(luminosity(j)-luminosity(j-1))/scales%luminosity - &'
+new = '(luminosity(j)-luminosity(j-1))*scales%luminosity - &'
+
+[[mutation]]
+id = 'mesh_spacing-02'
+check = 'accumulate_chi: the log P term below, inside and above the fine zone'
+file = 'core/model/mesh_spacing.f90'
+old = 'if (abs(pressure_test) < scales%base_fine_width) then'
+new = 'if (pressure_test < scales%base_fine_width) then'
+
+[[mutation]]
+id = 'mesh_spacing-03'
+check = 'sort_kept_points: ascending, a duplicate removed'
+file = 'core/model/mesh_spacing.f90'
+old = 'if (flag_point(i+1) < flag_point(i)) then'
+new = 'if (flag_point(i+1) > flag_point(i)) then'
+
+# The scan staying at a slot it has just filled, which removes every
+# duplicate: the check holds today's result and fails with it.
+[[mutation]]
+id = 'mesh_spacing-04'
+check = 'sort_kept_points: of three equal points two are left'
+file = 'core/model/mesh_spacing.f90'
+old = '''
+            flag_count = flag_count - 1
+         end if
+'''
+new = '''
+            flag_count = flag_count - 1
+            i = i - 1
+         end if
+'''
+
+[[mutation]]
+id = 'mesh_spacing-05'
+check = 'space_points_along_chi: int(Delta chi) + 1 even intervals a segment'
+file = 'core/model/mesh_spacing.f90'
+old = 'segment_point_count = int(delta_chi)+1'
+new = 'segment_point_count = int(delta_chi)+2'
+
+[[mutation]]
+id = 'mesh_spacing-06'
+check = 'space_points_along_chi: the first and the kept points are on the mesh'
+file = 'core/model/mesh_spacing.f90'
+old = 'new_log_mass(1) = log_mass(1)'
+new = 'new_log_mass(1) = log_mass(2)'
+
+[[mutation]]
+id = 'mesh_spacing-07'
+check = 'space_points_along_chi: the count needed when the arrays are too small'
+file = 'core/model/mesh_spacing.f90'
+old = 'needed_points = new_num_zones+segment_point_count'
+new = 'needed_points = segment_point_count'
+
+[[mutation]]
+id = 'mesh_spacing-08'
+check = 'spline_onto_points: a profile linear in log m is reproduced'
+file = 'core/model/mesh_spacing.f90'
+old = 'values(1) = profile(1)'
+new = 'values(1) = profile(2)'
+
+[[mutation]]
+id = 'mesh_spacing-09'
+check = 'insert_points_at_jumps: int(step/max) points, evenly in log m'
+file = 'core/model/mesh_spacing.f90'
+old = 'dble(num_new_points+1)'
+new = 'dble(num_new_points)'
+
+[[mutation]]
+id = 'mesh_spacing-10'
+check = 'insert_points_at_jumps: a fall counts with falling only'
+file = 'core/model/mesh_spacing.f90'
+old = 'outward_step = values(j-1) - values(j)'
+new = 'outward_step = values(j) - values(j-1)'
+
+[[mutation]]
+id = 'mesh_spacing-11'
+check = 'insert_points_at_jumps: none with the limit off; the count needed'
+file = 'core/model/mesh_spacing.f90'
+old = 'needed_points = working_num_zones+num_new_points'
+new = 'needed_points = num_new_points'
+
+[[mutation]]
+id = 'mesh_spacing-12'
+check = 'remove_crowded_points: within the limit of the last kept; the ends stay'
+file = 'core/model/mesh_spacing.f90'
+old = 'if (new_log_mass(k) - new_log_mass(j) > min_spacing) then'
+new = 'if (new_log_mass(k) - new_log_mass(j) > 0.0d0) then'
+
+# core_extension: the points added inward of the innermost point.
+[[mutation]]
+id = 'core_extension-01'
+check = 'core_extension_count: int(log10(factor)/spacing) + 1 (13 for 10, 1 for 1.1)'
+file = 'core/model/core_extension.f90'
+old = 'core_extension_count = int(log10(mass_reduction_factor)/log_mass_spacing) + 1'
+new = 'core_extension_count = int(log10(mass_reduction_factor)/log_mass_spacing)'
+
+[[mutation]]
+id = 'core_extension-02'
+check = 'extend_core_points: log m in steps of the spacing, from the old point'
+file = 'core/model/core_extension.f90'
+old = 'log_mass(i) = outer_log_mass-log_mass_spacing'
+new = 'log_mass(i) = outer_log_mass-2.0d0*log_mass_spacing'
+
+[[mutation]]
+id = 'core_extension-03'
+check = 'extend_core_points: constant density, m = (4 pi/3) rho r^3; L proportional to m'
+file = 'core/model/core_extension.f90'
+old = 'log_radius(i) = cc13*(log_mass(i)-c4pi3l-central_log_density)'
+new = 'log_radius(i) = cc13*(log_mass(i)-c4pi3l+central_log_density)'
+
+[[mutation]]
+id = 'core_extension-04'
+check = 'extend_core_points: constant density, m = (4 pi/3) rho r^3; L proportional to m'
+file = 'core/model/core_extension.f90'
+old = 'luminosity(i) = exp(ln10*(log_mass(i)-inner_log_mass))*inner_luminosity'
+new = 'luminosity(i) = exp(ln10*(inner_log_mass-log_mass(i)))*inner_luminosity'
+
+[[mutation]]
+id = 'core_extension-05'
+check = 'extend_core_points: the pressure rises inward by the hydrostatic amount'
+file = 'core/model/core_extension.f90'
+old = '''
+         log_pressure(i) = outer_log_pressure+dlogp_dlogm* &
+'''
+new = '''
+         log_pressure(i) = outer_log_pressure+2.0d0*dlogp_dlogm* &
+'''
+
+[[mutation]]
+id = 'core_extension-06'
+check = 'extend_core_points: log T along the gradient; the density estimate'
+file = 'core/model/core_extension.f90'
+old = '''
+         log_temperature(i) = outer_log_temperature+dlogp_dlogm* &
+              temperature_gradient*log_mass_spacing
+'''
+new = '''
+         log_temperature(i) = outer_log_temperature+dlogp_dlogm* &
+              log_mass_spacing
+'''
+
+# bug_sweep M326 (the A part): the core extension's one-point case and
+# its control check.
+[[mutation]]
+id = 'starting_model-01'
+check = "extend_core_toward_center: one added point takes the old points' gradient"
+file = 'core/model/starting_model.f90'
+old = '''
+      first_original_shell = num_added+1
+'''
+new = '''
+      first_original_shell = num_added+1
+      actual_gradient = (s%logT(2)-s%logT(1))/(s%logP(2)-s%logP(1))
+'''
+
+[[mutation]]
+id = 'starting_model-02'
+check = 'extend_core_toward_center: thirteen points, the old ones moved up'
+file = 'core/model/starting_model.f90'
+old = 's%logP(i+num_added) = s%logP(i)'
+new = 's%logP(i+num_added) = s%logP(i+1)'
+
+[[mutation]]
+id = 'starting_model-03'
+check = 'extend_core_toward_center: a factor of 1 is refused, the model untouched'
+file = 'core/model/starting_model.f90'
+old = 'if (.not. s%physics%core_mass_reduction_factor > 1.0d0) then'
+new = 'if (.not. s%physics%core_mass_reduction_factor > 0.0d0) then'
+
+# bug_sweep M330: the rezone's added outer point and the arrays' size.
+[[mutation]]
+id = 'rezoning-01'
+check = 'check_envelope_temperature_range: a hot surface gains a point outside it'
+file = 'core/model/rezoning.f90'
+old = 's%fit_point_logP(s%stored_vertex_index))*added_point_dlogt_dlogp'
+new = 's%fit_point_logP(s%stored_vertex_index))'
+
+[[mutation]]
+id = 'rezoning-02'
+check = 'check_envelope_temperature_range: no point beyond json (ierr 1)'
+file = 'core/model/rezoning.f90'
+old = 'if (s%nz + 1 > json) then'
+new = 'if (s%nz + 1 > json + 1) then'

@@ -157,6 +157,8 @@ jobs:
           test_mesa_output.py test_pyyrec.py test_monte_carlo.py
           test_run_contracts.py test_model_kernels.py test_composition_kernels.py
           test_li_be_burn.py
+          test_turnover.py
+          test_stitched.py
           test_validation_contract.py
           test_low_mass_decks.py test_correction_limit.py
 
