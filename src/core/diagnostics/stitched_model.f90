@@ -19,16 +19,21 @@
 ! atmosphere_value). The io writers only read these arrays; nothing in
 ! the output path integrates or stitches anything. compute_observables
 ! (the seismic observables) and the step's turnover refresh
-! (compute_turnover_timescale) read them too.
+! (compute_turnover_timescale) read them too. The arithmetic on arrays
+! (the index map, the atmosphere's heights, N^2) is stitched_kernels'.
 module stitched_model
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use physical_constants, only: cgl, gas_constant, ln10
       use math_lib
       use star_info_lib, only: json, star_info
       use output_columns, only: output_column, real_column, integer_column
+      use stitched_kernels, only: accumulate_atmosphere_heights, map_extended_grid, &
+           thermal_brunt_n2, difference_brunt_n2, region_interior, region_envelope, &
+           region_atmosphere
       implicit none
       private
-      public :: build_stitched_model, profile_columns, n_prof_cols, n_pulse_cols
+      public :: build_stitched_model, fill_stitched_arrays, profile_columns, &
+           n_prof_cols, n_pulse_cols
       public :: ip_zone, ip_mass, ip_logR, ip_logT, ip_logRho, ip_logP, &
            ip_mixing_type, ip_gradr, ip_gradT, ip_grada, ip_conv_vel, &
            ip_brunt_N2, ip_csound
@@ -62,15 +67,13 @@ module stitched_model
 ! whole extended grid (s%stitched%seismic(1:4,:), in this order).
       integer, parameter :: ip_seismic_first = ip_brunt_N2, &
            ip_seismic_last = ip_gradr_div_grada
-! The regions of the extended grid (s%stitched%region).
-      integer, parameter :: region_interior = 1, region_envelope = 2, &
-           region_atmosphere = 3
-      integer, parameter :: n_pulse_cols = 35
 ! The pulse columns' named indices. Columns 1..18 are the GYRE
 ! schema-101 set, in file order (ipul_gyre_last marks the end of that
 ! block); 19..34 the FGONG extras. 23..33 are the n_pulse_species
 ! FGONG-ordered species at ipul_species_base + k, k = 1..n_pulse_species
-! (see species_slot).
+! (see species_slot). Column 35 is a spare: nothing fills it but the
+! zero every point starts from, and no writer reads it.
+      integer, parameter :: n_pulse_cols = 35
       integer, parameter :: ipul_r = 1, ipul_m = 2, ipul_L = 3, &
            ipul_P = 4, ipul_T = 5, ipul_rho = 6, ipul_grad = 7, &
            ipul_N2 = 8, ipul_gamma1 = 9, ipul_grada = 10, &
@@ -91,33 +94,74 @@ module stitched_model
 ! atmosphere heights live in the star's record s%stitched
 ! (state/stitched_model_state.f90), sized max_ext.
 
+! The structure of one point of the extended grid, which the three
+! regions gather alike (build_pulse_points): r [cm], m [g], P [dyn/cm^2],
+! T [K], rho [g/cm^3], delta = -(dln rho/dln T)_P, and the actual and
+! adiabatic gradients.
+      type :: point_structure
+         real(dp) :: radius = 0.0d0, mass = 0.0d0, pressure = 0.0d0, &
+              temperature = 0.0d0, density = 0.0d0, delta = 0.0d0, nabla = 0.0d0, &
+              nabla_ad = 0.0d0
+      end type point_structure
+
 contains
 
-! Regenerate the envelope/atmosphere structures for the CONVERGED
-! model and build the inward-to-outward index map. The envelope the
-! solver last integrated belongs to some trial (Teff, L) -- or was
-! never integrated at all, when the envelope triangle interpolated --
-! so a fresh atm_get at the converged values is required, with the
-! fixed output step sizes. ierr = 1 when a profile column has no value
-! in a region (fill_stitched_arrays).
-!   star reads: atm_points, convective_flag, env_points, log_L_lsun,
-!     log_Teff, log_total_mass, logP, logR, nz, physics%atm_step_size,
-!     physics%calc_envelope_flag, physics%envelope_step_size,
-!     physics%spot_filling_factor, physics%spot_temp_contrast
-!   star writes: fp_rot, ft_rot, stitched, xa
+! ---------------------------------------------------------------
+! The stitched model of the converged star: the index map of the
+! extended grid (interior, envelope, atmosphere, from the centre
+! outward) and every profile and pulse column on it. The envelope the
+! solver last integrated belongs to some trial (Teff, L), or was never
+! integrated at all when the envelope triangle interpolated, so the
+! envelope and atmosphere are integrated afresh at the converged values
+! with the fixed output step sizes (integrate_converged_envelope).
+! Without an envelope (calc_envelope_flag off), and when that
+! integration fails (its error has been reported; bug_sweep M327), the
+! grid is the interior alone, and lamb_S2, gradL and gradr_div_grada
+! keep what the last full build left (brunt_N2 is the pulse points' N^2
+! of this grid). ierr = 1 when a profile column has no value in a region
+! (fill_stitched_arrays).
+!   star reads: atm_points, env_points, logR, nz,
+!     physics%calc_envelope_flag
+!   star writes: stitched
 subroutine build_stitched_model(s, ierr)
-      use star_info_lib, only: i_h1, i_metals
-      use envelope_integration, only: atm_get, envint_step_config, fixed_envint_step, &
-           surface_log10_radius_cm
       type(star_info), intent(inout) :: s
       integer, intent(out) :: ierr
-      integer :: j, i, jerr
-      type(envint_step_config) :: atm_steps, env_steps
-      real(dp) :: b, gl, rl, ateffl, plim
-      integer :: saha_iterations
-      logical :: lprt, lsbc0
+! no envelope or atmosphere points
+      real(dp), parameter :: no_points(0) = [real(dp) ::]
+      integer :: envelope_ierr
 
+      call allocate_stitched_arrays(s)
+      ierr = 0
+      envelope_ierr = 0
+      if (s%physics%calc_envelope_flag) call integrate_converged_envelope(s, envelope_ierr)
+      if (.not. s%physics%calc_envelope_flag .or. envelope_ierr /= 0) then
+         call map_extended_grid(s%nz, s%logR(s%nz), no_points, no_points, &
+              s%stitched%region, s%stitched%index, s%stitched%n_ie, s%stitched%n_ext)
+         call fill_stitched_arrays(s, ierr)
+         return
+      end if
+
+! The atmosphere's deepest point (height 0) repeats the envelope's
+! photosphere, and the envelope's first the fitting point: the map skips
+! both (Sources, 1, for the heights).
+      call accumulate_atmosphere_heights( &
+           s%atm_points%atmo_delta_depth(1:s%atm_points%num_atm_points), &
+           s%stitched%atm_height(1:s%atm_points%num_atm_points))
+      call map_extended_grid(s%nz, s%logR(s%nz), &
+           s%env_points%env_log10_radius(1:s%env_points%num_env_points), &
+           s%stitched%atm_height(1:s%atm_points%num_atm_points), &
+           s%stitched%region, s%stitched%index, s%stitched%n_ie, s%stitched%n_ext)
+      call compute_seismic_columns(s)
+      call fill_stitched_arrays(s, ierr)
+end subroutine build_stitched_model
+
+! ---------------------------------------------------------------
 ! The record's arrays, allocated and zeroed on the first build.
+!   star reads: none
+!   star writes: stitched
+subroutine allocate_stitched_arrays(s)
+      type(star_info), intent(inout) :: s
+
       if (.not. allocated(s%stitched%prof)) then
          allocate(s%stitched%region(max_ext), s%stitched%index(max_ext), &
               s%stitched%seismic(4,max_ext), s%stitched%atm_height(max_ext), &
@@ -129,99 +173,55 @@ subroutine build_stitched_model(s, ierr)
          s%stitched%prof = 0.0d0
          s%stitched%pulse = 0.0d0
       end if
-      ierr = 0
-! interior always present
-      s%stitched%n_ext = 0
-      do j = 1, s%nz
-         s%stitched%n_ext = s%stitched%n_ext + 1
-         s%stitched%region(s%stitched%n_ext) = region_interior
-         s%stitched%index(s%stitched%n_ext) = j
-      end do
-      if (.not. s%physics%calc_envelope_flag) then
-         s%stitched%n_ie = s%stitched%n_ext
-! interior-only: materialize what we have. (Historical quirk kept
-! byte-for-byte: lamb_S2, gradL and gradr_div_grada are NOT recomputed
-! on this branch -- they hold whatever the last full build left;
-! brunt_N2 is the pulse points' N^2 of this grid.)
-         call fill_stitched_arrays(s, ierr)
-         return
-      end if
+end subroutine allocate_stitched_arrays
 
-! ---- re-integrate at the converged model ----
-! with the fixed output step sizes, for this atm_get call only
+! ---------------------------------------------------------------
+! The envelope and atmosphere of the converged model, into the star's
+! env_points and atm_points: atm_get at the model's L and Teff (the
+! unspotted surface's for a spotted star with a convective surface), from
+! the surface down to the pressure of the interior's outermost point,
+! with the output step sizes atm_step_size and envelope_step_size for
+! this call only. This is the one writer of star%photosphere_logP:
+! atm_get sets it from this integration, every step. ierr is atm_get's.
+!   star reads: convective_flag, log_L_lsun, log_Teff, log_total_mass,
+!     logP, nz, physics%atm_step_size, physics%envelope_step_size,
+!     physics%spot_filling_factor, physics%spot_temp_contrast
+!   star writes: fp_rot, ft_rot, xa
+subroutine integrate_converged_envelope(s, ierr)
+      use star_info_lib, only: i_h1, i_metals
+      use envelope_integration, only: atm_get, envint_step_config, fixed_envint_step, &
+           surface_log10_radius_cm, ambient_log10_teff
+      type(star_info), intent(inout) :: s
+      integer, intent(out) :: ierr
+      type(envint_step_config) :: atm_steps, env_steps
+      real(dp) :: surface_luminosity_lsun, log10_gravity, log10_radius, &
+           ambient_log_teff, log10_pressure_limit
+      integer :: saha_iterations
+      logical :: print_flag, save_boundary_flag
+
       atm_steps = fixed_envint_step(s%physics%atm_step_size)
       env_steps = fixed_envint_step(s%physics%envelope_step_size)
 
       saha_iterations = 0
-      lprt = .false.
-      lsbc0 = .false.
-      b = exp(ln10*s%log_L_lsun)
-      rl = surface_log10_radius_cm(s, s%log_L_lsun, s%log_Teff)
-      gl = cgl + s%log_total_mass - rl - rl
-      plim = s%logP(s%nz)
+      print_flag = .false.
+      save_boundary_flag = .false.
+      surface_luminosity_lsun = exp(ln10*s%log_L_lsun)
+      log10_radius = surface_log10_radius_cm(s, s%log_L_lsun, s%log_Teff)
+      log10_gravity = cgl + s%log_total_mass - log10_radius - log10_radius
+      log10_pressure_limit = s%logP(s%nz)
       if (s%convective_flag(s%nz) .and. s%physics%spot_filling_factor /= 0.0d0 &
           .and. s%physics%spot_temp_contrast /= 1.0d0) then
-         ateffl = s%log_Teff - 0.25d0*log10(s%physics%spot_filling_factor* &
-              pow(s%physics%spot_temp_contrast, 4.0d0) + 1.0d0 - s%physics%spot_filling_factor)
+         ambient_log_teff = ambient_log10_teff(s, s%log_Teff)
       else
-         ateffl = s%log_Teff
+         ambient_log_teff = s%log_Teff
       end if
-      jerr = 0
-! The stitch is the one writer of star%photosphere_logP: atm_get sets
-! it from this integration at the converged model, and no other path
-! recomputes it. The stitch runs every step, so photosphere_logP is
-! always current.
-      call atm_get(s, b, s%fp_rot(s%nz), s%ft_rot(s%nz), gl, &
-           s%log_total_mass, lprt, lsbc0, plim, rl, ateffl, &
-           s%xa(i_h1,s%nz), s%xa(i_metals,s%nz), s%xa(:,s%nz), saha_iterations, jerr, &
+      ierr = 0
+      call atm_get(s, surface_luminosity_lsun, s%fp_rot(s%nz), s%ft_rot(s%nz), &
+           log10_gravity, s%log_total_mass, print_flag, save_boundary_flag, &
+           log10_pressure_limit, log10_radius, ambient_log_teff, &
+           s%xa(i_h1,s%nz), s%xa(i_metals,s%nz), s%xa(:,s%nz), saha_iterations, ierr, &
            atm_steps=atm_steps, env_steps=env_steps)
-
-      if (jerr /= 0) then
-         s%stitched%n_ie = s%stitched%n_ext
-         call fill_stitched_arrays(s, ierr)
-         return
-      end if
-
-! envelope: env_points runs fitting point -> photosphere (envint
-! inverts it), so it appends directly. Its innermost point repeats
-! the fitting point (to re-integration roundoff, so its radius can
-! even land marginally BELOW the last interior point's) -- skip any
-! envelope point not strictly outside the interior, keeping the
-! extended radius strictly monotonic for GYRE.
-      do i = 1, s%env_points%num_env_points
-         if (s%stitched%n_ext >= max_ext) exit
-         if (s%env_points%env_log10_radius(i) <= s%logR(s%nz)) cycle
-         s%stitched%n_ext = s%stitched%n_ext + 1
-         s%stitched%region(s%stitched%n_ext) = region_envelope
-         s%stitched%index(s%stitched%n_ext) = i
-      end do
-      s%stitched%n_ie = s%stitched%n_ext
-! atmosphere: atm_points runs outward-in, so walk it in reverse.
-! atmo_delta_depth(k) is the PER-STEP geometric length between tau
-! points k-1 and k (envint's Cox p590 quadrature), not a height, so
-! accumulate it into atm_height: point i sits sum(delta(i+1:num))
-! above the deepest point (tau = 2/3, the photosphere) (Sources, 1).
-! delta(1), the one value polluted by the stale-prev_tau quirk envint
-! notes, never enters any height. The
-! deepest point (height 0) repeats the envelope's photosphere radius
-! and is skipped, same as the fitting-point repeat above.
-      if (s%atm_points%num_atm_points > 0) then
-         s%stitched%atm_height(s%atm_points%num_atm_points) = 0.0d0
-         do i = s%atm_points%num_atm_points - 1, 1, -1
-            s%stitched%atm_height(i) = s%stitched%atm_height(i+1) + &
-                 s%atm_points%atmo_delta_depth(i+1)
-         end do
-      end if
-      do i = s%atm_points%num_atm_points, 1, -1
-         if (s%stitched%n_ext >= max_ext) exit
-         if (s%stitched%atm_height(i) <= 0.0d0) cycle
-         s%stitched%n_ext = s%stitched%n_ext + 1
-         s%stitched%region(s%stitched%n_ext) = region_atmosphere
-         s%stitched%index(s%stitched%n_ext) = i
-      end do
-      call compute_seismic_columns(s)
-      call fill_stitched_arrays(s, ierr)
-end subroutine build_stitched_model
+end subroutine integrate_converged_envelope
 
 ! ---------------------------------------------------------------
 ! Fill s%stitched%seismic(2:4,:) over the assembled extended grid:
@@ -714,55 +714,67 @@ end subroutine atmosphere_value
 ! (Sources, 3). The energy generation derivative columns are zero there
 ! (no burning above the fitting point), and the composition above the
 ! fitting point is the surface composition.
-!   star reads: adiabatic_index_gamma1, atm_points, env_points,
-!     eps_channels, eps_total, grada, gradT, log_L_lsun, log_total_mass,
-!     logP, logR, logRho, logT, luminosity_lsun, m, nz, omega,
+!   star reads: none
+!   star writes: stitched
+subroutine build_pulse_points(s)
+      type(star_info), intent(inout) :: s
+      type(point_structure) :: point
+      real(dp) :: columns(n_pulse_cols)
+      integer :: j, i
+
+      do j = 1, s%stitched%n_ext
+         i = s%stitched%index(j)
+         columns = 0.0d0
+         select case (s%stitched%region(j))
+         case (region_interior)
+            call gather_interior_point(s, i, point, columns)
+         case (region_envelope)
+            call gather_envelope_point(s, i, point, columns)
+         case default   ! region_atmosphere
+            call gather_atmosphere_point(s, i, point, columns)
+         end select
+         call store_common_columns(point, columns)
+         s%stitched%pulse(:,j) = columns
+      end do
+      call difference_brunt_n2(s%stitched%pulse(ipul_r,1:s%stitched%n_ext), &
+           s%stitched%pulse(ipul_m,1:s%stitched%n_ext), &
+           s%stitched%pulse(ipul_P,1:s%stitched%n_ext), &
+           s%stitched%pulse(ipul_rho,1:s%stitched%n_ext), &
+           s%stitched%pulse(ipul_gamma1,1:s%stitched%n_ext), exp(ln10*cgl), &
+           s%stitched%pulse(ipul_N2,1:s%stitched%n_ext))
+end subroutine build_pulse_points
+
+! ---------------------------------------------------------------
+! Interior point i: its structure, and the pulse columns the converged
+! interior model holds, into columns (one point's pulse columns).
+!   star reads: adiabatic_index_gamma1, eps_channels, eps_total, grada,
+!     gradT, logP, logR, logRho, logT, luminosity_lsun, m, omega,
 !     opacity_zone, pulse_deps_dlnrho, pulse_deps_dlnt,
 !     pulse_dlnkap_dlnrho, pulse_dlnkap_dlnt, pulse_dlnrho_dlnt,
 !     pulse_electron_mean_weight_inverse, pulse_specific_heat,
 !     solar_luminosity_cgs, xa
-!   star writes: stitched
-subroutine build_pulse_points(s)
-      use math_lib
+!   star writes: none
+subroutine gather_interior_point(s, i, point, columns)
       use star_info_lib, only: i_eps_grav, i_h1, i_metals
-      type(star_info), intent(inout) :: s
-      integer :: j, i, k
-      real(dp) :: r, m, P, T, rho, delta, nab, nab_ad, grav
+      type(star_info), intent(in) :: s
+      integer, intent(in) :: i
+      type(point_structure), intent(out) :: point
+      real(dp), intent(inout) :: columns(:)
+      integer :: k
 
-      do j = 1, s%stitched%n_ext
-         i = s%stitched%index(j)
-         s%stitched%pulse(:,j) = 0.0d0
-         select case (s%stitched%region(j))
-         case (region_interior)
-            call gather_interior_point()
-         case (region_envelope)
-            call gather_envelope_point()
-         case default   ! region_atmosphere
-            call gather_atmosphere_point()
-         end select
-         call store_common_columns()
-      end do
-      call difference_brunt_n2()
-
-contains
-
-! ---------------------------------------------------------------
-! Interior point i: its structure, and the pulse columns the converged
-! interior model holds.
-subroutine gather_interior_point()
-      r = exp(ln10*s%logR(i))
-      m = s%m(i)
-      P = exp(ln10*s%logP(i))
-      T = exp(ln10*s%logT(i))
-      rho = exp(ln10*s%logRho(i))
-      delta = -s%pulse_dlnrho_dlnt(i)
-      nab = s%gradT(i)
-      nab_ad = s%grada(i)
-      s%stitched%pulse(ipul_L,j) = s%luminosity_lsun(i)*s%solar_luminosity_cgs
-      s%stitched%pulse(ipul_gamma1,j) = s%adiabatic_index_gamma1(i)
-      s%stitched%pulse(ipul_kap,j) = s%opacity_zone(i)
+      point%radius = exp(ln10*s%logR(i))
+      point%mass = s%m(i)
+      point%pressure = exp(ln10*s%logP(i))
+      point%temperature = exp(ln10*s%logT(i))
+      point%density = exp(ln10*s%logRho(i))
+      point%delta = -s%pulse_dlnrho_dlnt(i)
+      point%nabla = s%gradT(i)
+      point%nabla_ad = s%grada(i)
+      columns(ipul_L) = s%luminosity_lsun(i)*s%solar_luminosity_cgs
+      columns(ipul_gamma1) = s%adiabatic_index_gamma1(i)
+      columns(ipul_kap) = s%opacity_zone(i)
 ! GSM/GYRE convention (MESA pulse_gyre.f90): kap_kap_T = kap*dlnkap/dlnT
-! (the absolute derivative dkap/dlnT), NOT the bare log-derivative;
+! (the absolute derivative dkap/dlnT), not the bare log-derivative;
 ! likewise eps_eps_T = eps*dlneps/dlnT = deps/dlnT. Only nonadiabatic
 ! GYRE runs read these columns. pulse_dlnkap_* are true log-derivatives,
 ! so they are multiplied by kap here. pulse_deps_* already hold the
@@ -770,143 +782,121 @@ subroutine gather_interior_point()
 ! (nuclear_energy's deps_nuc_*: eps_nuc's, without the thermal neutrino
 ! loss, as MESA writes eps_nuc with d_epsnuc_dlnT and d_epsnuc_dlnd), so
 ! they are written as they are (Sources, 4).
-      s%stitched%pulse(ipul_kap_kap_T,j) = s%opacity_zone(i)*s%pulse_dlnkap_dlnt(i)
-      s%stitched%pulse(ipul_kap_kap_rho,j) = s%opacity_zone(i)*s%pulse_dlnkap_dlnrho(i)
-      s%stitched%pulse(ipul_eps,j) = s%eps_total(i)
-      s%stitched%pulse(ipul_eps_eps_T,j) = s%pulse_deps_dlnt(i)
-      s%stitched%pulse(ipul_eps_eps_rho,j) = s%pulse_deps_dlnrho(i)
-      s%stitched%pulse(ipul_omega,j) = s%omega(i)
-      s%stitched%pulse(ipul_cp,j) = s%pulse_specific_heat(i)
+      columns(ipul_kap_kap_T) = s%opacity_zone(i)*s%pulse_dlnkap_dlnt(i)
+      columns(ipul_kap_kap_rho) = s%opacity_zone(i)*s%pulse_dlnkap_dlnrho(i)
+      columns(ipul_eps) = s%eps_total(i)
+      columns(ipul_eps_eps_T) = s%pulse_deps_dlnt(i)
+      columns(ipul_eps_eps_rho) = s%pulse_deps_dlnrho(i)
+      columns(ipul_omega) = s%omega(i)
+      columns(ipul_cp) = s%pulse_specific_heat(i)
 ! (the array holds 1/mu_e, which FGONG's var(14) wants)
-      s%stitched%pulse(ipul_mu_e_inv,j) = s%pulse_electron_mean_weight_inverse(i)
-      s%stitched%pulse(ipul_h1,j) = s%xa(i_h1,i)
-      s%stitched%pulse(ipul_z,j) = s%xa(i_metals,i)
+      columns(ipul_mu_e_inv) = s%pulse_electron_mean_weight_inverse(i)
+      columns(ipul_h1) = s%xa(i_h1,i)
+      columns(ipul_z) = s%xa(i_metals,i)
       do k = 1, n_pulse_species
-         s%stitched%pulse(ipul_species_base+k,j) = s%xa(species_slot(k),i)
+         columns(ipul_species_base+k) = s%xa(species_slot(k),i)
       end do
-      s%stitched%pulse(ipul_eps_grav,j) = s%eps_channels(i_eps_grav,i)
+      columns(ipul_eps_grav) = s%eps_channels(i_eps_grav,i)
 end subroutine gather_interior_point
 
 ! ---------------------------------------------------------------
 ! Envelope point i: its structure and the columns env_points holds; the
 ! rotation and composition are the surface's.
-subroutine gather_envelope_point()
-      r = exp(ln10*s%env_points%env_log10_radius(i))
-      m = envelope_mass_g(s, i)
-      P = exp(ln10*s%env_points%env_log10_pressure(i))
-      T = exp(ln10*s%env_points%env_log10_temperature(i))
-      rho = exp(ln10*s%env_points%env_log10_density(i))
-      delta = -s%env_points%env_dlnrho_dlnt(i)
+!   star reads: env_points, nz, omega, solar_luminosity_cgs, xa
+!   star writes: none
+subroutine gather_envelope_point(s, i, point, columns)
+      type(star_info), intent(in) :: s
+      integer, intent(in) :: i
+      type(point_structure), intent(out) :: point
+      real(dp), intent(inout) :: columns(:)
+      integer :: k
+
+      point%radius = exp(ln10*s%env_points%env_log10_radius(i))
+      point%mass = envelope_mass_g(s, i)
+      point%pressure = exp(ln10*s%env_points%env_log10_pressure(i))
+      point%temperature = exp(ln10*s%env_points%env_log10_temperature(i))
+      point%density = exp(ln10*s%env_points%env_log10_density(i))
+      point%delta = -s%env_points%env_dlnrho_dlnt(i)
 ! env_gradients holds (1) the radiative, (2) the adiabatic and (3) the
 ! actual gradient (envelope_derivs' current_gradients), unlike
 ! atmo_gradients, whose order is (radiative, actual, adiabatic)
 ! (Sources, 5).
-      nab = s%env_points%env_gradients(3,i)
-      nab_ad = s%env_points%env_gradients(2,i)
-      s%stitched%pulse(ipul_L,j) = s%env_points%env_luminosity(i)*s%solar_luminosity_cgs
-      s%stitched%pulse(ipul_gamma1,j) = s%env_points%env_gamma1(i)
-      s%stitched%pulse(ipul_kap,j) = s%env_points%env_opacity(i)
+      point%nabla = s%env_points%env_gradients(3,i)
+      point%nabla_ad = s%env_points%env_gradients(2,i)
+      columns(ipul_L) = s%env_points%env_luminosity(i)*s%solar_luminosity_cgs
+      columns(ipul_gamma1) = s%env_points%env_gamma1(i)
+      columns(ipul_kap) = s%env_points%env_opacity(i)
 ! absolute derivatives kap*dlnkap/dln{T,rho}, the GSM/GYRE convention
 ! used for the interior above
-      s%stitched%pulse(ipul_kap_kap_T,j) = s%env_points%env_opacity(i)*s%env_points%env_dlnkap_dlnt(i)
-      s%stitched%pulse(ipul_kap_kap_rho,j) = s%env_points%env_opacity(i)*s%env_points%env_dlnkap_dlnrho(i)
-      s%stitched%pulse(ipul_omega,j) = s%omega(s%nz)
-      s%stitched%pulse(ipul_cp,j) = s%env_points%env_specific_heat_cp(i)
-      s%stitched%pulse(ipul_h1,j) = s%env_points%env_hydrogen_fraction(i)
-      s%stitched%pulse(ipul_z,j) = s%env_points%env_metal_fraction(i)
+      columns(ipul_kap_kap_T) = s%env_points%env_opacity(i)*s%env_points%env_dlnkap_dlnt(i)
+      columns(ipul_kap_kap_rho) = s%env_points%env_opacity(i)*s%env_points%env_dlnkap_dlnrho(i)
+      columns(ipul_omega) = s%omega(s%nz)
+      columns(ipul_cp) = s%env_points%env_specific_heat_cp(i)
+      columns(ipul_h1) = s%env_points%env_hydrogen_fraction(i)
+      columns(ipul_z) = s%env_points%env_metal_fraction(i)
       do k = 1, n_pulse_species
-         s%stitched%pulse(ipul_species_base+k,j) = s%xa(species_slot(k),s%nz)
+         columns(ipul_species_base+k) = s%xa(species_slot(k),s%nz)
       end do
 end subroutine gather_envelope_point
 
 ! ---------------------------------------------------------------
 ! Atmosphere point i: its structure and the columns atm_points holds;
 ! the luminosity, rotation and composition are the surface's.
-subroutine gather_atmosphere_point()
-      r = atmosphere_radius_cm(s, i)
-      m = exp(ln10*s%log_total_mass)
-      P = exp(ln10*s%atm_points%atmo_log10_pressure(i))
-      T = exp(ln10*s%atm_points%atmo_log10_temperature(i))
-      rho = exp(ln10*s%atm_points%atmo_log10_density(i))
-      delta = -s%atm_points%atmo_dlnrho_dlnt(i)
-      nab = s%atm_points%atmo_gradients(2,i)
-      nab_ad = s%atm_points%atmo_gradients(3,i)
-      s%stitched%pulse(ipul_L,j) = exp(ln10*s%log_L_lsun)*s%solar_luminosity_cgs
-      s%stitched%pulse(ipul_gamma1,j) = s%atm_points%atmo_gamma1(i)
-      s%stitched%pulse(ipul_kap,j) = s%atm_points%atmo_opacity(i)
-      s%stitched%pulse(ipul_kap_kap_T,j) = s%atm_points%atmo_opacity(i)*s%atm_points%atmo_dlnkap_dlnt(i)
-      s%stitched%pulse(ipul_kap_kap_rho,j) = s%atm_points%atmo_opacity(i)*s%atm_points%atmo_dlnkap_dlnrho(i)
-      s%stitched%pulse(ipul_omega,j) = s%omega(s%nz)
-      s%stitched%pulse(ipul_cp,j) = s%atm_points%atmo_specific_heat_cp(i)
-      s%stitched%pulse(ipul_h1,j) = s%xa(i_h1,s%nz)
-      s%stitched%pulse(ipul_z,j) = s%xa(i_metals,s%nz)
+!   star reads: atm_points, log_L_lsun, log_total_mass, nz, omega,
+!     solar_luminosity_cgs, xa
+!   star writes: none
+subroutine gather_atmosphere_point(s, i, point, columns)
+      use star_info_lib, only: i_h1, i_metals
+      type(star_info), intent(in) :: s
+      integer, intent(in) :: i
+      type(point_structure), intent(out) :: point
+      real(dp), intent(inout) :: columns(:)
+      integer :: k
+
+      point%radius = atmosphere_radius_cm(s, i)
+      point%mass = exp(ln10*s%log_total_mass)
+      point%pressure = exp(ln10*s%atm_points%atmo_log10_pressure(i))
+      point%temperature = exp(ln10*s%atm_points%atmo_log10_temperature(i))
+      point%density = exp(ln10*s%atm_points%atmo_log10_density(i))
+      point%delta = -s%atm_points%atmo_dlnrho_dlnt(i)
+      point%nabla = s%atm_points%atmo_gradients(2,i)
+      point%nabla_ad = s%atm_points%atmo_gradients(3,i)
+      columns(ipul_L) = exp(ln10*s%log_L_lsun)*s%solar_luminosity_cgs
+      columns(ipul_gamma1) = s%atm_points%atmo_gamma1(i)
+      columns(ipul_kap) = s%atm_points%atmo_opacity(i)
+      columns(ipul_kap_kap_T) = s%atm_points%atmo_opacity(i)*s%atm_points%atmo_dlnkap_dlnt(i)
+      columns(ipul_kap_kap_rho) = s%atm_points%atmo_opacity(i)*s%atm_points%atmo_dlnkap_dlnrho(i)
+      columns(ipul_omega) = s%omega(s%nz)
+      columns(ipul_cp) = s%atm_points%atmo_specific_heat_cp(i)
+      columns(ipul_h1) = s%xa(i_h1,s%nz)
+      columns(ipul_z) = s%xa(i_metals,s%nz)
       do k = 1, n_pulse_species
-         s%stitched%pulse(ipul_species_base+k,j) = s%xa(species_slot(k),s%nz)
+         columns(ipul_species_base+k) = s%xa(species_slot(k),s%nz)
       end do
 end subroutine gather_atmosphere_point
 
 ! ---------------------------------------------------------------
 ! The columns every region fills alike: r, m, P, T, rho, the gradients,
-! delta, and the pointwise thermal N^2.
-subroutine store_common_columns()
-      s%stitched%pulse(ipul_r,j) = r
-      s%stitched%pulse(ipul_m,j) = m
-      s%stitched%pulse(ipul_P,j) = P
-      s%stitched%pulse(ipul_T,j) = T
-      s%stitched%pulse(ipul_rho,j) = rho
-      s%stitched%pulse(ipul_grad,j) = nab
-      s%stitched%pulse(ipul_grada,j) = nab_ad
-      s%stitched%pulse(ipul_delta,j) = delta
-      if (r > 0.0d0) then
-         grav = local_gravity_cgs(m, r)
-         s%stitched%pulse(ipul_N2,j) = grav*grav*(rho/P)*delta*(nab_ad - nab)
+! delta, and the pointwise thermal N^2 (left at zero for a point at
+! r = 0), which difference_brunt_n2 then replaces where it is not
+! negative.
+subroutine store_common_columns(point, columns)
+      type(point_structure), intent(in) :: point
+      real(dp), intent(inout) :: columns(:)
+
+      columns(ipul_r) = point%radius
+      columns(ipul_m) = point%mass
+      columns(ipul_P) = point%pressure
+      columns(ipul_T) = point%temperature
+      columns(ipul_rho) = point%density
+      columns(ipul_grad) = point%nabla
+      columns(ipul_grada) = point%nabla_ad
+      columns(ipul_delta) = point%delta
+      if (point%radius > 0.0d0) then
+         columns(ipul_N2) = thermal_brunt_n2(local_gravity_cgs(point%mass, point%radius), &
+              point%density, point%pressure, point%delta, point%nabla_ad, point%nabla)
       end if
 end subroutine store_common_columns
-
-! ---------------------------------------------------------------
-! The second pass over N^2: the gradient form by centered differences
-! outside convective zones (see below).
-subroutine difference_brunt_n2()
-! Brunt-Vaisala N^2 (column 8), second pass: overwrite the pointwise
-! thermal-only value computed above with the exact gradient form
-!     N^2 = g * [ (1/Gamma_1) dlnP/dr - dlnRho/dr ]
-! (the same derivative content as FGONG's A4 and profile column 54,
-! centered differences in r). The thermal form g^2 rho delta
-! (nab_ad - nab)/P is exact ONLY for homogeneous composition: it
-! omits the Ledoux mu-gradient term, which dominates N^2 in the
-! composition-gradient layers above a retreating core / around the
-! H-burning shell -- on a 1.2 Msun subgiant it understated the
-! g-cavity buoyancy by ~30% (12% in the period spacing DeltaPi_1)
-! and shifted l=1 mixed-mode frequencies by up to ~16 uHz. The
-! actual density gradient carries the composition term for free.
-! CONVECTIVE zones keep the first-pass thermal value: there the
-! mixture is homogeneous by mixing (mu-gradient zero), so the thermal
-! form is already exact -- and correctly, smoothly negative -- while
-! the centered difference of a near-adiabatic stratification is
-! cancellation noise of random sign. The switch is the sign of the
-! thermal value itself (< 0 means Schwarzschild-unstable). The
-! positive N^2 spike the difference produces AT a convective-zone
-! base (the mu-discontinuity's buoyancy interface) lands on the
-! radiative side and is kept -- it is physics, not noise.
-! Endpoints copy their neighbor, matching compute_seismic_columns.
-      do j = 2, s%stitched%n_ext - 1
-         if (s%stitched%pulse(ipul_N2,j) >= 0.0d0 .and. &
-              s%stitched%pulse(ipul_r,j) > 0.0d0 .and. s%stitched%pulse(ipul_r,j+1) > s%stitched%pulse(ipul_r,j-1) .and. &
-              s%stitched%pulse(ipul_gamma1,j) > 0.0d0) then
-            grav = local_gravity_cgs(s%stitched%pulse(ipul_m,j), s%stitched%pulse(ipul_r,j))
-            s%stitched%pulse(ipul_N2,j) = grav*( &
-                 (log(s%stitched%pulse(ipul_P,j+1)) - log(s%stitched%pulse(ipul_P,j-1)))/s%stitched%pulse(ipul_gamma1,j) - &
-                 (log(s%stitched%pulse(ipul_rho,j+1)) - log(s%stitched%pulse(ipul_rho,j-1))) ) / &
-                 (s%stitched%pulse(ipul_r,j+1) - s%stitched%pulse(ipul_r,j-1))
-         end if
-      end do
-      if (s%stitched%n_ext >= 2) then
-         s%stitched%pulse(ipul_N2,1) = s%stitched%pulse(ipul_N2,2)
-         s%stitched%pulse(ipul_N2,s%stitched%n_ext) = s%stitched%pulse(ipul_N2,s%stitched%n_ext-1)
-      end if
-end subroutine difference_brunt_n2
-
-end subroutine build_pulse_points
 
 ! star%xa slot for pulse column ipul_species_base + k (k = 1 ..
 ! n_pulse_species), in FGONG species order (column 34 is eps_grav, not a

@@ -194,8 +194,10 @@ STAR_BLIND_FILES = [
     "core/model/regridding.f90",
     # core/model and core/diagnostics (round 3, agent core3): the
     # kernels their drivers gather for, each with its test program
-    # (the turnover walk: test_turnover)
+    # (the turnover walk: test_turnover; the stitched model's index
+    # map, N^2 and seismic integrals: test_stitched)
     "core/diagnostics/turnover_walk.f90",
+    "core/diagnostics/stitched_kernels.f90",
     "atm/t_tau_relations.f90",
     # atm's table lookups (2026-11-10): the table in, the result and a
     # status out; atm_lib reports through atm_messages

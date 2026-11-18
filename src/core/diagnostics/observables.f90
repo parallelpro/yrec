@@ -2,32 +2,30 @@
 ! observables
 !----------------------------------------------------------------------
 ! The per-model observables of the converged star, one subroutine per
-! theme (formerly core/update_output_diagnostics.f90, and before that
-! blocks of the legacy writer wrtout). compute_observables is called
+! theme. compute_observables is called
 ! from evolve_step once per model, after the stitched model is built
 ! and before the output writer. Every quantity it computes is stored on
 ! star% (the observables members and the renormalized
-! star%luminosity_breakdown_lsun), so the writer only reads. Nothing it
-! computes feeds the physics: the turnover time, which the wind and the
-! deuterium cap read, is refreshed by the step (step_driver's
-! refresh_turnover_timescale, after compute_observables). The module
-! also holds shell_masses_from_log_mass, the m and dm of a log-mass grid.
+! star%luminosity_breakdown_lsun), so the writer only reads. One of
+! them is model state: renormalize_luminosity_breakdown rescales the
+! luminosity channels, which the model file stores and the next card's
+! first compute_timestep reads (its header). The turnover time, which
+! the wind and the deuterium cap read, is refreshed by the step
+! (step_driver's refresh_turnover_timescale, after compute_observables).
+! The module also holds shell_masses_from_log_mass, the m and dm of a
+! log-mass grid.
 !
 ! The order of the themes matters: the central conditions precede the
 ! base of the surface convection zone (whose fully convective branch
 ! reads star%central_log10_*), and compute_surface_globals precedes the
 ! themes that read star%log_R_surface_rsun.
 !
-! One local of the legacy routine's blanket SAVE outlived its call: the
-! central eos call's Saha iteration counter, which the star carries
-! (s%central_saha_state; eos_get adds to it and nothing reads it). The
-! others are set before every use and are plain locals. (Legacy wrtout's
-! core-boundary radius, which read the previous call's interpolation
-! fraction through an FX/FX2 typo and was never used, is not carried
-! over.)
+! The star carries the central eos call's Saha iteration counter
+! (s%central_saha_state; eos_get adds to it and nothing reads it).
 module observables
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use star_info_lib, only: i_h1, i_metals, n_lum_channels, star_info
+      use star_info_lib, only: i_h1, i_metals, i_nu_f17, i_nu_pp, n_lum_channels, &
+           n_nu_fluxes, star_info
       use energy_sources, only: num_energy_sources
       use structure_equations, only: luminosity_channel_sum
       use eos_lib, only: eos_get, eos_result
@@ -38,14 +36,25 @@ module observables
       public :: compute_observables
       public :: shell_masses_from_log_mass
 
-! The capture rate per unit flux of the eight solar-neutrino fluxes (pp,
-! pep, hep, 7Be, 8B, 13N, 15O, 17F, the order of neutrino_flux_layout)
-! for the gallium (71Ga) and chlorine (37Cl) detectors: the detector's
-! rate in SNU is sum_i c_i phi_i.
-      real(dp), parameter :: gasnuf_diag(8) = [1.18D1,2.15D2, &
-           7.14D4,7.17D1,2.40D4,6.04D1,1.137D2,1.139D2]
-      real(dp), parameter :: clsnuf_diag(8) = [0.0D0,1.6D1, &
-           4.26D4,2.4D0,1.14D4,1.7D0,6.8D0,6.9D0]
+! The eight solar-neutrino fluxes a detector captures (pp, pep, hep, 7Be,
+! 8B, 13N, 15O, 17F: neutrino_flux_layout's slots i_nu_pp to i_nu_f17;
+! the two slots after them are reaction rates, not neutrino sources).
+      integer, parameter :: n_detected_fluxes = i_nu_f17 - i_nu_pp + 1
+! The neutrino absorption cross sections of the gallium (71Ga) and
+! chlorine (37Cl) detectors averaged over each flux's spectrum, in units
+! of 1e-46 cm^2, in that order. With the fluxes in 1e10 cm^-2 s^-1 the
+! detector's capture rate sum_i sigma_i phi_i is in SNU (1e-36 captures
+! per target atom per second). The values are the F77 WRTOUT's (Sources).
+      real(dp), parameter :: gallium_capture_cross_section(n_detected_fluxes) = &
+           [1.18D1,2.15D2,7.14D4,7.17D1,2.40D4,6.04D1,1.137D2,1.139D2]
+      real(dp), parameter :: chlorine_capture_cross_section(n_detected_fluxes) = &
+           [0.0D0,1.6D1,4.26D4,2.4D0,1.14D4,1.7D0,6.8D0,6.9D0]
+
+! Unit conversions and limits of the observables: Hz to uHz; seconds in
+! a day; cm/s to km/s; the longest rotation period reported [days], which
+! stands for a surface at rest.
+      real(dp), parameter :: uhz_per_hz = 1.0d6, seconds_per_day = 8.64d4, &
+           km_per_cm = 1.0d-5, max_rotation_period_days = 9999.0d0
 
 contains
 
@@ -302,12 +311,11 @@ subroutine compute_seismic_observables(s)
       use math_lib
       use stitched_model, only: ip_logR, &
            ip_brunt_N2, ip_csound
+      use stitched_kernels, only: acoustic_radius, buoyancy_radius
       type(star_info), intent(inout) :: s
       real(dp) :: log_g_solar
-      real(dp) :: acoustic_radius, buoyancy_radius, n2, dr, &
-           r_inner, r_here, r_outer
-      logical :: entered_g_mode_cavity
-      integer :: k
+      real(dp) :: sound_travel_time, buoyancy_integral
+      integer :: n_ie
 
       log_g_solar = cgl + log10(s%solar_mass_cgs) &
            - 2.0d0*log10(s%solar_radius_cgs)
@@ -319,20 +327,16 @@ subroutine compute_seismic_observables(s)
            * sqrt(s%star_mass) * exp10((-1.5d0*s%log_R_surface_rsun))
 
 ! The asymptotic p-mode large separation from the sound travel time,
-!   delta_nu = [2 int_0^R dr/c]^(-1),
-! by the trapezoidal rule over the stitched model's points 1..n_ie
-! (center to photosphere; the atmosphere above R is excluded, as in
-! MESA's acoustic radius). In uHz (the integral is in seconds).
-      acoustic_radius = 0.0d0
-      do k = 2, s%stitched%n_ie
-         if (s%stitched%prof(ip_csound,k) <= 0.0d0 .or. &
-             s%stitched%prof(ip_csound,k-1) <= 0.0d0) cycle
-         dr = exp10(s%stitched%prof(ip_logR,k)) - exp10(s%stitched%prof(ip_logR,k-1))
-         acoustic_radius = acoustic_radius + dr*0.5d0 &
-              *(1.0d0/s%stitched%prof(ip_csound,k) + 1.0d0/s%stitched%prof(ip_csound,k-1))
-      end do
-      if (acoustic_radius > 0.0d0) then
-         s%delta_nu_uhz = 1.0d6/(2.0d0*acoustic_radius)
+!   delta_nu = [2 int dr/c]^(-1),
+! over the stitched model's points 1..n_ie (the innermost point to the
+! photosphere; the atmosphere above R is excluded, as in MESA's acoustic
+! radius; stitched_kernels' acoustic_radius). In uHz (the integral is in
+! seconds).
+      n_ie = s%stitched%n_ie
+      sound_travel_time = acoustic_radius(s%stitched%prof(ip_logR,1:n_ie), &
+           s%stitched%prof(ip_csound,1:n_ie))
+      if (sound_travel_time > 0.0d0) then
+         s%delta_nu_uhz = uhz_per_hz/(2.0d0*sound_travel_time)
       else
          s%delta_nu_uhz = 0.0d0
       end if
@@ -340,29 +344,13 @@ subroutine compute_seismic_observables(s)
 ! The asymptotic l = 1 g-mode period spacing from the Brunt-Vaisala
 ! frequency,
 !   delta_Pg = 2 pi^2/sqrt(l(l+1)) / int N/r dr = sqrt(2) pi^2 / int N/r dr,
-! over the innermost g-mode cavity only: walking outward from the
-! center, accumulate while N^2 > 0 and stop on first leaving the cavity
-! (after WB's MESA treatment). Each point contributes N/r times half
-! the span to its neighbours. Zero when there is no cavity (e.g. a fully
-! convective interior). In seconds. The center point is skipped (N/r is
-! 0/0 there).
-      buoyancy_radius = 0.0d0
-      entered_g_mode_cavity = .false.
-      do k = 2, s%stitched%n_ie - 1
-         n2 = s%stitched%prof(ip_brunt_N2,k)
-         if (n2 > 0.0d0) then
-            entered_g_mode_cavity = .true.
-            r_inner = exp10(s%stitched%prof(ip_logR,k-1))
-            r_here = exp10(s%stitched%prof(ip_logR,k))
-            r_outer = exp10(s%stitched%prof(ip_logR,k+1))
-            buoyancy_radius = buoyancy_radius &
-                 + sqrt(n2)/r_here*0.5d0*(r_outer - r_inner)
-         else if (entered_g_mode_cavity) then
-            exit
-         end if
-      end do
-      if (buoyancy_radius > 0.0d0) then
-         s%delta_Pg = cpi*cpi*sqrt(2.0d0)/buoyancy_radius
+! over the innermost g-mode cavity only (stitched_kernels'
+! buoyancy_radius). Zero when there is no cavity (a fully convective
+! interior). In seconds.
+      buoyancy_integral = buoyancy_radius(s%stitched%prof(ip_logR,1:n_ie), &
+           s%stitched%prof(ip_brunt_N2,1:n_ie))
+      if (buoyancy_integral > 0.0d0) then
+         s%delta_Pg = cpi*cpi*sqrt(2.0d0)/buoyancy_integral
       else
          s%delta_Pg = 0.0d0
       end if
@@ -406,14 +394,14 @@ subroutine compute_snu_rates(s)
       s%cl37_snu_rate = 0.0d0
       s%ga71_snu_rate = 0.0d0
       if (s%physics%calc_neutrinos) then
-         do i = 1, 8
+         do i = 1, n_detected_fluxes
             s%cl37_snu_rate = s%cl37_snu_rate + &
-                 clsnuf_diag(i)*s%neutrino_flux_total_e10_per_cm2_s(i)
+                 chlorine_capture_cross_section(i)*s%neutrino_flux_total_e10_per_cm2_s(i)
             s%ga71_snu_rate = s%ga71_snu_rate + &
-                 gasnuf_diag(i)*s%neutrino_flux_total_e10_per_cm2_s(i)
+                 gallium_capture_cross_section(i)*s%neutrino_flux_total_e10_per_cm2_s(i)
          end do
       else
-         do i = 1, 10
+         do i = 1, n_nu_fluxes
             s%neutrino_flux_total_e10_per_cm2_s(i) = 0.0d0
          end do
       end if
@@ -421,7 +409,7 @@ end subroutine compute_snu_rates
 
 ! ---------------------------------------------------------------
 ! The surface rotation period, P = 2 pi/omega(nz) in days (at most
-! 9999), the surface velocity omega(nz) R in km/s, and the moment of
+! max_rotation_period_days), the surface velocity omega(nz) R in km/s, and the moment of
 ! inertia of the surface convection zone (the i_rot sum with rotation,
 ! sum (2/3) dm r^2 without). Reads star%log_R_surface_rsun, so
 ! compute_surface_globals runs first.
@@ -436,10 +424,10 @@ subroutine compute_rotation_observables(s)
 
       s%cz_moment_of_inertia = 0.0d0
       if (s%physics%rotation_active) then
-         s%rotation_period_days = min(9999.0d0, &
-              0.5d0*c4pi/s%omega(s%nz)/8.64d4)
+         s%rotation_period_days = min(max_rotation_period_days, &
+              0.5d0*c4pi/s%omega(s%nz)/seconds_per_day)
          s%surf_velocity_kms = s%omega(s%nz)* &
-              exp(ln10*(s%log_R_surface_rsun+s%log10_solar_radius))*1.0d-5
+              exp(ln10*(s%log_R_surface_rsun+s%log10_solar_radius))*km_per_cm
          if (s%envelope_cz_bottom_index < s%nz) then
             do i = s%envelope_cz_bottom_index, s%nz
                s%cz_moment_of_inertia = &
@@ -498,4 +486,20 @@ subroutine compute_h_shell_boundaries(s)
       end if
 end subroutine compute_h_shell_boundaries
 
+! ---------------------------------------------------------------
+! Sources
+! 1. The themes were blocks of the F77 writer WRTOUT
+!    (git show 6cd56739:src/wrtout.f), then
+!    core/update_output_diagnostics.f90. Of the F77 routine's saved
+!    locals only the central eos call's Saha iteration counter outlived a
+!    call. WRTOUT's core-boundary radius, which read the previous call's
+!    interpolation fraction through an FX/FX2 typo and was never used, is
+!    not carried over.
+! 2. The capture cross sections are WRTOUT's DATA statements (GASNUF and
+!    CLSNUF), which name no source. Gallium: the hep, 7Be, 8B, 13N, 15O
+!    and 17F values are those of Bahcall 1997, Phys. Rev. C 56, 3391
+!    (7.14e4, 71.7, 2.40e4, 60.4, 113.7 and 113.9); that paper's pp and
+!    pep values are 11.72 and 204, where the table has 11.8 and 215.
+!    Chlorine: the 8B value is that of Bahcall et al. 1996, Phys. Rev. C
+!    54, 411 (1.14e4); the others were not traced to a paper.
 end module observables
