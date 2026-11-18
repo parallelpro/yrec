@@ -337,9 +337,8 @@ contains
          double precision :: r(num_kap_results), r2(num_kap_results), r_off(num_kap_results)
          double precision :: logd, value, value2, err
          type(kap_result) :: radiative, conductive, total, hl_plus, hl_minus
-         integer :: ierr, ierr2, u, k
+         integer :: ierr, ierr2, u
          logical :: exists
-         character(len=200) :: line
 
          check_failures = 0
          atom_dir = trim(yrec_input)//"/opacity/atomic/"
@@ -501,18 +500,8 @@ contains
          inquire(file="no_such_table.cond", exist=exists)
          call report("kap_init: a missing table returns ierr (and is not created)", 0.0d0, &
               0.0d0, ierr == 1 .and. .not. exists)
-         open(newunit=u, file="short_table.opal92", status="replace")
-         block
-            integer :: v, ios
-            open(newunit=v, file=trim(atom_dir)//"legacy/opal92/Z0188.OPALN", status="old", action="read")
-            do k = 1, 157
-               read(v,'(a)',iostat=ios) line
-               write(u,'(a)') trim(line)
-            end do
-            close(v)
-         end block
-         close(u)
-         call kap_init_with(ierr, opal92=.true., opal92_path="short_table.opal92")
+         call copy_lines(trim(atom_dir)//"legacy/opal92/Z0188.OPALN", "short_table.opal92", 157)
+         call kap_init_with(ierr, opal92=.true., opal92_path="short_table.opal92", table_z=0.0188d0)
          call report("kap_init: a short OPAL92 table returns ierr", 0.0d0, 0.0d0, ierr == 1)
          call load_production()
          call get_point(0.70d0, 0.016232d0, 3.0d0, logd_of(3.0d0, -3.0d0), r, ierr)
@@ -539,6 +528,32 @@ contains
          call get_point(0.0d0, 0.60d0, 7.8d0, 4.0d0, r, ierr)
          call report("kap_get: a helium core without the pure-Z table returns ierr", 0.0d0, &
               0.0d0, ierr == 1)
+! what a family checks at its load: the Z its table file states against
+! its control's (the first lines of Z0188.OPALN and Z0188AG89.DBGLAOL
+! with a table Z of 0.02), the LAOL tolerance, a Kurucz 1990 file of
+! header lines only (the copies are short: the message, the run log's
+! last line, tells the refusal from a short table's)
+         call kap_init_with(ierr, opal92=.true., opal92_path="short_table.opal92")
+         call report("kap_init refuses an OPAL92 table that is not at opal_table_z1", 0.0d0, &
+              0.0d0, ierr == 1 .and. index(last_log_line(), 'not at opal_table_z1') > 0)
+         call copy_lines(trim(atom_dir)//"legacy/opal92/Z0188AG89.DBGLAOL", "head_of_table.laol", 20)
+         call kap_init_with(ierr, laol_path="head_of_table.laol")
+         call report("kap_init refuses a LAOL89 table that is not at laol_table_z1", 0.0d0, &
+              0.0d0, ierr == 1 .and. index(last_log_line(), 'not at laol_table_z1') > 0)
+         call kap_init_with(ierr, opal95=.true., pure_z=.true., laol_tolerance=0.0d0)
+         call report("kap_init refuses a laol_z_tolerance that is not positive", 0.0d0, 0.0d0, &
+              ierr == 1)
+         open(newunit=u, file="no_rows.kurucz", status="replace")
+         write(u,'(a)') "KURUCZ ROSSELAND OPACITIES", " LOG T  LOG P"
+         close(u)
+         call kap_init_with(ierr, opal95=.true., kurucz_path="no_rows.kurucz")
+         call report("kap_init refuses a Kurucz 1990 table without rows", 0.0d0, 0.0d0, ierr == 1)
+! without an interior family the reason is that, whatever the zone's Z
+! (here off the envelope's 0.02, with no table to be at it)
+         call kap_init_with(ierr, alex06=.true.)
+         call get_point(0.70d0, 0.03d0, 6.0d0, -3.0d0, r, ierr)
+         call report("kap_get without an interior family says so, at any Z", 0.0d0, 0.0d0, &
+              ierr == 1 .and. index(last_log_line(), 'no interior opacity table chosen') > 0)
 ! a single-Z interior table serves the zones at the envelope's Z, which
 ! follows the model: after the envelope moves to Z = 0.02 a zone there
 ! has an opacity (the one table's), and one at the old Z has none
@@ -814,38 +829,80 @@ contains
                  trim(mol_dir)//"legacy/alex/OPACALEXANDER.X07", trim(mol_dir)//"legacy/alex/OPACALEXANDER.X08"]
          end function alex95_paths
 
+! the first num_lines lines of the file at source, written to target
+         subroutine copy_lines(source, target, num_lines)
+            character(len=*), intent(in) :: source, target
+            integer, intent(in) :: num_lines
+            character(len=200) :: line
+            integer :: u, v, k, ios
+            open(newunit=u, file=target, status="replace")
+            open(newunit=v, file=source, status="old", action="read")
+            do k = 1, num_lines
+               read(v,'(a)',iostat=ios) line
+               write(u,'(a)') trim(line)
+            end do
+            close(v)
+            close(u)
+         end subroutine copy_lines
+
+! the last line of the run log (kap_report writes each message there
+! too): what the last message said
+         function last_log_line() result(last)
+            character(len=512) :: last, line
+            integer :: v, ios
+            last = ''
+            flush(run_log_unit)
+            open(newunit=v, file="test_kap.short", status="old", action="read", iostat=ios)
+            if (ios /= 0) return
+            do
+               read(v,'(a)',iostat=ios) line
+               if (ios /= 0) exit
+               last = line
+            end do
+            close(v)
+         end function last_log_line
+
 ! kap_init with the families given, every table's path a shipped table
 ! (so that only the settings check, or the table named, can fail), for
-! the error contracts
+! the error contracts. The table Zs are 0.02, or table_z.
          subroutine kap_init_with(ierr, opal95, opal92, alex06, pure_z, two_z, logt_min, &
-              conductive_path, opal92_path)
+              conductive_path, opal92_path, laol_path, kurucz_path, laol_tolerance, table_z)
             integer, intent(out) :: ierr
             logical, intent(in), optional :: opal95, opal92, alex06, pure_z, two_z
-            double precision, intent(in), optional :: logt_min
-            character(len=*), intent(in), optional :: conductive_path, opal92_path
+            double precision, intent(in), optional :: logt_min, laol_tolerance, table_z
+            character(len=*), intent(in), optional :: conductive_path, opal92_path, laol_path, &
+                 kurucz_path
             type(kap_settings_t) :: s
             type(kap_table_paths_t) :: p
             s%use_opal95_tables = present(opal95)
             s%use_opal92_tables = present(opal92)
+            s%use_laol89_tables = present(laol_path)
+            s%use_kurucz90_tables = present(kurucz_path)
             s%use_alex06_tables = present(alex06)
             s%use_pure_z_table = present(pure_z)
             s%use_two_z_tables = present(two_z)
             s%use_conductive_opacity = present(conductive_path)
             s%opal95_single_table_z = 0.02d0
             s%opal_table_z1 = 0.02d0
+            if (present(table_z)) s%opal_table_z1 = table_z
             s%opal_table_z2 = 0.02d0
+            s%laol_table_z1 = 0.02d0
+            s%kurucz_table_z1 = 0.02d0
             s%metal_fraction_match_tolerance = 1.0d-8
             s%molecular_opacity_logt_min = 4.0d0
             if (present(logt_min)) s%molecular_opacity_logt_min = logt_min
             s%molecular_opacity_logt_max = 4.1d0
             s%laol_extrapolation_tolerance = 10.0d0
+            if (present(laol_tolerance)) s%laol_extrapolation_tolerance = laol_tolerance
             p%opal95 = trim(atom_dir)//"legacy/opal95/GS98.OP17"
             p%alex06 = trim(mol_dir)//"alexmol06gs98.tab"
             p%pure_z = trim(atom_dir)//"lanl/PURECO.DBGLAOL"
             p%opal92 = trim(atom_dir)//"legacy/opal92/Z0188.OPALN"
             p%opal92_z2 = trim(atom_dir)//"legacy/opal92/Z0200.OPALN"
+            if (present(laol_path)) p%laol = laol_path
             if (present(conductive_path)) p%conductive = conductive_path
             if (present(opal92_path)) p%opal92 = opal92_path
+            if (present(kurucz_path)) p%kurucz = kurucz_path
             call kap_init(s, p, 0.70d0, 0.02d0, ierr)
          end subroutine kap_init_with
 

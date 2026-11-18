@@ -12,7 +12,7 @@ module laol_reader
       use opacity_tables, only: laol_table_set, n_laol_rho, n_laol_t, n_laol_x, &
            pure_z_table_set
       use kap_messages, only: kap_report, message_length, unwritten_line
-      use opacity_table_files, only: open_table, read_failed
+      use opacity_table_files, only: open_table, read_failed, table_z_differs
       use math_lib
       implicit none
       private
@@ -25,16 +25,19 @@ contains
 !----------------------------------------------------------------------
 ! Reads the LAOL89 table (and, with two_z_tables, the second Z's) into
 ! tables(1) (and (2)) with the internal read_laol_table, and records the
-! extrapolation distance. A table that cannot be opened or read, or does
-! not fit laol_table_set, returns ierr = 1.
+! extrapolation distance. A table that cannot be opened or read, does
+! not fit laol_table_set, or states another Z than its control's
+! (table_z) returns ierr = 1.
 subroutine read_laol_tables(tables, laol_work_array, laol_table_path, &
-     laol_table2_path, two_z_tables, extrapolation_tolerance, ierr)
+     laol_table2_path, two_z_tables, table_z, extrapolation_tolerance, ierr)
       use composition_layout, only: ix_na, ix_al, ix_mg, ix_fe, ix_si, ix_c, &
            ix_o, ix_n, ix_ar, ix_ne
 
 ! (1) at laol_table_z1 and, with two_z_tables, (2) at laol_table_z2
       type(laol_table_set), intent(inout) :: tables(:)
       logical, intent(in) :: two_z_tables
+! laol_table_z1 and laol_table_z2
+      real(dp), intent(in) :: table_z(:)
 ! laol_extrapolation_tolerance (its ln is the distance in log rho)
       real(dp), intent(in) :: extrapolation_tolerance
       integer, intent(out) :: ierr
@@ -51,12 +54,12 @@ subroutine read_laol_tables(tables, laol_work_array, laol_table_path, &
       tables(1)%log_extrapolation_tolerance = log(extrapolation_tolerance)
       tables(2)%log_extrapolation_tolerance = log(extrapolation_tolerance)
       call read_laol_table(laol_table_path, tables(1), &
-           laol_work_array, ierr)
+           laol_work_array, table_z(1), 'laol_table_z1', ierr)
       if (ierr /= 0) return
 
       if (two_z_tables) then
          call read_laol_table(laol_table2_path, tables(2), &
-              work_array2, ierr)
+              work_array2, table_z(2), 'laol_table_z2', ierr)
          if (ierr /= 0) return
       end if
       return
@@ -68,15 +71,18 @@ contains
 ! caller's laol_work_array for table 1, a discarded local for table
 ! 2); its 18-element mixture for the EOS's Debye-Hueckel correction is
 ! read and not kept (eos takes those metals from its own envelope
-! mixture, M37).
-subroutine read_laol_table(path, tbl, work_array, ierr)
+! mixture, M37). The Z the header states for its two parts (zlot, zhit)
+! must be the Z of the table's control (control_z, of control_name).
+subroutine read_laol_table(path, tbl, work_array, control_z, control_name, ierr)
       character(len=256), intent(in) :: path
       type(laol_table_set), intent(inout) :: tbl
       real(dp), intent(inout) :: work_array(:)
+      real(dp), intent(in) :: control_z
+      character(len=*), intent(in) :: control_name
       integer, intent(inout) :: ierr   ! left at the caller's 0 on success
       integer :: laol_unit
-!     Zlot/zhit and the Debye-Hueckel mixture are read-list targets
-!     that are never used afterwards.
+!     zlot and zhit: the Z of the table's two parts; the Debye-Hueckel
+!     mixture is a read-list target that is never used afterwards.
       real(dp) :: zlot, zhit, debye_huckel_z(18)
       character(len=message_length) :: lines(1)
       integer :: ios
@@ -107,12 +113,14 @@ subroutine read_laol_table(path, tbl, work_array, ierr)
            work_array(ix_ar), work_array(ix_fe)
       if (read_failed(ios, iomsg, 'LAOL 1989', path, laol_unit, ierr)) return
   120 format(47x,f8.5,//,1p6e12.5,/,1p4e12.5)
+      if (table_z_differs(zlot, control_z, control_name, 'LAOL 1989', path, laol_unit, ierr)) return
 !     zhit, the metal abundance of the table's hit part, and the 18
 !     metals C, N, O, Ne, Na, Mg, Al, Si, P, S, Cl, Ar, Ca, Ti, Cr, Mn,
 !     Fe, Ni scaled to sum to zhit (for a Debye-Hueckel correction)
       read(laol_unit,130,iostat=ios,iomsg=iomsg) zhit, debye_huckel_z
       if (read_failed(ios, iomsg, 'LAOL 1989', path, laol_unit, ierr)) return
   130 format(54x,f8.5,/////,1p6e12.5,/,1p6e12.5,/1p6e12.5)
+      if (table_z_differs(zhit, control_z, control_name, 'LAOL 1989', path, laol_unit, ierr)) return
 !     Read in h mass fractions of table
       read(laol_unit,140,iostat=ios,iomsg=iomsg) (tbl%grid_x(ii),ii=1,tbl%num_x)
       if (read_failed(ios, iomsg, 'LAOL 1989', path, laol_unit, ierr)) return

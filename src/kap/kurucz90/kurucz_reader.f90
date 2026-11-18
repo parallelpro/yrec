@@ -136,6 +136,15 @@ subroutine read_kurucz_table(path, tbl, ierr)
       density_index = density_index+1
       end do table_read
 
+      if (num_read == 0) then
+         lines = unwritten_line
+         write(lines,'(a)') 'kap_init: the Kurucz 1990 table ' // trim(path) // &
+              ' has no table row'
+         call kap_report(lines)
+         close(unit)
+         ierr = 1
+         return
+      end if
       tbl%num_temps = num_read
 !     Close the table we have read
       close(unit,err=99)

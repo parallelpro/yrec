@@ -475,7 +475,7 @@ subroutine load_opal92(settings, paths, envelope_hydrogen_fraction, tables, mess
 ! (the reader reports its own errors)
       message = ''
       call read_opal92_tables(tables%opal92, paths%opal92, paths%opal92_z2, &
-           settings%use_two_z_tables, ierr)
+           settings%use_two_z_tables, [settings%opal_table_z1, settings%opal_table_z2], ierr)
       if (ierr /= 0) return
       call prepare_opal92_tables(tables%opal92, settings%use_two_z_tables, message, ierr)
       if (ierr /= 0) return

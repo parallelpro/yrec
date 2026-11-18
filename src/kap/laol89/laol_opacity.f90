@@ -438,10 +438,12 @@ subroutine load_laol89(settings, paths, envelope_hydrogen_fraction, tables, mess
       real(dp) :: laol_header_mixture(12)
 
 ! (the reader reports its own errors)
-      message = ''
+      call check_extrapolation_tolerance(settings, message, ierr)
+      if (ierr /= 0) return
       laol_header_mixture = 0.0d0
       call read_laol_tables(tables%laol, laol_header_mixture, paths%laol, &
            paths%laol_z2, settings%use_two_z_tables, &
+           [settings%laol_table_z1, settings%laol_table_z2], &
            settings%laol_extrapolation_tolerance, ierr)
       if (ierr /= 0) return
       call build_laol_splines(tables%laol, settings%use_two_z_tables)
@@ -508,12 +510,30 @@ subroutine load_pure_z(settings, paths, envelope_hydrogen_fraction, tables, mess
       integer, intent(out) :: ierr
 
 ! (the reader reports its own errors)
-      message = ''
+      call check_extrapolation_tolerance(settings, message, ierr)
+      if (ierr /= 0) return
       call read_pure_z_table(tables%pure_z, paths%pure_z, &
            settings%laol_extrapolation_tolerance, ierr)
       if (ierr /= 0) return
       call build_pure_z_splines(tables%pure_z)
 end subroutine load_pure_z
+
+! Both loads: the lookups extrapolate ln(laol_extrapolation_tolerance)
+! in log rho past a row's ends, so the control (laol_z_tolerance) must
+! be positive; ierr = 1 with the reason in message otherwise.
+pure subroutine check_extrapolation_tolerance(settings, message, ierr)
+      type(kap_settings_t), intent(in) :: settings
+      character(len=*), intent(out) :: message
+      integer, intent(out) :: ierr
+
+      ierr = 0
+      message = ''
+      if (settings%laol_extrapolation_tolerance > 0.0d0) return
+      write(message,'(a,1pe12.5,a)') 'laol_z_tolerance (', settings%laol_extrapolation_tolerance, &
+           ') must be positive: its natural log is how far the LAOL 1989 and pure-Z' // &
+           ' tables extrapolate in log rho'
+      ierr = 1
+end subroutine check_extrapolation_tolerance
 
 subroutine lookup_pure_z(settings, tables, point, res, in_table, message, ierr)
       type(kap_settings_t), intent(in) :: settings

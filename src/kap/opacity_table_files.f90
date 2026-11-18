@@ -12,11 +12,22 @@
 !     read_failed   after a read with iostat and iomsg: .true. (with the
 !                   report made, the unit closed and ierr = 1) when the
 !                   read failed
+!     table_z_differs   after reading the Z a table file states: .true.
+!                   (with the report made, the unit closed and ierr = 1)
+!                   when it is not the Z of the control the table is
+!                   for
 module opacity_table_files
-      use kap_messages, only: kap_report, message_length
+      use, intrinsic :: iso_fortran_env, only: dp => real64
+      use kap_messages, only: kap_report, message_length, unwritten_line
       implicit none
       private
-      public :: open_table, read_failed
+      public :: open_table, read_failed, table_z_differs
+
+! How far the Z a table file states may be from its control's: the files
+! state Z to four or five decimals, rounded (Z01895.OPALN states 0.0190,
+! Z0190AG91.DBGLAOL 0.01903), so a control may differ from its table's
+! header in the fourth decimal; a larger difference is another table.
+      real(dp), parameter :: table_z_tolerance = 1.0d-4
 
 contains
 
@@ -53,5 +64,26 @@ logical function read_failed(ios, iomsg, label, path, unit, ierr)
       call kap_report([line])
       ierr = 1
 end function read_failed
+
+! The Z a table file states (file_z) against the Z of the control the
+! table is for (control_z, of the control named control_name), which
+! blends and helium cores take as the table's Z: beyond
+! table_z_tolerance, an error naming both.
+logical function table_z_differs(file_z, control_z, control_name, label, path, unit, ierr)
+      real(dp), intent(in) :: file_z, control_z
+      character(len=*), intent(in) :: control_name, label, path
+      integer, intent(in) :: unit
+      integer, intent(inout) :: ierr
+      character(len=message_length) :: lines(1)
+
+      table_z_differs = abs(file_z - control_z) > table_z_tolerance
+      if (.not. table_z_differs) return
+      close(unit)
+      lines = unwritten_line
+      write(lines,'(a,f8.5,a,f8.5)') 'kap_init: the ' // label // ' table ' // trim(path) // &
+           ' is at Z =', file_z, ', not at ' // control_name // ' =', control_z
+      call kap_report(lines)
+      ierr = 1
+end function table_z_differs
 
 end module opacity_table_files

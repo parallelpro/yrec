@@ -347,3 +347,40 @@ check = 'OPAL95 at Z = 0.04, X = 0.85: 2D continuous with 4D in Z'
 file = 'kap/opal95/opal95_opacity.f90'
 old = '      if (z_here >= no_x095_from_z .and. hydrogen_fraction >= high_x) then'
 new = '      if (z_here > no_x095_from_z .and. hydrogen_fraction >= high_x) then'
+
+[[mutation]]
+id = 'opal92-table-z'
+check = 'kap_init refuses an OPAL92 table that is not at opal_table_z1'
+file = 'kap/opal92/opal92_reader.f90'
+old = "        if (table_z_differs(local_grid_z(i), control_z, control_name, 'OPAL 1992', path, &"
+new = "        if (table_z_differs(control_z, control_z, control_name, 'OPAL 1992', path, &"
+
+[[mutation]]
+id = 'laol-table-z'
+check = 'kap_init refuses a LAOL89 table that is not at laol_table_z1'
+file = 'kap/opacity_table_files.f90'
+old = '      table_z_differs = abs(file_z - control_z) > table_z_tolerance'
+new = '      table_z_differs = abs(file_z - control_z) > 1.0d-2'
+
+[[mutation]]
+id = 'laol-tolerance'
+check = 'kap_init refuses a laol_z_tolerance that is not positive'
+file = 'kap/laol89/laol_opacity.f90'
+old = '      if (settings%laol_extrapolation_tolerance > 0.0d0) return'
+new = '      if (settings%laol_extrapolation_tolerance >= 0.0d0) return'
+
+[[mutation]]
+id = 'kurucz-no-rows'
+check = 'kap_init refuses a Kurucz 1990 table without rows'
+file = 'kap/kurucz90/kurucz_reader.f90'
+old = '      if (num_read == 0) then'
+new = '      if (num_read < 0) then'
+
+[[mutation]]
+id = 'no-interior-family-first'
+check = 'kap_get without an interior family says so, at any Z'
+file = 'kap/kap_lib.f90'
+old = '''      else if (.not. interior%selected) then
+         call no_interior_family(point, message, ierr)
+      else if ((abs'''
+new = '''      else if ((abs'''

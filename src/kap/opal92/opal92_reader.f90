@@ -10,7 +10,7 @@ module opal92_reader
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use opacity_tables, only: n_opal92_d, n_opal92_t, n_opal92_x, opal92_table_set
       use kap_messages, only: kap_report, message_length, unwritten_line
-      use opacity_table_files, only: open_table, read_failed
+      use opacity_table_files, only: open_table, read_failed, table_z_differs
       use math_lib
       implicit none
       private
@@ -23,15 +23,18 @@ contains
 !----------------------------------------------------------------------
 ! Reads the OPAL92 (Lawrence Livermore) opacity table(s). Each table is read by the internal read_opal92_table, first the
 ! table at opal_table_z1 and then, with use_two_z_tables, the one at
-! opal_table_z2; a table that cannot be opened or is short returns ierr.
+! opal_table_z2; a table that cannot be opened, is short, or states
+! another Z than its control's (table_z) returns ierr.
 subroutine read_opal92_tables(tables, opal92_table_path, opal92_table2_path, &
-     two_z_tables, ierr)
+     two_z_tables, table_z, ierr)
 ! (1) at opal_table_z1 and, with two_z_tables, (2) at opal_table_z2
       type(opal92_table_set), intent(inout) :: tables(:)
       character(len=256), intent(in) :: opal92_table_path, opal92_table2_path
       logical, intent(in) :: two_z_tables
+! opal_table_z1 and opal_table_z2
+      real(dp), intent(in) :: table_z(:)
       integer, intent(out) :: ierr
-!     Local_grid_z is a read-list target that is never used afterwards.
+! the Z each X table's header states
       real(dp) :: local_grid_z(n_opal92_x)
       integer :: i, k, density_index, ios
       real(dp) :: grid_temp_k
@@ -39,11 +42,11 @@ subroutine read_opal92_tables(tables, opal92_table_path, opal92_table2_path, &
       character(len=message_length) :: lines(1)
 
       ierr = 0
-      call read_opal92_table(opal92_table_path, tables(1), ierr)
+      call read_opal92_table(opal92_table_path, tables(1), table_z(1), 'opal_table_z1', ierr)
       if (ierr /= 0) return
 
       if (two_z_tables) then
-         call read_opal92_table(opal92_table2_path, tables(2), ierr)
+         call read_opal92_table(opal92_table2_path, tables(2), table_z(2), 'opal_table_z2', ierr)
          if (ierr /= 0) return
       end if
       return
@@ -51,10 +54,13 @@ subroutine read_opal92_tables(tables, opal92_table_path, opal92_table2_path, &
 contains
 
 ! read_opal92_table: read the table at path into tbl: n_opal92_x X
-! tables of n_opal92_t temperature rows each (a shorter file is an error).
-subroutine read_opal92_table(path, tbl, ierr)
+! tables of n_opal92_t temperature rows each (a shorter file is an
+! error), each at the Z of its control (control_z, of control_name).
+subroutine read_opal92_table(path, tbl, control_z, control_name, ierr)
       character(len=256), intent(in) :: path
       type(opal92_table_set), intent(inout) :: tbl
+      real(dp), intent(in) :: control_z
+      character(len=*), intent(in) :: control_name
       integer, intent(inout) :: ierr   ! left at the caller's 0 on success
       integer :: unit
 
@@ -65,6 +71,8 @@ subroutine read_opal92_table(path, tbl, ierr)
         read(unit,190,iostat=ios,iomsg=iomsg) tbl%grid_x(i), local_grid_z(i)
         if (read_failed(ios, iomsg, 'OPAL 1992', path, unit, ierr)) return
   190   format(33x,f7.4,2x,f7.4)
+        if (table_z_differs(local_grid_z(i), control_z, control_name, 'OPAL 1992', path, &
+             unit, ierr)) return
          read(unit,'()',iostat=ios,iomsg=iomsg)
          if (read_failed(ios, iomsg, 'OPAL 1992', path, unit, ierr)) return
 !        its log R grid (log R = log rho - 3 log T6)

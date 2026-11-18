@@ -189,6 +189,8 @@ subroutine interior_opacity(point, res, message, ierr)
               point%metal_fraction, ' and log T =', point%log10_temperature, &
               ': above Z = 0.12 the tables reach only helium-burning cores (log T > 7)'
          ierr = 1
+      else if (.not. interior%selected) then
+         call no_interior_family(point, message, ierr)
       else if ((abs(point%metal_fraction - tables%envelope_metal_fraction) > &
            kap_settings%metal_fraction_match_tolerance) .and. .not.kap_settings%use_two_z_tables &
            .and. .not.interior%covers_any_z) then
@@ -197,10 +199,8 @@ subroutine interior_opacity(point, res, message, ierr)
               ' table is at the envelope''s Z =', tables%envelope_metal_fraction, &
               ' (use_z_ramp or use_diffusion_z reads two)'
          ierr = 1
-      else if (interior%selected) then
-         call interior%lookup(kap_settings, tables, point, res, in_table, message, ierr)
       else
-         call no_interior_family(point, message, ierr)
+         call interior%lookup(kap_settings, tables, point, res, in_table, message, ierr)
       end if
 end subroutine interior_opacity
 
@@ -347,6 +347,9 @@ end subroutine set_kap_settings
 !     (OPAL 1995 and the Alexander tables interpolate in Z instead);
 !   - the molecular ramp needs molecular_opacity_logt_min below
 !     molecular_opacity_logt_max when a molecular family is on.
+! What only a family knows it checks at its load: a table file that
+! states another Z than its control's (OPAL 1992, LAOL 1989), a LAOL
+! tolerance that is not positive, a table without rows (Kurucz 1990).
 subroutine check_kap_settings(settings, ierr)
       type(kap_settings_t), intent(in) :: settings
       integer, intent(out) :: ierr
