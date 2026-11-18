@@ -2,7 +2,7 @@
 
 ## 1. About this report
 
-This report lists every defect found on the `yrec-next` branch after it diverged from `main` at [0ff84d7e](https://github.com/parallelpro/yrec/commit/0ff84d7e) (2026-09-03), up to [8d7feee2](https://github.com/parallelpro/yrec/commit/8d7feee2) (2026-11-13, round 2's last merge) round 2's closing commits after it, and round 2B (2026-11-13/14). There are 389 items: 294 fixed and 95 open. Bugs fixed before the divergence (bug-sweep batches 1-3, such as the CF88 deuterium rate) are in `docs/MODERNIZATION_CHANGES.md` and are not repeated here.
+This report lists every defect found on the `yrec-next` branch after it diverged from `main` at [0ff84d7e](https://github.com/parallelpro/yrec/commit/0ff84d7e) (2026-09-03), up to [8d7feee2](https://github.com/parallelpro/yrec/commit/8d7feee2) (2026-11-13, round 2's last merge) round 2's closing commits after it, and round 2B (2026-11-13/14). There are 389 items: 295 fixed and 94 open. Bugs fixed before the divergence (bug-sweep batches 1-3, such as the CF88 deuterium rate) are in `docs/MODERNIZATION_CHANGES.md` and are not repeated here.
 
 Each item answers the same questions:
 
@@ -136,7 +136,7 @@ Answered by the owner on 2026-11-11 (round 1B's B lists, approved with their rec
 | O3 | Low-mass convergence (0.03, 0.05, 0.1 Msun) | Yes | Fixed (the convergence round, 2026-11-17): the EOS's jumps, M356 and M357 |
 | O4 | Starting model's stitched atmosphere reads out of bounds | No (2025/2026) | Fixed in round 2B (2026-11-13); byte-identical |
 | O5 | Accretion entropy term at levels 1-2 (latent) | No (2026) | Fixed in round 2B (2026-11-13); byte-identical |
-| O6 | Rezone's deuterium gate reads the old surface index | Yes | Open in part: A (the gate on the new surface) fixed in round 2B (2026-11-13), byte-identical; B (the regrid unconditional) with M176's part B |
+| O6 | Rezone's deuterium gate reads the old surface index | Yes | Fixed: A (the gate on the new surface) in round 2B, byte-identical; B (the regrid unconditional) in the convergence round (2026-11-17), after M176's part B: 14 decks' final deuterium at 1e-13 |
 | O7 | Accretion mixing assumes a uniform convection zone | Yes | Fixed in round 2B (2026-11-14); the mass-loss decks and cm_accretion at round-off |
 | O8 | Li/Be rate store zeroes both rate sets | Yes | Fixed in round 2B (2026-11-14); byte-identical |
 | O9 | Surface ⁷Li noise floor of ~0.005 dex | Yes | Fixed in round 2B (2026-11-14); surface Li7 moves by up to 4e-3 dex in 34 decks, logs identical |
@@ -1319,7 +1319,7 @@ These are found, recorded and left as they are, because each fix changes results
 
 ### O6. The rezone's deuterium gate reads the pre-rezone surface index
 
-- **Status:** open in part. Part A, the gate on the new surface, fixed in round 2B (2026-11-13, core's B list item 3; byte-identical). Part B, the start rate regridded unconditionally, stays open: it goes with M176's part B, in a round that reseeds every deck (the owner's decision of 2026-11-13).
+- **Status:** fixed: part A in round 2B, part B in the convergence round (2026-11-17, below). Was: open in part. Part A, the gate on the new surface, fixed in round 2B (2026-11-13, core's B list item 3; byte-identical). Part B, the start rate regridded unconditionally, stays open: it goes with M176's part B, in a round that reseeds every deck (the owner's decision of 2026-11-13).
 - **In the original F77?** Yes. HPOINT tests `HCOMP(12,M)` after regridding, but before `M` becomes the new point count (that happens at hpoint.f:678; [hpoint.f:591-602](https://github.com/parallelpro/yrec/blob/6cd56739/src/hpoint.f#L591-L602)):
   ```fortran
         IF(LEXCOM .AND. HCOMP(12,M).GE.1.0D-14)THEN
@@ -1334,6 +1334,7 @@ These are found, recorded and left as they are, because each fix changes results
 - **Proposed fix:** test the new surface and regrid the rate unconditionally. The expected drift is at round-off or none.
 - **Round 2 (2026-11-12/13):** core's B list (`audit/module-evaluation-7-2026-11-10/B_LIST_CORE.md`, item 3), measured in round 2 (scratch, `--set all`): A, the gate on the new surface (`s%xa(i_h2,new_point_count)`), ALL IDENTICAL, 35 pins; B, the start rates regridded unconditionally, 18 decks and 5 pins move, first visible change 1e-9 in 8 of them and the end states at the decks' noise (Test_solarGS98_difrotmixper18p4d0p1 855 to 854 models, log L -3.4e-5). Recommended: A now, B with M176's part B.
 - **What we did:** round 2B (2026-11-13), part A: `regrid_composition_terms` gates the start-of-step deuterium rate's regrid on the deuterium at the new surface, `s%xa(i_h2, rz%new_point_count)` (xa holds the regridded species there; `s%nz` is still the old count). Measured on the 56-deck set and the 35 pins: ALL IDENTICAL, as the scratch trial found (in no deck does the old index's deuterium lie on the other side of 1e-14 from the new surface's). No test: the gate differs only where the surface deuterium crosses 1e-14 on a rezone that changes the point count, which no test program sets up cheaply (the rezone needs a whole model). Part B stays open (Status).
+- **What we did, part B (the convergence round, 2026-11-17):** `regrid_composition_terms` regrids the start-of-step deuterium rate whenever the extended composition is on, as every other per-zone array that outlives the rezone; the gate and its 1e-14 are gone. After M176's part B (the commit before), which leaves the rate zero at every shell once the surface deuterium is gone, little is left for it to change: measured on the 56-deck set and the 35 pins against M176's snapshot, RESULT: 14 NOT IDENTICAL; pins 35 OK: the three rotating testsuite solar decks and 11 rv_ decks (rv_alpham05, rv_gsf0, rv_gsf2, rv_kawaler, rv_nobg, rv_nodisk, rv_ref, rv_sbm1, rv_sbm2, rv_sbm3, rv_zahn), each in its final model's deuterium alone, by 1.5e-15 to 4.9e-13 relative in the zones that hold a trace; every log, every other column and every header value is identical. (Round 2 measured 18 decks and 5 pins for this change alone, before M176's part B.) No test, as part A.
 
 ### O7. Accretion mixing assumes a uniform convection zone, and the step uses two definitions of M_cz
 
