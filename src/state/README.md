@@ -437,11 +437,11 @@ How to read the tables:
 | `delta_x` | the solar calibration's Newton correction to X | - | `calibration` (check_solar_calibration) | `calibration` |  |
 | `delta_alpha` | the solar calibration's Newton correction to the mixing length | - | `calibration` (check_solar_calibration) | `calibration` |  |
 | `age_gyr_at_target_radius` | age interpolated at the star calibration's target radius | Gyr | `calibration` (check_star_calibration) | `calibration` |  |
-| `age_gyr_prev_model` | age of the previous model, for the star calibration | Gyr | `calibration` (check_star_calibration) | `calibration` |  |
+| `age_gyr_prev_model` | age of the previous model, for the star calibration | Gyr | `calibration` (store_calibration_model) | `calibration` |  |
 | `log_l_lsun_at_target_radius` | log(L/Lsun) interpolated at the star calibration's target radius | log10 Lsun | `calibration` (check_star_calibration) | `calibration` |  |
 | `log_l_lsun_at_target_radius_prev_run` | log(L/Lsun) at the target radius in the previous star-calibration run | log10 Lsun | `calibration` (check_star_calibration) | `calibration` |  |
-| `log_l_lsun_prev_model` | log(L/Lsun) of the previous model, for the star calibration | log10 Lsun | `calibration` (check_star_calibration) | `calibration` |  |
-| `r_rsun_prev_model` | R/Rsun of the previous model, for the star calibration | Rsun | `calibration` (check_star_calibration, setup_star_calibration) | `calibration` |  |
+| `log_l_lsun_prev_model` | log(L/Lsun) of the previous model, for the star calibration | log10 Lsun | `calibration` (store_calibration_model) | `calibration` |  |
+| `r_rsun_prev_model` | R/Rsun of the previous model, for the star calibration | Rsun | `calibration` (setup_star_calibration, store_calibration_model) | `calibration` |  |
 | `envelope_cz_base_zone_last_call` | zone of the base of the surface mixed region found by the last call within the step (`cz_base_radius_last_call`), the starting zone of the next call | - | `convection_geometry` (locate_surface_mixing_base) | `convection_geometry` |  |
 | `central_saha_state` | the central EOS call's Saha iteration counter | - | `observables` (compute_central_conditions) | `observables` | `eos_get` adds the Saha solver's iterations to it; nothing reads it |
 | `max_correction_index(4)` | point of the largest correction of each variable, for the convergence log | - | `henyey_iteration` (find_largest_corrections) | `henyey_iteration` |  |

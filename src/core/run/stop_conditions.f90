@@ -26,7 +26,8 @@
 ! configured when its threshold is positive; disarming negates it.
 module stop_conditions
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use calibration, only: check_star_calibration
+      use calibration, only: check_star_calibration, store_calibration_model, &
+           star_calib_cards_per_cycle
       use run_cards, only: card_rescale
       use star_info_lib, only: i_h1, i_h2, i_he4, star_info
       use core_messages, only: core_report, core_terminal, message_length, unwritten_line
@@ -127,10 +128,10 @@ end function converged_model_is_nan
 ! model has been written. In order: the end-age stop, the configured
 ! central-abundance stops and the structure limits (each ends the kind
 ! card; the limits are not checked on a rescale card), then -- when a
-! star calibration is running -- the target-radius check, on an even
-! card from its second model on (check_star_calibration), whose hit
-! leaves the model loop so run_yrec goes on to the next card, a
-! rescale.
+! star calibration is running -- on an even card, its first model
+! stored (store_calibration_model) and, from its second model on, the
+! target-radius check (check_star_calibration), whose hit leaves the
+! model loop so run_yrec goes on to the next card, a rescale.
 !   star reads: card_kind, card_max_age_yr, control%calibrate_star_flag,
 !     current_card, just_passed_target_radius_flag, star_found_flag,
 !     termination_reason
@@ -168,13 +169,20 @@ subroutine check_stop_conditions(s, model_iteration, step_status)
          end if
       end if
 
-! The star calibration: has the track crossed the target radius R*? If
-! so, the run goes on to the next pair of cards (check_star_calibration).
+! The star calibration, on its evolving (even) cards: the card's first
+! model is kept as the one the second is compared with
+! (store_calibration_model); from the second on, has the track crossed
+! the target radius R*? If so, the run goes on to the next pair of cards
+! (check_star_calibration).
       if (s%control%calibrate_star_flag .and. .not. s%star_found_flag) then
-         if (mod(s%current_card,2) == 0 .and. model_iteration /= 1) then
-            call check_star_calibration(s)
-            if (s%just_passed_target_radius_flag) then
-               step_status = step_leave_run_loop
+         if (mod(s%current_card,star_calib_cards_per_cycle) == 0) then
+            if (model_iteration == 1) then
+               call store_calibration_model(s)
+            else
+               call check_star_calibration(s)
+               if (s%just_passed_target_radius_flag) then
+                  step_status = step_leave_run_loop
+               end if
             end if
          end if
       end if

@@ -213,3 +213,29 @@ old = '''
 '''
 new = '''
 '''
+
+[[mutation]]
+id = 'calibration-10'
+check = 'star calibration: a pass that starts above R* does not cross at its second model'
+file = 'core/run/stop_conditions.f90'
+old = '''            if (model_iteration == 1) then
+               call store_calibration_model(s)'''
+new = '''            if (model_iteration == 1) then
+               continue'''
+
+[[mutation]]
+id = 'calibration-11'
+check = 'star calibration: ... and crosses R* downward between its own models'
+file = 'core/run/calibration.f90'
+old = '''         crossed = r_rsun_current < s%calibration_target_radius_rsun .and. &
+              s%r_rsun_prev_model >= s%calibration_target_radius_rsun'''
+new = '''         crossed = r_rsun_current < s%calibration_target_radius_rsun .and. &
+              s%r_rsun_prev_model <= s%calibration_target_radius_rsun'''
+
+[[mutation]]
+id = 'calibration-12'
+check = 'star calibration: the next pass starts from its own first model'
+file = 'core/run/calibration.f90'
+old = '''      s%age_gyr_prev_model = s%age_gyr
+      s%r_rsun_prev_model = model_radius_rsun(s)'''
+new = '''      s%age_gyr_prev_model = s%age_gyr'''

@@ -15,13 +15,13 @@ module calibration
       implicit none
       private
       public :: check_solar_calibration, check_star_calibration, setup_solar_calibration, setup_star_calibration, &
-           end_star_calibration_card
+           end_star_calibration_card, store_calibration_model
 ! the fixed partial derivatives, which the Monte-Carlo summary prints
       public :: dlogl_dx_fixed, dlogr_dx_fixed, dlogl_dalpha_fixed, dlogr_dalpha_fixed
 
 ! The star calibration's cards per pass: an odd card rescales, the even
 ! card after it evolves.
-      integer, parameter :: star_calib_cards_per_cycle = 2
+      integer, parameter, public :: star_calib_cards_per_cycle = 2
 
 ! The solar calibration's fixed empirical partial derivatives of log L
 ! and log R with respect to the hydrogen fraction X and the mixing length
@@ -163,9 +163,11 @@ end subroutine check_solar_calibration
 !----------------------------------------------------------------------
 ! The star-calibration check, called for every model after the first
 ! of an even card (the odd cards rescale, the even cards evolve; see
-! check_stop_conditions). It tests whether the track has just crossed
-! the target radius R* (in either direction). If not, it stores the
-! model's L, age and R and returns. If so, it interpolates log L and the
+! check_stop_conditions, which stores the card's first model with
+! store_calibration_model). It tests whether the track has just crossed
+! the target radius R* (in either direction) since the previous model
+! of this pass. If not, it stores the model's L, age and R
+! (store_calibration_model) and returns. If so, it interpolates log L and the
 ! age to R*, linearly in R, and then either
 !  - finds |L(R*) - L*| <= target_star_luminosity_tolerance (in Lsun,
 !    a linear tolerance), sets star_found_flag, and arms one more run,
@@ -179,30 +181,28 @@ end subroutine check_solar_calibration
 ! left for the final run, or not converged).
 ! The model is the star's: log_L_lsun, log_Teff, age_gyr (Gyr), on the
 ! card current_card (run_index below).
-!   star reads: age_gyr, calibration_target_radius_rsun,
-!     control%target_luminosity_lsun,
+!   star reads: age_gyr, age_gyr_prev_model,
+!     calibration_target_radius_rsun, control%target_luminosity_lsun,
 !     control%target_star_luminosity_tolerance, current_card,
-!     log_L_lsun, log_Teff, num_cards, solar_luminosity_cgs,
-!     solar_radius_cgs
-!   star writes: age_gyr_at_target_radius, age_gyr_prev_model,
-!     card_initial_x, card_max_age_yr, card_rescale_targets,
-!     card_stops_active, just_passed_target_radius_flag,
-!     log_l_lsun_at_target_radius, log_l_lsun_at_target_radius_prev_run,
-!     log_l_lsun_prev_model, r_rsun_prev_model, star_found_flag,
+!     log_L_lsun, log_l_lsun_prev_model, num_cards, r_rsun_prev_model
+!   star writes: age_gyr_at_target_radius, card_initial_x,
+!     card_max_age_yr, card_rescale_targets, card_stops_active,
+!     just_passed_target_radius_flag, log_l_lsun_at_target_radius,
+!     log_l_lsun_at_target_radius_prev_run, star_found_flag,
 !     termination_reason
 subroutine check_star_calibration(s)
 
       use core_messages, only: core_log, core_log_values, core_terminal, core_terminal_values, &
            message_length, unwritten_line
-      use physical_constants, only: c4pi, csig
       use math_lib
       implicit none
       type(star_info), intent(inout) :: s
 
 ! locals
-      real(dp) :: log_l_lsun, log_teff, current_age
+      real(dp) :: log_l_lsun, current_age
       integer :: run_index
-      real(dp) :: teff_current, r_rsun_current
+      real(dp) :: r_rsun_current
+      logical :: crossed
       real(dp) :: dlogl_dr, dage_dr
       real(dp) :: new_x, prev_x, dx_dlogl
       logical :: luminosity_matches
@@ -235,29 +235,20 @@ subroutine check_star_calibration(s)
 ! Has the track crossed R*? R/Rsun = sqrt(L/(4 pi sigma))/(Teff^2 Rsun).
 ! If it has not, store this model's L, age and R and return.
       log_l_lsun = s%log_L_lsun
-      log_teff = s%log_Teff
       current_age = s%age_gyr
       run_index = s%current_card
       s%just_passed_target_radius_flag=.false.
-      teff_current = exp10(log_teff)
-      r_rsun_current = sqrt((exp10(log_l_lsun))*s%solar_luminosity_cgs/ &
-           (c4pi*csig))/(teff_current*teff_current*s%solar_radius_cgs)
+      r_rsun_current = model_radius_rsun(s)
       if (r_rsun_current > s%r_rsun_prev_model) then
-         if (.not.(r_rsun_current > s%calibration_target_radius_rsun .and. &
-              s%r_rsun_prev_model <= s%calibration_target_radius_rsun)) then
-            s%log_l_lsun_prev_model = log_l_lsun
-            s%age_gyr_prev_model = current_age
-            s%r_rsun_prev_model = r_rsun_current
-            return
-         end if
+         crossed = r_rsun_current > s%calibration_target_radius_rsun .and. &
+              s%r_rsun_prev_model <= s%calibration_target_radius_rsun
       else
-         if (.not.(r_rsun_current < s%calibration_target_radius_rsun .and. &
-              s%r_rsun_prev_model >= s%calibration_target_radius_rsun)) then
-            s%log_l_lsun_prev_model = log_l_lsun
-            s%age_gyr_prev_model = current_age
-            s%r_rsun_prev_model = r_rsun_current
-            return
-         end if
+         crossed = r_rsun_current < s%calibration_target_radius_rsun .and. &
+              s%r_rsun_prev_model >= s%calibration_target_radius_rsun
+      end if
+      if (.not. crossed) then
+         call store_calibration_model(s)
+         return
       end if
 
       lines = unwritten_line
@@ -357,6 +348,41 @@ subroutine check_star_calibration(s)
          s%card_initial_x(run_index+2) = new_x
       end if
 end subroutine check_star_calibration
+
+! ---------------------------------------------------------------
+! The model's L, age and R kept as the star calibration's previous
+! model, the one the next model's radius is compared with. Called for a
+! model that did not cross R* (check_star_calibration) and for the first
+! model of each even card (check_stop_conditions), so that every pass
+! compares models of its own track from its first model on; until
+! 2026-11 a pass's second model was compared with R = 0, or with the
+! previous pass's last model, and a track that starts above R* "crossed"
+! it there (docs/bug_sweep.md M328).
+!   star reads: age_gyr, log_L_lsun
+!   star writes: age_gyr_prev_model, log_l_lsun_prev_model,
+!     r_rsun_prev_model
+subroutine store_calibration_model(s)
+      type(star_info), intent(inout) :: s
+      s%log_l_lsun_prev_model = s%log_L_lsun
+      s%age_gyr_prev_model = s%age_gyr
+      s%r_rsun_prev_model = model_radius_rsun(s)
+end subroutine store_calibration_model
+
+! ---------------------------------------------------------------
+! R/Rsun of the star's model, from L = 4 pi R^2 sigma Teff^4:
+! R/Rsun = sqrt(L/(4 pi sigma))/(Teff^2 Rsun).
+!   star reads: log_L_lsun, log_Teff, solar_luminosity_cgs,
+!     solar_radius_cgs
+!   star writes: none
+real(dp) function model_radius_rsun(s) result(r_rsun)
+      use physical_constants, only: c4pi, csig
+      use math_lib
+      type(star_info), intent(inout) :: s
+      real(dp) :: teff
+      teff = exp10(s%log_Teff)
+      r_rsun = sqrt((exp10(s%log_L_lsun))*s%solar_luminosity_cgs/ &
+           (c4pi*csig))/(teff*teff*s%solar_radius_cgs)
+end function model_radius_rsun
 
 ! ---------------------------------------------------------------
 !----------------------------------------------------------------------

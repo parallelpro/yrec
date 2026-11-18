@@ -10,6 +10,9 @@
 !     - a crossing on the last card (card 50 = max_runs) sets up
 !       nothing past it and ends with a verdict: not converged, or R*
 !       and L* reached with no card left for the final run;
+!     - a pass that starts above R* and contracts through it crosses
+!       between its own models, not at its second model (M328), and
+!       the next pass starts from its own first model;
 !     - end_star_calibration_card: the final run's end is the
 !       converged verdict, and a last card that ends without finding
 !       the star is the not-converged one;
@@ -43,6 +46,8 @@ program test_run_contracts
       use physical_constants, only: c4pi, csig
       use calibration, only: setup_star_calibration, check_star_calibration, &
            end_star_calibration_card
+      use stop_conditions, only: check_stop_conditions, step_continue, &
+           step_leave_run_loop
       use monte_carlo, only: begin_monte_carlo_run, setup_monte_carlo_runs
       use yrec_capi, only: yrec_run
       use run_messages, only: run_log_unit
@@ -62,6 +67,7 @@ program test_run_contracts
       end if
 
       call star_calibration_checks()
+      call star_calibration_pass_checks()
       call monte_carlo_checks()
       call c_entry_checks()
 
@@ -139,6 +145,66 @@ subroutine star_calibration_checks()
       call run_contract_check_that('star calibration: the last card ended without the star: not converged', &
            .not. runs_complete .and. s%termination_reason == not_converged)
 end subroutine star_calibration_checks
+
+! ---------------------------------------------------------------
+! A pass of the star calibration through check_stop_conditions, as
+! evolve_step calls it, on a track that starts above R* = 1 Rsun and
+! contracts through it (M328): models at 1.2, 1.1 and 0.99 Rsun, aged
+! 1, 2 and 3 Gyr. Only the third crosses, between the second and
+! itself, at 3 - 0.01/0.11 Gyr. The next pass again starts above R*.
+subroutine star_calibration_pass_checks()
+      type(star_info), allocatable :: s
+      integer :: status(3)
+      double precision :: age_at_crossing
+
+      call new_calibration_star(s)
+      call no_other_stops(s)
+      s%control%calibrate_star_flag = .true.
+      s%current_card = 2
+      call pass_model(s, 1, 1.2d0, 1.0d0, status(1))
+      call pass_model(s, 2, 1.1d0, 2.0d0, status(2))
+      call run_contract_check_that('star calibration: a pass that starts above R* does not cross at its second model', &
+           all(status(1:2) == step_continue) .and. .not. s%just_passed_target_radius_flag)
+      call pass_model(s, 3, 0.99d0, 3.0d0, status(3))
+      age_at_crossing = 3.0d0 - 0.01d0/0.11d0
+      call run_contract_check_that('star calibration: ... and crosses R* downward between its own models', &
+           status(3) == step_leave_run_loop .and. s%just_passed_target_radius_flag .and. &
+           abs(s%age_gyr_at_target_radius/age_at_crossing - 1.0d0) < 1.0d-12)
+      s%current_card = 4
+      call pass_model(s, 1, 1.3d0, 0.5d0, status(1))
+      call pass_model(s, 2, 1.25d0, 0.6d0, status(2))
+      call run_contract_check_that('star calibration: the next pass starts from its own first model', &
+           all(status(1:2) == step_continue) .and. .not. s%just_passed_target_radius_flag)
+end subroutine star_calibration_pass_checks
+
+! One model of a pass: R/Rsun = r_rsun at log(L/Lsun) = 0.1 and the age
+! age_gyr, as the model_iteration-th model of the current card.
+subroutine pass_model(s, model_iteration, r_rsun, age_gyr, step_status)
+      type(star_info), intent(inout) :: s
+      integer, intent(in) :: model_iteration
+      double precision, intent(in) :: r_rsun, age_gyr
+      integer, intent(out) :: step_status
+      s%log_L_lsun = 0.1d0
+      s%log_Teff = log_teff_at(s, 0.1d0, r_rsun)
+      s%age_gyr = age_gyr
+      call check_stop_conditions(s, model_iteration, step_status)
+end subroutine pass_model
+
+! The other stops of check_stop_conditions off, as a deck without them
+! leaves them: no end age or abundance stop (the cards' stops are off),
+! and the structure limits at their off values.
+subroutine no_other_stops(s)
+      type(star_info), intent(inout) :: s
+      s%card_stops_active = .false.
+      s%control%log_L_upper_limit = 1.0d99
+      s%control%Teff_upper_limit = 1.0d99
+      s%control%log_g_upper_limit = 1.0d99
+      s%control%nu_max_upper_limit = 1.0d99
+      s%control%log_L_lower_limit = -1.0d99
+      s%control%Teff_lower_limit = -1.0d99
+      s%control%log_g_lower_limit = -1.0d99
+      s%control%nu_max_lower_limit = -1.0d99
+end subroutine no_other_stops
 
 ! A fresh star with the target and cards 1 and 2 (X = 0.70), laid out by
 ! setup_star_calibration; the previous pass's X (card 45's rescale
