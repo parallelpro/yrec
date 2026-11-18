@@ -240,3 +240,17 @@ old = '''
 new = '''
          dt = maxval(limits)
       end if'''
+
+[[mutation]]
+id = 'timestep-34'
+check = 'hydrogen: shell atime(dx_shell)/|dX/dt| at the midpoint'
+file = 'core/step/timestep_limits.f90'
+old = 'dt = min(dt, abs(set%timestep_factors(itime_dx_shell)/dx_dt))'
+new = 'dt = min(dt, abs(set%timestep_factors(itime_dx_total)/dx_dt))'
+
+[[mutation]]
+id = 'timestep-35'
+check = 'hydrogen: shell no depletion bound for atime(dx_shell) <= 0'
+file = 'core/step/timestep_limits.f90'
+old = 'if (dx_dt < 0.0d0 .and. set%timestep_factors(itime_dx_shell) > 0.0d0) &'
+new = 'if (dx_dt < 0.0d0) &'

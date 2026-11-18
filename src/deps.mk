@@ -469,7 +469,7 @@ core/test/test_reentry.o: run_driver.mod star_info_lib.mod
 core/test/test_regrid.o: math_lib.mod numerics_lib.mod physical_constants.mod regridding.mod
 core/test/test_run_contracts.o: calibration.mod control_slots.mod monte_carlo.mod physical_constants.mod run_files.mod run_messages.mod star_info_lib.mod yrec_capi.mod
 core/test/test_structure.o: controls_reader.mod convection_lib.mod convection_settings_builder.mod energy_sources.mod eos_lib.mod net_lib.mod net_settings_builder.mod rotation_configuration.mod rotation_settings_builder.mod run_files.mod run_setup.mod shell_equations.mod star_info_lib.mod starting_model.mod
-core/test/test_timestep_limits.o: composition_layout.mod control_slots.mod timestep_limits.mod
+core/test/test_timestep_limits.o: composition_layout.mod control_slots.mod net_lib.mod timestep_limits.mod
 core/test/test_triangle_fit.o: triangle_fit.mod
 element_diffusion/bahcall_loeb_units.o: physical_constants.mod
 element_diffusion/coulomb_logarithm.o: math_lib.mod physical_constants.mod

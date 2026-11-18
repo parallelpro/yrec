@@ -20,6 +20,8 @@ hydrogen: L_H <= 1e-34 -> unlimited                            1.0E+20  ok
 hydrogen: core E_H dX m_cc/(L_cc Lsun)                         0.0E+00  ok
 hydrogen: core dX = atime(dx_core_frac) X_cc                   0.0E+00  ok
 hydrogen: shell E_H atime(dx_total) X_surf Msun/(L_H Lsun)     0.0E+00  ok
+hydrogen: shell atime(dx_shell)/|dX/dt| at the midpoint        0.0E+00  ok
+hydrogen: shell no depletion bound for atime(dx_shell) <= 0    0.0E+00  ok
 -- helium
 helium: L_3alpha <= 1e-34 -> unlimited                         1.0E+20  ok
 helium: flash 1e15/eps_3alpha                                  0.0E+00  ok

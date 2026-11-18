@@ -17,7 +17,10 @@
 !              no change -> unlimited;
 !   hydrogen   L_H at or below 1e-34 -> unlimited; the core branch
 !              E_H Delta X m_cc/(L_cc Lsun) with the smaller Delta X; the
-!              shell branch E_H atime(dx_total) X_surf Msun/(L_H Lsun);
+!              shell branch E_H atime(dx_total) X_surf Msun/(L_H Lsun),
+!              and atime(dx_shell)/|dX/dt| at a shell midpoint that
+!              burns (dX/dt from the network), which is off for
+!              atime(dx_shell) <= 0;
 !   helium     off -> unlimited; the flash's 1e15/eps_3alpha, the rate
 !              floored at 1e-22; the core branch; the shell branch's
 !              smaller limit, and none where L <= 0; the hottest zone;
@@ -38,6 +41,8 @@ program test_timestep_limits
            itime_dx_total, itime_dx_shell, itime_dt, itime_dp, itime_dr, &
            itime_dl, itime_dy_shell, itime_max_dt_frac, itime_dy_total
       use composition_layout, only: n_species_extended, i_h1, i_he4, i_metals
+      use net_lib, only: compute_network_rates, compute_abundance_rates, &
+           num_rate_rows, n_network, network_species_slot, s_h1
       implicit none
 
       integer, parameter :: n = 5
@@ -240,7 +245,38 @@ subroutine check_hydrogen()
       call report('hydrogen: shell E_H atime(dx_total) X_surf Msun/(L_H Lsun)', &
            relerr(dt, expected), relerr(dt, expected) <= 1.0e-14_dp)
       xa(i_h1,:) = 0.7_dp
+      call check_hydrogen_shell_depletion()
 end subroutine check_hydrogen
+
+! The shell branch's second bound: the time for X at the shell midpoint
+! to fall by atime(dx_shell), with dX/dt from the network (net's default
+! settings; no table) at a midpoint that burns, point 4 at log T = 7.3
+! and log rho = 2; a luminosity of 1e-10 Lsun leaves the other bound
+! far above it.
+subroutine check_hydrogen_shell_depletion()
+      real(dp) :: rate_vec(num_rate_rows), dxdt_per_a(n_network), dx_dt, total_bound
+      real(dp) :: lt_hot(n), lrho_hot(n)
+      lt_hot = lt0
+      lrho_hot = lrho
+      lt_hot(4) = 7.3_dp
+      lrho_hot(4) = 2.0_dp
+      xa(i_h1,1) = 1.0e-4_dp
+      call compute_network_rates(lrho_hot(4), lt_hot(4), xa(:,4), rate_vec)
+      call compute_abundance_rates(rate_vec, xa(network_species_slot,4), dxdt_per_a)
+      dx_dt = dxdt_per_a(s_h1)
+      total_bound = 6.0e18_dp*set%timestep_factors(itime_dx_total)*xa(i_h1,n)*(msun/lsun)/1.0e-10_dp
+      dt = hydrogen_burning_limit(set, 1.0e-10_dp, xa, xa, lrho_hot, lt_hot, m, l0, 2, 4, n)
+      expected = abs(set%timestep_factors(itime_dx_shell)/dx_dt)
+      call report('hydrogen: shell atime(dx_shell)/|dX/dt| at the midpoint', &
+           relerr(dt, expected), relerr(dt, expected) <= 1.0e-14_dp .and. dx_dt < 0.0_dp &
+           .and. expected < total_bound)
+      set%timestep_factors(itime_dx_shell) = 0.0_dp
+      dt = hydrogen_burning_limit(set, 1.0e-10_dp, xa, xa, lrho_hot, lt_hot, m, l0, 2, 4, n)
+      call report('hydrogen: shell no depletion bound for atime(dx_shell) <= 0', &
+           relerr(dt, total_bound), relerr(dt, total_bound) <= 1.0e-14_dp)
+      call default_settings()
+      xa(i_h1,:) = 0.7_dp
+end subroutine check_hydrogen_shell_depletion
 
 subroutine check_helium()
       write(*,'(a)') '-- helium'
