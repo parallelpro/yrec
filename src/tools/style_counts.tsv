@@ -168,7 +168,7 @@ io	commented_code	1
 io	module_no_private	0
 io	use_no_only	2
 io	explicit_shape_dummy	7
-io	io_statement	124
+io	io_statement	135
 kap	double_precision	0
 kap	old_relational	0
 kap	endif_enddo	0
