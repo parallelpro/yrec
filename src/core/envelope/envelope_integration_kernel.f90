@@ -631,7 +631,17 @@ end subroutine limit_atmosphere_step
 ! - the geometric depth between this point and the previous one,
 !     dz = (tau - tau_prev) / [(rho kappa + rho_prev kappa_prev)/2]
 !   (Cox & Giuli 1968, Principles of Stellar Structure, p. 590), the
-!   first point's from tau = 0 with rho kappa = 0 there;
+!   first point's from tau = 0 with rho kappa = 0 there. The heights the
+!   stitched model sums from these steps (its atmosphere radii; the
+!   first step enters none) are a plane-parallel layer's: the gravity of
+!   the integration is the photosphere's and does not fall with height
+!   (2 (r - R)/R = 2.5e-3 at the top of the standard solar model's
+!   atmosphere), and the step is the trapezoid of 1/(rho kappa) in tau
+!   (about h^2/12 = 1e-3 of a step). The validation tier measures the
+!   two together: the heights depart from hydrostatic equilibrium by up
+!   to 0.6% of a step, 6e-6 R over the atmosphere, which its contract
+!   test's atmosphere tolerance holds (docs/PHYSICS_VALIDATION.md, V11;
+!   bug_sweep M367);
 ! - the gradients (grad_rad, grad, grad_ad). The radiative gradient is
 !   the one of the temperature-gradient routine (legacy TPGRAD),
 !     grad_rad = 3 kappa L P / (64 pi sigma G M T^4) f_T/f_P,
