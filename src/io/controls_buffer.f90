@@ -860,10 +860,12 @@ module controls_buffer
       integer :: atm_choice = 0
 ! Integrate the full envelope (false: the atmosphere to the photosphere only)
       logical :: calc_envelope_flag = .true.
-! Atmosphere integration: error tolerance
+! Atmosphere integration: the Bulirsch-Stoer tolerance on each step's error
+! estimate, relative to the step's scale (the EOS and the opacity are
+! interpolated in tables, so a step's error can be tens of times larger)
       real(dp) :: atm_error_tol = 3.0d-4
 ! Atmosphere integration: the starting density (g/cm^3) at optical depth near
-! zero; divided by 10 on each retry
+! zero; divided by 10 on each retry, at most 11 times
       real(dp) :: atm_step_initial = 1.0d-10
 ! Atmosphere integration: the first step
       real(dp) :: atm_step_begin = 1.0d-1
@@ -871,7 +873,9 @@ module controls_buffer
       real(dp) :: atm_step_min = 1.0d-1
 ! The atmosphere integration's largest step (in log tau)
       real(dp) :: atm_step_max = 5.0d-1
-! Envelope integration: error tolerance
+! Envelope integration: the Bulirsch-Stoer tolerance on each step's error
+! estimate, relative to the step's scale (not a bound on the error: see
+! atm_error_tol)
       real(dp) :: env_error_tol = 3.0d-4
 ! Envelope integration: first step
       real(dp) :: env_step_begin = 1.0d-1

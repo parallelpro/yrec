@@ -168,9 +168,9 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `log_output_file` | `fshort` | `log_output_file` | physics | - | - | run | path | `'{YREC_OUTPUT}/run.log'` | live | Run log path; its directory part defines the output directory (legacy FSHORT) |
 | `atm_step_min` | `atmmin` | `atm_step_min` | physics | - | - | run | real | `1.0d-1` | live | The atmosphere integration's smallest step (in log tau) |
 | `atm_step_begin` | `atmbeg` | `atm_step_begin` | physics | - | - | run | real | `1.0d-1` | live | Atmosphere integration: the first step |
-| `atm_error_tol` | `atmerr` | `atm_error_tol` | physics | - | - | run | real | `3.0d-4` | live | Atmosphere integration: error tolerance |
+| `atm_error_tol` | `atmerr` | `atm_error_tol` | physics | - | - | run | real | `3.0d-4` | live | Atmosphere integration: the Bulirsch-Stoer tolerance on each step's error estimate, relative to the step's scale (the EOS and the opacity are interpolated in tables, so a step's error can be tens of times larger) |
 | `atm_step_max` | `atmmax` | `atm_step_max` | physics | - | - | run | real | `5.0d-1` | live | The atmosphere integration's largest step (in log tau) |
-| `atm_step_initial` | `atmd0` | `atm_step_initial` | physics | - | - | run | real | `1.0d-10` | live | Atmosphere integration: the starting density (g/cm^3) at optical depth near zero; divided by 10 on each retry |
+| `atm_step_initial` | `atmd0` | `atm_step_initial` | physics | - | - | run | real | `1.0d-10` | live | Atmosphere integration: the starting density (g/cm^3) at optical depth near zero; divided by 10 on each retry, at most 11 times |
 | `change_species_name` | `anewcp` | `change_species_name` | buffer | - | - | read | string | `'   '` | live | Element id whose abundance to override in the start model (with change_species_value) |
 | `new_species_value_mode` | `atmp` | `new_species_value_mode` | buffer | - | - | read | string | `''` | live | With rescale_species_active: 'ABS' makes change_species_value an absolute mass fraction; anything else, relative to hydrogen |
 | `fpft_average_weight` | `acfpft` | `fpft_average_weight` | physics | - | `rotation_settings%shape_tolerance` | run | real | `1.0d-36` | live | The rotating star's shape: the relative tolerance on r0^3 of the equipotential radius iteration (its cube root that on r0 and eta2); not a weight |
@@ -192,7 +192,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `max_domega_global` | `dtwind` | `max_domega_global` | physics | - | `rotation_settings%max_domega_global` | run | real | `1.0d1` | live | Timestep limit: the largest fractional change of omega per step |
 | `convergence_tolerance` | `djok` | `convergence_tolerance` | physics | - | `rotation_settings%convergence_tolerance` | run | real | `1.0d-4` | live | Angular momentum transport: the convergence tolerance of the transport iterations |
 | `settling_timestep_fraction` | `dt_gs` | `settling_timestep_fraction` | physics | - | `rotation_settings%settling_timestep_fraction` | run | real | `0.1d0` | live | Gravitational settling: sub-timestep as a fraction of the timestep |
-| `env_error_tol` | `enverr` | `env_error_tol` | physics | - | - | run | real | `3.0d-4` | live | Envelope integration: error tolerance |
+| `env_error_tol` | `enverr` | `env_error_tol` | physics | - | - | run | real | `3.0d-4` | live | Envelope integration: the Bulirsch-Stoer tolerance on each step's error estimate, relative to the step's scale (not a bound on the error: see atm_error_tol) |
 | `env_step_max` | `envmax` | `env_step_max` | physics | - | - | run | real | `5.0d-1` | live | The envelope integration's largest step (in log P) |
 | `env_step_min` | `envmin` | `env_step_min` | physics | - | - | run | real | `1.0d-1` | live | Envelope integration: minimum step |
 | `env_step_begin` | `envbeg` | `env_step_begin` | physics | - | - | run | real | `1.0d-1` | live | Envelope integration: first step |
