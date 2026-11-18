@@ -4783,3 +4783,144 @@ on x86 only, fixed after the round.
 - **The push**: yrec-next was pushed through 9059d0b1 on 2026-11-13
   and through f0ed5045 on 2026-11-14; M318's fix waits for the owner's
   word.
+
+### The eighth evaluation (2026-11-17)
+
+Six read-only reviews of yrec-next at 1179afbf (pushed), of the
+packages rounds 0, 1, 1B, 2 and 2B worked on since the seventh
+evaluation (823326a7): atm, convection and element_diffusion (one
+review), eos, kap, and core in two halves (structure/, step/ and
+envelope/; model/, run/, diagnostics/ and core's README). The reports,
+the rubric and the summary are in
+`audit/module-evaluation-8-2026-11-17/`.
+
+**How it was scored.**
+- Out of 10 against the seventh's bar (`RUBRIC.md`): 10 is at or above
+  the standard rotation/ set with nothing material left, 9 only minor
+  items left, 8 a few real gaps, 7 several, below 7 structural problems;
+  five criteria per package (readability, organization, maintainability,
+  extensibility, docs) and their average. core is the mean of its six
+  directories.
+- The reviewers read only and ran nothing. They were told not to grade
+  on the rounds' claims, and to check a sample of what this file says
+  was done against the code.
+- The seven packages not reviewed (setup, io, math, state, numerics,
+  net, rotation) keep the seventh's scores.
+
+| Package | Seventh (11-10) | Now | Now: readability / organization / maintainability / extensibility / docs |
+|---|---|---|---|
+| setup | 9.5 | 9.5 (not re-scored) | 10 / 9 / 9.5 / 9.5 / 9.5 |
+| io | 9.3 | 9.3 (not re-scored) | 9.5 / 9 / 9.5 / 9.5 / 9 |
+| math | 9.3 | 9.3 (not re-scored) | 10 / 10 / 8.5 / 10 / 8 |
+| state | 9.1 | 9.1 (not re-scored) | 9.5 / 9 / 9 / 9 / 9 |
+| atm | 6.3 | 8.6 | 9 / 8.5 / 8.5 / 8.5 / 8.5 |
+| convection | 6.4 | 8.6 | 8.5 / 8.5 / 8.5 / 8.5 / 9 |
+| numerics | 8.5 | 8.5 (not re-scored) | 9 / 9 / 7.5 / 9 / 8 |
+| eos | 7.2 | 8.4 | 8 / 8.5 / 8.5 / 8.5 / 8.5 |
+| net | 8.1 | 8.1 (not re-scored) | 9 / 8.5 / 8.5 / 7.5 / 7 |
+| rotation | 8.0 | 8.0 (not re-scored) | 7.5 / 8 / 8 / 8.5 / 8 |
+| kap | 6.2 | 7.9 | 7.5 / 8.5 / 7.5 / 8 / 8 |
+| element_diffusion | 5.9 | 7.9 | 8 / 8 / 7 / 8 / 8.5 |
+| core | 6.7 | 7.7 | 7.6 / 7.7 / 7.4 / 7.8 / 8.2 |
+
+core by directory, seventh -> now: structure 7.7 -> 8.1, run 6.8 ->
+8.0, step 7.0 -> 7.7, model 6.6 -> 7.6, diagnostics 7.0 -> 7.6, envelope
+6.2 -> 7.4; its README and in-code documentation 6.5 -> 8.5.
+
+**What the scores say.**
+- atm, convection and eos are at the standard: none of their criteria
+  is under 8.
+- kap has the standard's structure (organization 8.5); its readability
+  and maintainability, both 7.5, are held by the seven lookups under
+  the facade, F77 routines in modern syntax, and by tests that check
+  each family once.
+- element_diffusion's maintainability is 7 because of its open defects,
+  which are frozen by the owner's decision of 2026-11-11.
+- core's structure/ and run/ are at the bar; step/, model/,
+  diagnostics/ and envelope/ are under it: long hosts whose steps share
+  their locals, drivers without a test of their own, and the defects
+  below.
+
+**What the rounds' claims looked like.** The samples held, in every
+package, with three exceptions, all core's and all registered:
+- core/README's "Each check of the nine programs with a manifest was
+  confirmed to fail under a mutation" holds for five of the nine
+  programs; test_triangle_fit has 15 mutations for 83 checks,
+  test_mass_change 14 for 78, test_envelope_integration 32 for 35, and
+  test_structure's radiative `qt` partials have none (M333);
+- "so that the diagnostics feed no physics" (the round 2 section above):
+  `renormalize_luminosity_breakdown`, inside `compute_observables`,
+  rescales the luminosity channels that the next card's first
+  `compute_timestep` reads (M333);
+- item 24's message form: 27 of core's messages do not have it, and
+  four events reach the terminal and not the run log (M332).
+
+Smaller, of the same kind: five README coverage figures predate the
+rounds that followed them, two recipes were traced before a commit
+changed what they name, and bug_sweep listed M308 as open though
+ebf4d507 had fixed it.
+
+**The findings.** The six reports list 59 new findings. Because the
+reviewers ran nothing, each was read again in the code at 1179afbf and
+against the F77 at 6cd56739 before it was registered, four of them
+also run on a scratch build; none was dropped, and where the check
+corrected a report its entry says so
+(`audit/module-evaluation-8-2026-11-17/FINDING_MAP.md`). docs/bug_sweep.md
+section 19 has them as M319-M355, 37 entries, all open:
+- **By package:** core 15 (M319-M333), eos 4 (M334-M337), kap 7
+  (M338-M344), atm 3 (M345-M347), convection 4 (M348-M351),
+  element_diffusion 4 (M352-M355).
+- **By what they are:** 30 defects, one entry each, and 7 entries that
+  group a package's stale or inexact text (core's messages among them).
+  The style and structure points of the reports get no entry, by
+  bug_sweep section 10's rule; the summary's work lists carry them.
+- **By origin:** 23 are the F77's; 14 are 2026's, among them a
+  goto-elimination regression of August in the turnover time that the
+  first bug sweep recorded and nobody registered (M324), and two in the
+  conductive mixture that M278's fix rewrote in round 2B (M340, M341).
+- **By kind:** 23 are Kind A (no deck or pin moves when they are
+  fixed), 10 are Kind B (M319, M320, M321, M323, M324, M325, M332,
+  M341, M349, M353), and 4 have a part of each (M326, M327, M336,
+  M350).
+- **First among them:** M324 and M325 act in ordinary runs (the
+  turnover time that the wind and the deuterium cap read); M338 and
+  M339 give a wrong or refused opacity outside the shipped decks'
+  families and compositions; M340 is a NaN with ierr 0; M345 an
+  extrapolation with ierr 0; M327 an error that is reported and then
+  ignored; M326 a NaN at a control's default.
+
+bug_sweep now has 424 items, 290 fixed and 134 open.
+
+**What is left.**
+- **The follow-up rounds.** `SUMMARY.md`'s "What is left under 8" is
+  their work list, one list per package or directory whose criteria are
+  under 8, each item marked Kind A or B: kap (readability,
+  maintainability); core's step/, envelope/, model/, diagnostics/ and
+  run/; and element_diffusion, for if its freeze is lifted. The Kind A
+  items are a round of byte-identical commits, as rounds 1 and 2 were;
+  the Kind B items a measured round after them, as 1B and 2B were.
+- **The owner's decisions.**
+  - element_diffusion's freeze: M352-M355 join the frozen list (M33,
+    M243-M247, M250, M257's 2.2, M287-M289, O21). M352 and M354 are
+    guards that move no shipped deck.
+  - Each Kind B finding is a measured change to approve or to leave:
+    M319 (no accretion past the disk-locking age), M320 (no burning
+    limit where the core edge's L is not positive), M321 (one test for
+    leaving and re-entering the Allard tables), M323 (the dead
+    accretion-entropy path retired), M324 (the turnover time's
+    innermost-point branch as the F77 had it), M325 (the starting
+    model's turnover time kept for the first step), M326's density
+    shift, M327 (an envelope failure in the stitch stops the run, or is
+    a warning), M332 (core's message texts re-pinned), M336 (one SCV
+    interpolation, or the step stated), M341 with M299 (the conductive
+    derivative), M349 (the merge as a union), M350 (semiconvection's
+    first shell limited, or its exemption stated), and M353 with the
+    original settling routines' retire-or-fix decision.
+  - Two that are not Kind B but are choices: M342 (refuse a point off
+    the Alexander tables, or say that they extrapolate) and the
+    luminosity renormalization (into the step, or documented where it
+    is; M333).
+- **Unchanged:** O1, O3, O20, O6's and M176's parts B, M146's
+  remainder, M316 and M317, and M112's rest stay as the round 2B
+  section left them. rotation's, net's and numerics' lists are the
+  seventh evaluation's.

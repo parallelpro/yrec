@@ -505,7 +505,8 @@ Resolved from the git rename history of `src/`. Routines merged into a module ar
 | `liburn`, `lirate88` | `core/step/burn_step.f90` (`burn_li_be`, `store_start_li_be_rates`/`store_end_li_be_rates`) |
 | `nrate` (rates) | `net/net_lib.f90` (`compute_network_rates`, `compute_reaction_rates`) |
 | `mix` | `core/step/composition_step.f90` (`advance_composition`) |
-| `convec`, `oversh`, `hsubp`, `mixcz` | `convection/convection_zones.f90` (`find_convection_zones`, `extend_by_overshoot`, `compute_scale_height`, `homogenize_convection_zones`) |
+| `convec`, `mixcz` | `convection/convection_zones.f90` (`find_convection_zones`, `homogenize_convection_zones`) |
+| `oversh`, `hsubp` | `convection/overshoot.f90` (`extend_by_overshoot`; `edge_scale_height`, `pressure_scale_height`) |
 | `sconvec` | `convection/semiconvection.f90` (`extend_by_semiconvection`) |
 | `kemcom` | `net/network.f90` (`burn_implicitly`) |
 | `tpgrad` | `convection/temperature_gradients.f90` (`compute_temperature_gradients`) |
@@ -550,7 +551,8 @@ Resolved from the git rename history of `src/`. Routines merged into a module ar
 | `kspline`, `splinc`; `ksplint`, `splintd2` | `numerics/cubic_spline.f90` (`natural_spline`; `splint`) |
 | `bsstep`, `mmid`, `ratext` | `numerics/bulirsch_stoer.f90` (`bsstep` integrates an `ode_system`) |
 | `grsett`, `setup_grsett` | `element_diffusion/original_settling.f90` (`gravitational_settling`, `gravitational_settling_setup`) |
-| `microdiff`, `microdiff_setup`, `microdiff_mte`, `microdiff_etm` | `element_diffusion/microdiff_driver.f90`, `microdiff_mapping.f90`; the entry for both is `element_diffusion_lib`'s `diffuse_elements` |
+| `microdiff`, `microdiff_setup`, `microdiff_mte`, `microdiff_etm`, `microdiff_run`, `microdiff_cod` | `element_diffusion/microdiff_driver.f90` (`microdiff`; `convert_to_bahcall_loeb`, with the region in `settling_region.f90`), `microdiff_mapping.f90` (`map_microdiff_to_equal_grid`, `microdiff_etm`; the grids are `diffusion_grid.f90`'s), `microdiff_run.f90` (`run_microdiff`), `microdiff_coefficients.f90` (`compute_microdiff_coefficients`); the entry for this pipeline and the original one is `element_diffusion_lib`'s `diffuse_elements` |
+| `model_to_equal`, `equal_to_model` | `element_diffusion/settling_grid.f90` (the original routines' maps; the grids are `diffusion_grid.f90`'s) |
 | `thdiff`, `lax_wendrof1`, `lax_wendrof2`, `get_imp_diffco` | `element_diffusion/thoul_solver.f90` (`thoul_diffusion`), `diffusion_scheme.f90` |
 | `parmin` | `io/controls_reader.f90` (`read_controls`), with its steps in `io/legacy_controls.f90`, `run_files.f90`, `derived_controls.f90` and `run_cards.f90` |
 | `getyrec7`, `getmodel2`, `wrtlst` | `io/model_files.f90` (`read_yrec7`, `read_model2`; the `.mod` format's `write_mod_model` and `read_mod_model` replaced `wrtlst`) |
