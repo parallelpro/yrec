@@ -8,7 +8,7 @@
 !   convection zone, a fully convective model, and the hydrogen shell's
 !   beginning, middle and end (by the luminosity's step and by the
 !   surface X), with the central X on either side of x_core_min;
-!   compute_envelope_mixture (model_rescaling.f90) on a mixture of ten
+!   compute_envelope_mixture (rescaling_kernels.f90) on a mixture of ten
 !   metals with unequal weights: Y = 1 - X - Z - X(He3); the number
 !   fractions sum to 1; the mass fractions they give back (n_i A_i/
 !   sum n_j A_j) are X for H, 1 - X - Z for He and Z w_i/S for each
@@ -20,12 +20,21 @@
 !   m(k-1)); the fraction comes back from the base's mass (1e-12); a base a
 !   zone away clips to 0.5 or -0.5; no base, or the first or last zone,
 !   gives 0.
+!   rescaling_kernels' arithmetic of rescale_model on a 40-point model
+!   of 0.8 Msun with m(k) = M (k/41)^1.5, whose hydrogen shell is points
+!   21 to 25: hb_region_masses, whose core, shell and envelope add up to
+!   M; a total mass of 0.9 Msun by stretching the mass above the shell
+!   (mass_stretch_factor, stretch_masses_above: every point above the
+!   base moves by the factor, the points below not at all); a core mass
+!   raised by 0.02 Msun at fixed shell mass and fixed outer point
+!   (move_core_mass); scale_hydrogen, shift_metals, ramp_metals and
+!   set_helium_by_difference against their formulas.
 ! (regridding's kernels have test_regrid.)
 ! Prints one line per check and exits with status 1 when one fails.
 program test_model_kernels
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use shell_boundaries, only: find_shell_boundaries
-      use model_rescaling, only: compute_envelope_mixture
+      use rescaling_kernels, only: compute_envelope_mixture
       use convection_geometry, only: mixed_base_mass, mixed_base_fraction
       use composition_layout, only: n_mix_species, ix_h, ix_he, ix_c, ix_n, ix_o
       implicit none
@@ -157,6 +166,8 @@ program test_model_kernels
            mixed_base_fraction(zone_mass, shell_mass, 1, base_mass, n) == 0.0_dp .and. &
            mixed_base_fraction(zone_mass, shell_mass, n, base_mass, n) == 0.0_dp)
 
+      call rescaling_checks()
+
       if (num_failed > 0) then
          write(*,'(a,i0,a)') 'test_model_kernels: ', num_failed, ' checks FAIL'
          stop 1
@@ -172,6 +183,125 @@ pure function atomic_weights() result(a)
       a = [23.0_dp, 26.99_dp, 24.32_dp, 55.86_dp, 28.1_dp, 12.015_dp, 1.008_dp, &
            16.0_dp, 14.01_dp, 39.96_dp, 20.19_dp, 4.004_dp]
 end function atomic_weights
+
+! ---------------------------------------------------------------
+! rescaling_kernels on a 40-point model of 0.8 Msun.
+subroutine rescaling_checks()
+      use rescaling_kernels, only: hb_masses, scale_hydrogen, shift_metals, ramp_metals, &
+           set_helium_by_difference, hb_region_masses, mass_stretch_factor, &
+           stretch_masses_above, move_core_mass
+      use composition_layout, only: i_h1, i_he4, i_metals, i_he3, i_c12, i_o18, i_h2, &
+           n_species_extended
+      real(dp), parameter :: solar_mass = 2.0e33_dp, total_msun = 0.8_dp, tol = 1.0e-10_dp
+      integer, parameter :: shell_begin = 21, shell_end = 25
+      real(dp) :: log_mass(n), old_mass(n), new_mass(n), log_total_mass, factor, &
+           xa(n_species_extended,n), old_xa(n_species_extended,n), q(n), ramp_z
+      type(hb_masses) :: masses
+      logical :: ok
+      integer :: j
+
+      old_mass = [(total_msun*solar_mass*(real(j, dp)/real(n + 1, dp))**1.5_dp, j = 1, n)]
+      log_mass = log10(old_mass)
+      log_total_mass = log10(total_msun*solar_mass)
+
+! The regions' masses.
+      masses = hb_region_masses(log_mass, log_total_mass, shell_begin, shell_end, solar_mass)
+      call model_kernel_check('hb_region_masses: core, shell and envelope add up to M', &
+           abs((masses%core + masses%shell + masses%envelope)/total_msun - 1.0_dp) < tol .and. &
+           abs(masses%core/(old_mass(shell_begin-1)/solar_mass) - 1.0_dp) < tol .and. &
+           abs(masses%inner_envelope/((old_mass(n) - old_mass(shell_end))/solar_mass) - 1.0_dp) &
+           < tol)
+
+! A total mass of 0.9 Msun, the mass above the shell's end stretched.
+      factor = mass_stretch_factor(log_mass(shell_end), 0.9_dp, total_msun, solar_mass)
+      call stretch_masses_above(log_mass, log_total_mass, shell_end, factor)
+      new_mass = 10.0_dp**log_mass
+      call model_kernel_check('stretch_masses_above: the new total mass, the base and below unmoved', &
+           abs(10.0_dp**log_total_mass/(0.9_dp*solar_mass) - 1.0_dp) < tol .and. &
+           all(new_mass(1:shell_end) == 10.0_dp**log10(old_mass(1:shell_end))))
+      call model_kernel_check('stretch_masses_above: every point above moves by (M_new - m_b)/(M_old - m_b)', &
+           all(abs((new_mass(shell_end+1:n) - new_mass(shell_end))/ &
+           (old_mass(shell_end+1:n) - old_mass(shell_end))/ &
+           ((0.9_dp*solar_mass - old_mass(shell_end))/(total_msun*solar_mass - old_mass(shell_end))) &
+           - 1.0_dp) < tol))
+
+! The core mass raised by 0.02 Msun.
+      log_mass = log10(old_mass)
+      masses = hb_region_masses(log_mass, log10(total_msun*solar_mass), shell_begin, shell_end, &
+           solar_mass)
+      call move_core_mass(log_mass, shell_begin, shell_end, masses%core + 0.02_dp, masses%core, &
+           solar_mass)
+      new_mass = 10.0_dp**log_mass
+      call model_kernel_check('move_core_mass: the new core mass, its points scaled alike', &
+           abs(new_mass(shell_begin-1)/((masses%core + 0.02_dp)*solar_mass) - 1.0_dp) < tol .and. &
+           all(abs(new_mass(1:shell_begin-1)/old_mass(1:shell_begin-1)/ &
+           ((masses%core + 0.02_dp)/masses%core) - 1.0_dp) < tol))
+      call model_kernel_check('move_core_mass: the shell keeps its mass', &
+           all(abs((new_mass(shell_begin:shell_end) - new_mass(shell_begin-1))/ &
+           (old_mass(shell_begin:shell_end) - old_mass(shell_begin-1)) - 1.0_dp) < tol))
+      ok = abs(new_mass(n)/old_mass(n) - 1.0_dp) < tol
+      do j = shell_end + 1, n - 1
+         ok = ok .and. abs((new_mass(n) - new_mass(j))/(old_mass(n) - old_mass(j))/ &
+              ((new_mass(n) - new_mass(shell_end))/(old_mass(n) - old_mass(shell_end))) - 1.0_dp) &
+              < tol
+      end do
+      call model_kernel_check('move_core_mass: the outer point stays, the envelope shrinks toward it', ok)
+
+! The composition: X rising from 0.5 at the centre to 0.7, Z from 0.03 to
+! 0.02, with CNO isotopes and deuterium.
+      do j = 1, n
+         xa(:,j) = 0.0_dp
+         xa(i_h1,j) = 0.5_dp + 0.2_dp*real(j - 1, dp)/real(n - 1, dp)
+         xa(i_metals,j) = 0.03_dp - 0.01_dp*real(j - 1, dp)/real(n - 1, dp)
+         xa(i_he3,j) = 1.0e-4_dp
+         xa(i_c12:i_o18,j) = 1.0e-3_dp*real(j, dp)
+         xa(i_h2,j) = 2.0e-5_dp
+         xa(i_he4,j) = 0.123_dp
+      end do
+      old_xa = xa
+      call scale_hydrogen(xa(i_h1,:), 0.6_dp, 0.7_dp)
+      call model_kernel_check('scale_hydrogen: X_i X_new/X_surf, the surface at X_new', &
+           abs(xa(i_h1,n)/0.6_dp - 1.0_dp) < tol .and. &
+           all(abs(xa(i_h1,:)/(old_xa(i_h1,:)*0.6_dp/0.7_dp) - 1.0_dp) < tol))
+      xa = old_xa
+      call scale_hydrogen(xa(i_h1,:), 0.6_dp, 0.55_dp)
+      call model_kernel_check('scale_hydrogen: no shell above X_new', &
+           all(xa(i_h1,:) <= 0.6_dp) .and. xa(i_h1,n) == 0.6_dp .and. &
+           abs(xa(i_h1,1)/(0.5_dp*0.6_dp/0.55_dp) - 1.0_dp) < tol)
+      xa = old_xa
+      call shift_metals(xa, -0.025_dp)
+      call model_kernel_check('shift_metals: Z + dZ, not below 0; CNO by Z_new/Z_old; the rest kept', &
+           all(abs(xa(i_metals,1:n/2) - (old_xa(i_metals,1:n/2) - 0.025_dp)) < 1.0e-15_dp) .and. &
+           xa(i_metals,n) == 0.0_dp .and. xa(i_c12,n) == 0.0_dp .and. &
+           all(abs(xa(i_o18,1:n/2)/old_xa(i_o18,1:n/2)/ &
+           (xa(i_metals,1:n/2)/old_xa(i_metals,1:n/2)) - 1.0_dp) < tol) .and. &
+           all(xa(i_h2,:) == old_xa(i_h2,:)) .and. all(xa(i_he3,:) == old_xa(i_he3,:)) .and. &
+           all(xa(i_h1,:) == old_xa(i_h1,:)))
+      xa = old_xa
+      call set_helium_by_difference(xa)
+      call model_kernel_check('set_helium_by_difference: X + Y + Z + X(He3) = 1', &
+           all(abs(xa(i_h1,:) + xa(i_he4,:) + xa(i_metals,:) + xa(i_he3,:) - 1.0_dp) < 1.0e-15_dp))
+! A ramp from Z = 0.04 inside q = 0.2 to the surface's 0.02 at q = 0.6.
+      log_mass = log10(old_mass)
+      q = old_mass/(total_msun*solar_mass)
+      call ramp_metals(xa, log_mass, total_msun*solar_mass, 0.04_dp, 0.2_dp, 0.6_dp, 0.02_dp)
+      ok = .true.
+      do j = 1, n
+         if (q(j) < 0.2_dp) then
+            ramp_z = 0.04_dp
+         else if (q(j) < 0.6_dp) then
+            ramp_z = 0.04_dp + (q(j) - 0.2_dp)*(0.02_dp - 0.04_dp)/(0.6_dp - 0.2_dp)
+         else
+            ramp_z = old_xa(i_metals,j)
+         end if
+         ok = ok .and. abs(xa(i_metals,j) - ramp_z) < 1.0e-14_dp .and. &
+              abs(xa(i_c12,j)/old_xa(i_c12,j)/(ramp_z/old_xa(i_metals,j)) - 1.0_dp) < tol
+         if (q(j) < 0.6_dp) ok = ok .and. abs(xa(i_h1,j) + xa(i_he4,j) + xa(i_metals,j) + &
+              xa(i_he3,j) - 1.0_dp) < 1.0e-15_dp
+      end do
+      call model_kernel_check('ramp_metals: the core value, the ramp, the surface kept; X = 1 - Y - Z - He3', &
+           ok .and. count(q < 0.2_dp) > 3 .and. count(q >= 0.6_dp) > 3)
+end subroutine rescaling_checks
 
 subroutine boundaries()
       call find_shell_boundaries(h1, luminosity, convective, n, x_core_min, core_edge, &

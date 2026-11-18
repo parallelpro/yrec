@@ -8,7 +8,8 @@ module starting_model
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use turnover_timescale, only: compute_turnover_timescale
       use shell_physics, only: compute_shell_physics
-      use model_rescaling, only: rescale_model, compute_envelope_mixture
+      use model_rescaling, only: rescale_model
+      use rescaling_kernels, only: compute_envelope_mixture
       use star_info_lib, only: star_info
       use run_cards, only: card_evolve
       use am_regions, only: am_convective_regions
@@ -576,9 +577,8 @@ end subroutine set_isotope_ratios
 ! first, so that auto-calibrated solar models keep the change (MHP 9/14).
 !   star reads: card_from_starting_model, physics%chi_grid_scale,
 !     physics%core_mass_reduction_factor, physics%extend_core_inward
-!   star writes: convective_flag, log_mass, logP,
-!     logR, logRho, logT, luminosity_lsun, num_core_points_added, nz,
-!     omega, xa
+!   star writes: convective_flag, log_mass, logP, logR, logRho, logT,
+!     luminosity_lsun, num_core_points_added, nz, omega, xa
 subroutine extend_core_toward_center(s, sm, ierr)
       use math_lib
       type(star_info), intent(inout) :: s

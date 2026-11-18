@@ -96,7 +96,7 @@ program test_envelope_integration
       use numerics_lib, only: numerics_bad_input, numerics_step_underflow, &
            numerics_derivatives_failed
       use physical_constants, only: ln10, cgl, c4pil, csigl
-      use model_rescaling, only: compute_envelope_mixture
+      use rescaling_kernels, only: compute_envelope_mixture
       use settings_install, only: install_surface_mixture_settings
       use envelope_integration, only: gray_photosphere
       implicit none

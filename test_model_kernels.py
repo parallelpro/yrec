@@ -1,5 +1,6 @@
 """model/'s star-free kernels: find_shell_boundaries on synthetic profiles,
-compute_envelope_mixture on a ten-metal mixture, and step/convection_geometry's
+compute_envelope_mixture on a ten-metal mixture, rescaling_kernels' mass and
+composition rescalings on a 40-point model, and step/convection_geometry's
 mixed-region base (mixed_base_mass, mixed_base_fraction).
 
 Runs src/test_model_kernels (built by `make tests` in src/). Every check
@@ -15,7 +16,7 @@ import pytest
 
 REPO = pathlib.Path(__file__).parent
 BINARY = REPO / "src" / "test_model_kernels"
-NUM_CHECKS = 19
+NUM_CHECKS = 30
 
 
 def test_model_kernels(tmp_path):

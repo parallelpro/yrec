@@ -1,5 +1,5 @@
 # Mutations of test_model_kernels: each check must print FAIL under a
-# mutation of the kernel it covers (find_shell_boundaries,
+# mutation of the kernel it covers (find_shell_boundaries, rescaling_kernels,
 # compute_envelope_mixture, and step/convection_geometry's
 # mixed_base_mass and mixed_base_fraction). Run, after `make tests` in src/: python3 src/tools/mutate.py core --program
 # test_model_kernels (src/tools/mutate.py describes this format and the
@@ -79,28 +79,28 @@ new = 'hydrogen_surface_tol = 1.0e-3_dp'
 [[mutation]]
 id = 'envelope_mixture-01'
 check = 'compute_envelope_mixture: Y = 1 - X - Z - X(He3)'
-file = 'core/model/model_rescaling.f90'
+file = 'core/model/rescaling_kernels.f90'
 old = 'y_env = 1.0d0 - x_env - z_env - he3_env'
 new = 'y_env = 1.0d0 - x_env - z_env'
 
 [[mutation]]
 id = 'envelope_mixture-02'
 check = 'compute_envelope_mixture: the number fractions sum to 1'
-file = 'core/model/model_rescaling.f90'
+file = 'core/model/rescaling_kernels.f90'
 old = 'number_fractions(i) = weights(i)*scale_factor'
 new = 'number_fractions(i) = weights(i)*scale_factor*1.001d0'
 
 [[mutation]]
 id = 'envelope_mixture-03'
 check = 'compute_envelope_mixture: X(H) and X(He) = 1 - X - Z back'
-file = 'core/model/model_rescaling.f90'
+file = 'core/model/rescaling_kernels.f90'
 old = 'weights(ix_he) = (1.0d0-x_env-z_env)/scale_factor'
 new = 'weights(ix_he) = (1.0d0-x_env-z_env-he3_env)/scale_factor'
 
 [[mutation]]
 id = 'envelope_mixture-04'
 check = 'compute_envelope_mixture: each metal Z w_i/S back'
-file = 'core/model/model_rescaling.f90'
+file = 'core/model/rescaling_kernels.f90'
 old = '''           weights(ix_ar)+weights(ix_ne)
       metals_no_cno'''
 new = '''           weights(ix_ar)
@@ -109,14 +109,14 @@ new = '''           weights(ix_ar)
 [[mutation]]
 id = 'envelope_mixture-05'
 check = 'compute_envelope_mixture: 1/mu_ion = sum X_i/A_i'
-file = 'core/model/model_rescaling.f90'
+file = 'core/model/rescaling_kernels.f90'
 old = 'inverse_atomic_weight = weight_sum'
 new = 'inverse_atomic_weight = weight_sum*1.001d0'
 
 [[mutation]]
 id = 'envelope_mixture-06'
 check = 'compute_envelope_mixture: Z without C, N, O = Z (S-wC-wN-wO)/S'
-file = 'core/model/model_rescaling.f90'
+file = 'core/model/rescaling_kernels.f90'
 old = 'weights(ix_c)-weights(ix_o)-'
 new = 'weights(ix_c)-'
 
@@ -151,3 +151,87 @@ old = '''
            num_zones) - base_mass)/(mass_coordinate(base_zone) - mass_coordinate(base_zone-1))'''
 new = '''
            num_zones) - base_mass)/(mass_coordinate(base_zone+1) - mass_coordinate(base_zone-1))'''
+
+# rescaling_kernels: the arithmetic of rescale_model.
+[[mutation]]
+id = 'rescaling_kernels-01'
+check = 'hb_region_masses: core, shell and envelope add up to M'
+file = 'core/model/rescaling_kernels.f90'
+old = 'masses%core = exp(ln10*log_mass(shell_begin-1))/solar_mass'
+new = 'masses%core = exp(ln10*log_mass(shell_begin))/solar_mass'
+
+[[mutation]]
+id = 'rescaling_kernels-02'
+check = 'stretch_masses_above: the new total mass, the base and below unmoved'
+file = 'core/model/rescaling_kernels.f90'
+old = 'log_total_mass = log10(base_mass+stretch_factor*(exp10(log_total_mass)-base_mass))'
+new = 'log_total_mass = log10(stretch_factor*(exp10(log_total_mass)-base_mass))'
+
+[[mutation]]
+id = 'rescaling_kernels-03'
+check = 'stretch_masses_above: every point above moves by (M_new - m_b)/(M_old - m_b)'
+file = 'core/model/rescaling_kernels.f90'
+old = 'mass_stretch_factor = (new_total_msun-exp(ln10*log_base_mass)/solar_mass)/ &'
+new = 'mass_stretch_factor = (new_total_msun+exp(ln10*log_base_mass)/solar_mass)/ &'
+
+[[mutation]]
+id = 'rescaling_kernels-04'
+check = 'move_core_mass: the new core mass, its points scaled alike'
+file = 'core/model/rescaling_kernels.f90'
+old = 'log_mass_shift = log10(new_core_msun/old_core_msun)'
+new = 'log_mass_shift = log10(old_core_msun/new_core_msun)'
+
+[[mutation]]
+id = 'rescaling_kernels-05'
+check = 'move_core_mass: the shell keeps its mass'
+file = 'core/model/rescaling_kernels.f90'
+old = 'mass_shift_grams = (new_core_msun - old_core_msun)*solar_mass'
+new = 'mass_shift_grams = 0.5d0*(new_core_msun - old_core_msun)*solar_mass'
+
+[[mutation]]
+id = 'rescaling_kernels-06'
+check = 'move_core_mass: the outer point stays, the envelope shrinks toward it'
+file = 'core/model/rescaling_kernels.f90'
+old = 'mass_scale_factor = (exp(ln10*log_mass(nz))-exp(ln10*log_mass(shell_end)))/ &'
+new = 'mass_scale_factor = (exp(ln10*log_mass(nz))+exp(ln10*log_mass(shell_end)))/ &'
+
+[[mutation]]
+id = 'rescaling_kernels-07'
+check = 'scale_hydrogen: X_i X_new/X_surf, the surface at X_new'
+file = 'core/model/rescaling_kernels.f90'
+old = 'x_rescale_factor = new_surface_x/max(old_surface_x, x_floor)'
+new = 'x_rescale_factor = old_surface_x/max(new_surface_x, x_floor)'
+
+[[mutation]]
+id = 'rescaling_kernels-08'
+check = 'scale_hydrogen: no shell above X_new'
+file = 'core/model/rescaling_kernels.f90'
+old = 'hydrogen(zone_idx) = min(new_surface_x, hydrogen(zone_idx)*x_rescale_factor)'
+new = 'hydrogen(zone_idx) = max(new_surface_x, hydrogen(zone_idx)*x_rescale_factor)'
+
+[[mutation]]
+id = 'rescaling_kernels-09'
+check = 'shift_metals: Z + dZ, not below 0; CNO by Z_new/Z_old; the rest kept'
+file = 'core/model/rescaling_kernels.f90'
+old = '''
+         xa(i_metals,zone_idx) = max(0.0d0, xa(i_metals,zone_idx)+delta_z)
+         do species_idx = i_c12, i_o18
+'''
+new = '''
+         xa(i_metals,zone_idx) = max(0.0d0, xa(i_metals,zone_idx)+delta_z)
+         do species_idx = i_c12, i_o18 - 1
+'''
+
+[[mutation]]
+id = 'rescaling_kernels-10'
+check = 'set_helium_by_difference: X + Y + Z + X(He3) = 1'
+file = 'core/model/rescaling_kernels.f90'
+old = 'xa(i_he4,zone_idx) = 1.0d0-xa(i_h1,zone_idx)-xa(i_metals,zone_idx)- &'
+new = 'xa(i_he4,zone_idx) = 1.0d0-xa(i_h1,zone_idx)+xa(i_metals,zone_idx)- &'
+
+[[mutation]]
+id = 'rescaling_kernels-11'
+check = 'ramp_metals: the core value, the ramp, the surface kept; X = 1 - Y - Z - He3'
+file = 'core/model/rescaling_kernels.f90'
+old = 'z_ramp_value = (mass_fraction_local-inner_q)*z_ramp_slope+core_z'
+new = 'z_ramp_value = (mass_fraction_local-inner_q)*z_ramp_slope-core_z'
