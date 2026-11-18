@@ -235,6 +235,7 @@ subroutine dump_controls(star, u)
       end do
       write(u,'(a," = ",es25.17e3)') 'physics%solver_underrelax_start', star%physics%solver_underrelax_start
       write(u,'(a," = ",es25.17e3)') 'physics%solver_underrelax_increment', star%physics%solver_underrelax_increment
+      write(u,'(a," = ",es25.17e3)') 'physics%solver_max_correction', star%physics%solver_max_correction
       write(u,'(a," = ",i0)') 'physics%max_iter_level1', star%physics%max_iter_level1
       write(u,'(a," = ",i0)') 'physics%max_iter_level2', star%physics%max_iter_level2
       write(u,'(a," = ",i0)') 'physics%max_iter_level3', star%physics%max_iter_level3

@@ -17,7 +17,7 @@ module rezoning
       use omega_profile, only: omega_from_j
       use moments_of_inertia, only: zone_moments_of_inertia
       use rotating_shape, only: rotation_shape_factors
-      use star_info_lib, only: i_eps_grav, i_eps_neu, i_h1, i_h2, i_metals, json, n_species_basic, &
+      use star_info_lib, only: i_eps_grav, i_eps_neu, i_h1, i_metals, json, n_species_basic, &
            n_species_extended
       use control_slots, only: ichi_czbase_fine_width, ichi_dl_max, ichi_dm_max, &
            ichi_dm_min, ichi_dp_core_max, ichi_dp_czbase_max, ichi_dp_env_max, ichi_dx_max, &
@@ -38,10 +38,8 @@ module rezoning
 ! every append; one slot stays for the star%nz terminator).
       integer, parameter :: max_flag_points = 100
 
-! A spacing limit at or below spacing_limit_off is off [X, Z]; the
-! start-of-step deuterium rates are regridded only while the surface
-! deuterium is at least deuterium_regrid_min [mass fraction] (O6).
-      real(dp), parameter :: spacing_limit_off = 1.0D-15, deuterium_regrid_min = 1.0D-14
+! A spacing limit at or below spacing_limit_off is off [X, Z].
+      real(dp), parameter :: spacing_limit_off = 1.0D-15
 
 ! The rezone's state, which its steps pass on to each other:
 !   flag_point(1:flag_count)  the points the rezone keeps and does not
@@ -979,9 +977,9 @@ end subroutine interpolate_onto_new_grid
 
 ! ---------------------------------------------------------------
 ! Set the old and new point counts, and spline the entropy terms, every
-! species (now and at the start of the step) and, when the surface
-! deuterium is above 1e-14, the start-of-step deuterium burning rate
-! onto the new points.
+! species (now and at the start of the step) and, with the extended
+! composition, the start-of-step deuterium burning rate onto the new
+! points.
 !   star reads: log_mass, nz, physics%use_extended_composition
 !   star writes: deuterium_burning_rate_start, dln_luminosity_dt,
 !     dlog_pressure_dt, dlog_radius_dt, dlog_temperature_dt, xa,
@@ -1017,11 +1015,10 @@ subroutine regrid_composition_terms(s, rz, ierr)
            rz%new_log_mass(1:rz%new_point_count), regridded_xa, ierr)
       if (ierr /= 0) return
       s%xa_start(1:rz%num_species_tracked,1:rz%new_point_count) = regridded_xa
-! The start-of-step deuterium burning rate, when the deuterium at the new
-! surface (point new_point_count of the regridded xa; star%nz is still
-! the old point count here) is above 1e-14 (MHP 05/02).
-      if (s%physics%use_extended_composition .and. &
-           s%xa(i_h2,rz%new_point_count) >= deuterium_regrid_min) then
+! The start-of-step deuterium burning rate, as every per-zone array that
+! outlives the rezone (the rotation sub-steps read it zone by zone on the
+! new mesh).
+      if (s%physics%use_extended_composition) then
          call regrid_in_place(s, rz, ierr, s%deuterium_burning_rate_start)
       end if
 end subroutine regrid_composition_terms

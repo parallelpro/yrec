@@ -33,7 +33,8 @@ module opal_eos
            opal_radiation_constant_over_3, opal_empty_entry, opal_empty_sum, &
            opal_usable_corner_sum, opal_beyond_stencil, opal_x_interp_overflow, opal_range_overflow
       use physical_constants, only: gas_constant
-      use eos_messages, only: eos_log, eos_report, message_length, unwritten_line
+      use eos_messages, only: eos_log, eos_log_once, eos_report, message_length, &
+           once_opal_pressure_jump, unwritten_line
       use eos_mixture, only: compute_mean_weights
       use eos_configuration, only: eos_settings, eos_table_paths_t, opal_vintage_none
       use eos_table_source, only: eos_table_source_t, stage_over_the_gas, adopt_table_result, &
@@ -295,13 +296,20 @@ end subroutine find_table_edge_ramp
 ! from the table's highest one scaled by P over the pressure there, then
 ! the lower density shrunk by 0.2 until its pressure is below the target
 ! (at most 20 times, down to the table's 1e-14), or the upper one grown
-! by 5 (to the table's edge); at most 30 steps to |dP/P| < 0.5e-7. The
+! by 5 (to the table's edge); at most 30 steps to |dP/P| < 0.5e-7, and
+! then, where the pair brackets the pressure, bisection to the same
+! tolerance (regula falsi keeps one end of the bracket where P(rho) is
+! strongly curved, and 30 of its steps can leave |dP/P| at 1e-4). The
 ! vintage's row of opal_layout says how radiation enters (2006 subtracts
 ! its pressure from the target and asks for the gas alone; 1995 and 2001
 ! add it to the table's bounds and ask for gas plus radiation), the highest
 ! density at each T6 row, a/c, and the name in messages. Returns
 ! opal_rho_not_found (-999) when the point is not in the table, and,
-! with a run-log message, when the search does not converge.
+! with a run-log message, when the search does not converge (a pair that
+! does not bracket the pressure after the regula falsi steps, or a
+! bisection that runs out of steps). Where the bracket closes on a jump
+! of the table's own pressure, that density is returned, with a note the
+! run log gets once.
 function opal_density_search(v, vintage, hydrogen_fraction, t6_temperature, &
      pressure_e12, rad_flag, ierr) result(found_density)
       type(opal_eos_vintage), intent(inout) :: v
@@ -312,6 +320,11 @@ function opal_density_search(v, vintage, hydrogen_fraction, t6_temperature, &
       real(dp) :: found_density
       character(len=message_length) :: eos_lines(4)
       integer, parameter :: mx = n_eos_mx, max_refine = 30, max_shrink = 20
+! the bisection after the regula falsi steps: at most max_bisect steps,
+! down to a bracket of closed_bracket of the density (reached only where
+! the table's pressure itself jumps past P)
+      integer, parameter :: max_bisect = 60
+      real(dp), parameter :: closed_bracket = 1.0d-14
 ! the table-priming call's point (its result is discarded)
       real(dp), parameter :: priming_x = 0.5d0, priming_t6 = 1.0d0, priming_density = 0.001d0
       real(dp) :: rat, radiation_pressure, bound_radiation, pressure_no_rad
@@ -320,7 +333,7 @@ function opal_density_search(v, vintage, hydrogen_fraction, t6_temperature, &
       real(dp) :: pressure_trial1, pressure_trial2, pressure_trial3
       integer :: lo_idx, hi_idx, mid_idx, x_bisect_idx, t6_bisect_idx, nt, edge
       integer :: refine_count, shrink_count, trial_rad
-      logical :: in_table
+      logical :: in_table, bracketed
 
       ierr = 0
       nt = opal_layout(vintage)%nt
@@ -408,12 +421,18 @@ function opal_density_search(v, vintage, hydrogen_fraction, t6_temperature, &
          if (.not. trial_pressure(density_trial2, pressure_trial2)) return
       end if
 
-! regula falsi
+! regula falsi for max_refine steps; then, where the pair brackets the
+! pressure, bisection, until the pressure matches or the bracket has
+! closed
       refine_count = 0
       refine: do
          refine_count = refine_count + 1
-         density_trial3 = density_trial1 + (density_trial2-density_trial1)* &
-              (pressure_no_rad-pressure_trial1)/(pressure_trial2-pressure_trial1)
+         if (refine_count <= max_refine) then
+            density_trial3 = density_trial1 + (density_trial2-density_trial1)* &
+                 (pressure_no_rad-pressure_trial1)/(pressure_trial2-pressure_trial1)
+         else
+            density_trial3 = 0.5d0*(density_trial1 + density_trial2)
+         end if
          if (.not. trial_pressure(density_trial3, pressure_trial3)) return
          if (abs((pressure_trial3-pressure_no_rad)/pressure_no_rad) < 0.5d-7) then
             found_density = density_trial3
@@ -427,9 +446,27 @@ function opal_density_search(v, vintage, hydrogen_fraction, t6_temperature, &
             pressure_trial1 = pressure_trial3
          end if
          if (refine_count < max_refine) cycle refine
+         bracketed = pressure_trial1 <= pressure_no_rad .and. pressure_no_rad <= pressure_trial2 &
+              .and. density_trial1 < density_trial2
+         if (bracketed) then
+            if (density_trial2 - density_trial1 <= closed_bracket*density_trial2) then
+! The bracket has closed on a density across which the table's own
+! pressure jumps past P (its interpolation changes stencil there): no
+! density matches more closely, and this one is the table's answer.
+               eos_lines = unwritten_line
+               write(eos_lines,'(A,": the table''s pressure jumps across the density that gives P;", &
+                    &" X, T6, P12, |dP/P| =",4ES12.4," -- that density is taken (reported once)")') &
+                    trim(opal_layout(vintage)%search_name), hydrogen_fraction, t6_temperature, &
+                    pressure_e12, abs((pressure_trial3-pressure_no_rad)/pressure_no_rad)
+               call eos_log_once(once_opal_pressure_jump, eos_lines)
+               found_density = density_trial3
+               return
+            end if
+            if (refine_count < max_refine + max_bisect) cycle refine
+         end if
          eos_lines = unwritten_line
          write(eos_lines,'(A,": no convergence after ",I0," tries;", " X, T6, P12, |dP/P| =",4ES12.4," -- falling back")') &
-              trim(opal_layout(vintage)%search_name), max_refine, &
+              trim(opal_layout(vintage)%search_name), refine_count, &
               hydrogen_fraction, t6_temperature, pressure_e12, abs((pressure_trial3-pressure_no_rad)/pressure_no_rad)
          call eos_log(eos_lines)
          found_density = opal_rho_not_found
@@ -883,132 +920,149 @@ end subroutine t6rinteos
 !----------------------------------------------------------------------
 ! find_ragged_edge_ramp (formerly eqbound06)
 !----------------------------------------------------------------------
-! LLP 10/16/06: checks whether a (T, log10 rho) point falls within the
-! OPAL 2006 EOS table, and if it is near the table's edge, computes
-! the ramp factor used to blend the OPAL result with the Yale/SCV
-! result (blend_eos's opal_step calls it, through find_opal_edge_ramp,
-! right after compute_opal_eos). Unlike find_table_edge_ramp (1995 and
-! 2001), it tracks the table's ragged edge through the vintage's
-! per-column and per-row index arrays (lay%t6_index_lo,
-! lay%density_index_edge) rather than one edge value per T6 row, from
-! the stencil the last interpolation left in v.
+! LLP 10/16/06: whether a (T, log10 rho) point falls within the OPAL
+! 2006 EOS table, and the weight of the OPAL result there (ramp_factor;
+! blend_eos's opal_step calls it, through find_opal_edge_ramp, right
+! after compute_opal_eos, and blends the OPAL result with the Yale/SCV
+! one where needs_ramp is set).
+!
+! The table's edge is ragged: lay%density_index_edge(k) is the highest
+! tabulated density column of T6 row k, and lay%t6_index_lo(j) the row
+! of the lowest tabulated T6 of density column j. The cell of the point
+! has the rows t6_row - 1 (warmer) and t6_row and the columns
+! density_row - 1 and density_row; it is in the table when its coldest,
+! densest node is (cell_in_table). The weight is continuous in (T6, rho):
+! it is the bilinear interpolant, in the cell, of node weights that are 1
+! at a node whose four cells are all in the table and 0 at the others
+! (node_weight), so it is 1 in the table's interior, 0 on its edge, and
+! takes one cell to get from one to the other. With u the cell's
+! fraction in T6 (0 at the cold row) and w its fraction in rho (0 at the
+! low column):
+!   - where only the two dense nodes are on the edge the weight is the
+!     density ramp 1 - w; where only the two cold ones are, the T6 ramp
+!     u; at an outer corner of the staircase their product; and the
+!     same at the table's first T6 row and first density column
+!     (legacy_ramp, which forms them as the F77 did);
+!   - at an inner corner of the staircase (one node of the cell on the
+!     edge, the cell colder or denser beyond it outside the table) it is
+!     the full interpolant. (The product form gave 1 there, against the
+!     density ramp of the cell across the T6 row: a jump of the blended
+!     density, gradients and c_P wherever a model crossed that line;
+!     docs/bug_sweep.md M356.)
+! The stencil the last interpolation left in v (v%t6_index_3,
+! v%density_index_2) starts the search for the cell.
 pure subroutine find_ragged_edge_ramp(v, lay, temperature, log10_density, ramp_factor, &
      in_opal_table, needs_ramp)
       type(opal_eos_vintage), intent(in) :: v
       type(opal_vintage_layout), intent(in) :: lay
-
       real(dp), intent(in) :: temperature, log10_density
       real(dp), intent(out) :: ramp_factor
       logical, intent(out) :: in_opal_table, needs_ramp
-
-
-
       integer :: t6_row, density_row
-! --- locals ---
-      real(dp) :: t6, density, density_ramp_factor, &
-           t6_ramp_factor
+      real(dp) :: t6, density, t6_fraction, density_fraction
+! the node weights of the cell: (cold, warm) x (low, high density)
+      real(dp) :: node(2,2), legacy_node(2,2)
 
       t6 = temperature*1.0d-6
       density = pow(10d0, log10_density)
+      in_opal_table = .false.
+      needs_ramp = .true.
+      ramp_factor = 0d0
+! outside the table's density or T6 range
+      if ((density < v%density_grid(1)) .or. (density >= v%density_grid(lay%nr))) return
+      if ((t6 > v%t6_grid(1)) .or. (t6 <= v%t6_grid(lay%nt))) return
 
-!     Exit if outside table in rho
-      if ((density < v%density_grid(1)) .or. (density >= v%density_grid(lay%nr))) then
-         in_opal_table = .false.
-         needs_ramp = .true.
-         ramp_factor = 0d0
-         return
+! the cell: v%t6_grid(t6_row-1) >= T6 > v%t6_grid(t6_row) (the grid
+! decreases) and v%density_grid(density_row-1) < rho <=
+! v%density_grid(density_row), by a linear search from the last stencil
+      t6_row = v%t6_index_3
+      do while (t6 <= v%t6_grid(t6_row))
+         t6_row = t6_row+1
+      end do
+      do while (t6 > v%t6_grid(t6_row-1))
+         t6_row = t6_row-1
+      end do
+      density_row = v%density_index_2
+      do while (density > v%density_grid(density_row))
+         density_row = density_row+1
+      end do
+      do while (density <= v%density_grid(density_row-1))
+         density_row = density_row-1
+      end do
+      if (.not. cell_in_table(t6_row, density_row)) return
+
+      in_opal_table = .true.
+      node(1,1) = node_weight(t6_row, density_row-1)
+      node(1,2) = node_weight(t6_row, density_row)
+      node(2,1) = node_weight(t6_row-1, density_row-1)
+      node(2,2) = node_weight(t6_row-1, density_row)
+      call legacy_ramp(ramp_factor, legacy_node)
+      needs_ramp = any(node < 1d0)
+      if (any(node /= legacy_node)) then
+         t6_fraction = (t6-v%t6_grid(t6_row))/(v%t6_grid(t6_row-1)-v%t6_grid(t6_row))
+         density_fraction = (density-v%density_grid(density_row-1))/ &
+              (v%density_grid(density_row)-v%density_grid(density_row-1))
+         ramp_factor = (1d0-t6_fraction)*((1d0-density_fraction)*node(1,1) + density_fraction*node(1,2)) + &
+              t6_fraction*((1d0-density_fraction)*node(2,1) + density_fraction*node(2,2))
       end if
 
-!     Exit if outside table in T6
-      if ((t6 > v%t6_grid(1)) .or. (t6 <= v%t6_grid(lay%nt))) then
-         in_opal_table = .false.
-         needs_ramp = .true.
-         ramp_factor = 0d0
-         return
-      end if
+contains
 
-!     Initialize
-      density_ramp_factor = 1d0   ! Initialize density ramp factor to 1
-      t6_ramp_factor = 1d0        ! Initialize temperature ramp factor to 1
-      in_opal_table = .true.      ! Presume that T6,D point is in OPAL table
-      needs_ramp = .false.        ! presume ramping is not needed,
-                                   ! i.e. we are not in the border of the table.
+! The cell between T6 rows tr - 1 and tr and density columns dr - 1 and
+! dr is in the table when the node (tr, dr), its coldest and densest, is
+! tabulated: column dr is at or below row tr's highest, and row tr at or
+! above column dr's lowest T6.
+pure logical function cell_in_table(tr, dr)
+      integer, intent(in) :: tr, dr
+      cell_in_table = .false.
+      if (tr < 2 .or. tr > lay%nt .or. dr < 2 .or. dr > lay%nr) return
+      cell_in_table = dr <= lay%density_index_edge(tr) .and. tr <= lay%t6_index_lo(dr)
+end function cell_in_table
 
-!     Check for easy borders
+! 1 at a node all of whose four cells are in the table, 0 at a node on
+! the table's edge.
+pure real(dp) function node_weight(tr, dr)
+      integer, intent(in) :: tr, dr
+      node_weight = 0d0
+      if (cell_in_table(tr, dr) .and. cell_in_table(tr, dr+1) .and. &
+           cell_in_table(tr+1, dr) .and. cell_in_table(tr+1, dr+1)) node_weight = 1d0
+end function node_weight
+
+! The product of the density ramp and the T6 ramp of the cell, each 1
+! unless the cell is the last one of its row or column (or the first
+! one of the table), and the node weights that product interpolates.
+pure subroutine legacy_ramp(product_ramp, product_node)
+      real(dp), intent(out) :: product_ramp, product_node(:,:)
+      real(dp) :: density_ramp_factor, t6_ramp_factor, t6_node(2), density_node(2)
+      density_ramp_factor = 1d0
+      t6_ramp_factor = 1d0
+      t6_node = 1d0
+      density_node = 1d0
+! the table's first T6 row and first density column
       if (t6 > v%t6_grid(2)) then
-          t6_ramp_factor = (t6-v%t6_grid(1))/(v%t6_grid(2)-v%t6_grid(1)) ! Ramp in temperature
-          needs_ramp = .true.
+         t6_ramp_factor = (t6-v%t6_grid(1))/(v%t6_grid(2)-v%t6_grid(1))
+         t6_node = [1d0, 0d0]
       end if
       if (density < v%density_grid(2)) then
-          density_ramp_factor = (density - v%density_grid(1))/ &
-               (v%density_grid(2)-v%density_grid(1)) ! Ramp in density
-          needs_ramp = .true.
+         density_ramp_factor = (density - v%density_grid(1))/ &
+              (v%density_grid(2)-v%density_grid(1))
+         density_node = [0d0, 1d0]
       end if
-
-!     Find a t6_row such that v%t6_grid(t6_row-1) >= T6 > v%t6_grid(t6_row)
-!     and a density_row such that v%density_grid(density_row-1) < D <=
-!     v%density_grid(density_row)
-!     The ESAC06 variables (k=)v%t6_index_3 and (l-)v%density_index_2 are
-!     close to what we need. A linear search will work fine.
-      t6_row = v%t6_index_3
-   do while (t6 <= v%t6_grid(t6_row))
-        t6_row = t6_row+1
-   end do
-   do while (t6 > v%t6_grid(t6_row-1))
-        t6_row = t6_row-1
-   end do
-!     We now have: v%t6_grid(t6_row-1) >= T6 > v%t6_grid(t6_row)
-
-      density_row = v%density_index_2
-   do while (density > v%density_grid(density_row))
-        density_row = density_row+1
-   end do
-   do while (density <= v%density_grid(density_row-1))
-        density_row = density_row-1
-   end do
-!     We now have: v%density_grid(density_row-1) < D <= v%density_grid(density_row)
-
-!     For a given temperature in array v%t6_grid with index t6_row, e.g.,
-!     v%t6_grid(t6_row), element lay%density_index_edge(t6_row) of array
-!     lay%density_index_edge contains the index to the max allowed density
-!     in array v%density_grid. So, for a given v%t6_grid(t6_row), the
-!     associated D must be less than v%density_grid(lay%density_index_edge(t6_row)).
-!     A valid index in array v%density_grid must be less than or equal
-!     to lay%density_index_edge(t6_row)
-
-      if (density_row > lay%density_index_edge(t6_row)) then
-        in_opal_table = .false.
-        needs_ramp = .true.
-        ramp_factor = 0d0
-        return
-      end if
+! the last density column of the row, the last T6 row of the column
       if (density_row == lay%density_index_edge(t6_row)) then
-        needs_ramp = .true.
-        density_ramp_factor = (v%density_grid(density_row)-density)/ &
-             (v%density_grid(density_row)-v%density_grid(density_row-1))
-      end if
-
-!     For a given density in array v%density_grid with index density_row,
-!     i.e., v%density_grid(density_row), element lay%t6_index_lo(density_row)
-!     of array lay%t6_index_lo contains the index to the min allowed
-!     temperature in array v%t6_grid. So for a given
-!     v%density_grid(density_row), the associated T6 must be greater
-!     than v%t6_grid(lay%t6_index_lo(density_row)). (Note that v%t6_grid is a
-!     decreasing array.) A valid index in v%t6_grid must be less than or
-!     equal to lay%t6_index_lo(density_row).
-
-      if (t6_row > lay%t6_index_lo(density_row)) then
-        in_opal_table = .false.
-        needs_ramp = .true.
-        ramp_factor = 0d0
-        return
+         density_ramp_factor = (v%density_grid(density_row)-density)/ &
+              (v%density_grid(density_row)-v%density_grid(density_row-1))
+         density_node = [1d0, 0d0]
       end if
       if (t6_row == lay%t6_index_lo(density_row)) then
-        needs_ramp = .true.
-        t6_ramp_factor = (t6-v%t6_grid(t6_row))/(v%t6_grid(t6_row-1)-v%t6_grid(t6_row))
+         t6_ramp_factor = (t6-v%t6_grid(t6_row))/(v%t6_grid(t6_row-1)-v%t6_grid(t6_row))
+         t6_node = [0d0, 1d0]
       end if
+      product_ramp = density_ramp_factor * t6_ramp_factor
+      product_node(1,:) = t6_node(1)*density_node
+      product_node(2,:) = t6_node(2)*density_node
+end subroutine legacy_ramp
 
-      ramp_factor = density_ramp_factor * t6_ramp_factor
 end subroutine find_ragged_edge_ramp
 
 

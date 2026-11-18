@@ -1642,6 +1642,7 @@ physics%solver_tolerances(4,2) =  2.00000000000000000E+000
 physics%solver_tolerances(5,2) =  2.50000000000000020E-006
 physics%solver_underrelax_start =  8.00000000000000044E-001
 physics%solver_underrelax_increment =  1.00000000000000006E-001
+physics%solver_max_correction =  0.00000000000000000E+000
 physics%max_iter_level1 = 2
 physics%max_iter_level2 = 20
 physics%max_iter_level3 = 2

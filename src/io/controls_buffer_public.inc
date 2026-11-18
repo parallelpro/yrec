@@ -65,8 +65,8 @@
            tol_dm_max, tol_dm_min, tol_dp_core_max, tol_dp_czbase_max, &
            tol_dp_env_max, tol_dx_max, tol_dz_max, solver_tolerances, &
            solver_underrelax_start, solver_underrelax_increment, &
-           max_iter_level1, max_iter_level2, max_iter_level3, &
-           max_iter_level4, improved_first_guess_flag, &
+           solver_max_correction, max_iter_level1, max_iter_level2, &
+           max_iter_level3, max_iter_level4, improved_first_guess_flag, &
            nuclear_logT_cutoffs, saha_log10t_cutoff, gradient_logt_cutoff, &
            rezone_env_logt0, rezone_env_logt1, &
            envelope_store_log_temperature, use_new_nuclear_rates, &

@@ -27,6 +27,7 @@
             real(dp) :: solver_tolerances(5,2) = reshape((/6.0d-5,4.5d-5,3.0d-5, 9.0d-5, 3.0d-5,9.0d-1,5.0d-1,5.0d-1,2.0d0,2.5d-6/), (/5,2/))
             real(dp) :: solver_underrelax_start = 0.8d0
             real(dp) :: solver_underrelax_increment = 0.1d0
+            real(dp) :: solver_max_correction = 0.0d0
             integer :: max_iter_level1 = 2
             integer :: max_iter_level2 = 20
             integer :: max_iter_level3 = 2
