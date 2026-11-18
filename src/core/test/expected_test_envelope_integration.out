@@ -13,6 +13,9 @@ T = Teff at the photosphere                                  1.6E-11  ok
 photospheric P = the last atmosphere point's                 0.0E+00  ok
 envelope ends at the fitting mass                            1.0E-14  ok
 the vertex event holds the vertex                            0.0E+00  ok
+-- depths
+depth: the first step is measured from tau = 0               2.0E-10  ok
+depth: each step is dtau over the mean rho kappa             5.1E-10  ok
 -- reference
 atmosphere steps = RK4 (log P)                               5.5E-08  ok
 envelope steps = RK4 (log m, log T, log r)                   6.0E-08  ok

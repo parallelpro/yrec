@@ -251,3 +251,17 @@ check = 'gray photosphere: log P = the kernel'
 file = 'core/envelope/envelope_integration.f90'
 old = '      pressure_factor = 1.0d0'
 new = '      pressure_factor = 0.5d0'
+
+[[mutation]]
+id = 'envelope-depth-01'
+check = 'depth: the first step is measured from tau = 0'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = '      prev_tau = 0.0d0'
+new = '      prev_tau = 1.0d0'
+
+[[mutation]]
+id = 'envelope-depth-02'
+check = 'depth: each step is dtau over the mean rho kappa'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = 'prev_density = density_now'
+new = 'prev_density = 2.0d0*density_now'

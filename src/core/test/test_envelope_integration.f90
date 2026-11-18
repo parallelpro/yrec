@@ -22,6 +22,12 @@
 !               at the fitting mass (log(m/M) within the tolerance
 !               fraction of it); the photospheric pressure is the
 !               atmosphere's last point's.
+!   depths      the atmosphere points' depth steps (atmo_delta_depth, the
+!               stitched model's atmosphere radii): the first is measured
+!               from tau = 0 with rho kappa = 0 there, dz = 2 tau/(rho
+!               kappa) (M322: it read locals nothing had set); each later
+!               one is the step in tau over the mean rho kappa of its two
+!               points (relative 1e-6, with tau from the Eddington T(tau)).
 !   reference   each Bulirsch-Stoer step of the atmosphere and of the
 !               envelope against a fourth-order Runge-Kutta integration
 !               of the same equations between the kernel's points (64
@@ -142,6 +148,8 @@ program test_envelope_integration
       call check_integrands()
       write(*,'(a)') '-- solve'
       call check_solve()
+      write(*,'(a)') '-- depths'
+      call check_atmosphere_depths()
       write(*,'(a)') '-- reference'
       call check_atmosphere_steps()
       call check_envelope_steps()
@@ -373,6 +381,37 @@ subroutine check_solve()
            all(events%event(2)%values(1:4) == [vtx_logp(1), vtx_logt(1), &
            vtx_logr(1), log10_fit_mass]))
 end subroutine check_solve
+
+! ---------------------------------------------------------------
+! The depth steps of the last solve's atmosphere points against the
+! quadrature dz = dtau/<rho kappa>, the first from tau = 0 with
+! rho kappa = 0 there.
+subroutine check_atmosphere_depths()
+      real(dp) :: tau, tau_before, rho_kappa, rho_kappa_before, first, worst
+      integer :: k
+
+      call integrate(base_cfg)
+      tau_before = 0.0_dp
+      rho_kappa_before = 0.0_dp
+      first = 0.0_dp
+      worst = 0.0_dp
+      do k = 1, atm_points%num_atm_points
+         tau = 10.0_dp**log10_tau_of(atm_points%atmo_log10_temperature(k))
+         rho_kappa = 10.0_dp**atm_points%atmo_log10_density(k)*atm_points%atmo_opacity(k)
+         if (k == 1) then
+            first = abs(atm_points%atmo_delta_depth(1)*rho_kappa/(2.0_dp*tau) - 1.0_dp)
+         else
+            worst = max(worst, abs(atm_points%atmo_delta_depth(k)* &
+                 0.5_dp*(rho_kappa + rho_kappa_before)/(tau - tau_before) - 1.0_dp))
+         end if
+         tau_before = tau
+         rho_kappa_before = rho_kappa
+      end do
+      call report('depth: the first step is measured from tau = 0', first, &
+           atm_points%num_atm_points > 2 .and. first <= 1.0e-6_dp)
+      call report('depth: each step is dtau over the mean rho kappa', worst, &
+           atm_points%num_atm_points > 2 .and. worst <= 1.0e-6_dp)
+end subroutine check_atmosphere_depths
 
 ! ---------------------------------------------------------------
 ! Each atmosphere step of the last solve against RK4 between its ends,

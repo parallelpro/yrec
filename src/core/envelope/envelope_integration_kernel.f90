@@ -229,8 +229,7 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
      env_points, atm_points, atm_point, events, ierr)
 
       use eos_lib, only: eos_get, eos_result
-      use kap_lib, only: i_dlnkap_dlnrho, i_dlnkap_dlnt, i_kap, i_log10_kap, &
-           kap_get, num_kap_results
+      use kap_lib, only: i_kap, i_log10_kap, kap_get, num_kap_results
       use atm_lib, only: atm_get_surface_pt, ttau_start_log10_temperature, atm_eddington_gray, &
            ttau_photosphere_x_limit, atm_choice_is_tabulated
       use physical_constants, only: cdelrl, gas_constant, ln10, &
@@ -273,28 +272,21 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
       logical :: tabulated_bc
       real(dp), parameter :: tiny = 1.0d-30
 
-      real(dp) :: ion_fraction(3)
 ! --- locals ---
       logical :: want_derivatives, in_atmosphere
       logical :: allard_lookup_failed
       integer :: jj, jerr
 ! the integrands' code when they fail inside bsstep (its derivatives_ierr)
       integer :: derivatives_jerr
-      real(dp) :: log10_temperature, temperature, log10_pressure, &
-           pressure, log10_density, density
+      real(dp) :: log10_temperature, temperature, log10_pressure
       real(dp) :: atm_density_guess
-      real(dp) :: beta, beta_inverse, beta14, specific_gas_constant, &
-           ion_mean_weight_inverse, electron_mean_weight_inverse, &
-           electron_degeneracy_parameter
-      real(dp) :: dlnrho_dlnt, dlnrho_dlnp, specific_heat_cp, &
-           adiabatic_gradient, dlnrho_dlnt_dt, dlnrho_dlnt_dp, &
-           adiabatic_gradient_dt, adiabatic_gradient_dp, &
-           specific_heat_cp_dt, specific_heat_cp_dp
-      real(dp) :: opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt
-! The results of eos_get and kap_get. The EOS scalars above mirror the
-! slots of eos_res: they are shared by the contained routines and
-! survive the atm_retry loop, so find_atmosphere_start copies them into
-! eos_res before the call and back after it.
+      real(dp) :: beta
+      real(dp) :: opacity, log10_opacity
+! The results of eos_get and kap_get at the atmosphere's starting point.
+! eos_res starts each integration as a new record (eos_results: the
+! defaults that start the EOS's solvers afresh) and keeps its values
+! from one try of the atm_retry loop to the next, so that a retry's EOS
+! call starts from the previous try's solution.
       type(eos_result) :: eos_res
       real(dp) :: kap_res(num_kap_results)
 ! The physics of the point the integrands last evaluated (point_physics):
@@ -325,6 +317,15 @@ subroutine integrate_envelope_atmosphere(cfg, switched_to_gray, &
       ierr = 0
       jerr = 0
       switched_to_gray = .false.
+! The step counts, the error sums and the mass coordinate that the
+! envelope's closing event reports are zero until an integration sets
+! them: a table's surface integrates no atmosphere, and a thin envelope
+! no envelope (M322; the event of a thin envelope is M309).
+      num_ok = 0
+      num_bad = 0
+      y = 0.0d0
+      err_sum = 0.0d0
+      mass_diff_remaining = 0.0d0
 ! -1d99 means "no photosphere": it stays unless the atmosphere finishes,
 ! so that the driver does not overwrite star%photosphere_logP after an
 ! early error.
@@ -454,32 +455,10 @@ subroutine find_atmosphere_start()
       log10_pressure = log10((gas_constant*atm_density_guess + &
            radiation_constant_over_3*temperature**3)*temperature)
 
-! The EOS at (P, T). eos_res is inout in eos_get, so every slot is
-! copied in from its scalar before the call and back after it: a slot
-! eos_get leaves alone keeps the scalar's value, and the scalars carry
-! the values of the previous try into the next.
+! The EOS at (P, T). eos_res is inout in eos_get (its density and its
+! Saha unknowns are the solvers' starting points): on the first try it
+! is a new record, on a retry the previous try's result.
       eos_res%temperature = temperature
-      eos_res%pressure = pressure
-      eos_res%log10_density = log10_density
-      eos_res%density = density
-      eos_res%beta = beta
-      eos_res%beta_inverse = beta_inverse
-      eos_res%beta14 = beta14
-      eos_res%ion_fraction = ion_fraction
-      eos_res%specific_gas_constant = specific_gas_constant
-      eos_res%ion_mean_weight_inverse = ion_mean_weight_inverse
-      eos_res%electron_mean_weight_inverse = electron_mean_weight_inverse
-      eos_res%electron_degeneracy_parameter = electron_degeneracy_parameter
-      eos_res%dlnrho_dlnt = dlnrho_dlnt
-      eos_res%dlnrho_dlnp = dlnrho_dlnp
-      eos_res%specific_heat_cp = specific_heat_cp
-      eos_res%adiabatic_gradient = adiabatic_gradient
-      eos_res%dlnrho_dlnt_dt = dlnrho_dlnt_dt
-      eos_res%dlnrho_dlnt_dp = dlnrho_dlnt_dp
-      eos_res%adiabatic_gradient_dt = adiabatic_gradient_dt
-      eos_res%adiabatic_gradient_dp = adiabatic_gradient_dp
-      eos_res%specific_heat_cp_dt = specific_heat_cp_dt
-      eos_res%specific_heat_cp_dp = specific_heat_cp_dp
       call eos_get(log10_temperature, log10_pressure, hydrogen_fraction, &
            metal_fraction, eos_res, want_derivatives, in_atmosphere, &
            saha_iterations, composition_at_zone=cfg%surface_composition, ierr=jerr)
@@ -487,39 +466,15 @@ subroutine find_atmosphere_start()
          ierr = jerr
          return
       end if
-      temperature = eos_res%temperature
-      pressure = eos_res%pressure
-      log10_density = eos_res%log10_density
-      density = eos_res%density
-      beta = eos_res%beta
-      beta_inverse = eos_res%beta_inverse
-      beta14 = eos_res%beta14
-      ion_fraction = eos_res%ion_fraction
-      specific_gas_constant = eos_res%specific_gas_constant
-      ion_mean_weight_inverse = eos_res%ion_mean_weight_inverse
-      electron_mean_weight_inverse = eos_res%electron_mean_weight_inverse
-      electron_degeneracy_parameter = eos_res%electron_degeneracy_parameter
-      dlnrho_dlnt = eos_res%dlnrho_dlnt
-      dlnrho_dlnp = eos_res%dlnrho_dlnp
-      specific_heat_cp = eos_res%specific_heat_cp
-      adiabatic_gradient = eos_res%adiabatic_gradient
-      dlnrho_dlnt_dt = eos_res%dlnrho_dlnt_dt
-      dlnrho_dlnt_dp = eos_res%dlnrho_dlnt_dp
-      adiabatic_gradient_dt = eos_res%adiabatic_gradient_dt
-      adiabatic_gradient_dp = eos_res%adiabatic_gradient_dp
-      specific_heat_cp_dt = eos_res%specific_heat_cp_dt
-      specific_heat_cp_dp = eos_res%specific_heat_cp_dp
 ! The opacity at the density the EOS returned (DBG 12/95).
-      call kap_get(log10_density, log10_temperature, hydrogen_fraction, &
-           metal_fraction, kap_res, ion_fraction, ierr=jerr)
+      call kap_get(eos_res%log10_density, log10_temperature, hydrogen_fraction, &
+           metal_fraction, kap_res, eos_res%ion_fraction, ierr=jerr)
       if (jerr /= 0) then
          ierr = jerr
          return
       end if
       opacity = kap_res(i_kap)
       log10_opacity = kap_res(i_log10_kap)
-      dlnkap_dlnrho = kap_res(i_dlnkap_dlnrho)
-      dlnkap_dlnt = kap_res(i_dlnkap_dlnt)
 ! The starting optical depth, tau = kappa P / g, and d log P / d log tau.
       indep_var = log10_pressure - log10_gravity + log10(opacity)
       y(1) = log10_pressure
@@ -531,6 +486,11 @@ end subroutine find_atmosphere_start
 ! Integrate dP/dtau from the starting optical depth to the photosphere,
 ! storing each point in atm_points; ierr after maxstp steps.
 subroutine integrate_to_photosphere()
+! The depth quadrature of store_atmosphere_gradients starts above the
+! first point, at tau = 0 with rho kappa = 0 there (M322).
+      prev_tau = 0.0d0
+      prev_density = 0.0d0
+      prev_opacity = 0.0d0
       h_max = cfg%atm_step_max
       h_min = cfg%atm_step_min
       h_step = cfg%atm_step_begin
@@ -653,9 +613,8 @@ subroutine store_atmosphere_gradients()
 ! The geometric depth between this tau point and the previous one,
 !   dz = (tau - tau_prev) / [(rho kappa + rho_prev kappa_prev)/2]
 ! (Cox & Giuli 1968, Principles of Stellar Structure, p. 590).
-! prev_tau, prev_density and prev_opacity carry over from step to step
-! and are not set before the first step. They are not SAVEd, so the
-! build's -finit-local-zero makes them zero on entry: the first point's
+! prev_tau, prev_density and prev_opacity carry over from step to step;
+! integrate_to_photosphere starts them at zero, so the first point's
 ! depth is measured from tau = 0 with rho kappa = 0 there.
        opacity_now = pt%qo
        density_now = exp(ln10*pt%qdl)
