@@ -39,6 +39,12 @@
 !   log m; insert_points_at_jumps (int(step/max) points, evenly in log m,
 !   for a rise or with falling for a fall, none when the limit is off, the
 !   count needed when they do not fit); remove_crowded_points.
+!   core_extension: the count of points for a mass factor, and thirteen
+!   points inward of an innermost point on a constant-density sphere
+!   (log m in steps of the spacing; m = (4 pi/3) rho r^3; L proportional
+!   to m; the pressure rising inward by the hydrostatic amount, to the
+!   10% of the two-stage step; log T along the given gradient; the
+!   density estimate).
 ! (regridding's kernels have test_regrid.)
 ! Prints one line per check and exits with status 1 when one fails.
 program test_model_kernels
@@ -178,6 +184,7 @@ program test_model_kernels
 
       call rescaling_checks()
       call mesh_checks()
+      call core_extension_checks()
 
       if (num_failed > 0) then
          write(*,'(a,i0,a)') 'test_model_kernels: ', num_failed, ' checks FAIL'
@@ -421,6 +428,54 @@ subroutine mesh_checks()
       call model_kernel_check('remove_crowded_points: within the limit of the last kept; the ends stay', &
            new_count == 4 .and. all(crowded(1:4) == [1.0_dp, 1.02_dp, 1.5_dp, 1.501_dp]))
 end subroutine mesh_checks
+
+! ---------------------------------------------------------------
+! core_extension: thirteen points inward of the innermost point of a
+! sphere of constant density 100 g/cm^3, at 1e-4 of 2e33 g, where
+! P = 2e17 dyn/cm^2 and log T = 7.2.
+subroutine core_extension_checks()
+      use core_extension, only: core_extension_count, extend_core_points
+      integer, parameter :: num_added = 13
+      real(dp), parameter :: pi = 3.14159265358979324_dp, newton_g = 6.67e-8_dp, &
+           density = 100.0_dp, spacing = 0.08_dp, gradient = 0.35_dp, offset = 8.1_dp, &
+           inner_mass = 2.0e29_dp, inner_pressure = 2.0e17_dp, inner_log_t = 7.2_dp, &
+           inner_lum = 3.0e-3_dp, tol = 1.0e-12_dp
+      real(dp) :: log_mass(num_added), log_radius(num_added), lum(num_added), &
+           log_pressure(num_added), log_temperature(num_added), log_density(num_added)
+      real(dp) :: inner_radius, exact_rise, kernel_rise
+      integer :: j
+
+      call model_kernel_check('core_extension_count: int(log10(factor)/spacing) + 1 (13 for 10, 1 for 1.1)', &
+           core_extension_count(10.0_dp, 0.08_dp) == 13 .and. &
+           core_extension_count(1.1_dp, 0.08_dp) == 1)
+      call extend_core_points(log10(inner_mass), log10(inner_pressure), inner_log_t, inner_lum, &
+           log10(density), gradient, offset, spacing, log10(newton_g), log_mass, log_radius, &
+           lum, log_pressure, log_temperature, log_density)
+      call model_kernel_check('extend_core_points: log m in steps of the spacing, from the old point', &
+           abs(log_mass(num_added) - (log10(inner_mass) - spacing)) < tol .and. &
+           all(abs(log_mass(2:num_added) - log_mass(1:num_added-1) - spacing) < tol))
+      call model_kernel_check('extend_core_points: constant density, m = (4 pi/3) rho r^3; L proportional to m', &
+           all(abs(4.0_dp*pi/3.0_dp*density*(10.0_dp**log_radius)**3/10.0_dp**log_mass - 1.0_dp) &
+           < 1.0e-10_dp) .and. &
+           all(abs(lum/10.0_dp**log_mass/(inner_lum/inner_mass) - 1.0_dp) < 1.0e-10_dp))
+! Hydrostatic equilibrium in a sphere of constant density:
+! P(r) - P(r_0) = (2 pi/3) G rho^2 (r_0^2 - r^2). The kernel's step takes
+! the slope at its inner end, 6% low for a spacing of 0.08.
+      inner_radius = (3.0_dp*inner_mass/(4.0_dp*pi*density))**(1.0_dp/3.0_dp)
+      exact_rise = 2.0_dp*pi/3.0_dp*newton_g*density**2* &
+           (inner_radius**2 - (10.0_dp**log_radius(1))**2)
+      kernel_rise = 10.0_dp**log_pressure(1) - inner_pressure
+      call model_kernel_check('extend_core_points: the pressure rises inward by the hydrostatic amount', &
+           all(log_pressure(1:num_added-1) > log_pressure(2:num_added)) .and. &
+           abs(kernel_rise/exact_rise - 1.0_dp) < 0.1_dp)
+      call model_kernel_check('extend_core_points: log T along the gradient; the density estimate', &
+           abs(log_temperature(num_added) - inner_log_t - gradient* &
+           (log_pressure(num_added) - log10(inner_pressure))) < tol .and. &
+           all(abs(log_temperature(1:num_added-1) - log_temperature(2:num_added) - gradient* &
+           (log_pressure(1:num_added-1) - log_pressure(2:num_added))) < tol) .and. &
+           all([(abs(log_density(j) - (log_pressure(j) - log_temperature(j) - offset)) < tol, &
+           j = 1, num_added)]))
+end subroutine core_extension_checks
 
 subroutine boundaries()
       call find_shell_boundaries(h1, luminosity, convective, n, x_core_min, core_edge, &

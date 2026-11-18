@@ -9,6 +9,7 @@ module starting_model
       use shell_physics, only: compute_shell_physics
       use model_rescaling, only: rescale_model
       use regridding, only: compute_shell_masses
+      use core_extension, only: core_extension_count, extend_core_points
       use rescaling_kernels, only: compute_envelope_mixture
       use star_info_lib, only: star_info
       use run_cards, only: card_evolve
@@ -36,12 +37,18 @@ module starting_model
       use kap_lib, only: kap_get, num_kap_results
       implicit none
       private
-      public :: read_starting_model
+      public :: read_starting_model, extend_core_toward_center
 
 ! An evolved model's mixing length matches the card's within this
 ! [-]; a species differs from the centre's by more than this in a model
 ! that is not homogeneous [mass fraction].
       real(dp), parameter :: mixing_length_match_tol = 2.0d-3, homogeneity_tol = 1.0d-6
+
+! The shallowest envelope fitting mass a card may ask for, as
+! log10(m_fit/M): it stands for the base of the atmosphere, tau = 2/3
+! (DBG 2/92; the envelope kernel's max_log_fit_point_mass_fraction is the
+! same value) [dex].
+      real(dp), parameter :: shallowest_log_fit_mass_fraction = -1.0d-12
 
 ! What read_starting_model's steps pass on to each other:
 !   run_index              the card (the star's current_card);
@@ -159,7 +166,7 @@ subroutine read_starting_model(s, ierr)
 
       call acquire_starting_model(s, sm, ierr)
       if (ierr /= 0) return
-      call extend_core_toward_center(s, sm, ierr)
+      call extend_core_toward_center(s, ierr)
       if (ierr /= 0) return
       call rescale_and_refit_envelope(s, sm, ierr)
       if (ierr /= 0) return
@@ -198,10 +205,9 @@ subroutine acquire_starting_model(s, sm, ierr)
       type(starting_model_state), intent(inout) :: sm
       integer, intent(inout) :: ierr
 
-! A reused model (card_from_starting_model false) stays as it is in memory. On a
-! rescale card it is rescaled once, in rescale_and_refit_envelope, as a
-! model read from file is. (starin rescaled a reused model here as well,
-! so it was rescaled twice.)
+! A reused model (card_from_starting_model false) stays as it is in
+! memory. On a rescale card it is rescaled once, in
+! rescale_and_refit_envelope, as a model read from file is.
       if (s%card_from_starting_model(sm%run_index)) then
          call read_starting_model_file(s, sm, ierr)
          if (ierr /= 0) return
@@ -215,14 +221,10 @@ subroutine acquire_starting_model(s, sm, ierr)
 ! ISETMIX) sets the C, N and O fractions of Z; change_isotope_ratios_active
 ! (legacy ISETISO) sets the isotope ratios and light-element
 ! abundances. Between them they can overwrite mass fractions 4-15.
-! (The test below is always true inside this branch; starin once also
-! required the first card.)
-         if (s%card_from_starting_model(sm%run_index)) then
-            call check_mixture_homogeneity(s, sm)
-            if (sm%mixture_ok) then
-               call rescale_cno_mixture(s, sm)
-               call set_isotope_ratios(s, sm)
-            end if
+         call check_mixture_homogeneity(s, sm)
+         if (sm%mixture_ok) then
+            call rescale_cno_mixture(s, sm)
+            call set_isotope_ratios(s, sm)
          end if
       end if
 end subroutine acquire_starting_model
@@ -231,8 +233,8 @@ end subroutine acquire_starting_model
 ! ---------------------------------------------------------------
 ! Read the model file on unit model_unit, in the layout its first keyword
 ! names (YMOD: YREC .mod; NMOD: YREC7; MOD2: MODEL2), and set the
-! timestep and star%log_total_mass from it. The readers fill the star%
-! model directly and return the file's other header values in header
+! timestep from it. The readers fill the star% model, its total mass
+! among it, and return the file's other header values in header
 ! (mixing length, timestep, flags, physics codes), which
 ! check_model_against_controls compares with the controls. (The file's
 ! triangle orientation is not used: reset_state_after_read sets it to 1
@@ -283,7 +285,7 @@ subroutine read_starting_model_file(s, sm, ierr)
          return
       end if
 
-! The timestep in s, and the log total mass.
+! The timestep, in yr and in s.
       s%timestep_yr = sm%header%timestep_yr
       s%dt = seconds_per_year*s%timestep_yr
 end subroutine read_starting_model_file
@@ -545,124 +547,96 @@ end subroutine set_isotope_ratios
 
 
 ! ---------------------------------------------------------------
-! With extend_core_inward (legacy LCORE), add N points inward of the
-! innermost shell, in whole steps of the maximum log-mass spacing
-! dlogm = chi_grid_scale(ichi_dm_max) (legacy HPTTOL(2)) so that the
-! grid needs no reshuffling (MHP 9/98). The new points follow what the
-! model assumes inside its central fitting point: constant density,
-! constant energy generation rate and constant d log T/d log P.
-! It is done on every card that reads its model from file, not only the
-! first, so that auto-calibrated solar models keep the change (MHP 9/14).
-!   star reads: card_from_starting_model, physics%chi_grid_scale,
-!     physics%core_mass_reduction_factor, physics%extend_core_inward
+! With extend_core_inward (legacy LCORE), on a card that reads its model
+! from file, add N points inward of the innermost shell, in whole steps
+! of the maximum log-mass spacing dlogm = chi_grid_scale(ichi_dm_max)
+! (legacy HPTTOL(2)), so that the innermost mass drops by the deck's
+! core_mass_reduction_factor (legacy FCORE): N = int(log10(factor)/dlogm)
+! + 1 (core_extension_count; num_core_points_added, the same N on every
+! extension of the run). The old points move up by N slots, and the new
+! ones follow what the model assumes inside its central fitting point:
+! constant density, constant energy generation rate and constant
+! d log T/d log P (extend_core_points), with the innermost old point's
+! convective flag, omega and composition. It is done on every card that
+! reads its model from file, not only the first, so that auto-calibrated
+! solar models keep the change (MHP 9/14). The density profile is not
+! moved with the points (bug_sweep M326). ierr = 1 when the model would
+! need more than json shells. Public for test_model_kernels; the card is
+! the star's current_card.
+!   star reads: card_from_starting_model, current_card,
+!     physics%chi_grid_scale, physics%core_mass_reduction_factor,
+!     physics%extend_core_inward
 !   star writes: convective_flag, log_mass, logP, logR, logRho, logT,
 !     luminosity_lsun, num_core_points_added, nz, omega, xa
-subroutine extend_core_toward_center(s, sm, ierr)
-      use math_lib
+subroutine extend_core_toward_center(s, ierr)
       type(star_info), intent(inout) :: s
-      type(starting_model_state), intent(inout) :: sm
       integer, intent(inout) :: ierr
-      integer :: i
-      integer :: j
-      integer :: num_shells_extended
-      real(dp) :: core_shell_spacing
-      real(dp) :: central_log_density
-      real(dp) :: actual_gradient
-      real(dp) :: central_shell_luminosity
-      real(dp) :: density_estimate_offset
-      integer :: first_original_shell
-      real(dp) :: trial_log_pressure
-      real(dp) :: dlogp_dlogm
+      integer :: i, j, num_added, num_shells_extended, first_original_shell
+      real(dp) :: core_shell_spacing, central_log_density, actual_gradient, &
+           central_shell_luminosity, density_estimate_offset, inner_log_mass, &
+           inner_log_pressure, inner_log_temperature
       character(len=message_length) :: lines(4)
 
-      if (s%physics%extend_core_inward .and. s%card_from_starting_model(sm%run_index)) then
-! The innermost mass is to drop by the deck's factor
-! core_mass_reduction_factor (legacy FCORE): that takes
-! N = int(log10(factor)/dlogm) + 1 steps (num_core_points_added, legacy
-! MCORE), the same N on every extension of the run (M126).
-         s%num_core_points_added = int(log10(s%physics%core_mass_reduction_factor)/ &
-              s%physics%chi_grid_scale(ichi_dm_max))+1
-         num_shells_extended = s%nz + s%num_core_points_added
-! Too many points for the json-point arrays: the run stops with ierr
-! (starin printed RUN TERMINATED but went on writing past json; fixed
-! 2026-10).
-         if (num_shells_extended > json) then
-            lines = unwritten_line
-            write(lines,'(a,i0,a,i0,a)') ' ERROR: core extension: the model needs ', &
-                 num_shells_extended, ' shells, more than json (', json, '); run stopped'
-            call core_report(lines)
-            ierr = 1
-            return
-         end if
-         core_shell_spacing = s%physics%chi_grid_scale(ichi_dm_max)
-! Move every old point up by N slots (logRho is not moved).
-         do i=s%nz,1, -1
-            s%log_mass(i+s%num_core_points_added) = s%log_mass(i)
-            s%logR(i+s%num_core_points_added) = s%logR(i)
-            s%luminosity_lsun(i+s%num_core_points_added) = s%luminosity_lsun(i)
-            s%logP(i+s%num_core_points_added) = s%logP(i)
-            s%logT(i+s%num_core_points_added) = s%logT(i)
-            s%convective_flag(i+s%num_core_points_added) = s%convective_flag(i)
-            do j = 1, n_species_extended
-               s%xa(j,i+s%num_core_points_added) = s%xa(j,i)
-            end do
-            s%omega(i+s%num_core_points_added) = s%omega(i)
-         end do
-         first_original_shell = s%num_core_points_added+1
-! March inward in mass from the innermost old point (now slot N+1).
-! Slots 1 and 2 still hold the old innermost values here, so rho_c is
-! the old central density and del = d log T/d log P is taken between
-! the two innermost old points (for N = 1, slot 2 has already been
-! overwritten and del is 0/0).
-         central_log_density = s%logRho(1)
-         actual_gradient = (s%logT(2)-s%logT(1))/ &
-              (s%logP(2)-s%logP(1))
-         central_shell_luminosity = s%luminosity_lsun(1)
-! Offset for estimating rho from P and T at fixed mean molecular weight
-! (MHP 4/12): log rho = log P - log T - offset, with the offset taken
-! at slot N+1.
-         density_estimate_offset = s%logP(first_original_shell)- &
-              s%logRho(first_original_shell)- &
-              s%logT(first_original_shell)
-         do i = s%num_core_points_added,1,-1
-            s%log_mass(i) = s%log_mass(i+1)-core_shell_spacing
-! Constant density, m = (4 pi/3) rho_c r^3:
-!   log r = (1/3)(log m - log(4 pi/3) - log rho_c).
-            s%logR(i) = cc13*(s%log_mass(i)-c4pi3l-central_log_density)
-! Constant epsilon: L = L_1 m/m_1, L_1 and m_1 at the innermost old
-! point.
-            s%luminosity_lsun(i) = exp(ln10*(s%log_mass(i)- &
-                 s%log_mass(first_original_shell)))*central_shell_luminosity
-! Hydrostatic equilibrium, d log P/d log m = -G m^2/(4 pi r^4 P), taken
-! inward in two stages: log P half a step in from point i+1, then the
-! full step with that pressure:
-!   log P_i = log P_(i+1) + (G m_i^2/(4 pi r_i^4 P_half)) dlogm.
-            trial_log_pressure = s%logP(i+1)
-            dlogp_dlogm = exp(ln10*(cgl+2.0d0*s%log_mass(i)-c4pil- &
-                 trial_log_pressure-4.0d0*s%logR(i)))
-            trial_log_pressure = trial_log_pressure+0.5d0*dlogp_dlogm* &
-                 core_shell_spacing
-            dlogp_dlogm = exp(ln10*(cgl+2.0d0*s%log_mass(i)-c4pil- &
-                 trial_log_pressure-4.0d0*s%logR(i)))
-            s%logP(i) = s%logP(i+1)+dlogp_dlogm* &
-                 core_shell_spacing
-! Convective or radiative as the innermost old point.
-            s%convective_flag(i) = s%convective_flag(first_original_shell)
-! Constant del: log T_i = log T_(i+1) + del (log P_i - log P_(i+1)).
-            s%logT(i) = s%logT(i+1)+dlogp_dlogm* &
-                 actual_gradient*core_shell_spacing
-! Omega and composition as at the innermost old point.
-            s%omega(i) = s%omega(first_original_shell)
-            do j = 1, n_species_extended
-               s%xa(j,i) = s%xa(j,first_original_shell)
-            end do
-! The local density estimate, in place of an EOS call that did not
-! work here (MHP 4/12).
-            s%logRho(i) = s%logP(i) - s%logT(i) - &
-                 density_estimate_offset
-         end do
-         s%nz = num_shells_extended
+      if (.not. (s%physics%extend_core_inward .and. &
+           s%card_from_starting_model(s%current_card))) return
+      core_shell_spacing = s%physics%chi_grid_scale(ichi_dm_max)
+      s%num_core_points_added = core_extension_count( &
+           s%physics%core_mass_reduction_factor, core_shell_spacing)
+      num_added = s%num_core_points_added
+      num_shells_extended = s%nz + num_added
+      if (num_shells_extended > json) then
+         lines = unwritten_line
+         write(lines,'(a,i0,a,i0,a)') ' ERROR: core extension: the model needs ', &
+              num_shells_extended, ' shells, more than json (', json, '); run stopped'
+         call core_report(lines)
+         ierr = 1
+         return
       end if
+! Move every old point up by N slots (logRho is not moved).
+      do i=s%nz,1, -1
+         s%log_mass(i+num_added) = s%log_mass(i)
+         s%logR(i+num_added) = s%logR(i)
+         s%luminosity_lsun(i+num_added) = s%luminosity_lsun(i)
+         s%logP(i+num_added) = s%logP(i)
+         s%logT(i+num_added) = s%logT(i)
+         s%convective_flag(i+num_added) = s%convective_flag(i)
+         do j = 1, n_species_extended
+            s%xa(j,i+num_added) = s%xa(j,i)
+         end do
+         s%omega(i+num_added) = s%omega(i)
+      end do
+      first_original_shell = num_added+1
+! What the new points start from. Slots 1 and 2 still hold the two
+! innermost old points here, so rho_c is the old central density and
+! del = d log T/d log P is taken between them (for N = 1, slot 2 has
+! already been overwritten and del is 0/0).
+      central_log_density = s%logRho(1)
+      actual_gradient = (s%logT(2)-s%logT(1))/ &
+           (s%logP(2)-s%logP(1))
+      central_shell_luminosity = s%luminosity_lsun(1)
+! The offset of the density estimate log rho = log P - log T - offset,
+! taken at slot N+1 (its log rho is old point N+1's: M326).
+      density_estimate_offset = s%logP(first_original_shell)- &
+           s%logRho(first_original_shell)- &
+           s%logT(first_original_shell)
+      inner_log_mass = s%log_mass(first_original_shell)
+      inner_log_pressure = s%logP(first_original_shell)
+      inner_log_temperature = s%logT(first_original_shell)
+      call extend_core_points(inner_log_mass, inner_log_pressure, inner_log_temperature, &
+           central_shell_luminosity, central_log_density, actual_gradient, &
+           density_estimate_offset, core_shell_spacing, cgl, s%log_mass(1:num_added), &
+           s%logR(1:num_added), s%luminosity_lsun(1:num_added), s%logP(1:num_added), &
+           s%logT(1:num_added), s%logRho(1:num_added))
+! Convective or radiative, omega and composition as the innermost old
+! point.
+      do i = 1, num_added
+         s%convective_flag(i) = s%convective_flag(first_original_shell)
+         s%omega(i) = s%omega(first_original_shell)
+         do j = 1, n_species_extended
+            s%xa(j,i) = s%xa(j,first_original_shell)
+         end do
+      end do
+      s%nz = num_shells_extended
 end subroutine extend_core_toward_center
 
 
@@ -671,10 +645,10 @@ end subroutine extend_core_toward_center
 ! mass (rescale_model). Then set the star's surface mixture from the
 ! rescaled model and the surface opacity tables for it
 ! (update_surface_mixture), before the refit below evaluates the EOS and
-! the opacities with them (M86). Then, with
-! fit_point_move_requested, move the
-! envelope fitting point to requested_log_fit_point_mass_fraction = log10(m_fit/M)
-! (legacy SENV0), on the first model of every card (DBG 2/92):
+! the opacities with them (M86). Then, with fit_point_move_requested,
+! move the envelope fitting point (move_fitting_point) to
+! requested_log_fit_point_mass_fraction = log10(m_fit/M) (legacy SENV0),
+! on the first model of every card (DBG 2/92):
 ! - deeper than now: drop the points outside the new fitting mass and
 !   put the new last point at it, linear in log m between the old
 !   points on either side, with the composition of the one inside;
@@ -683,71 +657,81 @@ end subroutine extend_core_toward_center
 !   inside the new fitting mass as shells, with the old last point's
 !   composition apart from X and Z.
 ! Sets ierr on failure.
-!   star reads: card_kind, fit_point_move_requested,
-!     log_fit_point_mass_fraction, physics%use_extended_composition,
-!     requested_log_fit_point_mass_fraction
-!   star writes: recompute_envelope_triangle
+!   star reads: card_kind, fit_point_move_requested
+!   star writes: none
 subroutine rescale_and_refit_envelope(s, sm, ierr)
-      use math_lib
       type(star_info), intent(inout) :: s
       type(starting_model_state), intent(inout) :: sm
       integer, intent(inout) :: ierr
-      character(len=message_length) :: lines(4)
 
       if (s%card_kind(sm%run_index) /= card_evolve) call rescale_model(s, ierr)
       if (ierr /= 0) return
       call update_surface_mixture(s, sm, ierr)
       if (ierr /= 0) return
-
-! A once-through loop: exit leaves the envelope change early.
-      if (s%fit_point_move_requested) then
-         envelope_rescale: do
-            call clamp_requested_envelope_mass(s, sm)
-            if (s%log_fit_point_mass_fraction == s%requested_log_fit_point_mass_fraction) &
-                 exit envelope_rescale
-            sm%num_species = n_species_basic
-            if (s%physics%use_extended_composition) sm%num_species = n_species_extended
-            if (s%requested_log_fit_point_mass_fraction < s%log_fit_point_mass_fraction) then
-! The new envelope is deeper than the old one.
-               call find_shell_below_new_fit(s, sm)
-               if (sm%fit_shell_index < 1) then
-! The requested fitting mass lies inside the innermost shell: report
-! it and leave the envelope mass unchanged.
-                  lines = unwritten_line
-                  write(lines,576)s%requested_log_fit_point_mass_fraction
-                  call core_report(lines)
-  576             format(1x,'WARNING: starting model: the requested envelope fit mass', &
-                       ' log(m/M) =',1pe22.13,' lies inside the innermost shell;', &
-                       ' the envelope mass is not changed')
-                  exit envelope_rescale
-               end if
-               call interpolate_new_fitting_point(s, sm)
-               call set_new_last_shell_convection(s, sm, ierr)
-               if (ierr /= 0) return
-            else
-! The new envelope is shallower than the old one.
-               call integrate_envelope_to_new_fit(s, sm, ierr)
-               if (ierr /= 0) return
-               call append_envelope_as_shells(s, sm, ierr)
-               if (ierr /= 0) return
-            end if
-            s%recompute_envelope_triangle = .true.
-            lines = unwritten_line
-            write(lines,597)sm%old_log_fit_mass_fraction,s%log_fit_point_mass_fraction
-            call core_log(lines)
-  597       format(5x,'***** NEW ENVELOPE MASS CALCULATED *****'/8x, &
-                 'OLD SENV ',1pe22.13,'  NEW SENV',e22.13)
-            exit envelope_rescale
-         end do envelope_rescale
-      end if
-
+      if (s%fit_point_move_requested) call move_fitting_point(s, sm, ierr)
 end subroutine rescale_and_refit_envelope
 
 
 ! ---------------------------------------------------------------
+! Move the envelope fitting point to the card's requested mass fraction
+! (clamp_requested_envelope_mass): deeper (find_shell_below_new_fit,
+! interpolate_new_fitting_point, set_new_last_shell_convection) or
+! shallower (integrate_envelope_to_new_fit, append_envelope_as_shells);
+! nothing when the model is there already, and a warning when the
+! requested mass lies inside the innermost shell. A move asks for a fresh
+! envelope triangle and is noted in the run log. Sets ierr on failure.
+!   star reads: log_fit_point_mass_fraction,
+!     physics%use_extended_composition,
+!     requested_log_fit_point_mass_fraction
+!   star writes: recompute_envelope_triangle
+subroutine move_fitting_point(s, sm, ierr)
+      type(star_info), intent(inout) :: s
+      type(starting_model_state), intent(inout) :: sm
+      integer, intent(inout) :: ierr
+      character(len=message_length) :: lines(4)
+
+      call clamp_requested_envelope_mass(s, sm)
+      if (s%log_fit_point_mass_fraction == s%requested_log_fit_point_mass_fraction) return
+      sm%num_species = n_species_basic
+      if (s%physics%use_extended_composition) sm%num_species = n_species_extended
+      if (s%requested_log_fit_point_mass_fraction < s%log_fit_point_mass_fraction) then
+! The new envelope is deeper than the old one.
+         call find_shell_below_new_fit(s, sm)
+         if (sm%fit_shell_index < 1) then
+! The requested fitting mass lies inside the innermost shell: report
+! it and leave the envelope mass unchanged.
+            lines = unwritten_line
+            write(lines,576)s%requested_log_fit_point_mass_fraction
+            call core_report(lines)
+  576       format(1x,'WARNING: starting model: the requested envelope fit mass', &
+                 ' log(m/M) =',1pe22.13,' lies inside the innermost shell;', &
+                 ' the envelope mass is not changed')
+            return
+         end if
+         call interpolate_new_fitting_point(s, sm)
+         call set_new_last_shell_convection(s, sm, ierr)
+         if (ierr /= 0) return
+      else
+! The new envelope is shallower than the old one.
+         call integrate_envelope_to_new_fit(s, sm, ierr)
+         if (ierr /= 0) return
+         call append_envelope_as_shells(s, sm, ierr)
+         if (ierr /= 0) return
+      end if
+      s%recompute_envelope_triangle = .true.
+      lines = unwritten_line
+      write(lines,597)sm%old_log_fit_mass_fraction,s%log_fit_point_mass_fraction
+      call core_log(lines)
+  597 format(5x,'***** NEW ENVELOPE MASS CALCULATED *****'/8x, &
+           'OLD SENV ',1pe22.13,'  NEW SENV',e22.13)
+end subroutine move_fitting_point
+
+
+! ---------------------------------------------------------------
 ! Make the requested envelope mass, log10(m_fit/M), negative and no
-! shallower than -1e-12, and record the current one, log m(nz) - log M,
-! in log_fit_point_mass_fraction and the local old_log_fit_mass_fraction.
+! shallower than shallowest_log_fit_mass_fraction, and record the current
+! one, log m(nz) - log M, in log_fit_point_mass_fraction and the state's
+! old_log_fit_mass_fraction.
 !   star reads: log_mass, log_total_mass, nz
 !   star writes: log_fit_point_mass_fraction,
 !     requested_log_fit_point_mass_fraction
@@ -756,10 +740,8 @@ subroutine clamp_requested_envelope_mass(s, sm)
       type(starting_model_state), intent(inout) :: sm
       if (s%requested_log_fit_point_mass_fraction > 0.0d0) s%requested_log_fit_point_mass_fraction = &
            -s%requested_log_fit_point_mass_fraction
-! The limit -1e-12 stands for the base of the atmosphere, tau = 2/3
-! (DBG 2/92; it was -1e-10).
-      if (s%requested_log_fit_point_mass_fraction > -1.0d-12) s%requested_log_fit_point_mass_fraction = &
-           -1.d-12
+      if (s%requested_log_fit_point_mass_fraction > shallowest_log_fit_mass_fraction) &
+           s%requested_log_fit_point_mass_fraction = shallowest_log_fit_mass_fraction
       s%log_fit_point_mass_fraction = s%log_mass(s%nz) - s%log_total_mass
       sm%old_log_fit_mass_fraction = s%log_fit_point_mass_fraction
 end subroutine clamp_requested_envelope_mass

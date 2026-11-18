@@ -329,3 +329,56 @@ check = 'remove_crowded_points: within the limit of the last kept; the ends stay
 file = 'core/model/mesh_spacing.f90'
 old = 'if (new_log_mass(k) - new_log_mass(j) > min_spacing) then'
 new = 'if (new_log_mass(k) - new_log_mass(j) > 0.0d0) then'
+
+# core_extension: the points added inward of the innermost point.
+[[mutation]]
+id = 'core_extension-01'
+check = 'core_extension_count: int(log10(factor)/spacing) + 1 (13 for 10, 1 for 1.1)'
+file = 'core/model/core_extension.f90'
+old = 'core_extension_count = int(log10(mass_reduction_factor)/log_mass_spacing) + 1'
+new = 'core_extension_count = int(log10(mass_reduction_factor)/log_mass_spacing)'
+
+[[mutation]]
+id = 'core_extension-02'
+check = 'extend_core_points: log m in steps of the spacing, from the old point'
+file = 'core/model/core_extension.f90'
+old = 'log_mass(i) = outer_log_mass-log_mass_spacing'
+new = 'log_mass(i) = outer_log_mass-2.0d0*log_mass_spacing'
+
+[[mutation]]
+id = 'core_extension-03'
+check = 'extend_core_points: constant density, m = (4 pi/3) rho r^3; L proportional to m'
+file = 'core/model/core_extension.f90'
+old = 'log_radius(i) = cc13*(log_mass(i)-c4pi3l-central_log_density)'
+new = 'log_radius(i) = cc13*(log_mass(i)-c4pi3l+central_log_density)'
+
+[[mutation]]
+id = 'core_extension-04'
+check = 'extend_core_points: constant density, m = (4 pi/3) rho r^3; L proportional to m'
+file = 'core/model/core_extension.f90'
+old = 'luminosity(i) = exp(ln10*(log_mass(i)-inner_log_mass))*inner_luminosity'
+new = 'luminosity(i) = exp(ln10*(inner_log_mass-log_mass(i)))*inner_luminosity'
+
+[[mutation]]
+id = 'core_extension-05'
+check = 'extend_core_points: the pressure rises inward by the hydrostatic amount'
+file = 'core/model/core_extension.f90'
+old = '''
+         log_pressure(i) = outer_log_pressure+dlogp_dlogm* &
+'''
+new = '''
+         log_pressure(i) = outer_log_pressure+2.0d0*dlogp_dlogm* &
+'''
+
+[[mutation]]
+id = 'core_extension-06'
+check = 'extend_core_points: log T along the gradient; the density estimate'
+file = 'core/model/core_extension.f90'
+old = '''
+         log_temperature(i) = outer_log_temperature+dlogp_dlogm* &
+              temperature_gradient*log_mass_spacing
+'''
+new = '''
+         log_temperature(i) = outer_log_temperature+dlogp_dlogm* &
+              log_mass_spacing
+'''

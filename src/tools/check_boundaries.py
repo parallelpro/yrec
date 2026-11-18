@@ -196,11 +196,13 @@ STAR_BLIND_FILES = [
     # kernels their drivers gather for, each with its test program
     # (the turnover walk: test_turnover; the stitched model's index
     # map, N^2 and seismic integrals: test_stitched; the rescaling's
-    # arithmetic and the rezone's new mesh: test_model_kernels)
+    # arithmetic, the rezone's new mesh and the core extension's points:
+    # test_model_kernels)
     "core/diagnostics/turnover_walk.f90",
     "core/diagnostics/stitched_kernels.f90",
     "core/model/rescaling_kernels.f90",
     "core/model/mesh_spacing.f90",
+    "core/model/core_extension.f90",
     "atm/t_tau_relations.f90",
     # atm's table lookups (2026-11-10): the table in, the result and a
     # status out; atm_lib reports through atm_messages
