@@ -7,11 +7,13 @@
 ! (compute_envelope_derivs). The kernel's envelope_equations calls
 ! either, with the arguments each uses; both leave the physics of the
 ! point in pt (point_physics, an argument) for the kernel to record.
+! gamma1_from_eos_derivatives is the Gamma1 of a point the kernel records.
 module envelope_integrands
       use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
       private
-      public :: point_physics, compute_atmosphere_derivs, compute_envelope_derivs
+      public :: point_physics, compute_atmosphere_derivs, compute_envelope_derivs, &
+           gamma1_from_eos_derivatives
 
 ! The physics of the point an integrand just evaluated. Each integrand
 ! call fills it, and the integration kernel reads it to store the point
@@ -275,5 +277,24 @@ subroutine compute_envelope_derivs(log10_pressure_indep, y, dydx, luminosity_lin
 
       return
 end subroutine compute_envelope_derivs
+
+! ---------------------------------------------------------------
+! Gamma1 = (d ln P/d ln rho)_S of a point from its EOS derivatives:
+!   chi_rho = 1/(d ln rho/d ln P)_T,  chi_T = -chi_rho (d ln rho/d ln T)_P,
+!   c_V = c_P - (P/(rho T)) chi_T^2/chi_rho,  Gamma1 = chi_rho c_P/c_V
+! (Guenther 1995, private communication, as shell_equations has it).
+real(dp) function gamma1_from_eos_derivatives(dlnrho_dlnp, dlnrho_dlnt, &
+     specific_heat_cp, log10_pressure, log10_density, log10_temperature) result(gamma1)
+      use physical_constants, only: ln10
+      use math_lib
+      real(dp), intent(in) :: dlnrho_dlnp, dlnrho_dlnt, specific_heat_cp
+      real(dp), intent(in) :: log10_pressure, log10_density, log10_temperature
+      real(dp) :: chi_rho, chi_t, specific_heat_cv
+      chi_rho = 1.0d0/dlnrho_dlnp
+      chi_t = -chi_rho*dlnrho_dlnt
+      specific_heat_cv = specific_heat_cp - exp(ln10*(log10_pressure-log10_density- &
+           log10_temperature))*chi_t**2/chi_rho
+      gamma1 = chi_rho*specific_heat_cp/specific_heat_cv
+end function gamma1_from_eos_derivatives
 
 end module envelope_integrands
