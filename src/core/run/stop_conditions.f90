@@ -44,6 +44,10 @@ module stop_conditions
       integer, parameter :: step_kind_card_done = 1  ! age/abundance stop
       integer, parameter :: step_leave_run_loop = 2  ! target radius crossed
 
+! The end age counts as reached within this many years of the card's
+! target; years per Gyr.
+      real(dp), parameter :: end_age_tolerance_yr = 1.0_dp, years_per_gyr = 1.0e9_dp
+
 ! the abundance-stop table: central xa slot and message letter per row
       integer, parameter :: nstops = 3
       integer, parameter :: stop_species(nstops) = [i_h2, i_h1, i_he4]
@@ -246,7 +250,7 @@ logical function reached_end_age(s)
       nk = s%current_card
       reached_end_age = s%card_stops_active(nk) .and. &
            s%card_max_age_yr(nk) > 0.0d0 .and. &
-           (s%card_max_age_yr(nk)-s%age_gyr*1.0d9) <= 1.0d0
+           (s%card_max_age_yr(nk)-s%age_gyr*years_per_gyr) <= end_age_tolerance_yr
 end function reached_end_age
 
 ! ---------------------------------------------------------------
