@@ -78,7 +78,7 @@ core/run	commented_code	0
 core/run	module_no_private	0
 core/run	use_no_only	0
 core/run	explicit_shape_dummy	0
-core/run	io_statement	16
+core/run	io_statement	2
 core/step	double_precision	0
 core/step	old_relational	0
 core/step	endif_enddo	0
@@ -188,7 +188,7 @@ kap/alex06	commented_code	0
 kap/alex06	module_no_private	0
 kap/alex06	use_no_only	0
 kap/alex06	explicit_shape_dummy	0
-kap/alex06	io_statement	13
+kap/alex06	io_statement	5
 kap/alex94	double_precision	0
 kap/alex94	old_relational	0
 kap/alex94	endif_enddo	0
@@ -218,7 +218,7 @@ kap/kurucz90	commented_code	0
 kap/kurucz90	module_no_private	0
 kap/kurucz90	use_no_only	0
 kap/kurucz90	explicit_shape_dummy	0
-kap/kurucz90	io_statement	7
+kap/kurucz90	io_statement	4
 kap/laol89	double_precision	0
 kap/laol89	old_relational	0
 kap/laol89	endif_enddo	0
@@ -248,7 +248,7 @@ kap/opal95	commented_code	0
 kap/opal95	module_no_private	0
 kap/opal95	use_no_only	0
 kap/opal95	explicit_shape_dummy	0
-kap/opal95	io_statement	16
+kap/opal95	io_statement	6
 math	double_precision	0
 math	old_relational	0
 math	endif_enddo	0
