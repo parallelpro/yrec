@@ -182,6 +182,9 @@ STAR_BLIND_FILES = [
     "core/structure/shell_equations.f90",
     # the atmosphere and envelope integrands, called back by the kernel
     "core/envelope/envelope_integrands.f90",
+    # core/envelope/ (round 3): the arithmetic of turning envelope points
+    # into interior shells (test_envelope_refit)
+    "core/envelope/envelope_refit_kernel.f90",
     # the envelope triangle's geometry and fit (2026-10, star rule 6)
     "core/structure/triangle_fit.f90",
     # the mass change's masses, wind angular momentum and accreted

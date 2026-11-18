@@ -11,14 +11,15 @@
 ! outward during the run) and core/model/starting_model.f90 (a
 ! requested envelope thinner than the starting model's). What they do
 ! before the call (the surface L, Teff and g, the env_points shift)
-! and after it (shell masses, rotation, prints) stays with them. Inside
-! the loop they differ in one test, carried by
-! accept_point_at_fit_mass: whether an envelope point exactly at the
-! fitting mass is taken as a shell (read_starting_model, .le.) or
-! interpolated (rebuild_envelope, .lt.). Each prints its own message
-! when ierr comes back nonzero.
+! and after it (shell masses, rotation, messages) stays with them. They
+! differ in one test, carried by accept_point_at_fit_mass: whether an
+! envelope point exactly at the fitting mass is taken as a shell
+! (read_starting_model) or interpolated (rebuild_envelope). Each
+! reports its own message when ierr comes back nonzero.
+!
+! The arithmetic is envelope_refit_kernel's append_envelope_shells,
+! star-free; this driver hands it the star's arrays.
 module envelope_refit
-      use, intrinsic :: iso_fortran_env, only: dp => real64
       use star_info_lib, only: star_info
       implicit none
       private
@@ -27,146 +28,27 @@ module envelope_refit
 contains
 
 ! ---------------------------------------------------------------
-! Appends the env_points points inside the new fitting mass star%log_fit_point_mass_fraction
-! to the model (the star's arrays) as zones nz+1, nz+2, ..., and the
-! first point outside it as a last zone interpolated linearly in log m
-! onto the fitting mass; advances star%nz. Each new zone keeps the
-! luminosity (L/Lsun) of the last interior shell; it takes X and Z from the envelope,
-! He3 and the heavier tracers from the last interior shell, and
-! Y = 1 - X - Z - X(He3). ierr = 1 when the mass interval of the
-! interpolation is below 1e-14 dex.
+! Appends the star's env_points inside the new fitting mass
+! star%log_fit_point_mass_fraction to the model as zones nz+1, nz+2,
+! ..., the first point outside it interpolated onto the fitting mass,
+! and advances star%nz (append_envelope_shells; species_end_index is its
+! last_copied_species). ierr = 1 when the mass interval of the
+! interpolation is degenerate.
 !   star reads: env_points, log_fit_point_mass_fraction, log_total_mass
 !   star writes: convective_flag, log_mass, logP, logR, logRho, logT,
 !     luminosity_lsun, nz, xa
 subroutine append_envelope_points(s, accept_point_at_fit_mass, species_end_index, &
      ierr)
-      use star_info_lib, only: i_h1, i_he4, i_metals, i_he3
+      use envelope_refit_kernel, only: append_envelope_shells
       type(star_info), intent(inout) :: s
       logical, intent(in) :: accept_point_at_fit_mass
       integer, intent(in) :: species_end_index
       integer, intent(out) :: ierr
 
-      integer :: zone_index, env_point_index, k
-      logical :: point_below_fit_mass
-      real(dp) :: mass_interp_x0, mass_interp_x1, mass_interp_x2
-      real(dp) :: interp_fraction
-
-      ierr = 0
-      do zone_index = s%nz+1,s%nz+s%env_points%num_env_points
-         env_point_index = zone_index-s%nz
-! The luminosity is constant through the envelope.
-         s%luminosity_lsun(zone_index) = s%luminosity_lsun(s%nz)
-! Points inside the new fitting mass become zones as they are.
-         if (accept_point_at_fit_mass) then
-            point_below_fit_mass = s%env_points%env_log10_mass(env_point_index) <= s%log_fit_point_mass_fraction
-         else
-            point_below_fit_mass = s%env_points%env_log10_mass(env_point_index) < s%log_fit_point_mass_fraction
-         end if
-         if(point_below_fit_mass)then
-            s%logRho(zone_index) = s%env_points%env_log10_density(env_point_index)
-            s%logP(zone_index) = s%env_points%env_log10_pressure(env_point_index)
-            s%logR(zone_index) = s%env_points%env_log10_radius(env_point_index)
-            s%log_mass(zone_index) = s%env_points%env_log10_mass(env_point_index) + s%log_total_mass
-            s%logT(zone_index) = s%env_points%env_log10_temperature(env_point_index)
-            s%xa(i_h1,zone_index) = s%env_points%env_hydrogen_fraction(env_point_index)
-            s%xa(i_metals,zone_index) = s%env_points%env_metal_fraction(env_point_index)
-            do k = i_he3,species_end_index
-               s%xa(k,zone_index) = s%xa(k,s%nz)
-            end do
-            s%xa(i_he4,zone_index)=1.0D0-s%xa(i_h1,zone_index)- &
-                 s%xa(i_metals,zone_index)-s%xa(i_he3,zone_index)
-            s%convective_flag(zone_index) = s%env_points%env_convective_flag(env_point_index)
-         else
-! The first point outside the fitting mass: the last zone is
-! interpolated linearly in log m onto the fitting mass,
-!   v = v0 + f (v2 - v0),  f = (log m_fit - log m0)/(log m2 - log m0),
-! between the zone or point below it (0) and this point (2); then
-! num_zones is set and the loop ends.
-            if(env_point_index == 1)then
-! Between the last interior shell and the first envelope point; the
-! zone is convective if either is. X and Z use the difference
-! X(nz) - X_env, the reverse of the other variables; it vanishes when
-! the envelope has the shell's X and Z, as both callers integrate it.
-               mass_interp_x0 = s%log_mass(s%nz)
-               mass_interp_x1 = s%log_total_mass + s%log_fit_point_mass_fraction
-               mass_interp_x2 = s%env_points%env_log10_mass(env_point_index) + s%log_total_mass
-               if(mass_interp_x2-mass_interp_x0 < 1.0D-14) then
-                  ierr = 1
-                  return
-               end if
-               interp_fraction = (mass_interp_x1-mass_interp_x0)/ &
-                    (mass_interp_x2-mass_interp_x0)
-               s%logRho(zone_index) = s%logRho(s%nz)+interp_fraction* &
-                    (s%env_points%env_log10_density(env_point_index)-s%logRho(s%nz))
-               s%logP(zone_index) = s%logP(s%nz)+interp_fraction* &
-                    (s%env_points%env_log10_pressure(env_point_index)-s%logP(s%nz))
-               s%logR(zone_index) = s%logR(s%nz)+interp_fraction* &
-                    (s%env_points%env_log10_radius(env_point_index)-s%logR(s%nz))
-               s%log_mass(zone_index) = mass_interp_x1
-               s%logT(zone_index) = s%logT(s%nz)+interp_fraction* &
-                    (s%env_points%env_log10_temperature(env_point_index)-s%logT(s%nz))
-               s%xa(i_h1,zone_index) = s%xa(i_h1,s%nz)+interp_fraction* &
-                    (s%xa(i_h1,s%nz)-s%env_points%env_hydrogen_fraction(env_point_index))
-               s%xa(i_metals,zone_index) = s%xa(i_metals,s%nz)+interp_fraction* &
-                    (s%xa(i_metals,s%nz)-s%env_points%env_metal_fraction(env_point_index))
-               do k = i_he3,species_end_index
-                  s%xa(k,zone_index) = s%xa(k,s%nz)
-               end do
-               s%xa(i_he4,zone_index)=1.0D0-s%xa(i_h1,zone_index)- &
-                    s%xa(i_metals,zone_index)-s%xa(i_he3,zone_index)
-               if(s%env_points%env_convective_flag(env_point_index).or.s%convective_flag(s%nz))then
-                  s%convective_flag(zone_index) = .true.
-               else
-                  s%convective_flag(zone_index) = .false.
-               end if
-            else
-! Between the last two envelope points; the zone is convective if
-! either is.
-               mass_interp_x0 = s%env_points%env_log10_mass(env_point_index-1) + s%log_total_mass
-               mass_interp_x1 = s%log_total_mass + s%log_fit_point_mass_fraction
-               mass_interp_x2 = s%env_points%env_log10_mass(env_point_index) + s%log_total_mass
-               if(mass_interp_x2-mass_interp_x0 < 1.0D-14) then
-                  ierr = 1
-                  return
-               end if
-               interp_fraction = (mass_interp_x1-mass_interp_x0)/ &
-                    (mass_interp_x2-mass_interp_x0)
-               s%logRho(zone_index) = s%env_points%env_log10_density(env_point_index-1)+interp_fraction* &
-                    (s%env_points%env_log10_density(env_point_index)-s%env_points%env_log10_density(env_point_index-1))
-               s%logP(zone_index) = s%env_points%env_log10_pressure(env_point_index-1)+interp_fraction* &
-                    (s%env_points%env_log10_pressure(env_point_index)-s%env_points%env_log10_pressure(env_point_index-1))
-               s%logR(zone_index) = s%env_points%env_log10_radius(env_point_index-1)+interp_fraction* &
-                    (s%env_points%env_log10_radius(env_point_index)-s%env_points%env_log10_radius(env_point_index-1))
-               s%log_mass(zone_index) = mass_interp_x1
-               s%logT(zone_index) = s%env_points%env_log10_temperature(env_point_index-1)+interp_fraction* &
-                    (s%env_points%env_log10_temperature(env_point_index)-s%env_points%env_log10_temperature(env_point_index-1))
-               s%xa(i_h1,zone_index) = s%env_points%env_hydrogen_fraction(env_point_index-1)+interp_fraction* &
-                    (s%env_points%env_hydrogen_fraction(env_point_index)-s%env_points%env_hydrogen_fraction(env_point_index-1))
-               s%xa(i_metals,zone_index) = s%env_points%env_metal_fraction(env_point_index-1)+interp_fraction* &
-                    (s%env_points%env_metal_fraction(env_point_index)-s%env_points%env_metal_fraction(env_point_index-1))
-               do k = i_he3,species_end_index
-                  s%xa(k,zone_index) = s%xa(k,s%nz)
-               end do
-               s%xa(i_he4,zone_index)=1.0D0-s%xa(i_h1,zone_index)- &
-                    s%xa(i_metals,zone_index)-s%xa(i_he3,zone_index)
-               if(s%env_points%env_convective_flag(env_point_index).or.s%env_points%env_convective_flag(env_point_index-1))then
-                  s%convective_flag(zone_index) = .true.
-               else
-                  s%convective_flag(zone_index) = .false.
-               end if
-            end if
-            s%nz = zone_index
-            exit
-         end if
-      end do
-! Every envelope point, the photosphere included, lay inside the
-! fitting mass (an envelope below about 1e-12 of the star,
-! log_fit_point_mass_fraction at 0): all became zones, and the model
-! now ends at the photosphere. (After the exit above, num_zones is
-! already zone_index, and this test is false.)
-      if (zone_index > s%nz + s%env_points%num_env_points) then
-      s%nz = s%nz + s%env_points%num_env_points
-      end if
+      call append_envelope_shells(s%env_points, s%log_fit_point_mass_fraction, &
+           s%log_total_mass, accept_point_at_fit_mass, species_end_index, s%nz, &
+           s%log_mass, s%logP, s%logT, s%logR, s%logRho, s%luminosity_lsun, &
+           s%convective_flag, s%xa, ierr)
 end subroutine append_envelope_points
 
 end module envelope_refit
