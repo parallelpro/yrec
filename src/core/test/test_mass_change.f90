@@ -32,7 +32,15 @@
 !   composition  after accreting 1e-3 M into a uniform and a graded
 !                zone (change_shell_masses, mix_accreted_composition):
 !                for each basic species, the zone's sum of X dm is the
-!                old sum plus X_acc dM.
+!                old sum plus X_acc dM;
+!   timestep     the longest step a rate allows
+!                (mass_change_timestep_limit): each of its three bounds
+!                where it is the smallest, f_tot M/|Mdot|, f_cz
+!                M_cz/|Mdot| and (M - m(nz))/2/|Mdot|; and accretion's
+!                end at the disk-locking age
+!                (clip_step_to_disk_locking_age): a step that would pass
+!                it ends on it, with disk_exhausted; a shorter one is
+!                left alone.
 ! Each check prints its relative error and ok (below 1e-13, round-off)
 ! or FAIL; the program stops with status 1 on any FAIL.
 program test_mass_change
@@ -41,7 +49,9 @@ program test_mass_change
       use mass_change_kernel, only: wind_angular_momentum, &
            convection_zone_mass, change_shell_masses, &
            wind_specific_angular_momentum, remove_wind_angular_momentum, &
-           mix_accreted_composition
+           mix_accreted_composition, mass_change_timestep_limit, &
+           clip_step_to_disk_locking_age
+      use physical_constants, only: seconds_per_year
       implicit none
 
       integer, parameter :: nz = 40
@@ -79,6 +89,7 @@ program test_mass_change
       call check_accreted_composition(1, .false.)
       call check_accreted_composition(25, .true.)
       call check_accreted_composition(1, .true.)
+      call check_timestep()
       if (nfail > 0) then
          write(*,'(a,i4,a)') 'test_mass_change: ', nfail, ' FAIL'
          stop 1
@@ -266,5 +277,34 @@ subroutine check_accreted_composition(jenv, graded)
               abs(weighted_sum(xa(s,jenv:nz), dm(jenv:nz)) - expected)/expected)
       end do
 end subroutine check_accreted_composition
+
+! ---------------------------------------------------------------
+! The step a mass change allows, and its end at the disk-locking age.
+subroutine check_timestep()
+      real(dp), parameter :: rate = 1.0d20, solar_mass = 1.989d33
+      real(dp), parameter :: cz_mass = 1.0d32, age_gyr = 1.0d-3, disk_age_gyr = 2.0d-3
+      real(dp) :: limit, dt
+      logical :: disk_exhausted
+
+      write(*,'(a)') '# timestep: the limits of a mass change, and the disk-locking age'
+      limit = mass_change_timestep_limit(rate, 1.0d-3, 0.5d0, 1.0d0, solar_mass, &
+           cz_mass, 1.0d31)
+      call report('dt_max = f_tot M/|Mdot|', abs(limit - 1.0d-3*solar_mass/rate)/limit)
+      limit = mass_change_timestep_limit(rate, 0.1d0, 1.0d-2, 1.0d0, solar_mass, &
+           cz_mass, 1.0d31)
+      call report('dt_max = f_cz M_cz/|Mdot|', abs(limit - 1.0d-2*cz_mass/rate)/limit)
+      limit = mass_change_timestep_limit(rate, 0.1d0, 0.5d0, 1.0d0, solar_mass, &
+           cz_mass, 1.0d29)
+      call report('dt_max = (M - m(nz))/2/|Mdot|', abs(limit - 0.5d0*1.0d29/rate)/limit)
+      dt = 2.0d6*seconds_per_year
+      call clip_step_to_disk_locking_age(age_gyr, disk_age_gyr, dt, disk_exhausted)
+      call report('a step past the disk-locking age ends on it', &
+           merge(abs(age_gyr + 1.0d-9*dt/seconds_per_year - disk_age_gyr)/disk_age_gyr, &
+           1.0d0, disk_exhausted))
+      dt = 1.0d5*seconds_per_year
+      call clip_step_to_disk_locking_age(age_gyr, disk_age_gyr, dt, disk_exhausted)
+      call report('a step short of the disk age is left alone', &
+           merge(abs(dt - 1.0d5*seconds_per_year)/dt, 1.0d0, .not. disk_exhausted))
+end subroutine check_timestep
 
 end program test_mass_change

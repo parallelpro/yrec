@@ -118,3 +118,38 @@ check = '  m(k > jenv) - m(jenv) scale by (M_cz+dM)/M_cz'
 file = 'core/step/mass_change_kernel.f90'
 old = 'cz_mass = convection_zone_mass(dm(jenv:nz))'
 new = 'cz_mass = convection_zone_mass(dm(jenv+1:nz))'
+
+[[mutation]]
+id = 'mass_change-15'
+check = '  dt_max = f_tot M/|Mdot|'
+file = 'core/step/mass_change_kernel.f90'
+old = 'dt_max = min(total_fraction*star_mass_msun*solar_mass_cgs/rate_cgs, &'
+new = 'dt_max = min(star_mass_msun*solar_mass_cgs/rate_cgs, &'
+
+[[mutation]]
+id = 'mass_change-16'
+check = '  dt_max = f_cz M_cz/|Mdot|'
+file = 'core/step/mass_change_kernel.f90'
+old = '           cz_fraction*cz_mass/rate_cgs)'
+new = '           cz_mass/rate_cgs)'
+
+[[mutation]]
+id = 'mass_change-17'
+check = '  dt_max = (M - m(nz))/2/|Mdot|'
+file = 'core/step/mass_change_kernel.f90'
+old = 'dt_max = min(dt_max, 0.5d0*outer_mass/rate_cgs)'
+new = 'dt_max = min(dt_max, outer_mass/rate_cgs)'
+
+[[mutation]]
+id = 'mass_change-18'
+check = '  a step past the disk-locking age ends on it'
+file = 'core/step/mass_change_kernel.f90'
+old = 'dt = (disk_locking_age_gyr - age_gyr)*1.0d9*seconds_per_year'
+new = 'dt = disk_locking_age_gyr*1.0d9*seconds_per_year'
+
+[[mutation]]
+id = 'mass_change-19'
+check = '  a step short of the disk age is left alone'
+file = 'core/step/mass_change_kernel.f90'
+old = 'if (age_gyr + 1.0d-9*dt/seconds_per_year > disk_locking_age_gyr) then'
+new = 'if (age_gyr + 1.0d-6*dt/seconds_per_year > disk_locking_age_gyr) then'

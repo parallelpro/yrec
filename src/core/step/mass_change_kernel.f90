@@ -2,14 +2,16 @@
 ! mass_change_kernel
 !----------------------------------------------------------------------
 ! The arithmetic of the mass-change step as star-blind kernels: the
-! masses of the convection zone after the step's mass change dM, the
-! angular momentum a thermal wind carries off, and the accreted
+! longest step a rate allows and accretion's end at the disk-locking
+! age, the masses of the convection zone after the step's mass change
+! dM, the angular momentum a thermal wind carries off, and the accreted
 ! composition mixed into the zone. Each takes the arrays it works on as
 ! arguments and changes only its intent(inout) ones; nothing is read
 ! from the star or kept between calls. apply_mass_change
 ! (mass_change.f90) gathers the arrays from the star, calls these in
 ! order and stores the results; core/test/test_mass_change checks that
-! they conserve the mass, the angular momentum and every species.
+! they conserve the mass, the angular momentum and every species, and
+! the timestep's limits against their formulas.
 !
 ! Shells 1..nz run from the center to the fitting point; the surface
 ! convection zone is jenv..nz (its base jenv < nz). m is the mass inside
@@ -18,12 +20,14 @@
 module mass_change_kernel
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use composition_layout, only: n_species_basic
+      use physical_constants, only: seconds_per_year
       use math_lib
       implicit none
       private
       public :: wind_angular_momentum, convection_zone_mass, &
            change_shell_masses, wind_specific_angular_momentum, &
-           remove_wind_angular_momentum, mix_accreted_composition
+           remove_wind_angular_momentum, mix_accreted_composition, &
+           mass_change_timestep_limit, clip_step_to_disk_locking_age
 
 ! A thermal wind's angular momentum over one step (g cm^2/s): lost, dJ =
 ! j_s dM, negative; zone_before, the convection zone's J_cz = sum of
@@ -54,6 +58,47 @@ pure function convection_zone_mass(zone_dm) result(cz_mass)
          cz_mass = cz_mass + zone_dm(zone_idx)
       end do
 end function convection_zone_mass
+
+!----------------------------------------------------------------------
+! mass_change_timestep_limit
+!----------------------------------------------------------------------
+! The longest step (s) the mass change allows at the rate rate_cgs =
+! |Mdot| (g/s, positive), for loss and accretion alike: the mass changes
+! by at most the fraction total_fraction of the star (star_mass_msun
+! solar masses of solar_mass_cgs g), the fraction cz_fraction of the
+! surface convection zone (cz_mass = M_cz, g) and half the mass outside
+! the fitting point (outer_mass = M - m(nz), g):
+!   dt_max = min(f_tot M, f_cz M_cz, (M - m(nz))/2)/|Mdot|.
+pure function mass_change_timestep_limit(rate_cgs, total_fraction, &
+     cz_fraction, star_mass_msun, solar_mass_cgs, cz_mass, outer_mass) &
+     result(dt_max)
+      real(dp), intent(in) :: rate_cgs, total_fraction, cz_fraction, &
+           star_mass_msun, solar_mass_cgs, cz_mass, outer_mass
+      real(dp) :: dt_max
+
+      dt_max = min(total_fraction*star_mass_msun*solar_mass_cgs/rate_cgs, &
+           cz_fraction*cz_mass/rate_cgs)
+      dt_max = min(dt_max, 0.5d0*outer_mass/rate_cgs)
+end function mass_change_timestep_limit
+
+!----------------------------------------------------------------------
+! clip_step_to_disk_locking_age
+!----------------------------------------------------------------------
+! Accretion ends at the disk-locking age: a step dt (s) from the age
+! age_gyr that would pass disk_locking_age_gyr (both Gyr) is clipped to
+! end there, and disk_exhausted is set; a shorter step is left alone.
+pure subroutine clip_step_to_disk_locking_age(age_gyr, &
+     disk_locking_age_gyr, dt, disk_exhausted)
+      real(dp), intent(in) :: age_gyr, disk_locking_age_gyr
+      real(dp), intent(inout) :: dt
+      logical, intent(out) :: disk_exhausted
+
+      disk_exhausted = .false.
+      if (age_gyr + 1.0d-9*dt/seconds_per_year > disk_locking_age_gyr) then
+         dt = (disk_locking_age_gyr - age_gyr)*1.0d9*seconds_per_year
+         disk_exhausted = .true.
+      end if
+end subroutine clip_step_to_disk_locking_age
 
 !----------------------------------------------------------------------
 ! change_shell_masses

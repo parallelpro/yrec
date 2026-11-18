@@ -88,4 +88,10 @@
   sum of X dm = old + X_acc dM, o16                  0.0E+00  ok
   sum of X dm = old + X_acc dM, o17                  4.0E-16  ok
   sum of X dm = old + X_acc dM, o18                  0.0E+00  ok
+# timestep: the limits of a mass change, and the disk-locking age
+  dt_max = f_tot M/|Mdot|                            0.0E+00  ok
+  dt_max = f_cz M_cz/|Mdot|                          0.0E+00  ok
+  dt_max = (M - m(nz))/2/|Mdot|                      0.0E+00  ok
+  a step past the disk-locking age ends on it        0.0E+00  ok
+  a step short of the disk age is left alone         0.0E+00  ok
 test_mass_change: done
