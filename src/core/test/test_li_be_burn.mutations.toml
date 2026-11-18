@@ -153,3 +153,60 @@ check = 'li/be deepening: the shells between the bases are left'
 file = 'core/step/li_be_burn.f90'
 old = 'max_zone = max(base%zone_end,base%zone_start)'
 new = 'max_zone = min(base%zone_end,base%zone_start)'
+
+[[mutation]]
+id = 'li_be-21'
+check = 'base: the zones and the edge where del_ad = del_rad'
+file = 'core/step/convection_geometry.f90'
+old = 'cz_base_frac = max(-0.5d0,0.5d0-cz_base_fraction(del_diff_below, &'
+new = 'cz_base_frac = max(-0.5d0,0.5d0+cz_base_fraction(del_diff_below, &'
+
+[[mutation]]
+id = 'li_be-22'
+check = 'base: the edge clipped to half a zone'
+file = 'core/step/convection_geometry.f90'
+old = '''         cz_base_frac = min(0.5d0,cz_base_frac)
+         if(.not.overshoot_active)then'''
+new = '''         if(.not.overshoot_active)then'''
+
+[[mutation]]
+id = 'li_be-23'
+check = 'base: at the outermost shell, the zones passed through'
+file = 'core/step/convection_geometry.f90'
+old = 'if(env_cz_zone > 1.and.env_cz_zone < num_zones)then'
+new = 'if(env_cz_zone > 1.and.env_cz_zone <= num_zones)then'
+
+[[mutation]]
+id = 'li_be-24'
+check = 'base, overshoot: the start base from the start-of-step model'
+file = 'core/step/convection_geometry.f90'
+old = 'search_radius = last_base_radius - overshoot_depth_start'
+new = 'search_radius = last_base_radius + overshoot_depth_start'
+
+[[mutation]]
+id = 'li_be-25'
+check = 'base, overshoot: the end base below the interpolated edge'
+file = 'core/step/convection_geometry.f90'
+old = 'search_radius = cz_base_radius - overshoot_depth_end'
+new = 'search_radius = cz_base_radius + overshoot_depth_end'
+
+[[mutation]]
+id = 'li_be-26'
+check = 'base, overshoot: the edge and the zone kept for the next call'
+file = 'core/step/convection_geometry.f90'
+old = '            last_base_radius = cz_base_radius'
+new = '            continue'
+
+[[mutation]]
+id = 'li_be-27'
+check = "base, overshoot: a later call starts from the last call's zone"
+file = 'core/step/convection_geometry.f90'
+old = 'cz_base_zone_old = last_base_zone'
+new = 'cz_base_zone_old = env_cz_zone_old'
+
+[[mutation]]
+id = 'li_be-28'
+check = 'base, overshoot: fully convective at the start, zone 1'
+file = 'core/step/convection_geometry.f90'
+old = '                  cz_base_zone_old = 1'
+new = '                  cz_base_zone_old = 2'

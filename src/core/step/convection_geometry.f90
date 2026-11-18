@@ -14,6 +14,10 @@
 !   mixed_base_mass, mixed_base_fraction
 !                              that base as a mass coordinate, and back
 !                              to its zone's fraction
+! All but locate_surface_mixing_base are star-free kernels: the arrays
+! and the settings come in as arguments (surface_mixing_base is its
+! arithmetic), and core/test/test_li_be_burn and test_model_kernels
+! check them.
 ! Users: observables (the surface convection zone's mass, radius, T, rho,
 ! P and kappa), turnover_timescale (the radius of its base), burn_step
 ! (burn_li_be). Each caller keeps its own choice of gradients and its own
@@ -25,7 +29,7 @@ module convection_geometry
       implicit none
       private
       public :: cz_base_fraction, first_zone_above, locate_surface_mixing_base, &
-           mixed_base_mass, mixed_base_fraction
+           surface_mixing_base, mixed_base_mass, mixed_base_fraction
 
 contains
 
@@ -36,7 +40,7 @@ contains
 ! between its value in the zone below (gap_below) and in the last
 ! convective zone (gap):
 !   f = gap_below / (gap_below - gap).
-real(dp) function cz_base_fraction(gap_below, gap)
+pure real(dp) function cz_base_fraction(gap_below, gap)
       real(dp), intent(in) :: gap_below, gap
       cz_base_fraction = gap_below/(gap_below - gap)
 end function cz_base_fraction
@@ -46,7 +50,7 @@ end function cz_base_fraction
 ! Searching down from start_zone, the first zone k with r(k) <
 ! radius_limit gives k + 1; the result is 1 if every zone down to the
 ! centre lies above the limit. log_radius is log10 r.
-integer function first_zone_above(log_radius, start_zone, radius_limit)
+pure integer function first_zone_above(log_radius, start_zone, radius_limit)
       use physical_constants, only: ln10
       use math_lib
       real(dp), intent(in) :: log_radius(:), radius_limit
@@ -63,19 +67,12 @@ end function first_zone_above
 
 !----------------------------------------------------------------------
 ! locate_surface_mixing_base
-! The base of the surface mixed region (the convection zone, plus the
-! envelope overshoot when it is on) at the end of the step
-! (cz_base_zone) and at the start (cz_base_zone_old), for burn_li_be.
-! radius is log10 r of the end-of-step model; env_cz_zone and
-! env_cz_zone_old are the convection zone's base zone at the end and at
-! the start of the step. cz_base_frac places the true base within its
-! zone k = cz_base_zone: its offset from the midpoint of r(k-1) and r(k),
-! in units of r(k) - r(k-1), clipped to [-0.5, 0.5]; negative means the
-! true base lies higher, positive lower. It is intent(inout) because it
-! is assigned only when the base is an interior zone
-! (1 < env_cz_zone < num_zones); the callers do not read it otherwise.
-! cz_base_zone is kept in star%envelope_cz_base_zone_last_call, the starting
-! zone of the next call within the step.
+! The base of the surface mixed region at the end and at the start of
+! the step, for burn_li_be: the star-layer driver of surface_mixing_base
+! (below, whose header has the arguments). It passes the star's
+! overshoot switch and depths and its start-of-step radii, and keeps in
+! the star what one call leaves for the next within a step
+! (cz_base_radius_last_call, envelope_cz_base_zone_last_call).
 !   star reads: envelope_overshoot_depth_end,
 !     envelope_overshoot_depth_start, logR_start,
 !     physics%envelope_overshoot_active
@@ -83,16 +80,55 @@ end function first_zone_above
 !     envelope_cz_base_zone_last_call
 subroutine locate_surface_mixing_base(s, radius, grada, gradr, env_cz_zone, &
      env_cz_zone_old, num_zones, cz_base_zone, cz_base_zone_old, cz_base_frac)
+      type(star_info), intent(inout) :: s
+      real(dp), intent(in) :: radius(:), grada(:), gradr(:)
+      integer, intent(in) :: env_cz_zone, env_cz_zone_old, num_zones
+      integer, intent(out) :: cz_base_zone, cz_base_zone_old
+      real(dp), intent(inout) :: cz_base_frac
+
+      call surface_mixing_base(radius, s%logR_start, grada, gradr, env_cz_zone, &
+           env_cz_zone_old, num_zones, s%physics%envelope_overshoot_active, &
+           s%envelope_overshoot_depth_start, s%envelope_overshoot_depth_end, &
+           s%cz_base_radius_last_call, s%envelope_cz_base_zone_last_call, &
+           cz_base_zone, cz_base_zone_old, cz_base_frac)
+end subroutine locate_surface_mixing_base
+
+!----------------------------------------------------------------------
+! surface_mixing_base
+! The base of the surface mixed region (the convection zone, plus the
+! envelope overshoot when overshoot_active) at the end of the step
+! (cz_base_zone) and at the start (cz_base_zone_old), for the Li/Be
+! burn. radius is log10 r of the end-of-step model and log_radius_start
+! that of the start-of-step model; grada and gradr are the adiabatic and
+! radiative gradients the base is located with (a rotation sub-step's
+! interpolated model's, or the model's own); env_cz_zone and
+! env_cz_zone_old are the convection zone's base zone at the end and at
+! the start of the step; overshoot_depth_start and overshoot_depth_end
+! are the envelope overshoot depths alpha_ov H_P (cm) below them.
+! cz_base_frac places the true base within its zone k = cz_base_zone:
+! its offset from the midpoint of r(k-1) and r(k), in units of
+! r(k) - r(k-1), clipped to [-0.5, 0.5]; negative means the true base
+! lies higher, positive lower. It is intent(inout) because it is
+! assigned only when the convection zone's base is an interior zone
+! (1 < env_cz_zone < num_zones); the callers do not read it otherwise.
+! last_base_radius and last_base_zone are what one call leaves for the
+! next within a step (the driver keeps them in the star, and the step
+! zeroes the radius at its start to mark its first call): with
+! overshoot, the first call takes
+! the starting base from the start-of-step model, and a later call (a
+! rotation sub-step) from the previous call's end-of-step zone.
+pure subroutine surface_mixing_base(radius, log_radius_start, grada, &
+     gradr, env_cz_zone, env_cz_zone_old, num_zones, overshoot_active, &
+     overshoot_depth_start, overshoot_depth_end, last_base_radius, &
+     last_base_zone, cz_base_zone, cz_base_zone_old, cz_base_frac)
       use physical_constants, only: ln10
       use math_lib
-      implicit none
-      type(star_info), intent(inout) :: s
-
-      real(dp), intent(in) :: radius(:)
-! grada, gradr: the adiabatic and radiative gradients the base is located
-! with (a rotation sub-step's interpolated model's, or the model's own)
-      real(dp), intent(in) :: grada(:), gradr(:)
+      real(dp), intent(in) :: radius(:), log_radius_start(:), grada(:), gradr(:)
       integer, intent(in) :: env_cz_zone, env_cz_zone_old, num_zones
+      logical, intent(in) :: overshoot_active
+      real(dp), intent(in) :: overshoot_depth_start, overshoot_depth_end
+      real(dp), intent(inout) :: last_base_radius
+      integer, intent(inout) :: last_base_zone
       integer, intent(out) :: cz_base_zone, cz_base_zone_old
       real(dp), intent(inout) :: cz_base_frac
 
@@ -111,23 +147,21 @@ subroutine locate_surface_mixing_base(s, radius, grada, gradr, env_cz_zone, &
          cz_base_frac = max(-0.5d0,0.5d0-cz_base_fraction(del_diff_below, &
               del_diff))
          cz_base_frac = min(0.5d0,cz_base_frac)
-         if(.not.s%physics%envelope_overshoot_active)then
+         if(.not.overshoot_active)then
             cz_base_zone = env_cz_zone
             cz_base_zone_old = env_cz_zone_old
          else
-! The starting depth. cz_base_radius_last_call = 0 (set by rezone_or_snapshot
-! at every step) marks the first call of the step: the starting base
-! radius is then the midpoint of zones env_cz_zone_old-1 and
-! env_cz_zone_old in the start-of-step model, and the mixed region
-! reaches the overshoot depth alpha_ov H_P (envelope_overshoot_depth_start)
-! below it. Later calls in the step (the rotation sub-steps) start from
-! the previous call's end-of-step zone.
-            if(s%cz_base_radius_last_call == 0.0d0)then
+! The starting depth. last_base_radius = 0 marks the first call of the
+! step: the starting base radius is then the midpoint of zones
+! env_cz_zone_old-1 and env_cz_zone_old in the start-of-step model, and
+! the mixed region reaches the overshoot depth below it. Later calls in
+! the step start from the previous call's end-of-step zone.
+            if(last_base_radius == 0.0d0)then
                if (env_cz_zone_old > 1) then
-                  s%cz_base_radius_last_call = 0.5d0*(exp(ln10*s%logR_start(env_cz_zone_old)) &
-                           +exp(ln10*s%logR_start(env_cz_zone_old-1)))
-                  search_radius = s%cz_base_radius_last_call - s%envelope_overshoot_depth_start
-                  cz_base_zone_old = first_zone_above(s%logR_start, env_cz_zone_old-1, &
+                  last_base_radius = 0.5d0*(exp(ln10*log_radius_start(env_cz_zone_old)) &
+                           +exp(ln10*log_radius_start(env_cz_zone_old-1)))
+                  search_radius = last_base_radius - overshoot_depth_start
+                  cz_base_zone_old = first_zone_above(log_radius_start, env_cz_zone_old-1, &
                        search_radius)
                else
 ! Fully convective at the start of the step: there is no zone below
@@ -135,17 +169,17 @@ subroutine locate_surface_mixing_base(s, radius, grada, gradr, env_cz_zone, &
                   cz_base_zone_old = 1
                end if
             else
-               cz_base_zone_old = s%envelope_cz_base_zone_last_call
+               cz_base_zone_old = last_base_zone
             end if
 ! The ending depth, from the interpolated true base,
 !   r_base = (r(k) + r(k-1))/2 - cz_base_frac (r(k) - r(k-1)),
-! k = env_cz_zone; the mixed region reaches alpha_ov H_P
-! (envelope_overshoot_depth_end) below it.
+! k = env_cz_zone; the mixed region reaches the overshoot depth below
+! it.
             delta_radius = exp(ln10*radius(env_cz_zone))-exp(ln10*radius(env_cz_zone-1))
             cz_base_radius = 0.5d0*(exp(ln10*radius(env_cz_zone))+exp(ln10*radius(env_cz_zone-1))) &
                     -cz_base_frac*delta_radius
-            s%cz_base_radius_last_call = cz_base_radius
-            search_radius = cz_base_radius - s%envelope_overshoot_depth_end
+            last_base_radius = cz_base_radius
+            search_radius = cz_base_radius - overshoot_depth_end
             cz_base_zone = first_zone_above(radius, env_cz_zone-1, search_radius)
 ! The overshoot edge's offset within its zone k = cz_base_zone, in the
 ! same convention: cz_base_frac = 0.5 - (r_edge - r(k-1))/(r(k) - r(k-1)),
@@ -162,9 +196,8 @@ subroutine locate_surface_mixing_base(s, radius, grada, gradr, env_cz_zone, &
          cz_base_zone = env_cz_zone
          cz_base_zone_old = env_cz_zone_old
       end if
-      s%envelope_cz_base_zone_last_call = cz_base_zone
-      return
-end subroutine locate_surface_mixing_base
+      last_base_zone = cz_base_zone
+end subroutine surface_mixing_base
 
 !----------------------------------------------------------------------
 ! mixed_base_mass: the mass coordinate (g) of the base of a mixed region

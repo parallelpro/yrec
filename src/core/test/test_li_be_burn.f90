@@ -4,6 +4,16 @@
 ! The star-blind kernels of the Li6, Li7 and Be9 burn
 ! (core/step/li_be_burn.f90) on a synthetic model of twelve shells; no
 ! star, no tables.
+!   base         the base of the surface mixed region
+!                (convection_geometry's surface_mixing_base):
+!                without overshoot the convection zone's base zones and
+!                the edge where del_ad = del_rad, clipped to half a
+!                zone; a base at the outermost shell passed through;
+!                with overshoot, a step's first call from the
+!                start-of-step model and a later call from the last
+!                call's zone, the end base the overshoot depth below
+!                the interpolated edge, and what the call leaves for
+!                the next;
 !   average      the mixed region's mean abundances, its mass with the
 !                base zone's edge, and the log of its mean rate;
 !   radiative    shells below the mixed region against the closed-form
@@ -22,6 +32,7 @@
 program test_li_be_burn
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use composition_layout, only: n_species_extended
+      use convection_geometry, only: surface_mixing_base
       use li_be_burn, only: mixed_region_bases, li_be_accretion, &
            average_over_mixed_region, burn_li_be_zones, li_be_species, &
            num_li_be
@@ -40,6 +51,7 @@ program test_li_be_burn
 
       nfail = 0
       write(*,'(a)') 'test_li_be_burn report'
+      call check_base()
       call check_average()
       call check_radiative()
       call check_mixed_region()
@@ -109,6 +121,65 @@ real(dp) function species_mass(x, isp, first)
       integer, intent(in) :: isp, first
       species_mass = sum(x(li_be_species(isp),first:n)*dm(first:n))
 end function species_mass
+
+! The base of the surface mixed region on a model whose shells sit at
+! r(k) = k 1e10 cm at the end of the step and 2% further out at its
+! start, with del_ad - del_rad = -0.1 in the convection zone's base
+! zone, 9, and +0.3 in the zone below: the edge is 3/4 of the way up
+! from zone 8, an offset of -0.25 from the zones' midpoint.
+subroutine check_base()
+      real(dp) :: logr(n), logr0(n), grada(n), gradr(n), frac, want, last_radius
+      integer :: k, zone, zone_old, last_zone
+      write(*,'(a)') '-- the base of the mixed region'
+      do k = 1, n
+         logr(k) = log10(k*1.0e10_dp)
+         logr0(k) = log10(k*1.02e10_dp)
+      end do
+      grada = 0.4_dp
+      gradr = 0.1_dp
+      gradr(9:n) = 0.5_dp
+      want = 0.5_dp - 0.3_dp/(0.3_dp - (-0.1_dp))
+      frac = 0.0_dp; last_radius = 0.0_dp; last_zone = 0
+      call surface_mixing_base(logr, logr0, grada, gradr, 9, 8, n, .false., &
+           1.5e10_dp, 2.2e10_dp, last_radius, last_zone, zone, zone_old, frac)
+      call report('base: the zones and the edge where del_ad = del_rad', abs(frac - want), &
+           zone == 9 .and. zone_old == 8 .and. abs(frac - want) <= 1.0e-15_dp .and. last_zone == 9)
+      gradr(8) = 0.5_dp
+      gradr(9) = 0.7_dp
+      call surface_mixing_base(logr, logr0, grada, gradr, 9, 8, n, .false., &
+           1.5e10_dp, 2.2e10_dp, last_radius, last_zone, zone, zone_old, frac)
+      call report('base: the edge clipped to half a zone', frac, frac == 0.5_dp)
+      gradr(8) = 0.1_dp
+      gradr(9) = 0.5_dp
+      frac = 0.123_dp
+      call surface_mixing_base(logr, logr0, grada, gradr, n, 8, n, .false., &
+           1.5e10_dp, 2.2e10_dp, last_radius, last_zone, zone, zone_old, frac)
+      call report('base: at the outermost shell, the zones passed through', frac, &
+           zone == n .and. zone_old == 8 .and. frac == 0.123_dp)
+! With overshoot, the first call of a step: the start base 1.5e10 cm
+! below the midpoint of the start model's zones 7 and 8 (7.65e10 cm),
+! the end base 2.2e10 cm below the edge at 8.75e10 cm.
+      last_radius = 0.0_dp; last_zone = 0
+      call surface_mixing_base(logr, logr0, grada, gradr, 9, 8, n, .true., &
+           1.5e10_dp, 2.2e10_dp, last_radius, last_zone, zone, zone_old, frac)
+      call report('base, overshoot: the start base from the start-of-step model', real(zone_old, dp), &
+           zone_old == 7)
+      call report('base, overshoot: the end base below the interpolated edge', abs(frac + 0.05_dp), &
+           zone == 7 .and. abs(frac + 0.05_dp) <= 1.0e-12_dp)
+      call report('base, overshoot: the edge and the zone kept for the next call', &
+           abs(last_radius/8.75e10_dp - 1.0_dp), abs(last_radius/8.75e10_dp - 1.0_dp) <= 1.0e-14_dp &
+           .and. last_zone == 7)
+      last_zone = 5
+      call surface_mixing_base(logr, logr0, grada, gradr, 9, 8, n, .true., &
+           1.5e10_dp, 2.2e10_dp, last_radius, last_zone, zone, zone_old, frac)
+      call report('base, overshoot: a later call starts from the last call''s zone', real(zone_old, dp), &
+           zone_old == 5)
+      last_radius = 0.0_dp
+      call surface_mixing_base(logr, logr0, grada, gradr, 9, 1, n, .true., &
+           1.5e10_dp, 2.2e10_dp, last_radius, last_zone, zone, zone_old, frac)
+      call report('base, overshoot: fully convective at the start, zone 1', real(zone_old, dp), &
+           zone_old == 1)
+end subroutine check_base
 
 subroutine check_average()
       real(dp) :: x_mean(num_li_be), log_rate(num_li_be), region_mass, want, err, &

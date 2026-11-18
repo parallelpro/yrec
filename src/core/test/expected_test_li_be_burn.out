@@ -1,4 +1,13 @@
 test_li_be_burn report
+-- the base of the mixed region
+base: the zones and the edge where del_ad = del_rad                  2.2E-16  ok
+base: the edge clipped to half a zone                                5.0E-01  ok
+base: at the outermost shell, the zones passed through               1.2E-01  ok
+base, overshoot: the start base from the start-of-step model         7.0E+00  ok
+base, overshoot: the end base below the interpolated edge            4.4E-15  ok
+base, overshoot: the edge and the zone kept for the next call        2.7E-15  ok
+base, overshoot: a later call starts from the last call's zone       5.0E+00  ok
+base, overshoot: fully convective at the start, zone 1               1.0E+00  ok
 -- average
 average: the mass-weighted mean abundance                            0.0E+00  ok
 average: the region's mass with the base zone's edge                 1.3E-16  ok
