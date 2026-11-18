@@ -331,7 +331,7 @@ def lithium_depletion(run):
     return math.log10((h["surface_li7"][0] / h["surface_h1"][0]) / (h["surface_li7"][-1] / h["surface_h1"][-1]))
 
 
-@pytest.mark.xfail(strict=True, reason="V9 (docs/PHYSICS_VALIDATION.md): the deck's surface Li7 "
+@pytest.mark.xfail(strict=True, reason="V9, M364 (docs/PHYSICS_VALIDATION.md, docs/bug_sweep.md): the deck's surface Li7 "
                    "depletion is 2.09 dex, not the paper's 2.3 dex within 1%")
 def test_published_lithium_depletion(run):
     assert abs(record("V9: Li7 depletion - 2.3 dex", lithium_depletion(run) - 2.3)) <= TOL["lithium_dex"]

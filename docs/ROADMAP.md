@@ -5007,3 +5007,64 @@ result-changing commit before it, then one measured commit per fix.
   reach; the shipped massive starting models (m25000gs98z018804_Dbl's is
   in a deuterium flash) and what a model does at a super-Eddington
   atmosphere; whether `solver_max_correction` gets a default.
+
+### After the validation tier and the convergence round: what is registered (2026-11-17)
+
+The two rounds above found defects they did not fix: the validation
+tier's V1 to V12 and the convergence round's D1 to D7. They are now in
+`docs/bug_sweep.md`, section 21 (M358-M374, seventeen open items, with
+one of the integrator's), each read in the code at 078df658 and against
+the F77 before it was entered. bug_sweep stands at 443 items, 296 fixed
+and 147 open. `docs/PHYSICS_VALIDATION.md`'s table and the tier's seven
+expected failures carry the numbers.
+
+**What the check changed.**
+- V1 (M358) is not the corrections' tolerances. The standard solar
+  deck's luminosity equation is open by 4.6e-4 of L because a model is
+  accepted without a solve when its residuals are within
+  `solver_tolerances(5,·)`, the F77's shortcut. Rows 1 to 4 a hundred
+  times tighter give the same model; row 5 a thousand times tighter
+  closes the equation to 6e-9 and moves log L at 4.568 Gyr by +1.42e-4
+  dex (eight runs made for the registration). 1,021 of the 1,196
+  shipped decks have that deck's (5,2); none of them was measured.
+- V10 (M366) is 319 decks, not two. D1 (M368) is a density inversion:
+  the blended density rises by 0.45 dex while the pressure falls by
+  0.04. D6 (M371) is, by reading, M356's kind of jump in the 1995 and
+  2001 tables' ramp. D7 (M373) is an untracked directory beside the
+  Monte Carlo deck, not git. The tests' table roots (M374): no test
+  reads `YREC_EXE`; four test files and two tools inherit `YREC_INPUT`
+  and `YREC_START`.
+- D4 is M316's open part and has no entry of its own.
+
+**The new numbers, by kind.**
+- Results would move (Kind B), a code fix: M359 (the fitting point
+  written twice), M361 (N² positive in a convective core), M362
+  (`delta_Pg` 6.1% and `delta_nu` 0.4% too large), M363 (the pulse
+  files' centre), M369 and M370 (the OPAL 2006 interpolant's pressure
+  jumps; its density search's silent exits), M371 (latent: no shipped
+  deck uses those tables).
+- No result moves (Kind A): M367 (four output descriptions), M373 and
+  M374 (the tests).
+- Decks and data: M366 (the fixed-Z table's Z), M372 (two 0.03 Msun
+  decks' stops), M365 (which Opacity Project data `GS98.OP17` is).
+
+**The owner's and the authors' decisions** (bug_sweep, "Decisions
+needed").
+- M358: tighten row 5 in the standard solar deck (its pin and the MESA
+  baselines are reseeded and its calibration redone, since L/Lsun - 1
+  becomes +2.3e-4; CI's solar job compares two runs of the deck and
+  holds no number) or change the residual test (every deck moves).
+- M364: recalibrate the rotating solar decks' `mixing_velocity_scale`
+  (the testsuite's gives 2.086 dex of Li7 depletion for the paper's
+  2.3).
+- M360: what the atmosphere's nabla column is. M368: the equation of
+  state beyond SCV's high-pressure edge. M365: the table's provenance.
+- From the convergence round, as it left them: the Allard 0.03 Msun
+  deck's stop and `Test_m0030_feh0_noGS_ZAMS`'s 50-model cap (M372),
+  regenerating the shipped massive starting models (M316),
+  `solver_max_correction`'s default, and O1 and O2.
+
+**First.** M358's decision, because every pinned solar number carries
+the shortcut's 1.4e-4 dex. Then M362 and M361 (small, one file each, an
+expected failure waiting for each) and M359; M373 and M374 (Kind A) for
+whoever runs the tests in a second worktree; then M363.
