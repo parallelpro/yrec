@@ -10,7 +10,8 @@
 !             become zones as they are (exactly); the last zone lies at
 !             the fitting mass and on the linear profiles (continuity,
 !             1e-11), in both branches (between two envelope points;
-!             between the last interior shell and the first point); the zone
+!             between the last interior shell and the first point); X
+!             and Z interpolate toward the envelope's values; the zone
 !             is convective if either end point is; a point exactly at
 !             the fitting mass is a zone when accepted and the
 !             interpolated zone when not; every point inside the fitting
@@ -223,7 +224,7 @@ end subroutine check_append_between_points
 ! point.
 subroutine check_append_above_shell()
       real(dp), parameter :: fit = -0.00525_dp
-      real(dp) :: off
+      real(dp) :: off, fraction, x_expected
 
       call set_model()
       call append_envelope_shells(env, fit, log_total_mass, .false., n_species_extended, &
@@ -232,6 +233,15 @@ subroutine check_append_above_shell()
       call report('append: continuity at the fitting mass (shell to first point)', off, &
            ierr == 0 .and. nz == num_zones + 1 .and. off <= 1.0e-11_dp .and. &
            log_mass(nz) == log_total_mass + fit)
+! X and Z go from the shell's toward the envelope's, by the same
+! fraction as the other variables.
+      fraction = (fit - zone_mass_fraction(num_zones))/ &
+           (point_mass_fraction(1) - zone_mass_fraction(num_zones))
+      x_expected = shell_x + fraction*(envelope_x - shell_x)
+      call report('append: X and Z interpolate toward the envelope''s', &
+           abs(xa(i_h1,nz) - x_expected), abs(xa(i_h1,nz) - x_expected) <= 1.0e-11_dp &
+           .and. abs(xa(i_metals,nz) - (shell_z + fraction*(envelope_z - shell_z))) &
+           <= 1.0e-11_dp)
       call report('append: radiative between a radiative shell and point', 0.0_dp, &
            .not. convective_flag(nz))
       call set_model()

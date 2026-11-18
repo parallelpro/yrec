@@ -8,6 +8,7 @@ append: Y = 1 - X - Z - X(He3); the other species the shell's        0.0E+00  ok
 append: the luminosity is the last shell's                           6.0E-01  ok
 append: species above last_copied_species are not written            0.0E+00  ok
 append: continuity at the fitting mass (shell to first point)        1.4E-14  ok
+append: X and Z interpolate toward the envelope's                    1.1E-13  ok
 append: radiative between a radiative shell and point                0.0E+00  ok
 append: convective if the shell is                                   0.0E+00  ok
 append: a point at the fitting mass, not accepted: interpolated      0.0E+00  ok

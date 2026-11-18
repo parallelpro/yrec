@@ -199,16 +199,8 @@ pure subroutine append_envelope_shells(env, log_fit_mass_fraction, log_total_mas
             logR(zone) = between_points(logR0, env%env_log10_radius(k), fraction)
             log_mass(zone) = fit_log_mass
             logT(zone) = between_points(logT0, env%env_log10_temperature(k), fraction)
-            if (k == 1) then
-! Above the last shell X and Z take the difference reversed, X_shell -
-! X_env (the F77's); it vanishes when the envelope has the shell's X and
-! Z, as both drivers integrate it.
-               xa(i_h1,zone) = x0+fraction*(x0-env%env_hydrogen_fraction(k))
-               xa(i_metals,zone) = z0+fraction*(z0-env%env_metal_fraction(k))
-            else
-               xa(i_h1,zone) = between_points(x0, env%env_hydrogen_fraction(k), fraction)
-               xa(i_metals,zone) = between_points(z0, env%env_metal_fraction(k), fraction)
-            end if
+            xa(i_h1,zone) = between_points(x0, env%env_hydrogen_fraction(k), fraction)
+            xa(i_metals,zone) = between_points(z0, env%env_metal_fraction(k), fraction)
             convective_flag(zone) = env%env_convective_flag(k) .or. convective0
          end if
          xa(i_he4,zone) = 1.0d0-xa(i_h1,zone)-xa(i_metals,zone)-xa(i_he3,zone)
@@ -299,4 +291,9 @@ end module envelope_refit_kernel
 !   the loop was shared as append_envelope_points in 2026 (readability
 !   wave 2), and became these kernels in round 3 (2026-11).
 ! - GETNEWENV left the convective flag unshifted, one point off (fixed
-!   2026-10).
+!   2026-10), and interpolated X and Z of a zone between the last
+!   interior shell and the first envelope point with the difference
+!   reversed, X_shell + f (X_shell - X_env), away from the envelope's
+!   value; the term vanishes when the envelope has the shell's X and Z,
+!   as both drivers integrate it. between_points writes it as the other
+!   variables' since round 3.

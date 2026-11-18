@@ -189,3 +189,10 @@ check = 'between_points: v0 at 0, v2 at 1, the mean at 1/2'
 file = 'core/envelope/envelope_refit_kernel.f90'
 old = 'between_points = v0 + fraction*(v2 - v0)'
 new = 'between_points = v0 + fraction*fraction*(v2 - v0)'
+
+[[mutation]]
+id = 'refit-27'
+check = "append: X and Z interpolate toward the envelope's"
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = 'xa(i_h1,zone) = between_points(x0, env%env_hydrogen_fraction(k), fraction)'
+new = 'xa(i_h1,zone) = between_points(x0, 2.0d0*x0-env%env_hydrogen_fraction(k), fraction)'
