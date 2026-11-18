@@ -1,0 +1,33 @@
+-- append
+append: three points inside, then the interpolated zone              1.0E+01  ok
+append: the points inside become zones as they are                   0.0E+00  ok
+append: the last zone lies at the fitting mass                       0.0E+00  ok
+append: continuity at the fitting mass (between two points)          2.8E-14  ok
+append: convective if either end point is (points 3, 4)              0.0E+00  ok
+append: Y = 1 - X - Z - X(He3); the other species the shell's        0.0E+00  ok
+append: the luminosity is the last shell's                           6.0E-01  ok
+append: species above last_copied_species are not written            0.0E+00  ok
+append: continuity at the fitting mass (shell to first point)        1.4E-14  ok
+append: X and Z interpolate toward the envelope's                    1.1E-13  ok
+append: radiative between a radiative shell and point                0.0E+00  ok
+append: convective if the shell is                                   0.0E+00  ok
+append: a point at the fitting mass, not accepted: interpolated      0.0E+00  ok
+append: a point at the fitting mass, accepted: a zone as it is       0.0E+00  ok
+append: every point inside the fitting mass becomes a zone           1.2E+01  ok
+append: a degenerate interval returns ierr 1, nz unchanged           1.0E+00  ok
+-- shift
+shift: the kept points carry the offsets of point 1 to the shell     4.3E-16  ok
+shift: log(m/M), X, Z and the convective flag move as they are       0.0E+00  ok
+shift: a point within the mass step is dropped, the rest contiguous  4.0E+00  ok
+-- masses
+masses: m = 10^log m for the new zones                               0.0E+00  ok
+masses: dm(k) = (m(k+1) - m(k-1))/2                                  0.0E+00  ok
+masses: the zones' masses sum to the star's                          0.0E+00  ok
+masses: the zones below first_new are untouched                      0.0E+00  ok
+-- rotation
+rotation: exponent -2: constant j, omega = j/i                       0.0E+00  ok
+rotation: exponent 0: solid body, j = omega i                        1.1E-16  ok
+rotation: exponent -1: omega ~ 1/r, j = omega i                      1.1E-16  ok
+rotation: i = (2/3) r^2; the old zones untouched                     0.0E+00  ok
+between_points: v0 at 0, v2 at 1, the mean at 1/2                    0.0E+00  ok
+test_envelope_refit: done

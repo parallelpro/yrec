@@ -18,7 +18,7 @@
       ! (legacy name: atmbeg)
       atm_step_begin = 1.0d-1
 
-      ! Atmosphere integration: error tolerance
+      ! Atmosphere integration: the Bulirsch-Stoer tolerance on each step's error estimate, relative to the step's scale (the EOS and the opacity are interpolated in tables, so a step's error can be tens of times larger)
       ! (legacy name: atmerr)
       atm_error_tol = 3.0d-4
 
@@ -26,7 +26,7 @@
       ! (legacy name: atmmax)
       atm_step_max = 5.0d-1
 
-      ! Atmosphere integration: the starting density (g/cm^3) at optical depth near zero; divided by 10 on each retry
+      ! Atmosphere integration: the starting density (g/cm^3) at optical depth near zero; divided by 10 on each retry, at most 11 times
       ! (legacy name: atmd0)
       atm_step_initial = 1.0d-10
 
@@ -112,7 +112,7 @@
       ! (legacy name: dt_gs)
       settling_timestep_fraction = 0.1d0
 
-      ! Envelope integration: error tolerance
+      ! Envelope integration: the Bulirsch-Stoer tolerance on each step's error estimate, relative to the step's scale (not a bound on the error: see atm_error_tol)
       ! (legacy name: enverr)
       env_error_tol = 3.0d-4
 

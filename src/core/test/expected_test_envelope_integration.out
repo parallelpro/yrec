@@ -13,6 +13,9 @@ T = Teff at the photosphere                                  1.6E-11  ok
 photospheric P = the last atmosphere point's                 0.0E+00  ok
 envelope ends at the fitting mass                            1.0E-14  ok
 the vertex event holds the vertex                            0.0E+00  ok
+-- depths
+depth: the first step is measured from tau = 0               2.0E-10  ok
+depth: each step is dtau over the mean rho kappa             5.1E-10  ok
 -- reference
 atmosphere steps = RK4 (log P)                               5.5E-08  ok
 envelope steps = RK4 (log m, log T, log r)                   6.0E-08  ok
@@ -24,6 +27,8 @@ thin: vertex = the surface point                             0.0E+00  ok
 retry: an envint_start_retry event first                     1.0E+00  ok
 retry: its start lies past the photosphere                   8.4E+00  ok
 retry: then the integration succeeds                         0.0E+00  ok
+retry: no start before the photosphere: ierr = 1             1.0E+00  ok
+retry: it stops after max_start_tries densities              1.1E+01  ok
 -- errors
 atmosphere maxstp: ierr = 1, its event last                  1.0E+00  ok
 atmosphere maxstp: no photospheric pressure                 -1.0E+99  ok
@@ -41,4 +46,15 @@ gray photosphere: ierr = 0                                   0.0E+00  ok
 gray photosphere: log P = the kernel's                       0.0E+00  ok
 gray photosphere: T = Teff                                   1.6E-11  ok
 gray photosphere: the star's atmosphere untouched            0.0E+00  ok
+-- table
+table: ierr = 0; no atmosphere points, no atmosphere event   0.0E+00  ok
+table: the surface point is the table's                      2.7E-09  ok
+table: the envelope starts at the surface point              0.0E+00  ok
+atm_get_surface_pt: log Teff = 3.863323 is above the Allard tables (log Teff 3.575731 to 3.860892)
+fallback: above the table: switched to gray, ierr = 0        0.0E+00  ok
+fallback: the integration is the gray atmosphere's           0.0E+00  ok
+atm_get: on the table: photosphere_logP the table's          2.7E-09  ok
+atm_get_surface_pt: log Teff = 3.863323 is above the Allard tables (log Teff 3.575731 to 3.860892)
+ note: Allard table lookup out of range; switching to a gray atmosphere
+atm_get: above the table: the choice in use is gray          0.0E+00  ok
 test_envelope_integration: done

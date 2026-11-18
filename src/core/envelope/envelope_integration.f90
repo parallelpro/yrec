@@ -21,10 +21,13 @@
 module envelope_integration
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use star_info_lib, only: star_info
+      use envelope_integration_kernel, only: fitting_vertex
       implicit none
       private
       public :: atm_get, gray_photosphere, fixed_envint_step, &
            surface_log10_radius_cm, ambient_log10_teff
+! the vertex record atm_get takes (the kernel's), for its caller
+      public :: fitting_vertex
 
 ! A Bulirsch-Stoer step-size triple (begin, min, max) a driver can hand
 ! atm_get in place of the controls' {atm,env}_step_* values, for that
@@ -72,70 +75,54 @@ end function surface_log10_radius_cm
 !   star writes: none
 real(dp) function ambient_log10_teff(s, log_teff)
       use math_lib
-      type(star_info), intent(inout) :: s
+      type(star_info), intent(in) :: s
       real(dp), intent(in) :: log_teff
       ambient_log10_teff = log_teff - 0.25*log10(s%physics%spot_filling_factor * &
            pow(s%physics%spot_temp_contrast, 4.0) + 1.0 - s%physics%spot_filling_factor)
 end function ambient_log10_teff
 
+! ---------------------------------------------------------------
+! atm_get
+! ---------------------------------------------------------------
+! One integration of the atmosphere and the envelope for the star, at
+! the surface the caller gives: L (Lsun, luminosity_linear), the
+! rotational distortion factors f_P and f_T, log g, log R, log Teff, X,
+! Z and the outer shell's composition (star%xa layout, for the EOS's
+! Debye-Hueckel correction). log10_pressure_limit is the guess at the
+! fitting point's pressure (the kernel's header); saha_iterations is the
+! EOS's iteration counter. The mass is the star's (log_total_mass).
+! vertex, when present, is the vertex of the surface boundary's triangle
+! this integration fits (the kernel's fitting_vertex, which
+! compute_surface_boundary fills from the star's triangle and stores
+! back): the integration writes its fitting point and stored envelope
+! state. atm_steps and env_steps, when present, replace the controls'
+! step sizes for this call. ierr is the kernel's.
 !   star reads: none
 !   star writes: atm_choice_in_use, atm_point, atm_points, env_points,
 !     photosphere_logP
 subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
-     temperature_rotation_factor, log10_gravity, log10_star_mass, &
-     print_flag, save_boundary_flag, log10_pressure_limit, &
-     log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-     surface_composition, saha_iterations, ierr, &
-     vertex_index, stored_envelope_state, stored_vertex_index, &
-     vtx_logp, vtx_logr, vtx_logt, atm_steps, env_steps)
-
-! atm_get: one integration of the atmosphere and the envelope for the
-! star, at L (Lsun, luminosity_linear), f_P and f_T, log g, log M, log R,
-! log Teff and the surface X, Z and composition. The fitting-vertex
-! arguments (vertex_index, stored_envelope_state, stored_vertex_index,
-! vtx_logp/logr/logt) are optional and go together: only
-! compute_surface_boundary passes them, with save_boundary_flag; the
-! other drivers call without them and save_boundary_flag false, under
-! which the kernel never writes them, so they get zeroed stand-ins here.
-! atm_steps and env_steps, when present, replace the controls' step
-! sizes for this call. print_flag adds the fitted vertex to the solver
-! diagnostics.
+     temperature_rotation_factor, log10_gravity, log10_radius, log10_teff, &
+     hydrogen_fraction, metal_fraction, surface_composition, &
+     log10_pressure_limit, saha_iterations, ierr, vertex, atm_steps, env_steps)
       use envelope_integration_kernel, only: envint_config, envint_events, &
-           integrate_envelope_atmosphere
+           integrate_envelope_atmosphere, no_photosphere_log10_pressure
       use atm_lib, only: atm_eddington_gray
-      implicit none
       type(star_info), intent(inout) :: s
-
-      real(dp), intent(inout) :: luminosity_linear, &
-           pressure_rotation_factor, temperature_rotation_factor, &
-           log10_gravity
-      real(dp), intent(in) :: log10_star_mass
-      logical, intent(in) :: print_flag
-      logical, intent(in) :: save_boundary_flag
-      real(dp), intent(in) :: log10_pressure_limit
-      real(dp), intent(inout) :: log10_radius
-      real(dp), intent(inout) :: log10_teff
-      real(dp), intent(inout) :: hydrogen_fraction, metal_fraction
-      ! surface_composition: the outer shell's composition (star%xa layout),
-      ! for the EOS's Debye-Hueckel correction.
+      real(dp), intent(in) :: luminosity_linear, pressure_rotation_factor, &
+           temperature_rotation_factor, log10_gravity, log10_radius, log10_teff
+      real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       real(dp), intent(in) :: surface_composition(:)
+      real(dp), intent(in) :: log10_pressure_limit
       integer, intent(inout) :: saha_iterations
       integer, intent(out) :: ierr
-      integer, intent(in), optional :: vertex_index
-      real(dp), intent(inout), optional :: stored_envelope_state(:)
-      integer, intent(inout), optional :: stored_vertex_index
-      real(dp), intent(inout), optional :: vtx_logp(:), vtx_logr(:), &
-           vtx_logt(:)
+      type(fitting_vertex), intent(inout), optional :: vertex
       type(envint_step_config), intent(in), optional :: atm_steps, env_steps
 
       type(envint_config) :: cfg
       type(envint_events) :: events
       logical :: switched_to_gray
       real(dp) :: log10_photo_pressure
-! stand-ins for the absent vertex group (never read back)
-      real(dp) :: scratch_state(4), scratch_logp(3), scratch_logr(3), &
-           scratch_logt(3)
-      integer :: scratch_vertex_index, scratch_stored_vertex_index
+      integer :: vertex_index
 
       cfg = envint_config_from_star(s, surface_composition)
       if (present(atm_steps)) then
@@ -149,53 +136,26 @@ subroutine atm_get(s, luminosity_linear, pressure_rotation_factor, &
          cfg%env_step_max = env_steps%step_max
       end if
 
-      if (present(vertex_index)) then
-         call run_kernel(vertex_index, stored_envelope_state, &
-              stored_vertex_index, vtx_logp, vtx_logr, vtx_logt)
-      else
-         scratch_vertex_index = 0
-         scratch_stored_vertex_index = 0
-         scratch_state = 0.0d0
-         scratch_logp = 0.0d0
-         scratch_logr = 0.0d0
-         scratch_logt = 0.0d0
-         call run_kernel(scratch_vertex_index, scratch_state, &
-              scratch_stored_vertex_index, scratch_logp, scratch_logr, &
-              scratch_logt)
-      end if
-! The kernel's notes, diagnostics and failure.
-      if (present(vertex_index)) then
-         call report_envint_events(events, switched_to_gray, print_flag, vertex_index)
-      else
-         call report_envint_events(events, switched_to_gray, print_flag, 0)
-      end if
+      call integrate_envelope_atmosphere(cfg, luminosity_linear, &
+           pressure_rotation_factor, temperature_rotation_factor, &
+           log10_gravity, log10_radius, log10_teff, hydrogen_fraction, &
+           metal_fraction, log10_pressure_limit, saha_iterations, &
+           s%env_points, s%atm_points, s%atm_point, switched_to_gray, &
+           log10_photo_pressure, events, ierr, vertex)
+! The kernel's notes, diagnostics and failure, with the vertex being
+! fitted (0: none).
+      vertex_index = 0
+      if (present(vertex)) vertex_index = vertex%index
+      call report_envint_events(events, switched_to_gray, vertex_index)
 
-! star-state consequences of the integration, applied HERE and only
-! here (the kernel never sees star_info):
-      if (log10_photo_pressure > -1.0d98) s%photosphere_logP = log10_photo_pressure
-      if (switched_to_gray) then
-! Allard table lookup out of range: the kernel fell back to a gray
-! atmosphere for this and all future calls (historical behavior)
-         s%atm_choice_in_use = atm_eddington_gray
-      end if
-
-contains
-
-      subroutine run_kernel(vidx, state, sidx, logp, logr, logt)
-            integer, intent(in) :: vidx
-            real(dp), intent(inout) :: state(:)
-            integer, intent(inout) :: sidx
-            real(dp), intent(inout) :: logp(:), logr(:), logt(:)
-            call integrate_envelope_atmosphere(cfg, switched_to_gray, &
-                 log10_photo_pressure, &
-                 luminosity_linear, pressure_rotation_factor, &
-                 temperature_rotation_factor, log10_gravity, log10_star_mass, &
-                 vidx, save_boundary_flag, log10_pressure_limit, &
-                 log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
-                 state, sidx, saha_iterations, logp, logr, logt, &
-                 s%env_points, s%atm_points, s%atm_point, events, ierr)
-      end subroutine run_kernel
-
+! The integration's two effects on the star, applied here and only here
+! (the kernel never sees star_info): the photospheric pressure, when the
+! atmosphere finished, and the gray atmosphere after an Allard lookup
+! out of the tables' range, which stays the star's working choice until
+! switch_atmosphere_choice (surface_boundary) returns to the tables.
+      if (log10_photo_pressure > no_photosphere_log10_pressure) &
+           s%photosphere_logP = log10_photo_pressure
+      if (switched_to_gray) s%atm_choice_in_use = atm_eddington_gray
 end subroutine atm_get
 
 ! ---------------------------------------------------------------
@@ -257,7 +217,7 @@ end function envint_config_from_star
 ! photosphere_logP and atm_choice_in_use are not written. The
 ! integration's events are reported as atm_get's are; ierr is the
 ! kernel's.
-!   star reads: log_L_lsun, log_total_mass
+!   star reads: log_L_lsun
 !   star writes: none
 subroutine gray_photosphere(s, log10_teff, log10_gravity, &
      hydrogen_fraction, metal_fraction, surface_composition, &
@@ -274,6 +234,9 @@ subroutine gray_photosphere(s, log10_teff, log10_gravity, &
       real(dp), intent(in) :: surface_composition(:)
       real(dp), intent(out) :: log10_pressure, log10_temperature
       integer, intent(out) :: ierr
+! No rotational distortion, and no guess at the fitting point's
+! pressure (no envelope is integrated).
+      real(dp), parameter :: no_distortion = 1.0_dp, unused_pressure_limit = 0.0_dp
       type(envint_config) :: cfg
       type(envint_events) :: events
 ! the integration's points, on the heap for their size
@@ -281,11 +244,8 @@ subroutine gray_photosphere(s, log10_teff, log10_gravity, &
       type(atmosphere_structure_state), allocatable :: atm_points
       type(atmosphere_point_state) :: atm_point
       logical :: switched_to_gray
-      real(dp) :: log10_photo_pressure, luminosity, pressure_factor, &
-           temperature_factor, gravity, teff, radius, x, z
-      real(dp) :: unused_state(4), unused_logp(3), unused_logr(3), &
-           unused_logt(3)
-      integer :: unused_vertex_index, unused_stored_index, saha_iterations
+      real(dp) :: log10_photo_pressure, luminosity, radius
+      integer :: saha_iterations
 
       cfg = envint_config_from_star(s, surface_composition)
       cfg%atm_choice = atm_eddington_gray
@@ -294,30 +254,16 @@ subroutine gray_photosphere(s, log10_teff, log10_gravity, &
       env_points%num_env_points = 0
       atm_points%num_atm_points = 0
       luminosity = exp10(s%log_L_lsun)
-      pressure_factor = 1.0d0
-      temperature_factor = 1.0d0
-      gravity = log10_gravity
-      teff = log10_teff
       radius = surface_log10_radius_cm(s, s%log_L_lsun, log10_teff)
-      x = hydrogen_fraction
-      z = metal_fraction
-      unused_vertex_index = 0
-      unused_stored_index = 0
-      unused_state = 0.0d0
-      unused_logp = 0.0d0
-      unused_logr = 0.0d0
-      unused_logt = 0.0d0
       saha_iterations = 0
       log10_pressure = 0.0d0
       log10_temperature = 0.0d0
-      call integrate_envelope_atmosphere(cfg, switched_to_gray, &
-           log10_photo_pressure, luminosity, pressure_factor, &
-           temperature_factor, gravity, s%log_total_mass, &
-           unused_vertex_index, .false., 0.0d0, radius, teff, x, z, &
-           unused_state, unused_stored_index, saha_iterations, &
-           unused_logp, unused_logr, unused_logt, env_points, atm_points, &
-           atm_point, events, ierr)
-      call report_envint_events(events, switched_to_gray, .false., 0)
+      call integrate_envelope_atmosphere(cfg, luminosity, no_distortion, &
+           no_distortion, log10_gravity, radius, log10_teff, &
+           hydrogen_fraction, metal_fraction, unused_pressure_limit, &
+           saha_iterations, env_points, atm_points, atm_point, &
+           switched_to_gray, log10_photo_pressure, events, ierr)
+      call report_envint_events(events, switched_to_gray, 0)
       if (ierr /= 0) return
       log10_pressure = atm_point%log10_pressure
       log10_temperature = atm_point%log10_temperature
@@ -328,24 +274,25 @@ end subroutine gray_photosphere
 ! prints nothing): the switch to a gray atmosphere after a failed Allard
 ! lookup, to the terminal and the run log; then the kernel's events in
 ! order. The completed integrations' step counts and errors go to the
-! run log with the solver diagnostics on, and the fitted vertex as well
-! when print_flag asks for it; a starting optical depth past the
-! photosphere goes to the run log; the integrations' failures go to the
-! terminal and the run log, with the vertex being fitted (vertex, 0 when
-! none).
-subroutine report_envint_events(events, switched_to_gray, print_flag, vertex)
+! run log with the solver diagnostics on; a starting optical depth past
+! the photosphere goes to the run log; the integrations' failures (an
+! atmosphere or an envelope out of steps, an atmosphere out of starting
+! densities, a failed Bulirsch-Stoer step) go to the terminal and the
+! run log, with the vertex being fitted (vertex, 0 when none). The fitted vertex (envint_vertex) has no line: the
+! triangle's diagnostics (compute_surface_boundary's) list every vertex.
+subroutine report_envint_events(events, switched_to_gray, vertex)
       use envelope_integration_kernel, only: envint_events, &
            envint_start_retry, envint_atmosphere_done, &
            envint_atmosphere_maxstp, envint_bsstep_limits, &
            envint_bsstep_failed, envint_vertex, envint_envelope_done, &
-           envint_envelope_maxstp
+           envint_envelope_maxstp, envint_start_exhausted
       use core_messages, only: core_report, core_log, message_length, &
            unwritten_line
       use run_messages, only: solver_diagnostics
       use numerics_lib, only: numerics_status_text, bsstep_max_extrap_order, &
            bsstep_max_stages
       type(envint_events), intent(in) :: events
-      logical, intent(in) :: switched_to_gray, print_flag
+      logical, intent(in) :: switched_to_gray
       integer, intent(in) :: vertex
       character(len=message_length) :: lines(3)
       character(len=40) :: where
@@ -398,11 +345,7 @@ subroutine report_envint_events(events, switched_to_gray, print_flag, vertex)
             end if
             call core_report(lines)
          case (envint_vertex)
-            if (print_flag .and. solver_diagnostics()) then
-               write(lines,230) e%values(1:4)
- 230           format(4X,3F16.12,8X,F16.12)
-               call core_log(lines)
-            end if
+            continue
          case (envint_envelope_done)
             if (solver_diagnostics()) then
                write(lines,215) e%counts(1), e%counts(2), e%values(1:5)
@@ -416,6 +359,14 @@ subroutine report_envint_events(events, switched_to_gray, print_flag, vertex)
          case (envint_envelope_maxstp)
             write(lines,'(1x,a,a,a,i0,a)') 'ERROR: envelope integration', trim(where), &
                  ': the envelope did not reach the fitting mass in ', e%counts(1), ' steps'
+            call core_report(lines)
+         case (envint_start_exhausted)
+            write(lines,'(1x,a,a,a,f9.4,a,f9.4,a,i0,a,1pe9.2,a)') &
+                 'ERROR: envelope integration', trim(where), &
+                 ': the atmosphere''s starting log tau, ', e%values(1), &
+                 ', still lies past the photosphere''s, ', e%values(2), ', after ', &
+                 e%counts(1), ' starting densities (the last ', e%values(3), &
+                 ' g/cm^3); run stopped'
             call core_report(lines)
          end select
          end associate
@@ -435,3 +386,7 @@ end module envelope_integration
 !   and build_stitched_model (2026, readability wave 2).
 ! - The kernel prints nothing since round 2 (core_messages; this driver
 !   reports its events).
+! - Round 3 (2026-11): atm_get takes its inputs intent(in) and the
+!   triangle's vertex as one record (it had 24 arguments, the vertex in
+!   six of them); the line of the fitted vertex, which no caller could
+!   reach, went with its print_flag.

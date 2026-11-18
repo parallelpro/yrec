@@ -186,10 +186,11 @@ end subroutine allocate_stitched_arrays
 ! with the output step sizes atm_step_size and envelope_step_size for
 ! this call only. This is the one writer of star%photosphere_logP:
 ! atm_get sets it from this integration, every step. ierr is atm_get's.
-!   star reads: convective_flag, log_L_lsun, log_Teff, log_total_mass,
-!     logP, nz, physics%atm_step_size, physics%envelope_step_size,
-!     physics%spot_filling_factor, physics%spot_temp_contrast
-!   star writes: fp_rot, ft_rot, xa
+!   star reads: convective_flag, fp_rot, ft_rot, log_L_lsun, log_Teff,
+!     log_total_mass, logP, nz, physics%atm_step_size,
+!     physics%envelope_step_size, physics%spot_filling_factor,
+!     physics%spot_temp_contrast, xa
+!   star writes: none
 subroutine integrate_converged_envelope(s, ierr)
       use star_info_lib, only: i_h1, i_metals
       use envelope_integration, only: atm_get, envint_step_config, fixed_envint_step, &
@@ -200,14 +201,11 @@ subroutine integrate_converged_envelope(s, ierr)
       real(dp) :: surface_luminosity_lsun, log10_gravity, log10_radius, &
            ambient_log_teff, log10_pressure_limit
       integer :: saha_iterations
-      logical :: print_flag, save_boundary_flag
 
       atm_steps = fixed_envint_step(s%physics%atm_step_size)
       env_steps = fixed_envint_step(s%physics%envelope_step_size)
 
       saha_iterations = 0
-      print_flag = .false.
-      save_boundary_flag = .false.
       surface_luminosity_lsun = exp(ln10*s%log_L_lsun)
       log10_radius = surface_log10_radius_cm(s, s%log_L_lsun, s%log_Teff)
       log10_gravity = cgl + s%log_total_mass - log10_radius - log10_radius
@@ -220,9 +218,9 @@ subroutine integrate_converged_envelope(s, ierr)
       end if
       ierr = 0
       call atm_get(s, surface_luminosity_lsun, s%fp_rot(s%nz), s%ft_rot(s%nz), &
-           log10_gravity, s%log_total_mass, print_flag, save_boundary_flag, &
-           log10_pressure_limit, log10_radius, ambient_log_teff, &
-           s%xa(i_h1,s%nz), s%xa(i_metals,s%nz), s%xa(:,s%nz), saha_iterations, ierr, &
+           log10_gravity, log10_radius, ambient_log_teff, &
+           s%xa(i_h1,s%nz), s%xa(i_metals,s%nz), s%xa(:,s%nz), &
+           log10_pressure_limit, saha_iterations, ierr, &
            atm_steps=atm_steps, env_steps=env_steps)
 end subroutine integrate_converged_envelope
 

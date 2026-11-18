@@ -7,30 +7,39 @@
 ! (compute_envelope_derivs). The kernel's envelope_equations calls
 ! either, with the arguments each uses; both leave the physics of the
 ! point in pt (point_physics, an argument) for the kernel to record.
+! gamma1_from_eos_derivatives is the Gamma1 of a point the kernel records.
 module envelope_integrands
       use, intrinsic :: iso_fortran_env, only: dp => real64
       implicit none
       private
-      public :: point_physics, compute_atmosphere_derivs, compute_envelope_derivs
+      public :: point_physics, compute_atmosphere_derivs, compute_envelope_derivs, &
+           gamma1_from_eos_derivatives
 
-! The physics of the point an integrand just evaluated: the EOS and
-! opacity values and their derivatives (the q* values), and the point's
-! log P, log T, log r, log m, log rho, opacity, beta, gradients,
-! ionization fractions and convective velocity. Each integrand call
-! fills it; the integration kernel reads it to store the point in
-! env_points / atm_points. (It was the module variable pt_scr of
-! point_scratch_lib until 2026-10.)
+! The physics of the point an integrand just evaluated. Each integrand
+! call fills it, and the integration kernel reads it to store the point
+! in atm_points or env_points. Both integrands set the first three
+! groups; the envelope's also sets the last (an atmosphere point's
+! optical depth and ionization fractions are in atm_point, and the
+! kernel computes its beta and gradients when it stores the point).
       type, public :: point_physics
-! the q* values (ex common/pulse1/pulse2)
-            real(dp) :: qqdp, qqod, qqot, qdel, qdela, &
-                 qqcp
-            real(dp) :: qrmu, qtl, qpl, qdl, qo, qol, qt, qp
-            real(dp) :: qqdt, qemu, qd
-! the point itself
-            real(dp) :: current_log10_pressure, current_log10_temperature, &
-                 current_log10_radius, current_log10_mass, current_log10_density, &
-                 current_opacity, current_beta, current_gradients(3), &
-                 current_ion_fraction(3), current_velocity
+! the point: log P (dyn/cm^2), log T (K), log rho and rho (g/cm^3)
+            real(dp) :: log10_pressure = 0.0_dp, log10_temperature = 0.0_dp, &
+                 log10_density = 0.0_dp, density = 0.0_dp
+! from the EOS: (d ln rho/d ln P)_T, (d ln rho/d ln T)_P, c_P (erg/(g K))
+! and the adiabatic gradient
+            real(dp) :: dlnrho_dlnp = 0.0_dp, dlnrho_dlnt = 0.0_dp, &
+                 specific_heat_cp = 0.0_dp, adiabatic_gradient = 0.0_dp
+! the opacity (cm^2/g), (d ln kappa/d ln rho)_T and (d ln kappa/d ln T)_rho
+            real(dp) :: opacity = 0.0_dp, dlnkap_dlnrho = 0.0_dp, &
+                 dlnkap_dlnt = 0.0_dp
+! an envelope point only: log r (cm) and log(m/M); the radiative
+! gradient and the temperature gradient d log T/d log P; the convective
+! velocity (cm/s, 0 where radiative); beta = P_gas/P and the ionization
+! fractions of H, He+ and He++ (the EOS's)
+            real(dp) :: log10_radius = 0.0_dp, log10_mass_fraction = 0.0_dp
+            real(dp) :: radiative_gradient = 0.0_dp, temperature_gradient = 0.0_dp, &
+                 convective_velocity = 0.0_dp
+            real(dp) :: beta = 0.0_dp, ion_fraction(3) = 0.0_dp
       end type point_physics
 
 contains
@@ -42,7 +51,7 @@ contains
 ! equilibrium in optical depth, dP/dtau = g_eff/kappa:
 !   d log P / d log tau = g_eff tau / (kappa P),   g_eff = g f_P,
 ! with x = log tau and y(1) = log P. T(tau) comes from the T-tau
-! relation of star%atm_choice_in_use (atm/t_tau_relations.f90; for the
+! relation of atm_choice (atm/t_tau_relations.f90; for the
 ! Eddington gray atmosphere T^4 = (3/4) Teff^4 (tau + 2/3)), and rho
 ! and kappa from the EOS and opacity at (P, T). Also stores the point
 ! (tau, P, T, rho, kappa, the ionization fractions) in atm_point and
@@ -54,8 +63,8 @@ subroutine compute_atmosphere_derivs(log10_optical_depth, y, dydx, &
      saha_iterations, atm_choice, hsra_log_t_offset, composition, atm_point, pt, ierr)
 
       use eos_lib, only: eos_get, eos_result
-      use kap_lib, only: i_dlnkap_dlnrho, i_dlnkap_dlnt, i_kap, i_log10_kap, &
-           kap_get, num_kap_results
+      use kap_lib, only: i_dlnkap_dlnrho, i_dlnkap_dlnt, i_kap, kap_get, &
+           num_kap_results
       use envelope_points, only: atmosphere_point_state
       use atm_lib, only: ttau_log10_temperature
       use physical_constants, only: ln10
@@ -68,14 +77,12 @@ subroutine compute_atmosphere_derivs(log10_optical_depth, y, dydx, &
       real(dp), intent(out) :: dydx(:)
       real(dp), intent(in) :: pressure_rotation_factor, log10_gravity
       logical, intent(in) :: in_atmosphere, want_derivatives
-      real(dp), intent(inout) :: log10_teff
+      real(dp), intent(in) :: log10_teff
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       integer, intent(inout) :: saha_iterations
-! atm_choice: the integration's T(tau) relation, the kernel's (which
-! falls back to gray, 0, after a failed Allard lookup, while
-! star%atm_choice_in_use is reset only after the integration; reading the
-! star's here gave HSRA for that one integration, a 2026 regression,
-! fixed 2026-10; the F77 envint.f switched the common KTTAU qatm read)
+! atm_choice: the integration's T(tau) relation, the kernel's choice in
+! use (gray after a failed Allard lookup), not the star's, which the
+! driver resets only after the integration.
       integer, intent(in) :: atm_choice
 ! hsra_log_t_offset: the HSRA T(tau) relation's offset.
       real(dp), intent(in) :: hsra_log_t_offset
@@ -126,23 +133,17 @@ subroutine compute_atmosphere_derivs(log10_optical_depth, y, dydx, &
       atm_point%ion_fraction(1) = eos_res%ion_fraction(1)
       atm_point%ion_fraction(2) = eos_res%ion_fraction(2)
       atm_point%ion_fraction(3) = eos_res%ion_fraction(3)
-      pt%qtl = log10_temperature
-      pt%qt = exp(ln10*log10_temperature)
-      pt%qpl = log10_pressure
-      pt%qp = exp(ln10*log10_pressure)
-      pt%qdl = eos_res%log10_density
-      pt%qd = exp(ln10*eos_res%log10_density)
-      pt%qo = kap_res(i_kap)
-      pt%qol = kap_res(i_log10_kap)
-      pt%qqdp = eos_res%dlnrho_dlnp
-      pt%qqod = kap_res(i_dlnkap_dlnrho)
-      pt%qqot = kap_res(i_dlnkap_dlnt)
-      pt%qdel = 0.0d0
-      pt%qqdt = eos_res%dlnrho_dlnt
-      pt%qdela = eos_res%adiabatic_gradient
-      pt%qqcp = eos_res%specific_heat_cp
-      pt%qrmu = eos_res%specific_gas_constant
-      pt%qemu = eos_res%electron_mean_weight_inverse
+      pt%log10_pressure = log10_pressure
+      pt%log10_temperature = log10_temperature
+      pt%log10_density = eos_res%log10_density
+      pt%density = exp(ln10*eos_res%log10_density)
+      pt%dlnrho_dlnp = eos_res%dlnrho_dlnp
+      pt%dlnrho_dlnt = eos_res%dlnrho_dlnt
+      pt%specific_heat_cp = eos_res%specific_heat_cp
+      pt%adiabatic_gradient = eos_res%adiabatic_gradient
+      pt%opacity = kap_res(i_kap)
+      pt%dlnkap_dlnrho = kap_res(i_dlnkap_dlnrho)
+      pt%dlnkap_dlnt = kap_res(i_dlnkap_dlnt)
 
       return
 end subroutine compute_atmosphere_derivs
@@ -164,13 +165,13 @@ end subroutine compute_atmosphere_derivs
 subroutine compute_envelope_derivs(log10_pressure_indep, y, dydx, luminosity_linear, &
      pressure_rotation_factor, temperature_rotation_factor, &
      in_atmosphere, want_derivatives, &
-     log10_radius, log10_teff, hydrogen_fraction, metal_fraction, &
+     log10_teff, hydrogen_fraction, metal_fraction, &
      saha_iterations, log10_total_mass, log10_gravitational_constant, composition, pt, ierr)
 
       use convection_lib, only: compute_temperature_gradients
       use eos_lib, only: eos_get, eos_result
-      use kap_lib, only: i_dlnkap_dlnrho, i_dlnkap_dlnt, i_kap, i_log10_kap, &
-           kap_get, num_kap_results
+      use kap_lib, only: i_dlnkap_dlnrho, i_dlnkap_dlnt, i_kap, kap_get, &
+           num_kap_results
       use physical_constants, only: c4pil, ln10
       use math_lib
       implicit none
@@ -181,7 +182,6 @@ subroutine compute_envelope_derivs(log10_pressure_indep, y, dydx, luminosity_lin
       real(dp), intent(in) :: luminosity_linear, &
            pressure_rotation_factor, temperature_rotation_factor
       logical, intent(in) :: in_atmosphere, want_derivatives
-      real(dp), intent(inout) :: log10_radius
       real(dp), intent(in) :: log10_teff
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       integer, intent(inout) :: saha_iterations
@@ -197,7 +197,7 @@ subroutine compute_envelope_derivs(log10_pressure_indep, y, dydx, luminosity_lin
       integer, intent(out) :: ierr
 
 ! --- locals ---
-      real(dp) :: log10_pressure, log10_mass, log10_temperature
+      real(dp) :: log10_pressure, log10_mass, log10_temperature, log10_radius
 ! The EOS and opacity results at this point.
       type(eos_result) :: eos_res
       real(dp) :: kap_res(num_kap_results)
@@ -250,45 +250,51 @@ subroutine compute_envelope_derivs(log10_pressure_indep, y, dydx, luminosity_lin
            eos_res%log10_density))/pressure_rotation_factor
 ! Store the point for the kernel: the structure variables (log m as
 ! log(m/M)),
-      pt%current_log10_pressure = log10_pressure
-      pt%current_log10_temperature = log10_temperature
-      pt%current_log10_mass = log10_mass - log10_total_mass
-      pt%current_log10_radius = log10_radius
-      pt%current_log10_density = eos_res%log10_density
-      pt%current_velocity = convective_velocity
-! the gradients (grad_rad, grad_ad, grad), which locate the convection
-! zone, and beta,
-       pt%current_gradients(1) = radiative_gradient
-       pt%current_gradients(2) = eos_res%adiabatic_gradient
-       pt%current_gradients(3) = actual_gradient
-       pt%current_beta = eos_res%beta ! the gas-pressure fraction
-! the ionization fractions and EOS derivatives for the profile,
-      pt%current_ion_fraction(1) = eos_res%ion_fraction(1)
-      pt%current_ion_fraction(2) = eos_res%ion_fraction(2)
-      pt%current_ion_fraction(3) = eos_res%ion_fraction(3)
-      pt%qqdp = eos_res%dlnrho_dlnp
-      pt%qqdt = eos_res%dlnrho_dlnt
-      pt%qqcp = eos_res%specific_heat_cp
-
-! and the opacity and the rest of the q* scratch (output only: no
-! physics reads them).
-      pt%current_opacity = kap_res(i_kap)
-      pt%qtl = log10_temperature
-      pt%qt = exp(ln10*log10_temperature)
-      pt%qpl = log10_pressure
-      pt%qp = exp(ln10*log10_pressure)
-      pt%qdl = eos_res%log10_density
-      pt%qd = exp(ln10*eos_res%log10_density)
-      pt%qo = kap_res(i_kap)
-      pt%qol = kap_res(i_log10_kap)
-      pt%qqod = kap_res(i_dlnkap_dlnrho)
-      pt%qqot = kap_res(i_dlnkap_dlnt)
-      pt%qdel = actual_gradient
-      pt%qdela = eos_res%adiabatic_gradient
-      pt%qrmu = eos_res%specific_gas_constant
-      pt%qemu = eos_res%electron_mean_weight_inverse
+      pt%log10_pressure = log10_pressure
+      pt%log10_temperature = log10_temperature
+      pt%log10_density = eos_res%log10_density
+      pt%density = exp(ln10*eos_res%log10_density)
+      pt%log10_radius = log10_radius
+      pt%log10_mass_fraction = log10_mass - log10_total_mass
+! the EOS derivatives and the opacity with its derivatives,
+      pt%dlnrho_dlnp = eos_res%dlnrho_dlnp
+      pt%dlnrho_dlnt = eos_res%dlnrho_dlnt
+      pt%specific_heat_cp = eos_res%specific_heat_cp
+      pt%adiabatic_gradient = eos_res%adiabatic_gradient
+      pt%opacity = kap_res(i_kap)
+      pt%dlnkap_dlnrho = kap_res(i_dlnkap_dlnrho)
+      pt%dlnkap_dlnt = kap_res(i_dlnkap_dlnt)
+! the gradients and the convective velocity, which locate the convection
+! zone,
+      pt%radiative_gradient = radiative_gradient
+      pt%temperature_gradient = actual_gradient
+      pt%convective_velocity = convective_velocity
+! and beta, the gas-pressure fraction, with the ionization fractions.
+      pt%beta = eos_res%beta
+      pt%ion_fraction(1) = eos_res%ion_fraction(1)
+      pt%ion_fraction(2) = eos_res%ion_fraction(2)
+      pt%ion_fraction(3) = eos_res%ion_fraction(3)
 
       return
 end subroutine compute_envelope_derivs
+
+! ---------------------------------------------------------------
+! Gamma1 = (d ln P/d ln rho)_S of a point from its EOS derivatives:
+!   chi_rho = 1/(d ln rho/d ln P)_T,  chi_T = -chi_rho (d ln rho/d ln T)_P,
+!   c_V = c_P - (P/(rho T)) chi_T^2/chi_rho,  Gamma1 = chi_rho c_P/c_V
+! (Guenther 1995, private communication, as shell_equations has it).
+real(dp) function gamma1_from_eos_derivatives(dlnrho_dlnp, dlnrho_dlnt, &
+     specific_heat_cp, log10_pressure, log10_density, log10_temperature) result(gamma1)
+      use physical_constants, only: ln10
+      use math_lib
+      real(dp), intent(in) :: dlnrho_dlnp, dlnrho_dlnt, specific_heat_cp
+      real(dp), intent(in) :: log10_pressure, log10_density, log10_temperature
+      real(dp) :: chi_rho, chi_t, specific_heat_cv
+      chi_rho = 1.0d0/dlnrho_dlnp
+      chi_t = -chi_rho*dlnrho_dlnt
+      specific_heat_cv = specific_heat_cp - exp(ln10*(log10_pressure-log10_density- &
+           log10_temperature))*chi_t**2/chi_rho
+      gamma1 = chi_rho*specific_heat_cp/specific_heat_cv
+end function gamma1_from_eos_derivatives
 
 end module envelope_integrands

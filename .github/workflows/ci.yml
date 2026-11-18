@@ -150,7 +150,7 @@ jobs:
           test_rotation.py test_rotation_kernels.py test_element_diffusion.py
           test_convection.py test_triangle_fit.py test_mass_change.py
           test_henyey_elimination.py test_envelope_integration.py
-          test_timestep_limits.py
+          test_envelope_refit.py test_timestep_limits.py
           test_regrid.py test_eos.py test_kap.py test_atm.py test_net.py
           test_other_energy.py test_error_exit.py test_reentry.py
           test_physics.py test_stop_conditions.py test_inlist_convert.py

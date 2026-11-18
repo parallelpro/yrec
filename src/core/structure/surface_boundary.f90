@@ -80,7 +80,8 @@ subroutine compute_surface_boundary(s, pressure_rotation_factor, &
      temperature_rotation_factor, saha_iterations, envelope_recomputed_flag, &
      ierr)
 
-      use envelope_integration, only: atm_get, surface_log10_radius_cm, ambient_log10_teff
+      use envelope_integration, only: atm_get, fitting_vertex, surface_log10_radius_cm, &
+           ambient_log10_teff
       use triangle_fit, only: start_triangle, reflect_until_inside, &
            fit_triangle_coefficients, max_reflections
       use atm_lib, only: atm_leaves_table, atm_reenters_table, atm_note_choice_switch, &
@@ -106,6 +107,7 @@ subroutine compute_surface_boundary(s, pressure_rotation_factor, &
       logical :: envelope_needs_recompute, print_envelope_flag, &
            save_boundary_flag
       real(dp) :: b, gl, rl, adjusted_teffl, vertex_log10_teff
+      type(fitting_vertex) :: vertex
 ! the surface X and Z, and log P(nz), for atm_get
       real(dp) :: hydrogen_fraction, metal_fraction, log10_pressure_limit
       character(len=message_length) :: lines(4)
@@ -227,15 +229,23 @@ subroutine integrate_vertex_envelopes()
           else
              adjusted_teffl = vertex_log10_teff
           end if
+! The vertex goes to atm_get as one record (fitting_vertex): the star's
+! fitting point and stored envelope state in, and what the integration
+! wrote back (after a failure too: it leaves what it did not reach).
+          vertex = fitting_vertex(index=vertex_being_computed, &
+               log10_pressure=s%fit_point_logP(i), log10_radius=s%fit_point_logR(i), &
+               log10_temperature=s%fit_point_logT(i), &
+               stored_state=s%stored_envelope_state, &
+               stored_vertex_index=s%stored_vertex_index)
           call atm_get(s, b,pressure_rotation_factor,temperature_rotation_factor,gl, &
-                 s%log_total_mass,print_envelope_flag, &
-                 save_boundary_flag,log10_pressure_limit,rl, &
-                 adjusted_teffl,hydrogen_fraction,metal_fraction, &
-                 s%xa(:,s%nz),saha_iterations,ierr=jerr_atm, &
-                 vertex_index=vertex_being_computed, &
-                 stored_envelope_state=s%stored_envelope_state, &
-                 stored_vertex_index=s%stored_vertex_index, &
-                 vtx_logp=s%fit_point_logP,vtx_logr=s%fit_point_logR,vtx_logt=s%fit_point_logT)
+                 rl,adjusted_teffl,hydrogen_fraction,metal_fraction, &
+                 s%xa(:,s%nz),log10_pressure_limit,saha_iterations,ierr=jerr_atm, &
+                 vertex=vertex)
+          s%fit_point_logP(i) = vertex%log10_pressure
+          s%fit_point_logR(i) = vertex%log10_radius
+          s%fit_point_logT(i) = vertex%log10_temperature
+          s%stored_envelope_state = vertex%stored_state
+          s%stored_vertex_index = vertex%stored_vertex_index
 ! An integration failure (envelope_termination) or a table error comes
 ! back in jerr_atm; the caller (refresh_surface_bc) propagates it.
           if (jerr_atm /= 0) then

@@ -1,0 +1,205 @@
+# Mutations of test_envelope_refit: each check must print FAIL under a
+# mutation of the kernel it covers (core/envelope/envelope_refit_kernel.f90).
+# Run, after `make tests` in src/: python3 src/tools/mutate.py core
+# --program test_envelope_refit (src/tools/mutate.py describes this
+# format and the verdicts).
+program = "test_envelope_refit"
+timeout = 60
+
+[[mutation]]
+id = 'refit-01'
+check = 'append: three points inside, then the interpolated zone'
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = 'inside_fit_mass = env%env_log10_mass(k) < log_fit_mass_fraction'
+new = 'inside_fit_mass = env%env_log10_mass(k) < log_fit_mass_fraction - 1.0d-3'
+
+[[mutation]]
+id = 'refit-02'
+check = 'append: the points inside become zones as they are'
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = '            logT(zone) = env%env_log10_temperature(k)'
+new = '            logT(zone) = env%env_log10_temperature(k) + 1.0d-9'
+
+[[mutation]]
+id = 'refit-03'
+check = 'append: the last zone lies at the fitting mass'
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = 'log_mass(zone) = fit_log_mass'
+new = 'log_mass(zone) = log_mass2'
+
+[[mutation]]
+id = 'refit-04'
+check = 'append: continuity at the fitting mass (between two points)'
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = 'between_points = v0 + fraction*(v2 - v0)'
+new = 'between_points = v0 + fraction*(v2 + v0)'
+
+[[mutation]]
+id = 'refit-05'
+check = 'append: convective if either end point is (points 3, 4)'
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = 'convective_flag(zone) = env%env_convective_flag(k) .or. convective0'
+new = 'convective_flag(zone) = convective0'
+
+[[mutation]]
+id = 'refit-06'
+check = 'append: Y = 1 - X - Z - X(He3); the other species the shell'
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = 'xa(i_he4,zone) = 1.0d0-xa(i_h1,zone)-xa(i_metals,zone)-xa(i_he3,zone)'
+new = 'xa(i_he4,zone) = 1.0d0-xa(i_h1,zone)-xa(i_metals,zone)'
+
+[[mutation]]
+id = 'refit-07'
+check = 'append: the luminosity is the last shell'
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = 'luminosity_lsun(zone) = luminosity_lsun(nz)'
+new = 'luminosity_lsun(zone) = luminosity_lsun(nz-1)'
+
+[[mutation]]
+id = 'refit-08'
+check = 'append: species above last_copied_species are not written'
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = 'do species = i_he3, last_copied_species'
+new = 'do species = i_he3, size(xa, 1)'
+
+[[mutation]]
+id = 'refit-09'
+check = 'append: continuity at the fitting mass (shell to first point)'
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = '               logT0 = logT(nz)'
+new = '               logT0 = logT(nz-1)'
+
+[[mutation]]
+id = 'refit-10'
+check = 'append: radiative between a radiative shell and point'
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = 'convective_flag(zone) = env%env_convective_flag(k) .or. convective0'
+new = 'convective_flag(zone) = .true.'
+
+[[mutation]]
+id = 'refit-11'
+check = 'append: convective if the shell is'
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = '               convective0 = convective_flag(nz)'
+new = '               convective0 = .false.'
+
+[[mutation]]
+id = 'refit-12'
+check = 'append: a point at the fitting mass, not accepted: interpolated'
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = 'inside_fit_mass = env%env_log10_mass(k) < log_fit_mass_fraction'
+new = 'inside_fit_mass = env%env_log10_mass(k) <= log_fit_mass_fraction'
+
+[[mutation]]
+id = 'refit-13'
+check = 'append: a point at the fitting mass, accepted: a zone as it is'
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = 'inside_fit_mass = env%env_log10_mass(k) <= log_fit_mass_fraction'
+new = 'inside_fit_mass = env%env_log10_mass(k) < log_fit_mass_fraction - 1.0d-12'
+
+[[mutation]]
+id = 'refit-14'
+check = 'append: every point inside the fitting mass becomes a zone'
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = '      nz = nz + env%num_env_points'
+new = '      nz = nz + env%num_env_points - 1'
+
+[[mutation]]
+id = 'refit-15'
+check = 'append: a degenerate interval returns ierr 1, nz unchanged'
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = 'if (log_mass2-log_mass0 < min_interpolation_interval) then'
+new = 'if (log_mass2-log_mass0 < -min_interpolation_interval) then'
+
+[[mutation]]
+id = 'refit-16'
+check = 'shift: the kept points carry the offsets of point 1 to the shell'
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = 'temperature_offset = shell_logT - env%env_log10_temperature(1)'
+new = 'temperature_offset = shell_logT - env%env_log10_temperature(2)'
+
+[[mutation]]
+id = 'refit-17'
+check = 'shift: log(m/M), X, Z and the convective flag move as they are'
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = 'env%env_convective_flag(num_kept) = env%env_convective_flag(k+1)'
+new = 'env%env_convective_flag(num_kept) = env%env_convective_flag(k)'
+
+[[mutation]]
+id = 'refit-18'
+check = 'masses: m = 10^log m for the new zones'
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = 'm(k) = exp10(log_mass(k))'
+new = 'm(k) = exp10(log_mass(k) + 1.0d-9)'
+
+[[mutation]]
+id = 'refit-19'
+check = 'masses: dm(k) = (m(k+1) - m(k-1))/2'
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = 'dm(k) = 0.5d0*(m(k+1)-m(k-1))'
+new = 'dm(k) = 0.5d0*(m(k+1)-m(k))'
+
+[[mutation]]
+id = 'refit-20'
+check = "masses: the zones' masses sum to the star's"
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = 'dm(nz) = exp10(log_total_mass) - 0.5d0*(m(nz)+m(nz-1))'
+new = 'dm(nz) = exp10(log_total_mass) - m(nz)'
+
+[[mutation]]
+id = 'refit-21'
+check = 'masses: the zones below first_new are untouched'
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = '      do k = first_new, nz-1'
+new = '      do k = first_new-1, nz-1'
+
+[[mutation]]
+id = 'refit-22'
+check = 'rotation: exponent -2: constant j, omega = j/i'
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = 'if (cz_rotation_law_exponent <= -2.0d0) then'
+new = 'if (cz_rotation_law_exponent < -2.0d0) then'
+
+[[mutation]]
+id = 'refit-23'
+check = 'rotation: exponent 0: solid body, j = omega i'
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = '            omega(k) = omega(last_old)'
+new = '            omega(k) = 0.5d0*omega(last_old)'
+
+[[mutation]]
+id = 'refit-24'
+check = 'rotation: exponent -1: omega ~ 1/r, j = omega i'
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = 'omega(k) = omega_at_unit_radius*exp10((logR(k)*cz_rotation_law_exponent))'
+new = 'omega(k) = omega_at_unit_radius*exp10((logR(k)*2.0d0*cz_rotation_law_exponent))'
+
+[[mutation]]
+id = 'refit-25'
+check = 'rotation: i = (2/3) r^2; the old zones untouched'
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = '''            omega(k) = omega_at_unit_radius*exp10((logR(k)*cz_rotation_law_exponent))
+            i_rot(k) = cc23*exp10((2.0d0*logR(k)))'''
+new = '''            omega(k) = omega_at_unit_radius*exp10((logR(k)*cz_rotation_law_exponent))
+            i_rot(k) = exp10((2.0d0*logR(k)))'''
+
+[[mutation]]
+id = 'refit-26'
+check = 'between_points: v0 at 0, v2 at 1, the mean at 1/2'
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = 'between_points = v0 + fraction*(v2 - v0)'
+new = 'between_points = v0 + fraction*fraction*(v2 - v0)'
+
+[[mutation]]
+id = 'refit-27'
+check = "append: X and Z interpolate toward the envelope's"
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = 'xa(i_h1,zone) = between_points(x0, env%env_hydrogen_fraction(k), fraction)'
+new = 'xa(i_h1,zone) = between_points(x0, 2.0d0*x0-env%env_hydrogen_fraction(k), fraction)'
+
+[[mutation]]
+id = 'refit-28'
+check = 'shift: a point within the mass step is dropped, the rest contiguous'
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = 'env%env_log10_mass(num_kept) = env%env_log10_mass(k+1)'
+new = 'env%env_log10_mass(k) = env%env_log10_mass(k+1)'
