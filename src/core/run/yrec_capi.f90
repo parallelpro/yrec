@@ -26,8 +26,8 @@
 ! that integration among them); zero is success.
 ! A namelist path longer than 256 characters (the override slots) is
 ! refused with status 1 before anything runs: cut, it would name another
-! file. After the run the C entry closes the run's own units
-! (yrec_reset's close_run_units), not the host's. The two arguments are
+! file. After the run the C entry closes the run's own units, every
+! file the run opened (yrec_reset's close_run_units), not the host's. The two arguments are
 ! the C strings' addresses (type(c_ptr), passed by value, as a char *
 ! is); their lengths are C's strlen, and a NULL pointer is read as an
 ! empty string.

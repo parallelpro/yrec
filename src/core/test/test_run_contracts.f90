@@ -40,7 +40,9 @@
 !     - NULL pointers are read as empty paths (the default decks;
 !       M331);
 !     - a unit the host opened stays open across calls, and the run's
-!       own units (the run log, the final model) are closed after one;
+!       own units (the run log, the final model) are closed after one,
+!       and so are the files it opened with newunit, their unit
+!       variables back at -1 (M312);
 !     - a namelist path of exactly 256 characters (the override slots)
 !       runs, and a longer one is refused with status 1: cut to 256, it
 !       would name the deck, which would then run.
@@ -65,7 +67,8 @@ program test_run_contracts
       use monte_carlo, only: begin_monte_carlo_run, setup_monte_carlo_runs
       use yrec_capi, only: yrec_run
       use run_messages, only: run_log_unit
-      use run_files, only: last_model_unit, dynamics_unit
+      use run_files, only: last_model_unit, dynamics_unit, starting_model_unit, &
+           mc_summary_unit, mc_model_unit, isochrone_unit
       implicit none
       integer :: num_failed = 0
       character(len=1024) :: deck
@@ -500,6 +503,11 @@ subroutine c_entry_checks()
       call run_contract_check_that('yrec_run: the run''s log and final-model units are closed after it', &
            .not. log_open .and. .not. model_open)
       call run_contract_check_that('yrec_run: ... and the host''s unit is still open', host_open)
+! The files the run opened with newunit (M312): closed, their unit
+! variables back at -1.
+      call run_contract_check_that('yrec_run: the run''s newunit files are closed after it too', &
+           all([starting_model_unit, dynamics_unit, mc_summary_unit, mc_model_unit, &
+           isochrone_unit] == -1))
 
       status = yrec_run(c_loc(deck_long), c_loc(deck_256))
       call run_contract_check_that('yrec_run: a control path over 256 characters is refused (status 1)', &

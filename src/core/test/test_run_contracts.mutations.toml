@@ -295,3 +295,18 @@ check = 'yrec_run: NULL paths are read as empty ones (the default decks)'
 file = 'core/run/yrec_capi.f90'
 old = 'if (c_associated(cstr)) n = int(c_strlen(cstr))'
 new = 'n = int(c_strlen(cstr))'
+
+[[mutation]]
+id = 'reset-03'
+check = "yrec_run: the run's newunit files are closed after it too"
+file = 'core/run/yrec_reset.f90'
+old = '      call close_newunit_file(starting_model_unit)'
+new = '      continue'
+
+[[mutation]]
+id = 'reset-04'
+check = "yrec_run: the run's newunit files are closed after it too"
+file = 'core/run/yrec_reset.f90'
+old = '''      call close_run_unit(unit)
+      unit = -1'''
+new = '''      call close_run_unit(unit)'''
