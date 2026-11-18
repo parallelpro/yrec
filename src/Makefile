@@ -396,6 +396,12 @@ test_run_contracts: core/test/test_run_contracts.o $(filter-out core/main.o,$(OB
 test_model_kernels: core/test/test_model_kernels.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
+test_composition_kernels: core/test/test_composition_kernels.o $(filter-out core/main.o,$(OBJS))
+	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
+
+test_li_be_burn: core/test/test_li_be_burn.o $(filter-out core/main.o,$(OBJS))
+	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
+
 test_controls: io/test/test_controls.o $(filter-out core/main.o,$(OBJS))
 	$(FC) $(LDFLAGS) -o $@ $^ $(HDF5_LIBS) $(CRMATH_LIBS)
 
@@ -445,7 +451,7 @@ other_energy: $(OTHER_ENERGY_DIR)/yrec_extra_heat
 # devel job and src/tools/devel_tests.py run them.
 .PHONY: tests devel_tests
 devel_tests: tests
-tests: test_eos test_kap test_atm test_net test_reentry test_rotation test_rotation_kernels test_element_diffusion test_numerics test_math $(TEST_MATH_CRMATH) test_convection test_controls test_io test_structure test_triangle_fit test_mass_change test_henyey_elimination test_envelope_integration test_timestep_limits test_regrid test_run_contracts test_model_kernels
+tests: test_eos test_kap test_atm test_net test_reentry test_rotation test_rotation_kernels test_element_diffusion test_numerics test_math $(TEST_MATH_CRMATH) test_convection test_controls test_io test_structure test_triangle_fit test_mass_change test_henyey_elimination test_envelope_integration test_timestep_limits test_regrid test_run_contracts test_model_kernels test_composition_kernels test_li_be_burn
 
 # Targets (each builds yrec; the build mode above sets the flags)
 default: $(NAME)
@@ -490,7 +496,7 @@ clean:
 	@rm -f $(LIBS)
 	@rm -f libyrec.dylib libyrec.so
 	@rm -f $(OTHER_ENERGY_DIR)/yrec_extra_heat $(OTHER_ENERGY_DIR)/*.o
-	@rm -f */test/*.o test_eos test_kap test_atm test_net test_reentry test_rotation test_rotation_kernels test_element_diffusion test_numerics test_math test_math_crmath test_convection test_controls test_io test_structure test_triangle_fit test_mass_change test_henyey_elimination test_envelope_integration test_timestep_limits test_regrid test_run_contracts test_model_kernels
+	@rm -f */test/*.o test_eos test_kap test_atm test_net test_reentry test_rotation test_rotation_kernels test_element_diffusion test_numerics test_math test_math_crmath test_convection test_controls test_io test_structure test_triangle_fit test_mass_change test_henyey_elimination test_envelope_integration test_timestep_limits test_regrid test_run_contracts test_model_kernels test_composition_kernels test_li_be_burn
 	@rm -rf $(MATH_CRMATH_DIR)
 
 # The checks for every commit (docs/GUIDELINES.md, "A package README"):

@@ -8,8 +8,7 @@
 ! storage, so zero-initialized plus the type's declaration defaults --
 ! exactly what a module-level star was at process start). At every entry
 ! after the first it also closes the units the last run left open
-! (close_run_units: the run log and the final model, not a host
-! program's units). The controls need
+! (close_run_units: the run's own files, not a host program's units). The controls need
 ! no snapshot: read_controls resets s%control and s%physics to their
 ! defaults and re-seeds
 ! the namelist buffer before every read. Physics-domain table state is
@@ -52,19 +51,35 @@ subroutine yrec_run_prologue(s)
 end subroutine yrec_run_prologue
 
 ! ---------------------------------------------------------------
-! The units the run connects by number, closed if they are open: the
-! run log (run_messages' run_log_unit) and the final model (run_files'
-! last_model_unit). The run's other files have newunit numbers, which
-! are negative, and open_run_files closes them itself before it opens
-! them again. A unit a host program opened stays open, and so do the
-! standard units, which the run's units are before the controls read
-! assigns them.
+! The units the run connects, closed if they are open, so that a host
+! that reads the run's files after yrec_run finds them complete (M312):
+! the two connected by number, the run log (run_messages' run_log_unit)
+! and the final model (run_files' last_model_unit); and the files
+! open_run_files opens with newunit, the starting model, the Monte
+! Carlo samples, summary and model files and the isochrone file, whose
+! unit variables are set back to -1 (not connected) as run_files' own
+! close does before a later run opens them: a stale number could be the
+! one a later newunit hands out. A unit a host program opened stays
+! open, and so do the standard units, which the run's units are before
+! the controls read assigns them.
 subroutine close_run_units
       use run_messages, only: run_log_unit
-      use run_files, only: last_model_unit
+      use run_files, only: last_model_unit, starting_model_unit, dynamics_unit, &
+           mc_summary_unit, mc_model_unit, isochrone_unit
       call close_run_unit(run_log_unit)
       call close_run_unit(last_model_unit)
+      call close_newunit_file(starting_model_unit)
+      call close_newunit_file(dynamics_unit)
+      call close_newunit_file(mc_summary_unit)
+      call close_newunit_file(mc_model_unit)
+      call close_newunit_file(isochrone_unit)
 contains
+subroutine close_newunit_file(unit)
+      integer, intent(inout) :: unit
+      if (unit == -1) return
+      call close_run_unit(unit)
+      unit = -1
+end subroutine close_newunit_file
 subroutine close_run_unit(unit)
       use, intrinsic :: iso_fortran_env, only: error_unit, input_unit, output_unit
       integer, intent(in) :: unit

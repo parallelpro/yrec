@@ -10,9 +10,22 @@
 !     - a crossing on the last card (card 50 = max_runs) sets up
 !       nothing past it and ends with a verdict: not converged, or R*
 !       and L* reached with no card left for the final run;
+!     - a pass that starts above R* and contracts through it crosses
+!       between its own models, not at its second model (M328), and
+!       the next pass starts from its own first model;
 !     - end_star_calibration_card: the final run's end is the
 !       converged verdict, and a last card that ends without finding
 !       the star is the not-converged one;
+!   the solar calibration's check (check_solar_calibration) on a star
+!   set up here:
+!     - its Newton step solves the 2x2 system of the fixed partial
+!       derivatives, and the next triple's cards take the new X and
+!       alpha; within the tolerances it is converged and writes no card;
+!       with the Z/X calibration, Z is rescaled by target/model;
+!   the central-abundance stops (stop_conditions.f90):
+!     - a stop the starting model has passed is disarmed
+!       (init_stop_conditions), a later crossing ends the card, and
+!       nothing stops a card whose stops are off;
 !   a Monte-Carlo run's start (monte_carlo.f90's begin_monte_carlo_run)
 !   on a star set up here:
 !     - without the solar calibration, cards 2 and 3 keep the deck's
@@ -24,8 +37,12 @@
 !       (ierr 1), and a complete one reads every run's samples;
 !   the C entry (yrec_capi's yrec_run) and the re-entrancy prologue
 !   (yrec_reset), called here as a C or Fortran host would:
+!     - NULL pointers are read as empty paths (the default decks;
+!       M331);
 !     - a unit the host opened stays open across calls, and the run's
-!       own units (the run log, the final model) are closed after one;
+!       own units (the run log, the final model) are closed after one,
+!       and so are the files it opened with newunit, their unit
+!       variables back at -1 (M312);
 !     - a namelist path of exactly 256 characters (the override slots)
 !       runs, and a longer one is refused with status 1: cut to 256, it
 !       would name the deck, which would then run.
@@ -37,16 +54,21 @@
 ! with "./" components after its leading "/". Prints one line per check
 ! and exits with status 1 when one fails.
 program test_run_contracts
-      use, intrinsic :: iso_c_binding, only: c_char, c_int, c_loc, c_null_char
+      use, intrinsic :: iso_c_binding, only: c_char, c_int, c_loc, c_null_char, c_null_ptr
       use star_info_lib, only: star_info
-      use control_slots, only: max_runs, i_target_x
+      use control_slots, only: max_runs, i_target_x, i_target_z
+      use composition_layout, only: i_h1, i_he4
       use physical_constants, only: c4pi, csig
       use calibration, only: setup_star_calibration, check_star_calibration, &
-           end_star_calibration_card
+           end_star_calibration_card, check_solar_calibration, dlogl_dx_fixed, &
+           dlogr_dx_fixed, dlogl_dalpha_fixed, dlogr_dalpha_fixed
+      use stop_conditions, only: check_stop_conditions, init_stop_conditions, &
+           step_continue, step_kind_card_done, step_leave_run_loop
       use monte_carlo, only: begin_monte_carlo_run, setup_monte_carlo_runs
       use yrec_capi, only: yrec_run
       use run_messages, only: run_log_unit
-      use run_files, only: last_model_unit, dynamics_unit
+      use run_files, only: last_model_unit, dynamics_unit, starting_model_unit, &
+           mc_summary_unit, mc_model_unit, isochrone_unit
       implicit none
       integer :: num_failed = 0
       character(len=1024) :: deck
@@ -62,6 +84,9 @@ program test_run_contracts
       end if
 
       call star_calibration_checks()
+      call star_calibration_pass_checks()
+      call solar_calibration_checks()
+      call abundance_stop_checks()
       call monte_carlo_checks()
       call c_entry_checks()
 
@@ -139,6 +164,163 @@ subroutine star_calibration_checks()
       call run_contract_check_that('star calibration: the last card ended without the star: not converged', &
            .not. runs_complete .and. s%termination_reason == not_converged)
 end subroutine star_calibration_checks
+
+! ---------------------------------------------------------------
+! The solar calibration's check after a triple (check_solar_calibration)
+! on a star whose first triple (cards 1 to 3) ran with X = 0.71,
+! Z = 0.018 and alpha = 1.8 and ended at log L = 0.01, log R = -0.004:
+! the Newton step solves its 2x2 system and goes into cards 4 to 6; a
+! model within the tolerances is converged and writes no card; with the
+! Z/X calibration, Z is rescaled by the ratio of the target to the
+! model's Z/X, and Z/X must match as well.
+subroutine solar_calibration_checks()
+      type(star_info), allocatable :: s
+      double precision, parameter :: log_l = 0.01d0, log_r = -0.004d0
+      double precision :: dx, dalpha
+
+      call new_solar_calibration_star(s)
+      s%log_L_lsun = log_l
+      call check_solar_calibration(s, log_r, 0.0250d0)
+      dx = s%card_rescale_targets(i_target_x, 4) - 0.71d0
+      dalpha = s%card_mixing_length_alpha(4) - 1.8d0
+      call run_contract_check_that('solar calibration: the Newton step solves its 2x2 system for dX and dalpha', &
+           abs(dlogl_dx_fixed*dx + dlogl_dalpha_fixed*dalpha + log_l) < 1.0d-15 .and. &
+           abs(dlogr_dx_fixed*dx + dlogr_dalpha_fixed*dalpha + log_r) < 1.0d-15 .and. &
+           .not. s%solar_calibration_converged .and. dx /= 0.0d0)
+      call run_contract_check_that('solar calibration: the next triple''s three cards take the new X and alpha', &
+           all(s%card_initial_x(4:6) == s%card_rescale_targets(i_target_x, 4)) .and. &
+           all(s%card_mixing_length_alpha(4:6) == s%card_mixing_length_alpha(4)) .and. &
+           s%card_mixing_length_alpha(7) == 0.0d0 .and. s%card_initial_z(4) == 0.0d0)
+
+      call new_solar_calibration_star(s)
+      s%log_L_lsun = 0.5d-5
+      call check_solar_calibration(s, -0.5d-5, 0.0250d0)
+      call run_contract_check_that('solar calibration: L and R within their tolerances: converged, no card written', &
+           s%solar_calibration_converged .and. s%card_mixing_length_alpha(4) == 0.0d0 .and. &
+           s%card_initial_x(4) == 0.0d0)
+
+      call new_solar_calibration_star(s)
+      s%control%calibrate_solar_zx = .true.
+      s%control%target_solar_zx = 0.0245d0
+      s%control%zx_tolerance = 1.0d-4
+      s%log_L_lsun = 0.5d-5
+      call check_solar_calibration(s, -0.5d-5, 0.0250d0)
+      call run_contract_check_that('solar calibration: with Z/X off target, Z is rescaled by target/model', &
+           .not. s%solar_calibration_converged .and. &
+           abs(s%card_rescale_targets(i_target_z, 4)/(0.018d0*0.0245d0/0.0250d0) - 1.0d0) < 1.0d-15 &
+           .and. all(s%card_initial_z(4:6) == s%card_rescale_targets(i_target_z, 4)))
+end subroutine solar_calibration_checks
+
+! A fresh star at the end of its first solar-calibration triple, with
+! tolerances of 1e-5 on log L and log R and no Z/X calibration.
+subroutine new_solar_calibration_star(s)
+      type(star_info), allocatable, intent(inout) :: s
+      if (allocated(s)) deallocate(s)
+      allocate(s)
+      s%control%luminosity_tolerance = 1.0d-5
+      s%control%radius_tolerance = 1.0d-5
+      s%control%calibrate_solar_zx = .false.
+      s%current_card = 3
+      s%card_rescale_targets(i_target_x, 1) = 0.71d0
+      s%card_rescale_targets(i_target_z, 1) = 0.018d0
+      s%card_mixing_length_alpha(1) = 1.8d0
+end subroutine new_solar_calibration_star
+
+! ---------------------------------------------------------------
+! The central-abundance stops on a star set up here: card 1 stops at
+! central X = 0.10 and Y = 0.20, and its starting model has X = 0.05
+! (already past its stop) and Y = 0.60. init_stop_conditions disarms
+! the X stop (its threshold negated), so the model does not end the
+! card; Y falling below its stop does; nothing stops a card whose stops
+! are off.
+subroutine abundance_stop_checks()
+      type(star_info), allocatable :: s
+      integer :: status
+
+      allocate(s)
+      call no_other_stops(s)
+      s%current_card = 1
+      s%card_kind(1) = 1
+      s%card_stops_active(1) = .true.
+      s%card_central_hydrogen_stop(1) = 0.10d0
+      s%card_central_helium_stop(1) = 0.20d0
+      s%xa(i_h1,1) = 0.05d0
+      s%xa(i_he4,1) = 0.60d0
+      call init_stop_conditions(s)
+      call check_stop_conditions(s, 1, status)
+      call run_contract_check_that('abundance stops: a stop the starting model has passed is disarmed', &
+           s%card_central_hydrogen_stop(1) == -0.10d0 .and. s%card_central_helium_stop(1) == 0.20d0 &
+           .and. status == step_continue .and. s%termination_reason == 'model budget exhausted')
+      s%xa(i_he4,1) = 0.15d0
+      s%card_stops_active(1) = .false.
+      call check_stop_conditions(s, 2, status)
+      call run_contract_check_that('abundance stops: none while the card''s stops are off', &
+           status == step_continue)
+      s%card_stops_active(1) = .true.
+      call check_stop_conditions(s, 2, status)
+      call run_contract_check_that('abundance stops: central Y below its stop ends the card', &
+           status == step_kind_card_done .and. s%termination_reason == 'central Y below stop value')
+end subroutine abundance_stop_checks
+
+! ---------------------------------------------------------------
+! A pass of the star calibration through check_stop_conditions, as
+! evolve_step calls it, on a track that starts above R* = 1 Rsun and
+! contracts through it (M328): models at 1.2, 1.1 and 0.99 Rsun, aged
+! 1, 2 and 3 Gyr. Only the third crosses, between the second and
+! itself, at 3 - 0.01/0.11 Gyr. The next pass again starts above R*.
+subroutine star_calibration_pass_checks()
+      type(star_info), allocatable :: s
+      integer :: status(3)
+      double precision :: age_at_crossing
+
+      call new_calibration_star(s)
+      call no_other_stops(s)
+      s%control%calibrate_star_flag = .true.
+      s%current_card = 2
+      call pass_model(s, 1, 1.2d0, 1.0d0, status(1))
+      call pass_model(s, 2, 1.1d0, 2.0d0, status(2))
+      call run_contract_check_that('star calibration: a pass that starts above R* does not cross at its second model', &
+           all(status(1:2) == step_continue) .and. .not. s%just_passed_target_radius_flag)
+      call pass_model(s, 3, 0.99d0, 3.0d0, status(3))
+      age_at_crossing = 3.0d0 - 0.01d0/0.11d0
+      call run_contract_check_that('star calibration: ... and crosses R* downward between its own models', &
+           status(3) == step_leave_run_loop .and. s%just_passed_target_radius_flag .and. &
+           abs(s%age_gyr_at_target_radius/age_at_crossing - 1.0d0) < 1.0d-12)
+      s%current_card = 4
+      call pass_model(s, 1, 1.3d0, 0.5d0, status(1))
+      call pass_model(s, 2, 1.25d0, 0.6d0, status(2))
+      call run_contract_check_that('star calibration: the next pass starts from its own first model', &
+           all(status(1:2) == step_continue) .and. .not. s%just_passed_target_radius_flag)
+end subroutine star_calibration_pass_checks
+
+! One model of a pass: R/Rsun = r_rsun at log(L/Lsun) = 0.1 and the age
+! age_gyr, as the model_iteration-th model of the current card.
+subroutine pass_model(s, model_iteration, r_rsun, age_gyr, step_status)
+      type(star_info), intent(inout) :: s
+      integer, intent(in) :: model_iteration
+      double precision, intent(in) :: r_rsun, age_gyr
+      integer, intent(out) :: step_status
+      s%log_L_lsun = 0.1d0
+      s%log_Teff = log_teff_at(s, 0.1d0, r_rsun)
+      s%age_gyr = age_gyr
+      call check_stop_conditions(s, model_iteration, step_status)
+end subroutine pass_model
+
+! The other stops of check_stop_conditions off, as a deck without them
+! leaves them: no end age or abundance stop (the cards' stops are off),
+! and the structure limits at their off values.
+subroutine no_other_stops(s)
+      type(star_info), intent(inout) :: s
+      s%card_stops_active = .false.
+      s%control%log_L_upper_limit = 1.0d99
+      s%control%Teff_upper_limit = 1.0d99
+      s%control%log_g_upper_limit = 1.0d99
+      s%control%nu_max_upper_limit = 1.0d99
+      s%control%log_L_lower_limit = -1.0d99
+      s%control%Teff_lower_limit = -1.0d99
+      s%control%log_g_lower_limit = -1.0d99
+      s%control%nu_max_lower_limit = -1.0d99
+end subroutine no_other_stops
 
 ! A fresh star with the target and cards 1 and 2 (X = 0.70), laid out by
 ! setup_star_calibration; the previous pass's X (card 45's rescale
@@ -284,9 +466,9 @@ end subroutine new_monte_carlo_star
 ! a re-entry), then the deck at exactly 256 characters, then 257.
 subroutine c_entry_checks()
       integer, parameter :: host_unit = 42, slot_length = 256
-      integer(c_int) :: status
+      integer(c_int) :: status, status_null
       character(len=:), allocatable :: path_256, path_long
-      character(kind=c_char), allocatable, target :: missing(:), deck_256(:), deck_long(:)
+      character(kind=c_char), allocatable, target :: missing(:), deck_256(:), deck_long(:), empty(:)
       logical :: host_open, log_open, model_open
 
       open(unit=host_unit, status='scratch')
@@ -301,6 +483,14 @@ subroutine c_entry_checks()
       inquire(unit=host_unit, opened=host_open)
       call run_contract_check_that('yrec_run_prologue: the host''s unit stays open at a re-entry', host_open)
 
+! NULL for "the default decks" (M331): read as empty paths, so the call
+! returns what a call with empty strings returns.
+      empty = c_path('')
+      status = yrec_run(c_loc(empty), c_loc(empty))
+      status_null = yrec_run(c_null_ptr, c_null_ptr)
+      call run_contract_check_that('yrec_run: NULL paths are read as empty ones (the default decks)', &
+           status_null == status)
+
       path_256 = padded_path(trim(deck), slot_length)
       path_long = path_256 // 'x'
       deck_256 = c_path(path_256)
@@ -313,6 +503,11 @@ subroutine c_entry_checks()
       call run_contract_check_that('yrec_run: the run''s log and final-model units are closed after it', &
            .not. log_open .and. .not. model_open)
       call run_contract_check_that('yrec_run: ... and the host''s unit is still open', host_open)
+! The files the run opened with newunit (M312): closed, their unit
+! variables back at -1.
+      call run_contract_check_that('yrec_run: the run''s newunit files are closed after it too', &
+           all([starting_model_unit, dynamics_unit, mc_summary_unit, mc_model_unit, &
+           isochrone_unit] == -1))
 
       status = yrec_run(c_loc(deck_long), c_loc(deck_256))
       call run_contract_check_that('yrec_run: a control path over 256 characters is refused (status 1)', &

@@ -2,14 +2,16 @@
 ! mass_change_kernel
 !----------------------------------------------------------------------
 ! The arithmetic of the mass-change step as star-blind kernels: the
-! masses of the convection zone after the step's mass change dM, the
-! angular momentum a thermal wind carries off, and the accreted
+! longest step a rate allows and accretion's end at the disk-locking
+! age, the masses of the convection zone after the step's mass change
+! dM, the angular momentum a thermal wind carries off, and the accreted
 ! composition mixed into the zone. Each takes the arrays it works on as
 ! arguments and changes only its intent(inout) ones; nothing is read
 ! from the star or kept between calls. apply_mass_change
 ! (mass_change.f90) gathers the arrays from the star, calls these in
 ! order and stores the results; core/test/test_mass_change checks that
-! they conserve the mass, the angular momentum and every species.
+! they conserve the mass, the angular momentum and every species, and
+! the timestep's limits against their formulas.
 !
 ! Shells 1..nz run from the center to the fitting point; the surface
 ! convection zone is jenv..nz (its base jenv < nz). m is the mass inside
@@ -18,12 +20,15 @@
 module mass_change_kernel
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use composition_layout, only: n_species_basic
+      use physical_constants, only: seconds_per_year
       use math_lib
       implicit none
       private
       public :: wind_angular_momentum, convection_zone_mass, &
            change_shell_masses, wind_specific_angular_momentum, &
-           remove_wind_angular_momentum, mix_accreted_composition
+           remove_wind_angular_momentum, mix_accreted_composition, &
+           mass_change_timestep_limit, clip_step_to_disk_locking_age, &
+           disk_has_dispersed
 
 ! A thermal wind's angular momentum over one step (g cm^2/s): lost, dJ =
 ! j_s dM, negative; zone_before, the convection zone's J_cz = sum of
@@ -56,6 +61,62 @@ pure function convection_zone_mass(zone_dm) result(cz_mass)
 end function convection_zone_mass
 
 !----------------------------------------------------------------------
+! mass_change_timestep_limit
+!----------------------------------------------------------------------
+! The longest step (s) the mass change allows at the rate rate_cgs =
+! |Mdot| (g/s, positive), for loss and accretion alike: the mass changes
+! by at most the fraction total_fraction of the star (star_mass_msun
+! solar masses of solar_mass_cgs g), the fraction cz_fraction of the
+! surface convection zone (cz_mass = M_cz, g) and half the mass outside
+! the fitting point (outer_mass = M - m(nz), g):
+!   dt_max = min(f_tot M, f_cz M_cz, (M - m(nz))/2)/|Mdot|.
+pure function mass_change_timestep_limit(rate_cgs, total_fraction, &
+     cz_fraction, star_mass_msun, solar_mass_cgs, cz_mass, outer_mass) &
+     result(dt_max)
+      real(dp), intent(in) :: rate_cgs, total_fraction, cz_fraction, &
+           star_mass_msun, solar_mass_cgs, cz_mass, outer_mass
+      real(dp) :: dt_max
+
+      dt_max = min(total_fraction*star_mass_msun*solar_mass_cgs/rate_cgs, &
+           cz_fraction*cz_mass/rate_cgs)
+      dt_max = min(dt_max, 0.5d0*outer_mass/rate_cgs)
+end function mass_change_timestep_limit
+
+!----------------------------------------------------------------------
+! disk_has_dispersed
+!----------------------------------------------------------------------
+! Whether a model of the age age_gyr is at or past the disk-locking age
+! (both Gyr): there is no disk left to accrete from, so the caller
+! switches the mass change off without a step (change_mass). The clip
+! below is for a younger model only: it would hand an older one a step
+! of negative length (docs/bug_sweep.md M319).
+pure logical function disk_has_dispersed(age_gyr, disk_locking_age_gyr)
+      real(dp), intent(in) :: age_gyr, disk_locking_age_gyr
+      disk_has_dispersed = age_gyr >= disk_locking_age_gyr
+end function disk_has_dispersed
+
+!----------------------------------------------------------------------
+! clip_step_to_disk_locking_age
+!----------------------------------------------------------------------
+! Accretion ends at the disk-locking age: a step dt (s) from the age
+! age_gyr that would pass disk_locking_age_gyr (both Gyr) is clipped to
+! end there, and disk_exhausted is set; a shorter step is left alone.
+! For a model younger than the disk-locking age (disk_has_dispersed is
+! false), so that the clipped step is positive.
+pure subroutine clip_step_to_disk_locking_age(age_gyr, &
+     disk_locking_age_gyr, dt, disk_exhausted)
+      real(dp), intent(in) :: age_gyr, disk_locking_age_gyr
+      real(dp), intent(inout) :: dt
+      logical, intent(out) :: disk_exhausted
+
+      disk_exhausted = .false.
+      if (age_gyr + 1.0d-9*dt/seconds_per_year > disk_locking_age_gyr) then
+         dt = (disk_locking_age_gyr - age_gyr)*1.0d9*seconds_per_year
+         disk_exhausted = .true.
+      end if
+end subroutine clip_step_to_disk_locking_age
+
+!----------------------------------------------------------------------
 ! change_shell_masses
 !----------------------------------------------------------------------
 ! The masses of shells 1..nz after the step's mass change delta_mass =
@@ -74,7 +135,7 @@ end function convection_zone_mass
 !       dm(k) = (m(k+1) - m(k-1))/2,  dm(nz) = M + dM - (m(nz) + m(nz-1))/2.
 !     A zone reaching the center (jenv = 1) starts from it: dm(1) =
 !     (m(1) + m(2))/2, i.e. m_0 = -m_1 as in rezoning's
-!     set_new_shell_masses. (It used to read m(0), outside the array.)
+!     set_new_shell_masses.
 pure subroutine change_shell_masses(jenv, delta_mass, total_mass, m, &
      log_mass, dm)
       integer, intent(in) :: jenv
@@ -145,9 +206,7 @@ end function wind_specific_angular_momentum
 ! J_cz = sum of j_rot dm_before is measured before the masses change.
 ! The shrunk shells at unchanged j_rot hold sum j_rot dm_after, already
 ! short of J_cz by about <j>|dM|; every j_rot is scaled by
-! (J_cz + dJ)/sum j_rot dm_after, so the zone loses dJ once. (It used
-! to be scaled by (J_cz + dJ)/J_cz before the masses shrank, which
-! removed <j>|dM| on top of dJ.)
+! (J_cz + dJ)/sum j_rot dm_after, so the zone loses dJ once.
 pure subroutine remove_wind_angular_momentum(j_surface, delta_mass, &
      dm_before, dm_after, j_rot, am)
       real(dp), intent(in) :: j_surface, delta_mass
@@ -217,4 +276,13 @@ pure subroutine mix_accreted_composition(zone_dm, delta_mass, &
       end do
 end subroutine mix_accreted_composition
 
+! ---------------------------------------------------------------
+! Sources
+!   The arithmetic of the F77's MDOT (wind/mdot, MHP 10/01), as kernels
+!   since 2026-10. Two of its defects, fixed in 2026: for a zone reaching the
+!   centre it read m(0), outside the array; and every j_rot was scaled by
+!   (J_cz + dJ)/J_cz before the masses shrank, which removed <j>|dM| on top
+!   of dJ. The timestep's limit and the disk-locking clip came out of
+!   mass_change in 2026-11, with the gate before the clip
+!   (docs/bug_sweep.md M319).
 end module mass_change_kernel

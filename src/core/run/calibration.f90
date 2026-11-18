@@ -1,25 +1,27 @@
 !----------------------------------------------------------------------
 ! calibration
 !----------------------------------------------------------------------
-! The two halves of the calibration loops: the run-list setup before a
-! calibration (setup_solar_calibration, setup_star_calibration) and the
-! check after each run that declares convergence or sets up the next
-! trial (check_solar_calibration, check_star_calibration).
+! The calibration loops: the run-list setup before a calibration
+! (setup_solar_calibration, setup_star_calibration), the check after
+! each run that declares convergence or sets up the next trial
+! (check_solar_calibration, check_star_calibration), and the star
+! calibration's verdict at the end of a card
+! (end_star_calibration_card).
 module calibration
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use star_info_lib, only: star_info
-      use control_slots, only: i_target_x, i_target_z
+      use control_slots, only: i_target_x, i_target_z, n_rescale_targets
       use run_cards, only: card_evolve
       implicit none
       private
       public :: check_solar_calibration, check_star_calibration, setup_solar_calibration, setup_star_calibration, &
-           end_star_calibration_card
+           end_star_calibration_card, store_calibration_model
 ! the fixed partial derivatives, which the Monte-Carlo summary prints
       public :: dlogl_dx_fixed, dlogr_dx_fixed, dlogl_dalpha_fixed, dlogr_dalpha_fixed
 
 ! The star calibration's cards per pass: an odd card rescales, the even
 ! card after it evolves.
-      integer, parameter :: star_calib_cards_per_cycle = 2
+      integer, parameter, public :: star_calib_cards_per_cycle = 2
 
 ! The solar calibration's fixed empirical partial derivatives of log L
 ! and log R with respect to the hydrogen fraction X and the mixing length
@@ -118,41 +120,41 @@ subroutine check_solar_calibration(s, log_r_rsun, current_zx)
 !   dalpha = (log L drad_dx/dlum_dx - log R)
 !            / (drad_dalpha - dlum_dalpha drad_dx/dlum_dx),
 !   dX     = -(log L + dlum_dalpha dalpha)/dlum_dx.
-         s%delta_alpha = ((log_l_lsun*dlogr_dx_fixed/dlogl_dx_fixed-log_r_rsun)/ &
-              (dlogr_dalpha_fixed-dlogl_dalpha_fixed*dlogr_dx_fixed/dlogl_dx_fixed))
-         s%delta_x = -(log_l_lsun + dlogl_dalpha_fixed*s%delta_alpha)/dlogl_dx_fixed
-         s%card_mixing_length_alpha(run_index+1) = &
-              s%card_mixing_length_alpha(run_index-2)+s%delta_alpha
-         s%card_mixing_length_alpha(run_index+2) = s%card_mixing_length_alpha(run_index+1)
-         s%card_mixing_length_alpha(run_index+3) = s%card_mixing_length_alpha(run_index+1)
+      s%delta_alpha = ((log_l_lsun*dlogr_dx_fixed/dlogl_dx_fixed-log_r_rsun)/ &
+           (dlogr_dalpha_fixed-dlogl_dalpha_fixed*dlogr_dx_fixed/dlogl_dx_fixed))
+      s%delta_x = -(log_l_lsun + dlogl_dalpha_fixed*s%delta_alpha)/dlogl_dx_fixed
+      s%card_mixing_length_alpha(run_index+1) = &
+           s%card_mixing_length_alpha(run_index-2)+s%delta_alpha
+      s%card_mixing_length_alpha(run_index+2) = s%card_mixing_length_alpha(run_index+1)
+      s%card_mixing_length_alpha(run_index+3) = s%card_mixing_length_alpha(run_index+1)
 ! Z/X calibration: Z_new = Z_old (Z/X)_target / (Z/X)_current.
-         if(s%control%calibrate_solar_zx)then
-            s%card_rescale_targets(i_target_z,run_index+1) = &
-                 s%card_rescale_targets(i_target_z,run_index-2)*s%control%target_solar_zx/current_zx
-            delta_z = s%card_rescale_targets(i_target_z,run_index+1) - &
-                 s%card_rescale_targets(i_target_z,run_index-2)
-            s%card_initial_z(run_index+1) = s%card_rescale_targets(i_target_z,run_index+1)
-            s%card_initial_z(run_index+2) = s%card_rescale_targets(i_target_z,run_index+1)
-            s%card_initial_z(run_index+3) = s%card_rescale_targets(i_target_z,run_index+1)
-         end if
-         s%card_rescale_targets(i_target_x,run_index+1) = s%card_rescale_targets(i_target_x,run_index-2)+s%delta_x
-         s%card_initial_x(run_index+1) = s%card_rescale_targets(i_target_x,run_index+1)
-         s%card_initial_x(run_index+2) = s%card_rescale_targets(i_target_x,run_index+1)
-         s%card_initial_x(run_index+3) = s%card_rescale_targets(i_target_x,run_index+1)
-         call core_terminal_values([log_l_lsun, s%log_l_lsun_prev_check, &
-              log_l_lsun-s%log_l_lsun_prev_check], text="New BL, Old BL, Delta BL: ")
-         call core_terminal_values([log_r_rsun, s%log_r_rsun_prev_check, &
-              log_r_rsun-s%log_r_rsun_prev_check], text="New RL, Old RL, Delta RL: ")
-         call core_terminal_values([s%card_rescale_targets(i_target_x,run_index+1), &
-              s%card_rescale_targets(i_target_x,run_index-2), s%delta_x], text="New X, Old X, DX: ")
-         call core_terminal_values([s%card_mixing_length_alpha(run_index+1), &
-              s%card_mixing_length_alpha(run_index-2), s%delta_alpha], text="New A, Old A, DA: ")
-         if(s%control%calibrate_solar_zx)then
-            call core_terminal_values([s%card_rescale_targets(i_target_z,run_index+1), &
-                 s%card_rescale_targets(i_target_z,run_index-2), delta_z], text="New Z, Old Z, DZ: ")
-         end if
-         s%log_l_lsun_prev_check = log_l_lsun
-         s%log_r_rsun_prev_check = log_r_rsun
+      if(s%control%calibrate_solar_zx)then
+         s%card_rescale_targets(i_target_z,run_index+1) = &
+              s%card_rescale_targets(i_target_z,run_index-2)*s%control%target_solar_zx/current_zx
+         delta_z = s%card_rescale_targets(i_target_z,run_index+1) - &
+              s%card_rescale_targets(i_target_z,run_index-2)
+         s%card_initial_z(run_index+1) = s%card_rescale_targets(i_target_z,run_index+1)
+         s%card_initial_z(run_index+2) = s%card_rescale_targets(i_target_z,run_index+1)
+         s%card_initial_z(run_index+3) = s%card_rescale_targets(i_target_z,run_index+1)
+      end if
+      s%card_rescale_targets(i_target_x,run_index+1) = s%card_rescale_targets(i_target_x,run_index-2)+s%delta_x
+      s%card_initial_x(run_index+1) = s%card_rescale_targets(i_target_x,run_index+1)
+      s%card_initial_x(run_index+2) = s%card_rescale_targets(i_target_x,run_index+1)
+      s%card_initial_x(run_index+3) = s%card_rescale_targets(i_target_x,run_index+1)
+      call core_terminal_values([log_l_lsun, s%log_l_lsun_prev_check, &
+           log_l_lsun-s%log_l_lsun_prev_check], text="New BL, Old BL, Delta BL: ")
+      call core_terminal_values([log_r_rsun, s%log_r_rsun_prev_check, &
+           log_r_rsun-s%log_r_rsun_prev_check], text="New RL, Old RL, Delta RL: ")
+      call core_terminal_values([s%card_rescale_targets(i_target_x,run_index+1), &
+           s%card_rescale_targets(i_target_x,run_index-2), s%delta_x], text="New X, Old X, DX: ")
+      call core_terminal_values([s%card_mixing_length_alpha(run_index+1), &
+           s%card_mixing_length_alpha(run_index-2), s%delta_alpha], text="New A, Old A, DA: ")
+      if(s%control%calibrate_solar_zx)then
+         call core_terminal_values([s%card_rescale_targets(i_target_z,run_index+1), &
+              s%card_rescale_targets(i_target_z,run_index-2), delta_z], text="New Z, Old Z, DZ: ")
+      end if
+      s%log_l_lsun_prev_check = log_l_lsun
+      s%log_r_rsun_prev_check = log_r_rsun
 end subroutine check_solar_calibration
 
 ! ---------------------------------------------------------------
@@ -161,9 +163,11 @@ end subroutine check_solar_calibration
 !----------------------------------------------------------------------
 ! The star-calibration check, called for every model after the first
 ! of an even card (the odd cards rescale, the even cards evolve; see
-! check_stop_conditions). It tests whether the track has just crossed
-! the target radius R* (in either direction). If not, it stores the
-! model's L, age and R and returns. If so, it interpolates log L and the
+! check_stop_conditions, which stores the card's first model with
+! store_calibration_model). It tests whether the track has just crossed
+! the target radius R* (in either direction) since the previous model
+! of this pass. If not, it stores the model's L, age and R
+! (store_calibration_model) and returns. If so, it interpolates log L and the
 ! age to R*, linearly in R, and then either
 !  - finds |L(R*) - L*| <= target_star_luminosity_tolerance (in Lsun,
 !    a linear tolerance), sets star_found_flag, and arms one more run,
@@ -177,30 +181,28 @@ end subroutine check_solar_calibration
 ! left for the final run, or not converged).
 ! The model is the star's: log_L_lsun, log_Teff, age_gyr (Gyr), on the
 ! card current_card (run_index below).
-!   star reads: age_gyr, calibration_target_radius_rsun,
-!     control%target_luminosity_lsun,
+!   star reads: age_gyr, age_gyr_prev_model,
+!     calibration_target_radius_rsun, control%target_luminosity_lsun,
 !     control%target_star_luminosity_tolerance, current_card,
-!     log_L_lsun, log_Teff, num_cards, solar_luminosity_cgs,
-!     solar_radius_cgs
-!   star writes: age_gyr_at_target_radius, age_gyr_prev_model,
-!     card_initial_x, card_max_age_yr, card_rescale_targets,
-!     card_stops_active, just_passed_target_radius_flag,
-!     log_l_lsun_at_target_radius, log_l_lsun_at_target_radius_prev_run,
-!     log_l_lsun_prev_model, r_rsun_prev_model, star_found_flag,
+!     log_L_lsun, log_l_lsun_prev_model, num_cards, r_rsun_prev_model
+!   star writes: age_gyr_at_target_radius, card_initial_x,
+!     card_max_age_yr, card_rescale_targets, card_stops_active,
+!     just_passed_target_radius_flag, log_l_lsun_at_target_radius,
+!     log_l_lsun_at_target_radius_prev_run, star_found_flag,
 !     termination_reason
 subroutine check_star_calibration(s)
 
       use core_messages, only: core_log, core_log_values, core_terminal, core_terminal_values, &
            message_length, unwritten_line
-      use physical_constants, only: c4pi, csig
       use math_lib
       implicit none
       type(star_info), intent(inout) :: s
 
 ! locals
-      real(dp) :: log_l_lsun, log_teff, current_age
+      real(dp) :: log_l_lsun, current_age
       integer :: run_index
-      real(dp) :: teff_current, r_rsun_current
+      real(dp) :: r_rsun_current
+      logical :: crossed
       real(dp) :: dlogl_dr, dage_dr
       real(dp) :: new_x, prev_x, dx_dlogl
       logical :: luminosity_matches
@@ -233,31 +235,22 @@ subroutine check_star_calibration(s)
 ! Has the track crossed R*? R/Rsun = sqrt(L/(4 pi sigma))/(Teff^2 Rsun).
 ! If it has not, store this model's L, age and R and return.
       log_l_lsun = s%log_L_lsun
-      log_teff = s%log_Teff
       current_age = s%age_gyr
       run_index = s%current_card
       s%just_passed_target_radius_flag=.false.
-      teff_current = exp10(log_teff)
-      r_rsun_current = sqrt((exp10(log_l_lsun))*s%solar_luminosity_cgs/ &
-           (c4pi*csig))/(teff_current*teff_current*s%solar_radius_cgs)
-      if(r_rsun_current > s%r_rsun_prev_model) then
-         if(.not.(r_rsun_current > s%calibration_target_radius_rsun.and. &
-              s%r_rsun_prev_model <= s%calibration_target_radius_rsun)) then
-              s%log_l_lsun_prev_model = log_l_lsun
-              s%age_gyr_prev_model = current_age
-              s%r_rsun_prev_model = r_rsun_current
-              return
-          end if
+      r_rsun_current = model_radius_rsun(s)
+      if (r_rsun_current > s%r_rsun_prev_model) then
+         crossed = r_rsun_current > s%calibration_target_radius_rsun .and. &
+              s%r_rsun_prev_model <= s%calibration_target_radius_rsun
       else
-          if (.not.(r_rsun_current < s%calibration_target_radius_rsun.and. &
-               s%r_rsun_prev_model >= s%calibration_target_radius_rsun)) then
-              s%log_l_lsun_prev_model = log_l_lsun
-              s%age_gyr_prev_model = current_age
-              s%r_rsun_prev_model = r_rsun_current
-              return
-           end if
+         crossed = r_rsun_current < s%calibration_target_radius_rsun .and. &
+              s%r_rsun_prev_model >= s%calibration_target_radius_rsun
       end if
-!
+      if (.not. crossed) then
+         call store_calibration_model(s)
+         return
+      end if
+
       lines = unwritten_line
       write(lines,*) ' Just passed R*'
       call core_terminal(lines)
@@ -265,7 +258,7 @@ subroutine check_star_calibration(s)
       write(lines,*) '#Just passed R*'
       call core_log(lines)
       s%just_passed_target_radius_flag = .true.
-!
+
 ! The previous model lies on one side of R* and this one on the other:
 ! interpolate log L and the age to R*, linearly in R/Rsun,
 !   log L(R*) = log L + (d log L/dR) (R* - R),
@@ -282,8 +275,9 @@ subroutine check_star_calibration(s)
            s%log_l_lsun_at_target_radius], text=' X, LogL/Lsun at R* =')
       call core_log_values([s%card_rescale_targets(i_target_x,run_index-1), &
            s%log_l_lsun_at_target_radius], text='#X, LogL/Lsun at R* =')
-      luminosity_matches = abs(exp10(s%log_l_lsun_at_target_radius)-s%control%target_luminosity_lsun) &
- <= s%control%target_star_luminosity_tolerance
+      luminosity_matches = &
+           abs(exp10(s%log_l_lsun_at_target_radius)-s%control%target_luminosity_lsun) &
+           <= s%control%target_star_luminosity_tolerance
 ! No pair of cards follows this one (the run arrays end at num_cards):
 ! the calibration ends with this crossing, and its verdict.
       if (run_index + star_calib_cards_per_cycle > s%num_cards) then
@@ -301,38 +295,34 @@ subroutine check_star_calibration(s)
 ! same X, stopped at the interpolated age at R* (converted from Gyr to
 ! yr).
          s%star_found_flag=.true.
-       s%card_stops_active(run_index+1) = .true.
-       s%card_max_age_yr(run_index+1) = s%age_gyr_at_target_radius*years_per_gyr
-       s%card_stops_active(run_index+2) = .true.
-       s%card_max_age_yr(run_index+2) = s%age_gyr_at_target_radius*years_per_gyr
-       s%card_rescale_targets(i_target_x,run_index+1) = s%card_rescale_targets(i_target_x,run_index-1)
-       s%card_initial_x(run_index+1) = s%card_rescale_targets(i_target_x,run_index+1)
-       s%card_initial_x(run_index+2) = s%card_initial_x(run_index+1)
-!
-      call core_terminal_values([s%age_gyr_at_target_radius], &
-           text=' Have hit R* & L*, prepare final run to age:')
-      call core_log_values([s%age_gyr_at_target_radius], &
-           text='#Have hit R* & L*, prepare final run to age:')
-         return
+         s%card_stops_active(run_index+1) = .true.
+         s%card_max_age_yr(run_index+1) = s%age_gyr_at_target_radius*years_per_gyr
+         s%card_stops_active(run_index+2) = .true.
+         s%card_max_age_yr(run_index+2) = s%age_gyr_at_target_radius*years_per_gyr
+         s%card_rescale_targets(i_target_x,run_index+1) = s%card_rescale_targets(i_target_x,run_index-1)
+         s%card_initial_x(run_index+1) = s%card_rescale_targets(i_target_x,run_index+1)
+         s%card_initial_x(run_index+2) = s%card_initial_x(run_index+1)
+         call core_terminal_values([s%age_gyr_at_target_radius], &
+              text=' Have hit R* & L*, prepare final run to age:')
+         call core_log_values([s%age_gyr_at_target_radius], &
+              text='#Have hit R* & L*, prepare final run to age:')
+      else if (run_index == star_calib_cards_per_cycle) then
+! First pass (the first evolving card): save log L at R*, lower X by
+! x_calibration_step (Y up by the same at fixed Z), and start the next
+! run.
+         s%log_l_lsun_at_target_radius_prev_run = s%log_l_lsun_at_target_radius
+         prev_x = s%card_rescale_targets(i_target_x,run_index-1)
+         new_x = prev_x - x_calibration_step
+         s%card_rescale_targets(i_target_x,run_index+1) = new_x
+         s%card_initial_x(run_index+1) = new_x
+         s%card_initial_x(run_index+2) = new_x
+         lines = unwritten_line
+         write(lines,'(a,f5.3,a,1pe23.15)') ' star calibration, first pass: X lowered by ', &
+              x_calibration_step, ' (Y raised), next X = ', new_x
+         call core_terminal(lines)
+         lines(1)(1:1) = '#'
+         call core_log(lines)
       else
-         if (run_index == 2) then
-! First pass: save log L at R*, lower X by x_calibration_step (Y up by
-! the same at fixed Z), and start the next run.
-            s%log_l_lsun_at_target_radius_prev_run = s%log_l_lsun_at_target_radius
-          prev_x = s%card_rescale_targets(i_target_x,run_index-1)
-          new_x = prev_x - x_calibration_step
-          s%card_rescale_targets(i_target_x,run_index+1) = new_x
-          s%card_initial_x(run_index+1) = new_x
-          s%card_initial_x(run_index+2) = new_x
-!
-      lines = unwritten_line
-      write(lines,'(a,f5.3,a,1pe23.15)') ' star calibration, first pass: X lowered by ', &
-           x_calibration_step, ' (Y raised), next X = ', new_x
-      call core_terminal(lines)
-      lines(1)(1:1) = '#'
-      call core_log(lines)
-            return
-       else
 ! Later passes (cards 4, 6, 8, ...): a secant step from this run's and
 ! the previous run's X and log L at R*,
 !   dX/dlog L = (X_n - X_n-1)/(log L(R*)_n - log L(R*)_n-1),
@@ -340,26 +330,59 @@ subroutine check_star_calibration(s)
 ! with X_n = card_rescale_targets(i_target_x, run_index-1) and
 ! X_n-1 = card_rescale_targets(i_target_x, run_index-3).
 ! Save log L(R*) and start the next run.
-            new_x = s%card_rescale_targets(i_target_x, run_index-1)
-          prev_x = s%card_rescale_targets(i_target_x, run_index-3)
-            dx_dlogl = (new_x-prev_x)/ &
-                 (s%log_l_lsun_at_target_radius-s%log_l_lsun_at_target_radius_prev_run)
-          new_x = dx_dlogl*(log10(s%control%target_luminosity_lsun)- &
-               s%log_l_lsun_at_target_radius)+new_x
-!
-      lines = unwritten_line
-      write(lines,'(a,i0,a,1pe23.15)') ' star calibration: secant step, card ', run_index, &
-           ', next X = ', new_x
-      call core_terminal(lines)
-      lines(1)(1:1) = '#'
-      call core_log(lines)
-          s%log_l_lsun_at_target_radius_prev_run = s%log_l_lsun_at_target_radius
-          s%card_rescale_targets(i_target_x,run_index+1) = new_x
-          s%card_initial_x(run_index+1) = new_x
-          s%card_initial_x(run_index+2) = new_x
-       end if
+         new_x = s%card_rescale_targets(i_target_x, run_index-1)
+         prev_x = s%card_rescale_targets(i_target_x, run_index-3)
+         dx_dlogl = (new_x-prev_x)/ &
+              (s%log_l_lsun_at_target_radius-s%log_l_lsun_at_target_radius_prev_run)
+         new_x = dx_dlogl*(log10(s%control%target_luminosity_lsun)- &
+              s%log_l_lsun_at_target_radius)+new_x
+         lines = unwritten_line
+         write(lines,'(a,i0,a,1pe23.15)') ' star calibration: secant step, card ', run_index, &
+              ', next X = ', new_x
+         call core_terminal(lines)
+         lines(1)(1:1) = '#'
+         call core_log(lines)
+         s%log_l_lsun_at_target_radius_prev_run = s%log_l_lsun_at_target_radius
+         s%card_rescale_targets(i_target_x,run_index+1) = new_x
+         s%card_initial_x(run_index+1) = new_x
+         s%card_initial_x(run_index+2) = new_x
       end if
 end subroutine check_star_calibration
+
+! ---------------------------------------------------------------
+! The model's L, age and R kept as the star calibration's previous
+! model, the one the next model's radius is compared with. Called for a
+! model that did not cross R* (check_star_calibration) and for the first
+! model of each even card (check_stop_conditions), so that every pass
+! compares models of its own track from its first model on; until
+! 2026-11 a pass's second model was compared with R = 0, or with the
+! previous pass's last model, and a track that starts above R* "crossed"
+! it there (docs/bug_sweep.md M328).
+!   star reads: age_gyr, log_L_lsun
+!   star writes: age_gyr_prev_model, log_l_lsun_prev_model,
+!     r_rsun_prev_model
+subroutine store_calibration_model(s)
+      type(star_info), intent(inout) :: s
+      s%log_l_lsun_prev_model = s%log_L_lsun
+      s%age_gyr_prev_model = s%age_gyr
+      s%r_rsun_prev_model = model_radius_rsun(s)
+end subroutine store_calibration_model
+
+! ---------------------------------------------------------------
+! R/Rsun of the star's model, from L = 4 pi R^2 sigma Teff^4:
+! R/Rsun = sqrt(L/(4 pi sigma))/(Teff^2 Rsun).
+!   star reads: log_L_lsun, log_Teff, solar_luminosity_cgs,
+!     solar_radius_cgs
+!   star writes: none
+real(dp) function model_radius_rsun(s) result(r_rsun)
+      use physical_constants, only: c4pi, csig
+      use math_lib
+      type(star_info), intent(inout) :: s
+      real(dp) :: teff
+      teff = exp10(s%log_Teff)
+      r_rsun = sqrt((exp10(s%log_L_lsun))*s%solar_luminosity_cgs/ &
+           (c4pi*csig))/(teff*teff*s%solar_radius_cgs)
+end function model_radius_rsun
 
 ! ---------------------------------------------------------------
 !----------------------------------------------------------------------
@@ -419,7 +442,7 @@ subroutine setup_solar_calibration(s, age_scale_factor)
          s%card_z_ramp_core_z(i) = s%card_z_ramp_core_z(1)
          s%card_z_ramp_inner_mass_fraction(i) = s%card_z_ramp_inner_mass_fraction(1)
          s%card_z_ramp_outer_mass_fraction(i) = s%card_z_ramp_outer_mass_fraction(1)
-         do j = 1,4
+         do j = 1,n_rescale_targets
             s%card_rescale_targets(j,i) = s%card_rescale_targets(j,1)
          end do
       end do
@@ -523,7 +546,7 @@ subroutine setup_star_calibration(s)
          s%card_z_ramp_core_z(i) = s%card_z_ramp_core_z(1)
          s%card_z_ramp_inner_mass_fraction(i) = s%card_z_ramp_inner_mass_fraction(1)
          s%card_z_ramp_outer_mass_fraction(i) = s%card_z_ramp_outer_mass_fraction(1)
-         do j = 1,4
+         do j = 1,n_rescale_targets
             s%card_rescale_targets(j,i) = s%card_rescale_targets(j,1)
          end do
       end do

@@ -12,7 +12,8 @@
 ! errors that run_yrec reports via ierr. The namelist paths are
 ! injected through star_info_lib's overrides rather than argv, since
 ! an embedded engine must not read the host process's command line.
-! Empty strings fall back to the CLI defaults (yrec8.nml1/.nml2).
+! Empty strings, or NULL pointers, fall back to the CLI defaults
+! (yrec8.nml1/.nml2).
 !
 ! Re-entrancy contract: repeated yrec_run calls in one process are
 ! supported and byte-identical to fresh processes (phase-five step C;
@@ -25,13 +26,15 @@
 ! that integration among them); zero is success.
 ! A namelist path longer than 256 characters (the override slots) is
 ! refused with status 1 before anything runs: cut, it would name another
-! file. After the run the C entry closes the run's own units
-! (yrec_reset's close_run_units), not the host's. The two arguments are
+! file. After the run the C entry closes the run's own units, every
+! file the run opened (yrec_reset's close_run_units), not the host's. The two arguments are
 ! the C strings' addresses (type(c_ptr), passed by value, as a char *
-! is); their lengths are C's strlen.
+! is); their lengths are C's strlen, and a NULL pointer is read as an
+! empty string.
 module yrec_capi
       use run_driver, only: run_yrec
-      use, intrinsic :: iso_c_binding, only: c_char, c_f_pointer, c_int, c_ptr, c_size_t
+      use, intrinsic :: iso_c_binding, only: c_associated, c_char, c_f_pointer, c_int, &
+           c_ptr, c_size_t
       use star_info_lib, only: control_nml_override, physics_nml_override
       use yrec_reset, only: close_run_units
       use core_messages, only: core_terminal, message_length
@@ -55,8 +58,8 @@ contains
             integer :: ierr
             character(len=message_length) :: line
 
-            if (c_strlen(control_nml) > len(control_nml_override) .or. &
-                 c_strlen(physics_nml) > len(physics_nml_override)) then
+            if (c_string_length(control_nml) > len(control_nml_override) .or. &
+                 c_string_length(physics_nml) > len(physics_nml_override)) then
                write(line,'(a,i0,a)') ' ERROR: yrec_run: a namelist path is longer than ', &
                     len(control_nml_override), ' characters; nothing run'
                call core_terminal([line])
@@ -81,16 +84,26 @@ contains
             yrec_run = int(ierr, c_int)
       end function yrec_run
 
+      ! The length of the C string at cstr (NUL-terminated); 0 for a
+      ! NULL pointer, which a C host may pass for "the default" (M331).
+      integer function c_string_length(cstr) result(n)
+            type(c_ptr), intent(in) :: cstr
+            n = 0
+            if (c_associated(cstr)) n = int(c_strlen(cstr))
+      end function c_string_length
+
       ! The C string at cstr (NUL-terminated, at most 256 characters,
-      ! which yrec_run has checked), blank-padded.
+      ! which yrec_run has checked), blank-padded; blank for a NULL
+      ! pointer.
       function c_string_value(cstr) result(fstr)
             type(c_ptr), intent(in) :: cstr
             character(len=256) :: fstr
             character(kind=c_char), pointer :: chars(:)
             integer :: i, n
 
-            n = int(c_strlen(cstr))
+            n = c_string_length(cstr)
             fstr = ' '
+            if (n == 0) return
             call c_f_pointer(cstr, chars, [n])
             do i = 1, n
                fstr(i:i) = chars(i)

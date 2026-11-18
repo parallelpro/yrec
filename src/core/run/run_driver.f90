@@ -90,6 +90,9 @@ subroutine run_yrec(ierr)
 ! Cards per calibration cycle (see the protocol comment in the run
 ! loop).
       integer, parameter :: solar_calib_cards_per_cycle = 3
+! The solar calibration gives up when its cycle counter, which starts at
+! 1, reaches this: after max_calibration_cycles - 1 unconverged triples.
+      integer, parameter :: max_calibration_cycles = 15
       logical :: runs_complete
       integer :: monte_carlo_run_number
       real(dp) :: age_scale_factor
@@ -196,7 +199,8 @@ subroutine run_yrec(ierr)
 !  either declares convergence or writes the Newton-corrected
 !  (X, Z, alpha) into the next triple's cards. setup_solar_calibration
 !  expands the run list to 16 such triples (48 cards); the verdict
-!  below gives up after 14 unconverged triples.
+!  below gives up after max_calibration_cycles - 1 = 14 unconverged
+!  triples.
 !
 !  Star calibration (calibrate_star_flag; setup_star_calibration and
 !  check_star_calibration): the cards run in pairs (calibration's
@@ -295,11 +299,11 @@ subroutine end_of_card_calibration(runs_complete)
                else
 ! Not converged: count the cycle (MHP 8/96).
                   convergence_iterations = convergence_iterations + 1
-! Give up when the counter reaches 15. It starts at 1, so this is
-! after 14 unconverged triples.
-                  if (convergence_iterations >= 15) then
-                     s%termination_reason = &
-                          'solar calibration NOT converged after 14 cycles'
+! Give up when the counter reaches max_calibration_cycles.
+                  if (convergence_iterations >= max_calibration_cycles) then
+                     write(s%termination_reason,'(a,i0,a)') &
+                          'solar calibration NOT converged after ', &
+                          max_calibration_cycles - 1, ' cycles'
                      runs_complete = .true.
                      return
                   end if
@@ -327,33 +331,33 @@ end subroutine end_of_card_calibration
 ! and the convection-zone edges; estimate the first timestep; and zero
 ! the entropy terms. Sets ierr on a configuration or model-read error.
 subroutine begin_kind_card
-         s%current_card_envelope_x = s%card_initial_x(s%current_card)
-         s%current_card_envelope_z = s%card_initial_z(s%current_card)
-         s%mixing_length_alpha = s%card_mixing_length_alpha(s%current_card)
+      s%current_card_envelope_x = s%card_initial_x(s%current_card)
+      s%current_card_envelope_z = s%card_initial_z(s%current_card)
+      s%mixing_length_alpha = s%card_mixing_length_alpha(s%current_card)
 ! The card's settings records: convection's takes the card's mixing
 ! length; rotation's and element diffusion's are refreshed.
-         call install_card_settings(s)
-       s%fit_point_move_requested = s%card_moves_fit_point(s%current_card)
-       s%requested_log_fit_point_mass_fraction = s%card_log_fit_point_mass_fraction(s%current_card)
-       s%reset_triangle = .false.
-       s%model_diverged_flag = .false.
+      call install_card_settings(s)
+      s%fit_point_move_requested = s%card_moves_fit_point(s%current_card)
+      s%requested_log_fit_point_mass_fraction = s%card_log_fit_point_mass_fraction(s%current_card)
+      s%reset_triangle = .false.
+      s%model_diverged_flag = .false.
 ! Arm helium settling for the card (the settling routines switch it off
 ! when the centre runs out of hydrogen).
-       s%settling_active = s%physics%diffuse_helium_active
+      s%settling_active = s%physics%diffuse_helium_active
 ! A card that reads the starting model starts with the deck's
 ! structure-based timestep limits, as the run's first card does
 ! (compute_timestep switches them off past log Tc 7.1 with L_grav < 0,
 ! for the rest of the run until then; M31).
-       if (s%card_from_starting_model(s%current_card)) &
-            s%structure_dt_limits_active = s%physics%use_structure_dt_limits
+      if (s%card_from_starting_model(s%current_card)) &
+           s%structure_dt_limits_active = s%physics%use_structure_dt_limits
 ! Zero the total angular momentum and rotational kinetic energy before
 ! the model read (MHP 10/02).
-         s%total_angular_momentum = 0.0D0
-         s%total_rotational_ke = 0.0D0
+      s%total_angular_momentum = 0.0D0
+      s%total_rotational_ke = 0.0D0
 ! Read the starting model, or reuse the one in memory, and rescale it
 ! if the card asks for that.
-       call read_starting_model(s, ierr)
-       if (ierr /= 0) return
+      call read_starting_model(s, ierr)
+      if (ierr /= 0) return
 
 ! A fresh starting-model load restarts the model counter, so the
 ! history numbering begins at set_initial_model_number (default 1)
@@ -362,17 +366,17 @@ subroutine begin_kind_card
 ! for continuing a run. This comes after read_starting_model so that
 ! the stored number still gates the evolved-model consistency warnings
 ! there.
-       if (s%card_from_starting_model(s%current_card) .and. &
+      if (s%card_from_starting_model(s%current_card) .and. &
            s%control%set_initial_model_number > 0) then
-          s%model_number = s%control%set_initial_model_number - 1
-       end if
+         s%model_number = s%control%set_initial_model_number - 1
+      end if
 
       call check_rotation_initialised(s, ierr)
       if (ierr /= 0) return
 ! Disarm the stop conditions whose thresholds the starting model has
 ! already passed (e.g. a central-abundance stop already below its
 ! target) (MHP 10/24).
-         call init_stop_conditions(s)
+      call init_stop_conditions(s)
 ! Optional diagnostic: the per-shell neutrino-flux table of each card's
 ! starting model (compute_neutrino_fluxes, legacy LNUTAB;
 ! core/diagnostics/neutrino_flux_output.f90).
@@ -380,39 +384,43 @@ subroutine begin_kind_card
          call write_neutrino_flux_table(s)
       end if
 ! The stellar mass in solar units, for the pulsation output.
-         s%pulsation_mass_msun=s%star_mass
-! Record the starting base of the surface convection zone and zero the
-! convective turnover timescale (MHP 08/02).
-         s%envelope_cz_bottom_index_start = s%envelope_cz_bottom_index
-         s%convective_turnover_timescale = 0.0D0
+      s%pulsation_mass_msun=s%star_mass
+! Record the starting base of the surface convection zone.
+      s%envelope_cz_bottom_index_start = s%envelope_cz_bottom_index
+! Zero the convective turnover timescale (MHP 08/02), which
+! read_starting_model has just computed: the card's first step runs
+! with it at zero (docs/bug_sweep.md M325, open: the fix is to delete
+! this assignment, a measured commit).
+      s%convective_turnover_timescale = 0.0D0
 ! Write the headers of the output files.
       call output_run_header(s, s%star_mass, ierr)
       if (ierr /= 0) return
 
-       if (s%physics%helium_flash_active) then
+      if (s%physics%helium_flash_active) then
 ! Through the helium flash a timestep cut reloads the model stored on
 ! last_model_unit, and fails if none is there; so once a model has been
 ! computed, store the card's starting model on that unit.
-          if (s%punch_pending_flag) then
-             call write_mod_model(s, last_model_unit, replace=.true., ierr=ierr)
-             if (ierr /= 0) return
-          end if
-       end if
+         if (s%punch_pending_flag) then
+            call write_mod_model(s, last_model_unit, replace=.true., ierr=ierr)
+            if (ierr /= 0) return
+         end if
+      end if
 
 ! Locate the hydrogen-burning shell and the boundaries of the central
 ! and surface convection zones (if present).
-         call locate_shell_boundaries(s)
+      call locate_shell_boundaries(s)
 ! Estimate the first timestep of the card.
-       call compute_timestep(s)
+      call compute_timestep(s)
 
-       s%dt_saved = s%dt
-! Zero the entropy terms.
-         do i = 1,s%nz
-            s%dlog_temperature_dt(i) = 0.0D0
-            s%dlog_pressure_dt(i) = 0.0D0
-            s%dln_luminosity_dt(i) = 0.0D0
-            s%dlog_radius_dt(i) = 0.0D0
-         end do
+      s%dt_saved = s%dt
+! Zero the rates of change of the structure (the next model's first
+! guess).
+      do i = 1,s%nz
+         s%dlog_temperature_dt(i) = 0.0D0
+         s%dlog_pressure_dt(i) = 0.0D0
+         s%dln_luminosity_dt(i) = 0.0D0
+         s%dlog_radius_dt(i) = 0.0D0
+      end do
 
 end subroutine begin_kind_card
 

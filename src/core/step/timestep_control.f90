@@ -17,7 +17,7 @@ module timestep_control
 contains
 
 !----------------------------------------------------------------------
-! compute_timestep (legacy htimer.f)
+! compute_timestep
 !----------------------------------------------------------------------
 ! The timestep for the next model, in steps:
 !   1. a fixed timestep (card_fixed_timestep_active for this run card)
@@ -43,7 +43,9 @@ contains
 !      it (clip_to_end_age).
 ! It reads the model from the star and sets star%dt to the new timestep
 ! (s) and star%timestep_yr to it in years. A negative star%dt (a stored
-! model's) skips steps 1-2, and only its magnitude is kept.
+! model's) skips steps 1-2, and only its magnitude is kept; the limits
+! themselves are never negative (a kernel whose ratio cannot be formed
+! returns dt_unlimited).
 !   star reads: card_fixed_timestep_active, card_fixed_timestep_yr,
 !     core_cz_top_index, current_card, h_shell_bot_index,
 !     h_shell_mid_index, log_Teff, log_Teff_start, logP, logP_start,
@@ -88,8 +90,10 @@ subroutine compute_timestep(s)
                  s%surface_luminosity_lsun_start, s%log_Teff, s%luminosity_lsun(s%nz))
             call take_tightest_limit()
          end if
+      else
+! A stored model's negative step: its magnitude.
+         s%dt = abs(s%dt)
       end if
-      s%dt = abs(s%dt)
       s%timestep_yr = s%dt/seconds_per_year
       call clip_to_end_age(s)
 
@@ -210,4 +214,11 @@ subroutine clip_to_end_age(s)
       end if
 end subroutine clip_to_end_age
 
+! ---------------------------------------------------------------
+! Sources
+!   The F77's HTIMER (htimer.f); the switch-off of the structure-based
+!   limits is MHP 9/01's, the end-age stop's scope MHP 10/24's. The limits
+!   became timestep_limits' kernels in round 2 (2026-11); the magnitude of
+!   a stored model's negative step is taken in its own branch since
+!   docs/bug_sweep.md M320.
 end module timestep_control

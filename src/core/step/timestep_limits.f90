@@ -211,7 +211,9 @@ end subroutine omega_change_limit
 ! in the mass m_cc inside the convective-core edge (the centre without a
 ! convective core) at the luminosity L_cc there,
 !   dt = E_H Delta X m_cc/(L_cc Lsun),
-! X_cc being X at the core edge.
+! X_cc being X at the core edge; no limit where L_cc <= 0 (a core whose
+! neutrino losses exceed its heating, or one that expands: the ratio
+! would be negative, and the smallest of the limits).
 ! Shell burning (central X below that): the smaller of the time to burn
 ! atime(itime_dx_total) Msun of material with the surface X at L_H,
 !   E_H atime(itime_dx_total) X_surf Msun/(L_H Lsun),
@@ -220,9 +222,7 @@ end subroutine omega_change_limit
 !   atime(itime_dx_shell)/|dX/dt|,
 ! with dX/dt from the network's reactions (compute_abundance_rates) on
 ! the zone's rates and its start-of-step abundances (composition_start).
-! (The legacy code took dX/dt from the equilibrium burn, with He3 and
-! the CN cycle in equilibrium.) Masses in g, L in Lsun, composition in
-! the star's slots.
+! Masses in g, L in Lsun, composition in the star's slots.
 real(dp) function hydrogen_burning_limit(set, hydrogen_luminosity, &
      composition, composition_start, log_density, log_temperature, &
      enclosed_mass, luminosity, core_edge, shell_mid, n) result(dt)
@@ -245,6 +245,8 @@ real(dp) function hydrogen_burning_limit(set, hydrogen_luminosity, &
 ! Core burning. With a convective core, the limit is the time to burn
 ! the given amount of hydrogen in the whole core, not only at the centre.
       if (composition(i_h1,1) >= set%timestep_factors(itime_core_min)) then
+! A core edge that does not shine sets no limit (bug_sweep M320).
+         if (luminosity(core_edge) <= 0.0d0) return
          delta_x = min(set%timestep_factors(itime_dx_core_tot), &
               set%timestep_factors(itime_dx_core_frac)*composition(i_h1,core_edge))
          dt = (h_burn_energy_per_gram/set%solar_luminosity_cgs)* &
@@ -282,7 +284,7 @@ end function hydrogen_burning_limit
 ! time to burn
 !   Delta Y = min(atime(itime_dy_core_tot), atime(itime_dy_core_frac) Y_core)
 ! in the mass m_cc inside the core edge at the luminosity L_cc there,
-!   dt = E_He Delta Y m_cc/(L_cc Lsun).
+!   dt = E_He Delta Y m_cc/(L_cc Lsun), and no limit where L_cc <= 0.
 ! Shell burning (core helium exhausted), mirroring the shell branch of
 ! hydrogen_burning_limit: at the zone just below the H-burning shell's
 ! bottom (the top of the helium core), with its m, L and Y, the smaller
@@ -290,10 +292,7 @@ end function hydrogen_burning_limit
 !   E_He atime(itime_dy_total) Msun/(L Lsun)   (Msun of helium burned per step),
 !   E_He atime(itime_dy_shell) Y m/(L Lsun)    (fraction of Y burned),
 ! each used only when its factor is positive, and only where L > 0;
-! dt_unlimited otherwise. (2026 deviation, bugsweep sec-10/11: ytime.f
-! reused the previous call's timestep here, times m/L again, which gave
-! about 0 s and, once the SAVE that kept it was gone, 0 and then NaN:
-! the run_from_zahb_to_tahb failure.)
+! dt_unlimited otherwise.
 real(dp) function helium_burning_limit(set, triple_alpha_luminosity, &
      triple_alpha_rate, composition, log_density, enclosed_mass, &
      luminosity, core_edge, shell_bottom) result(dt)
@@ -315,6 +314,8 @@ real(dp) function helium_burning_limit(set, triple_alpha_luminosity, &
       end if
       core_helium_fraction = 1d0 - composition(i_metals,core_edge)
       if (core_helium_fraction >= set%timestep_factors(itime_core_min)) then
+! A core edge that does not shine sets no limit (bug_sweep M320).
+         if (luminosity(core_edge) <= 0.0d0) return
          dt = min(set%timestep_factors(itime_dy_core_tot), &
               set%timestep_factors(itime_dy_core_frac)*core_helium_fraction)
          dt = (he_burn_energy_per_gram/set%solar_luminosity_cgs)*dt* &
@@ -403,4 +404,15 @@ pure real(dp) function tightest_timestep(set, previous_dt, limits) result(dt)
       end if
 end function tightest_timestep
 
+! ---------------------------------------------------------------
+! Sources
+!   The F77's PTIME, WTIME, XTIME, YTIME and ENTIME (JVS 04/14), as kernels
+!   since round 2 (2026-11). Deviations from them: the hydrogen shell
+!   branch's dX/dt comes from the network (the legacy code took it from
+!   the equilibrium burn, with He3 and the CN cycle in equilibrium); the
+!   helium shell branch is 2026's (ytime.f reused the previous call's
+!   timestep there, times m/L again, which gave about 0 s and, once the
+!   SAVE that kept it was gone, 0 and then NaN: the run_from_zahb_to_tahb
+!   failure); a core edge with L <= 0 sets no limit (docs/bug_sweep.md
+!   M320; the F77 returned a negative one, which won the minimum).
 end module timestep_limits
