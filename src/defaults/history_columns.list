@@ -25,8 +25,8 @@ log_R                     ! log10(R/Rsun)
 log_g                     ! log10 surface gravity (cgs)
 log_Teff                  ! log10 effective temperature
 mass_conv_core            ! convective core mass (Msun)
-cz_bot_mass
-cz_bot_radius
+cz_bot_mass               ! mass coordinate of the base of the outer convection zone (Msun)
+cz_bot_radius             ! radius of the base of the outer convection zone (Rsun; divide by 10**log_R for r/R)
 !cz_bot_temperature
 !cz_bot_density
 !cz_bot_pressure
@@ -102,5 +102,14 @@ tau_conv_cz               ! convective turnover timescale (s)
 log_P_photosphere         ! log10 photospheric pressure
 !nu_max                   ! scaling-relation nu_max [uHz] (nu_max_sun reference)
 !delta_nu_rho             ! mean-density scaling estimate of delta_nu [uHz] (delta_nu_sun reference)
-!delta_nu                 ! asymptotic p-mode large separation [uHz] (sound-travel-time integral, center -> photosphere)
+! delta_nu is not the large separation one observes: it is about 5% above it
+! (142.7 uHz on the standard solar model, whose radial modes are 135.8 uHz
+! apart at n = 15 to 25), because the sound-travel-time integral stops at the
+! photosphere and so leaves out the atmosphere, where the sound speed is
+! lowest (through the atmosphere of the pulse file it is 137.8). It also
+! starts at the innermost mesh point, not at the centre (0.4%). MESA's
+! delta_nu is defined the same way. To compare with an observed large
+! separation use delta_nu_rho (within 0.5% on that model) or a pulsation
+! code on the pulse files (docs/PHYSICS_VALIDATION.md, section 2).
+!delta_nu                 ! asymptotic p-mode large separation [uHz], [2 int dr/c]^-1, innermost point -> photosphere: 5% above the observed one (above)
 !delta_Pg                 ! asymptotic l=1 g-mode period spacing [s] (Brunt-Vaisala integral over the innermost cavity)

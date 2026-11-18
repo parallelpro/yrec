@@ -13,6 +13,16 @@
 ! every pulse_gyre_interval models (the point set's first nz points;
 ! yrec_output passes them). GSM output needs HDF5 (make USE_HDF5=1);
 ! without it, write_gsm_pulse is a stub and gsm_supported is .false.
+!
+! Newton's G: FGONG carries it (global 15). The GYRE text and GSM
+! formats have no field for it, and the model is in hydrostatic
+! equilibrium for the run's G, grav_const_cgs: 6.6725218e-8 (log10 G =
+! -7.17571, physical_constants) unless the control G_cgs sets another.
+! That is 2.7e-4 below GYRE's own default (6.67430e-8, CODATA 2018), so
+! a pulsation code that reads those two formats must be given the run's
+! G (GYRE: &constants G_GRAVITY = 6.6725218d-8 /), or the model it sees
+! is out of equilibrium by 2.7e-4. Nothing in the files says so; the
+! control pulse_format's description and io/README.md do.
 module pulsation_output
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use run_messages, only: check_io
@@ -155,6 +165,7 @@ end subroutine write_fgong_pulse
 ! GSM, the GYRE Stellar Model HDF5 format (v1.10): root attributes n,
 ! M_star, R_star, L_star and version, and one double dataset per column,
 ! the same 18 columns as the GYRE text file from the same point set.
+! The format has no G (the module header says which G the reader needs).
 ! HDF5 creates the file under this run's own name beside pulse_path
 ! (replacement_path), which is renamed over pulse_path when every call
 ! succeeded and removed otherwise (finish_replacement_file), as the
@@ -264,7 +275,8 @@ end function gsm_supported
 ! pulse_format is 'GYRE' (the extended point set, M_star, R_star and
 ! L_star the photosphere's), and the interior-only file every
 ! pulse_gyre_interval models (the interior points, M_star, R_star and
-! L_star the outermost interior shell's).
+! L_star the outermost interior shell's). The format has no G (the
+! module header says which G the reader needs).
 subroutine write_gyre_pulse(n, pts, mstar_g, rstar_cm, lstar_cgs, path, ierr)
       use stitched_model, only: ipul_gyre_last
       integer, intent(in) :: n
