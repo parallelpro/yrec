@@ -273,3 +273,17 @@ check = 'depth: each step is dtau over the mean rho kappa'
 file = 'core/envelope/envelope_integration_kernel.f90'
 old = 'st%prev_density = pt%density'
 new = 'st%prev_density = 2.0d0*pt%density'
+
+[[mutation]]
+id = 'envelope-cap-01'
+check = 'retry: no start before the photosphere: ierr = 1'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = 'if (try == max_start_tries) exit'
+new = 'if (try == max_start_tries) return'
+
+[[mutation]]
+id = 'envelope-cap-02'
+check = 'retry: it stops after max_start_tries densities'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = 'call add_envint_event(events, envint_start_exhausted, counts=[max_start_tries, 0], &'
+new = 'call add_envint_event(events, envint_start_exhausted, counts=[max_start_tries-1, 0], &'

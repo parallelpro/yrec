@@ -27,6 +27,8 @@ thin: vertex = the surface point                             0.0E+00  ok
 retry: an envint_start_retry event first                     1.0E+00  ok
 retry: its start lies past the photosphere                   8.4E+00  ok
 retry: then the integration succeeds                         0.0E+00  ok
+retry: no start before the photosphere: ierr = 1             1.0E+00  ok
+retry: it stops after max_start_tries densities              1.1E+01  ok
 -- errors
 atmosphere maxstp: ierr = 1, its event last                  1.0E+00  ok
 atmosphere maxstp: no photospheric pressure                 -1.0E+99  ok

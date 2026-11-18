@@ -45,7 +45,11 @@
 !   retry       a starting density so high that the starting optical
 !               depth lies past the photosphere: an envint_start_retry
 !               event (its log tau above the photosphere's), then a
-!               normal integration.
+!               normal integration. A surface of log g = -5, whose start
+!               lies past the photosphere at any density: ierr = 1 and
+!               an envint_start_exhausted event after max_start_tries
+!               starting densities, the last max_start_tries - 1 decades
+!               below the first.
 !   errors      the error contracts: the atmosphere or the envelope
 !               that cannot finish in maxstp steps (steps of 1e-6)
 !               returns ierr = 1 and its maxstp event, last; the
@@ -94,7 +98,7 @@ program test_envelope_integration
       use envelope_integration_kernel, only: envint_config, envint_events, &
            fitting_vertex, integrate_envelope_atmosphere, envelope_termination, &
            max_log_fit_point_mass_fraction, no_photosphere_log10_pressure, &
-           envint_start_retry, &
+           max_start_tries, envint_start_retry, envint_start_exhausted, &
            envint_atmosphere_done, envint_atmosphere_maxstp, &
            envint_bsstep_limits, envint_bsstep_failed, envint_vertex, &
            envint_envelope_done, envint_envelope_maxstp
@@ -248,19 +252,27 @@ subroutine set_surface()
 end subroutine set_surface
 
 ! ---------------------------------------------------------------
-! One integration with the settings cfg, fitting vertex 1; the results
-! go to the program's variables.
-subroutine integrate(cfg)
+! One integration with the settings cfg at the solar surface (or at
+! another log Teff or log g), fitting vertex 1; the results go to the
+! program's variables.
+subroutine integrate(cfg, teff, gravity)
       type(envint_config), intent(in) :: cfg
+! log Teff and log g of the surface, when not the solar ones
+      real(dp), intent(in), optional :: teff, gravity
       type(envint_config) :: work
+      real(dp) :: surface_teff, surface_gravity
       integer :: saha_iterations
       work = cfg
+      surface_teff = log10_teff
+      if (present(teff)) surface_teff = teff
+      surface_gravity = log10_gravity
+      if (present(gravity)) surface_gravity = gravity
       vertex = fitting_vertex(index=1)
       saha_iterations = 0
       env_points%num_env_points = 0
       atm_points%num_atm_points = 0
       call integrate_envelope_atmosphere(work, 1.0_dp, 1.0_dp, 1.0_dp, &
-           log10_gravity, log10_radius_surface, log10_teff, x_surface, &
+           surface_gravity, log10_radius_surface, surface_teff, x_surface, &
            z_surface, 0.0_dp, saha_iterations, env_points, atm_points, &
            atm_point, switched_to_gray, log10_photo_pressure, events, ierr, &
            vertex)
@@ -573,6 +585,8 @@ end subroutine check_thin_envelope
 ! quiet).
 subroutine check_start_retry()
       type(envint_config) :: cfg
+      real(dp) :: decades
+      integer :: last
       cfg = base_cfg
       cfg%atm_step_initial = 1.0e-2_dp
       call integrate(cfg)
@@ -586,6 +600,20 @@ subroutine check_start_retry()
       end if
       call report('retry: then the integration succeeds', real(ierr, dp), &
            ierr == 0 .and. event_kind(events%num_events) == envint_envelope_done)
+! At log g = -5 the start lies past the photosphere whatever the
+! density: tau = kappa P/g, and P does not fall below the radiation's.
+      call integrate(base_cfg, gravity=-5.0_dp)
+      last = events%num_events
+      call report('retry: no start before the photosphere: ierr = 1', &
+           real(ierr, dp), ierr == 1 .and. event_kind(last) == envint_start_exhausted &
+           .and. last == max_start_tries)
+      if (event_kind(last) == envint_start_exhausted) then
+         decades = log10(base_cfg%atm_step_initial/events%event(last)%values(3))
+         call report('retry: it stops after max_start_tries densities', &
+              decades, events%event(last)%counts(1) == max_start_tries .and. &
+              abs(decades - real(max_start_tries - 1, dp)) <= 1.0e-9_dp .and. &
+              events%event(last)%values(1) > events%event(last)%values(2))
+      end if
 end subroutine check_start_retry
 
 ! ---------------------------------------------------------------

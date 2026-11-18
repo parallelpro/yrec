@@ -275,16 +275,17 @@ end subroutine gray_photosphere
 ! lookup, to the terminal and the run log; then the kernel's events in
 ! order. The completed integrations' step counts and errors go to the
 ! run log with the solver diagnostics on; a starting optical depth past
-! the photosphere goes to the run log; the integrations' failures go to
-! the terminal and the run log, with the vertex being fitted (vertex, 0
-! when none). The fitted vertex (envint_vertex) has no line: the
+! the photosphere goes to the run log; the integrations' failures (an
+! atmosphere or an envelope out of steps, an atmosphere out of starting
+! densities, a failed Bulirsch-Stoer step) go to the terminal and the
+! run log, with the vertex being fitted (vertex, 0 when none). The fitted vertex (envint_vertex) has no line: the
 ! triangle's diagnostics (compute_surface_boundary's) list every vertex.
 subroutine report_envint_events(events, switched_to_gray, vertex)
       use envelope_integration_kernel, only: envint_events, &
            envint_start_retry, envint_atmosphere_done, &
            envint_atmosphere_maxstp, envint_bsstep_limits, &
            envint_bsstep_failed, envint_vertex, envint_envelope_done, &
-           envint_envelope_maxstp
+           envint_envelope_maxstp, envint_start_exhausted
       use core_messages, only: core_report, core_log, message_length, &
            unwritten_line
       use run_messages, only: solver_diagnostics
@@ -358,6 +359,14 @@ subroutine report_envint_events(events, switched_to_gray, vertex)
          case (envint_envelope_maxstp)
             write(lines,'(1x,a,a,a,i0,a)') 'ERROR: envelope integration', trim(where), &
                  ': the envelope did not reach the fitting mass in ', e%counts(1), ' steps'
+            call core_report(lines)
+         case (envint_start_exhausted)
+            write(lines,'(1x,a,a,a,f9.4,a,f9.4,a,i0,a,1pe9.2,a)') &
+                 'ERROR: envelope integration', trim(where), &
+                 ': the atmosphere''s starting log tau, ', e%values(1), &
+                 ', still lies past the photosphere''s, ', e%values(2), ', after ', &
+                 e%counts(1), ' starting densities (the last ', e%values(3), &
+                 ' g/cm^3); run stopped'
             call core_report(lines)
          end select
          end associate

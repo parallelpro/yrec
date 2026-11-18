@@ -144,11 +144,18 @@ module envelope_integration_kernel
 !   envint_envelope_maxstp      the envelope did not reach the fitting
 !                               mass in maxstp steps (counts: maxstp;
 !                               ierr 1)
+!   envint_start_exhausted      the atmosphere's starting log tau lay
+!                               past the photosphere's at every one of
+!                               max_start_tries starting densities
+!                               (counts: max_start_tries; values: the
+!                               last starting log tau, the
+!                               photosphere's, the last starting
+!                               density; ierr 1)
       integer, parameter, public :: envint_start_retry = 1, &
            envint_atmosphere_done = 2, envint_atmosphere_maxstp = 3, &
            envint_bsstep_limits = 4, envint_bsstep_failed = 5, &
            envint_vertex = 6, envint_envelope_done = 7, &
-           envint_envelope_maxstp = 8
+           envint_envelope_maxstp = 8, envint_start_exhausted = 9
       type, public :: envint_event
             integer :: kind = 0
             integer :: counts(2) = 0
@@ -191,8 +198,13 @@ module envelope_integration_kernel
 ! The floor of a Bulirsch-Stoer step's error scale |y| + |h dy/dx|
 ! (legacy TINY), so that a variable at zero has a scale.
       real(dp), parameter :: step_scale_floor = 1.0d-30
-! A retried start of the atmosphere divides its starting density by this.
+! A retried start of the atmosphere divides its starting density by
+! this, and an atmosphere tries at most max_start_tries starting
+! densities: 12 decades below the control's value the pressure of the
+! start is the radiation's, which the density no longer lowers, so a
+! start still past the photosphere there will stay past it.
       real(dp), parameter :: start_density_divisor = 10.0d0
+      integer, parameter, public :: max_start_tries = 12
 ! An atmosphere point's gradient is the radiative one up to this margin
 ! above the adiabatic gradient, and the adiabatic one beyond it.
       real(dp), parameter :: radiative_gradient_margin = 1.0d-6
@@ -452,8 +464,10 @@ end subroutine find_table_surface
 ! then integrates log P in log tau down to the photosphere (tau = 2/3;
 ! 0.312 for Krishna Swamy), storing atm_points on the way. Very
 ! occasionally the starting tau lies past the photosphere; then the
-! guessed density is divided by 10 and the start found again. Skipped
-! when a table gave the surface; ierr after max_steps steps.
+! guessed density is divided by 10 and the start found again, at most
+! max_start_tries times in all. Skipped when a table gave the surface;
+! ierr 1 when no start lay before the photosphere, or after max_steps
+! steps.
 subroutine integrate_atmosphere(st, cfg, atm_points, events, ierr)
       type(integration_state), intent(inout) :: st
       type(envint_config), intent(in) :: cfg
@@ -461,6 +475,7 @@ subroutine integrate_atmosphere(st, cfg, atm_points, events, ierr)
       type(envint_events), intent(inout) :: events
       integer, intent(out) :: ierr
       real(dp) :: start_density
+      integer :: try
 ! The EOS at the starting point. It starts each integration as a new
 ! record (eos_results: the defaults that start the EOS's solvers afresh)
 ! and keeps its values from one try to the next, so that a retry's EOS
@@ -482,19 +497,24 @@ subroutine integrate_atmosphere(st, cfg, atm_points, events, ierr)
       st%log10_tau_photosphere = ttau_photosphere_x_limit(st%eqs%atm_choice)
       st%err_sum(1) = 0.0d0
       start_density = cfg%atm_step_initial
-      find_start: do
+      do try = 1, max_start_tries
          call find_atmosphere_start(st, start_density, eos_at_start, ierr)
          if (ierr /= 0) return
          if (st%x > st%log10_tau_photosphere) then
-! The start lies past the end point: start again from a lower density.
+! The start lies past the end point: start again from a lower density,
+! unless this was the last try.
+            if (try == max_start_tries) exit
             call add_envint_event(events, envint_start_retry, &
                  values=[st%x, st%log10_tau_photosphere])
             start_density = start_density/start_density_divisor
-            cycle find_start
+         else
+            call integrate_to_photosphere(st, cfg, atm_points, events, ierr)
+            return
          end if
-         exit find_start
-      end do find_start
-      call integrate_to_photosphere(st, cfg, atm_points, events, ierr)
+      end do
+      call add_envint_event(events, envint_start_exhausted, counts=[max_start_tries, 0], &
+           values=[st%x, st%log10_tau_photosphere, start_density])
+      ierr = 1
 end subroutine integrate_atmosphere
 
 ! ---------------------------------------------------------------
