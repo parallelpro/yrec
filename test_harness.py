@@ -11,6 +11,10 @@ of the roots, and the convention that keeps the rule true for every
 root test (none names its own tree's input/ or startmodels/: they
 import INPUT_ROOT and START_ROOT from conftest.py).
 
+A test writes only under its temporary directory (M373): the two
+stand-ins that test_controls.py and devel_tests.py read the decks
+through are checked here too.
+
 Needs no build and no table.
 """
 import os
@@ -111,3 +115,34 @@ def test_no_test_file_or_tool_names_its_own_trees_roots():
     offenders = [f"{p.relative_to(REPO)}:{n}: {line.strip()}"
                  for p in files for n, line in enumerate(p.read_text().splitlines(), 1) if own_tree.search(line)]
     assert not offenders, "\n".join(offenders)
+
+
+def test_a_stand_in_directory_reads_as_the_deck_directory_and_keeps_what_is_created(tmp_path):
+    """harness.stand_in_directory: the files beside a deck are there (as
+    links), output/ is there and empty whether or not the deck's directory
+    has one, and a file created in the stand-in is not in the tree."""
+    deck_directory = REPO / "examples" / "run_config_matrix"
+    stand_in = harness.stand_in_directory(deck_directory, tmp_path / "stand_in")
+    assert (stand_in / "mc_input.dat").read_bytes() == (deck_directory / "mc_input.dat").read_bytes()
+    assert (stand_in / "cm_monte_carlo.inlist").is_symlink()
+    assert (stand_in / "output").is_dir() and not list((stand_in / "output").iterdir())
+    (stand_in / "output" / "made_by_a_read").write_text("")
+    (stand_in / "made_beside_the_deck").write_text("")
+    assert not (deck_directory / "output" / "made_by_a_read").exists()
+    assert not (deck_directory / "made_beside_the_deck").exists()
+
+
+def test_a_stand_in_tree_reads_as_the_tree_and_keeps_what_is_created(tmp_path):
+    """harness.stand_in_tree: every file of the tree at its place (as a
+    link), every directory made anew, so that a file created anywhere in
+    the stand-in is not in the tree."""
+    tree = tmp_path / "tree"
+    (tree / "dbl" / "deep").mkdir(parents=True)
+    (tree / "top.first").write_text("top")
+    (tree / "dbl" / "deep" / "model.first").write_text("model")
+    stand_in = harness.stand_in_tree(tree, tmp_path / "stand_in")
+    assert (stand_in / "top.first").read_text() == "top"
+    assert (stand_in / "dbl" / "deep" / "model.first").read_text() == "model"
+    assert (stand_in / "dbl" / "deep" / "model.first").is_symlink() and not (stand_in / "dbl").is_symlink()
+    (stand_in / "dbl" / "deep" / "final.mod").write_text("")
+    assert sorted(p.name for p in (tree / "dbl" / "deep").iterdir()) == ["model.first"]

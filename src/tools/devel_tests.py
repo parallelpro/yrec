@@ -42,7 +42,9 @@ SOLAR = "examples/run_standard_solar_model/Test_solar_noGS_norot"
 
 # (case, program, arguments, extra environment, working directory or None
 # for the temporary one). {repo} is the repository root, {work} the
-# temporary directory.
+# temporary directory. A working directory is a deck's: the program runs
+# in a stand-in for it under {work} (harness.stand_in_directory), so that
+# a deck's relative names resolve and nothing is written in the tree.
 CASES = [
     ("test_math", "test_math", [], {}, None),
     ("test_math_crmath", "test_math_crmath", [], {}, None),
@@ -113,7 +115,10 @@ def run_case(case, program, args, env_extra, cwd, timeout):
             shutil.copy2(SRC / program, binary)
             subprocess.run(["dsymutil", str(binary)], capture_output=True)
         argv = [str(binary)] + [a.replace("{repo}", str(REPO)) for a in args]
-        where = (cwd or "{work}").replace("{repo}", str(REPO)).replace("{work}", work)
+        where = work
+        if cwd:
+            where = harness.stand_in_directory(cwd.replace("{repo}", str(REPO)),
+                                               pathlib.Path(work) / "deck_directory")
         try:
             r = subprocess.run(argv, cwd=where, env=env, capture_output=True, text=True,
                                errors="replace", timeout=timeout)
