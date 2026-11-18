@@ -222,9 +222,7 @@ end subroutine omega_change_limit
 !   atime(itime_dx_shell)/|dX/dt|,
 ! with dX/dt from the network's reactions (compute_abundance_rates) on
 ! the zone's rates and its start-of-step abundances (composition_start).
-! (The legacy code took dX/dt from the equilibrium burn, with He3 and
-! the CN cycle in equilibrium.) Masses in g, L in Lsun, composition in
-! the star's slots.
+! Masses in g, L in Lsun, composition in the star's slots.
 real(dp) function hydrogen_burning_limit(set, hydrogen_luminosity, &
      composition, composition_start, log_density, log_temperature, &
      enclosed_mass, luminosity, core_edge, shell_mid, n) result(dt)
@@ -294,10 +292,7 @@ end function hydrogen_burning_limit
 !   E_He atime(itime_dy_total) Msun/(L Lsun)   (Msun of helium burned per step),
 !   E_He atime(itime_dy_shell) Y m/(L Lsun)    (fraction of Y burned),
 ! each used only when its factor is positive, and only where L > 0;
-! dt_unlimited otherwise. (2026 deviation, bugsweep sec-10/11: ytime.f
-! reused the previous call's timestep here, times m/L again, which gave
-! about 0 s and, once the SAVE that kept it was gone, 0 and then NaN:
-! the run_from_zahb_to_tahb failure.)
+! dt_unlimited otherwise.
 real(dp) function helium_burning_limit(set, triple_alpha_luminosity, &
      triple_alpha_rate, composition, log_density, enclosed_mass, &
      luminosity, core_edge, shell_bottom) result(dt)
@@ -409,4 +404,15 @@ pure real(dp) function tightest_timestep(set, previous_dt, limits) result(dt)
       end if
 end function tightest_timestep
 
+! ---------------------------------------------------------------
+! Sources
+!   The F77's PTIME, WTIME, XTIME, YTIME and ENTIME (JVS 04/14), as kernels
+!   since round 2 (2026-11). Deviations from them: the hydrogen shell
+!   branch's dX/dt comes from the network (the legacy code took it from
+!   the equilibrium burn, with He3 and the CN cycle in equilibrium); the
+!   helium shell branch is 2026's (ytime.f reused the previous call's
+!   timestep there, times m/L again, which gave about 0 s and, once the
+!   SAVE that kept it was gone, 0 and then NaN: the run_from_zahb_to_tahb
+!   failure); a core edge with L <= 0 sets no limit (docs/bug_sweep.md
+!   M320; the F77 returned a negative one, which won the minimum).
 end module timestep_limits

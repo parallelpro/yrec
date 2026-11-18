@@ -17,7 +17,7 @@ module timestep_control
 contains
 
 !----------------------------------------------------------------------
-! compute_timestep (legacy htimer.f)
+! compute_timestep
 !----------------------------------------------------------------------
 ! The timestep for the next model, in steps:
 !   1. a fixed timestep (card_fixed_timestep_active for this run card)
@@ -214,4 +214,11 @@ subroutine clip_to_end_age(s)
       end if
 end subroutine clip_to_end_age
 
+! ---------------------------------------------------------------
+! Sources
+!   The F77's HTIMER (htimer.f); the switch-off of the structure-based
+!   limits is MHP 9/01's, the end-age stop's scope MHP 10/24's. The limits
+!   became timestep_limits' kernels in round 2 (2026-11); the magnitude of
+!   a stored model's negative step is taken in its own branch since
+!   docs/bug_sweep.md M320.
 end module timestep_control

@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! burn_step (formerly burn_lib)
+! burn_step
 !----------------------------------------------------------------------
 ! The star-layer side of nuclear burning: the code that reads the model,
 ! calls the net/ physics and stores the results in star. The physics
@@ -63,7 +63,7 @@ function surface_accretion_now(s, mass) result(accretion)
 end function surface_accretion_now
 
 !----------------------------------------------------------------------
-! compute_zone_energy (formerly engeb)
+! compute_zone_energy
 !----------------------------------------------------------------------
 ! The energy generation of one shell: net's compute_nuclear_energy, with
 ! the two inputs that depend on where the shell sits in the model filled
@@ -91,7 +91,7 @@ end subroutine compute_zone_energy
 !----------------------------------------------------------------------
 ! burn_li_be
 !----------------------------------------------------------------------
-! Li6, Li7 and Be9 burning over a step (formerly liburn): the star-layer
+! Li6, Li7 and Be9 burning over a step: the star-layer
 ! driver of li_be_burn's kernel, whose header has the method. In order:
 !   1. the base of the surface mixed region (convection zone plus
 !      envelope overshoot) at the start and end of the step
@@ -110,13 +110,7 @@ end subroutine compute_zone_energy
 ! The model arrays are arguments because the two callers burn different
 ! models: burn_light_elements the converged end-of-step model,
 ! evolve_angular_momentum each rotation sub-step's model (sub_model).
-! (Deviations from the legacy code, 2026-10: the base zone's rate,
-! adjusted to the region's true edge, stays local to the average, where
-! the legacy code kept it in star%rate_*(cz_base_zone) and so carried it
-! into the next rotation sub-step's start rates; and a legacy branch
-! that reused the previous step's rate when star%log_rate_li6_prev > 0,
-! which the natural log of these rates per second never is, is removed.
-! The retired midpoint variant is rotation/retired/
+! (A retired midpoint variant: rotation/retired/
 ! burn_li_be_midpoint.f90.txt.)
 !   star reads: accreted_mass, mass_change_active,
 !     physics%accreted_composition, physics%mass_accretion_rate,
@@ -172,7 +166,7 @@ end subroutine burn_li_be
 
 
 !----------------------------------------------------------------------
-! store_li_be_rates (formerly lirate88)
+! store_li_be_rates
 !----------------------------------------------------------------------
 ! The Li6, Li7 and Be9 proton-capture rates per s of every shell, for
 ! burn_li_be: rate = rho X lambda(T9), with lambda from net's
@@ -182,8 +176,7 @@ end subroutine burn_li_be
 ! star%rate_*. The loop stops at the first shell cooler than log T = 6 in
 ! both the argument model and the start-of-step one; from there out the
 ! set the call fills is zeroed, and the other set is left as its own
-! call stored it. (Fixed 2026-10: the legacy callers passed the 1/2 flag
-! the wrong way round, so both sets came from the start-of-step model.)
+! call stored it.
 !   star reads: logRho_start, logT_start, xa_start
 !   star writes: rate_be9, rate_be9_start, rate_li6, rate_li6_start,
 !     rate_li7, rate_li7_start
@@ -263,7 +256,7 @@ end subroutine store_end_li_be_rates
 
 
 !----------------------------------------------------------------------
-! burn_network_region (formerly kemcom)
+! burn_network_region
 !----------------------------------------------------------------------
 ! New abundances at the end of the timestep for one radiative shell
 ! (zone_begin = zone_end) or one convection zone (zone_begin < zone_end,
@@ -581,4 +574,19 @@ subroutine burn_deuterium(s, radiative_zone_bounds, num_radiative_zones, &
       end do
 end subroutine burn_deuterium
 
+! ---------------------------------------------------------------
+! Sources
+!   The module was burn_lib; compute_zone_energy is the F77's ENGEB,
+!   burn_li_be LIBURN, store_li_be_rates LIRATE88 and burn_network_region
+!   KEMCOM. Deviations from the legacy Li/Be burn, 2026-10: the base
+!   zone's rate, adjusted to the region's true edge, stays local to the
+!   average, where the legacy code kept it in star%rate_*(cz_base_zone) and
+!   so carried it into the next rotation sub-step's start rates; a legacy
+!   branch that reused the previous step's rate when
+!   star%log_rate_li6_prev > 0, which the natural log of these rates per
+!   second never is, was removed; and the legacy callers of the rates
+!   passed the 1/2 flag the wrong way round, so that both sets came from
+!   the start-of-step model. The sub-stepping with rational extrapolation
+!   to zero step gave way to the closed form (net's surviving_fraction) in
+!   2026-10, and the arithmetic became li_be_burn's kernels in 2026-11.
 end module burn_step

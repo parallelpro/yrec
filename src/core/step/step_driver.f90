@@ -55,7 +55,7 @@ module step_driver
 contains
 
 !----------------------------------------------------------------------
-! evolve_step (formerly the body of run_yrec's model loop)
+! evolve_step
 !----------------------------------------------------------------------
 ! Advances the model by one timestep, in named stages (the module
 ! procedures below):
@@ -112,8 +112,7 @@ subroutine evolve_step(s, output, model_iteration, step_status, ierr)
 ! but the step is never retried: nothing cuts the timestep, and on the
 ! next pass reload_model_if_diverged hands the divergence flag to
 ! read_starting_model, which stops the run ("ERROR: starting model: the
-! previous model failed to converge; run stopped", ierr = 1), as the
-! legacy code did. (The loop replaces the legacy backward goto 15.)
+! previous model failed to converge; run stopped", ierr = 1).
       retry_step: do
          call reload_model_if_diverged(s, ierr)
          if (ierr /= 0) return
@@ -163,7 +162,7 @@ subroutine evolve_step(s, output, model_iteration, step_status, ierr)
 ! and wind read, and its step-start copies.
       call refresh_turnover_timescale(s, ierr)
       if (ierr /= 0) return
-! Write the model's output (formerly wrtout).
+! Write the model's output.
       call output_write_model(s, output, ierr)
       if (ierr /= 0) return
 
@@ -174,8 +173,8 @@ subroutine evolve_step(s, output, model_iteration, step_status, ierr)
 end subroutine evolve_step
 
 ! ---------------------------------------------------------------
-! If the previous attempt diverged, call read_starting_model (formerly
-! starin) with the divergence flag set, which ends the run with ierr = 1
+! If the previous attempt diverged, call read_starting_model with the
+! divergence flag set, which ends the run with ierr = 1
 ! (no timestep is cut; see the note at retry_step). Otherwise nothing
 ! happens here, except that star%punch_pending_flag is always set; with
 ! the helium-flash option, the next run card stores its starting model
@@ -260,7 +259,7 @@ subroutine advance_composition_and_age(s, step, ierr)
 end subroutine advance_composition_and_age
 
 ! ---------------------------------------------------------------
-! Rezone the new model (rezone, formerly hpoint), which also keeps the
+! Rezone the new model (rezone), which also keeps the
 ! start-of-step structure in star%*_start; with the helium-flash option
 ! there is no rezoning, and the start-of-step structure is copied here
 ! instead. Then store the start-of-step rotational kinetic energy and,
@@ -295,7 +294,7 @@ subroutine rezone_or_snapshot(s, step, ierr)
          s%envelope_cz_bottom_index_start = s%envelope_cz_bottom_index
       else
 ! Keep the start-of-step structure, which the structure-change timestep
-! limit (structure_change_limit, formerly ptime) compares against.
+! limit (structure_change_limit) compares against.
          do i=1, s%nz
             s%logP_start(i) = s%logP(i)
             s%logT_start(i) = s%logT(i)
@@ -366,9 +365,7 @@ subroutine solve_structure(s, step, ierr)
 ! its s%dt; the stages that age read the flag: the first guess below,
 ! the rates of change after level 2, the composition rerun and the
 ! Henyey pass (solve_level, which hands the pass a zero step), the
-! light-element burn and the rotation step. (Until 2026-10 the flag was
-! encoded as a negative s%dt, made positive again before
-! compute_timestep.)
+! light-element burn and the rotation step.
 ! The under-relaxation factor starts at |fcorr0| - fcorri. The sign of
 ! physics%solver_underrelax_start selects whether henyey_iterate raises
 ! it by fcorri per iteration, up to 1 (fcorr0 > 0), or holds it fixed.
@@ -452,9 +449,9 @@ end subroutine solve_structure
 ! The structure-rotation iteration (num_rotation_structure_passes
 ! passes; one without rotation). Each pass: corrector level 4, the
 ! convergence check, the convection zones mixed fully
-! (homogenize_convection_zones, formerly mixcz), then the angular
-! momentum update (evolve_angular_momentum, formerly getw) and the new
-! shape factors (rotation_shape_factors, formerly fpft). The
+! (homogenize_convection_zones), then the angular momentum update
+! (evolve_angular_momentum) and the new shape factors
+! (rotation_shape_factors). The
 ! start-of-step composition and angular momentum are restored on repeat
 ! passes, so that nothing is counted twice. A pass whose level 4 has not
 ! converged (step%converged) sets star%model_diverged_flag and returns.
@@ -532,9 +529,7 @@ subroutine converge_with_rotation(s, step, ierr)
 ! Evolve the angular momentum over the step: the new run of omega (with
 ! the wind torque when physics%use_wind_torque is set). A model not aged
 ! gets a zero step, as the Henyey pass does: it spans no time, so no
-! angular momentum moves or leaves. (Until 2026-10 it got its step
-! negated, and without instability transport the wind brake applied it,
-! spinning the surface convection zone up; docs/bug_sweep.md O24.)
+! angular momentum moves or leaves.
             wind_loss_active = s%physics%use_wind_torque
             call evolve_angular_momentum(s, merge(s%dt, 0.0d0, step%evolve_model), &
                  s%max_domega_frac, wind_loss_active, &
@@ -626,7 +621,7 @@ end subroutine solve_level
 ! The Li6, Li7 and Be9 burn over the step, on the converged model, for
 ! models without rotation or without rotational mixing (with it,
 ! evolve_angular_momentum burns them in its sub-steps): the end-of-step
-! convection zones (find_convection_zones, formerly convec) and overshoot
+! convection zones (find_convection_zones) and overshoot
 ! depth, the end-of-step burning rates (store_end_li_be_rates), then the
 ! burn (burn_li_be), from the start-of-step base zone
 ! step%envelope_cz_zone_start. Only with the extended composition, for a
@@ -711,9 +706,7 @@ end subroutine rebuild_envelope_after_accretion
 ! compute_timestep has clipped the next timestep to (nearly) zero. The
 ! timestep just taken (dt_saved, floored at end_age_min_step_fraction of
 ! the age) is written to the model instead, so that the sequence can be
-! continued. Other stops keep the new timestep. (The floor read
-! 1e-3*age_gyr years, the age in Gyr taken as years, until 2026-10, as
-! in main.f.)
+! continued. Other stops keep the new timestep.
 !   star reads: age_gyr, card_kind, card_max_age_yr, card_stops_active,
 !     current_card
 !   star writes: dt, dt_saved, model_number, timestep_yr
@@ -764,4 +757,23 @@ subroutine refresh_turnover_timescale(s, ierr)
       s%photosphere_logP_prev = s%photosphere_logP
 end subroutine refresh_turnover_timescale
 
+! ---------------------------------------------------------------
+! Sources
+!   evolve_step was the body of the F77 main program's model loop (main.f),
+!   then of run_yrec's; its retry loop replaces the legacy backward goto
+!   15. The legacy names of what it calls: STARIN (read_starting_model),
+!   HPOINT (rezone), PTIME (structure_change_limit), MIXCZ
+!   (homogenize_convection_zones), GETW (evolve_angular_momentum), FPFT
+!   (rotation_shape_factors), CONVEC (find_convection_zones), WRTOUT (the
+!   output). Changed in 2026-10: a model solved but not aged is marked by
+!   the aging flag (it was encoded as a negative s%dt, made positive again
+!   before compute_timestep), and gets a zero step in the angular momentum
+!   update (it got its step negated, and without instability transport the
+!   wind brake applied it, spinning the surface convection zone up;
+!   docs/bug_sweep.md O24); the end-age floor of the stored timestep is
+!   1e-3 of the age (it read 1e-3*age_gyr years, the age in Gyr taken as
+!   years, as in main.f). The improved first guess is 7/91's (LNEWS), the
+!   structure-rotation iteration MHP 05/02's, the rescale card's aging
+!   below log Tc 6.6 MHP 7/98's. The stages became module procedures over
+!   the step's record in round 3 (2026-11).
 end module step_driver

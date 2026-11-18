@@ -1,5 +1,5 @@
 !----------------------------------------------------------------------
-! composition_step (formerly mix, mixing/mix.f90)
+! composition_step
 !----------------------------------------------------------------------
 ! One operator-split composition step over the timestep, at fixed
 ! structure. It changes star%xa (and the mixed-region bounds); the
@@ -30,11 +30,6 @@
 !   8. after deep mixing, recompute the zone bounds with the ordinary
 !      flags (deep_mixing)
 !   9. deuterium burning (extended composition)
-! (A deviation from the legacy code, 2026-10: the legacy predictor pass
-! also ran an explicit burn with He3 and the CN cycle in equilibrium
-! after the network, overwriting X and, in helium burning, Z, C12 and
-! O16 with a cruder estimate of the same step. Both passes now burn the
-! same way.)
 ! Li/Be are burned later, after the structure converges (burn_li_be).
 module composition_step
       use, intrinsic :: iso_fortran_env, only: dp => real64
@@ -269,4 +264,12 @@ subroutine settle(s, timestep, envelope_cz_edge, mixed_flag, ierr)
       end do
 end subroutine settle
 
+! ---------------------------------------------------------------
+! Sources
+!   The F77's MIX (mixing/mix.f90). A deviation from it, 2026-10: its
+!   predictor pass also ran an explicit burn with He3 and the CN cycle in
+!   equilibrium after the network, overwriting X and, in helium burning, Z,
+!   C12 and O16 with a cruder estimate of the same step; both passes now
+!   burn the same way. The steps became kernels (composition_kernels) and
+!   a module procedure (settle) in round 3, 2026-11.
 end module composition_step

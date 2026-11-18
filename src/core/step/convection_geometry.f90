@@ -62,7 +62,7 @@ integer function first_zone_above(log_radius, start_zone, radius_limit)
 end function first_zone_above
 
 !----------------------------------------------------------------------
-! locate_surface_mixing_base (formerly locate_cz_base in burn_step)
+! locate_surface_mixing_base
 ! The base of the surface mixed region (the convection zone, plus the
 ! envelope overshoot when it is on) at the end of the step
 ! (cz_base_zone) and at the start (cz_base_zone_old), for burn_li_be.
@@ -131,8 +131,7 @@ subroutine locate_surface_mixing_base(s, radius, grada, gradr, env_cz_zone, &
                        search_radius)
                else
 ! Fully convective at the start of the step: there is no zone below
-! the base, which is zone 1 (the code used to read logR_start(0) here,
-! out of bounds, and arrive at the same zone).
+! the base, which is zone 1.
                   cz_base_zone_old = 1
                end if
             else
@@ -150,9 +149,7 @@ subroutine locate_surface_mixing_base(s, radius, grada, gradr, env_cz_zone, &
             cz_base_zone = first_zone_above(radius, env_cz_zone-1, search_radius)
 ! The overshoot edge's offset within its zone k = cz_base_zone, in the
 ! same convention: cz_base_frac = 0.5 - (r_edge - r(k-1))/(r(k) - r(k-1)),
-! clipped to [-0.5, 0.5], both radii the current model's (the legacy
-! code took r(k) from the start-of-step model until 2026-11, bug_sweep
-! O10).
+! clipped to [-0.5, 0.5], both radii the current model's.
             if (cz_base_zone > 1) then
                shell_radius = exp(ln10*radius(cz_base_zone-1))
                delta_radius = exp(ln10*radius(cz_base_zone))-shell_radius
@@ -215,4 +212,10 @@ pure function mixed_base_fraction(mass_coordinate, shell_mass, base_zone, &
       base_frac = min(0.5d0, max(-0.5d0, base_frac))
 end function mixed_base_fraction
 
+! ---------------------------------------------------------------
+! Sources
+!   locate_surface_mixing_base was locate_cz_base in burn_step. For a
+!   model fully convective at the start of the step it used to read
+!   logR_start(0), out of bounds, and arrive at zone 1 all the same. The overshoot edge's offset took r(k) from the start-of-step
+!   model until 2026-11 (docs/bug_sweep.md O10).
 end module convection_geometry

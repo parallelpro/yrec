@@ -135,7 +135,7 @@ end subroutine clip_step_to_disk_locking_age
 !       dm(k) = (m(k+1) - m(k-1))/2,  dm(nz) = M + dM - (m(nz) + m(nz-1))/2.
 !     A zone reaching the center (jenv = 1) starts from it: dm(1) =
 !     (m(1) + m(2))/2, i.e. m_0 = -m_1 as in rezoning's
-!     set_new_shell_masses. (It used to read m(0), outside the array.)
+!     set_new_shell_masses.
 pure subroutine change_shell_masses(jenv, delta_mass, total_mass, m, &
      log_mass, dm)
       integer, intent(in) :: jenv
@@ -206,9 +206,7 @@ end function wind_specific_angular_momentum
 ! J_cz = sum of j_rot dm_before is measured before the masses change.
 ! The shrunk shells at unchanged j_rot hold sum j_rot dm_after, already
 ! short of J_cz by about <j>|dM|; every j_rot is scaled by
-! (J_cz + dJ)/sum j_rot dm_after, so the zone loses dJ once. (It used
-! to be scaled by (J_cz + dJ)/J_cz before the masses shrank, which
-! removed <j>|dM| on top of dJ.)
+! (J_cz + dJ)/sum j_rot dm_after, so the zone loses dJ once.
 pure subroutine remove_wind_angular_momentum(j_surface, delta_mass, &
      dm_before, dm_after, j_rot, am)
       real(dp), intent(in) :: j_surface, delta_mass
@@ -278,4 +276,13 @@ pure subroutine mix_accreted_composition(zone_dm, delta_mass, &
       end do
 end subroutine mix_accreted_composition
 
+! ---------------------------------------------------------------
+! Sources
+!   The arithmetic of the F77's MDOT (wind/mdot, MHP 10/01), as kernels
+!   since 2026-10. Two of its defects, fixed in 2026: for a zone reaching the
+!   centre it read m(0), outside the array; and every j_rot was scaled by
+!   (J_cz + dJ)/J_cz before the masses shrank, which removed <j>|dM| on top
+!   of dJ. The timestep's limit and the disk-locking clip came out of
+!   mass_change in 2026-11, with the gate before the clip
+!   (docs/bug_sweep.md M319).
 end module mass_change_kernel

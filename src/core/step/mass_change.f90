@@ -1,8 +1,8 @@
 !----------------------------------------------------------------------
 ! mass_change
 !----------------------------------------------------------------------
-! The mass-change step of a timestep (formerly wind/massloss and
-! wind/mdot, MHP 10/01): mass loss or accretion at the surface, when
+! The mass-change step of a timestep: mass loss or accretion at the
+! surface, when
 ! mass_change_active is set. The rate (Msun/yr, positive for accretion)
 ! is mass_accretion_rate, or the Reimers law with use_reimers_wind. (A
 ! solar wind scaled by the surface rotation, MHP 8/10, is retired:
@@ -54,7 +54,7 @@ module mass_change
 contains
 
 !----------------------------------------------------------------------
-! change_mass (formerly massloss)
+! change_mass
 !----------------------------------------------------------------------
 ! Sets the rate and, for accretion, the energy per gram of the accreted
 ! matter and the mean thermal energy and entropy of the convective
@@ -326,9 +326,6 @@ subroutine set_mass_change_rate(s, rate_msun_yr, log10_radius, &
 ! The Reimers law replaces the constant rate:
 !   Mdot [Msun/yr] = reimers_scaling_factor (L/Lsun) (R/Rsun)/(M/Msun),
 ! with reimers_scaling_factor = -4e-13 by default (eta = 1, mass loss).
-! (2026 fix: the legacy code evaluated reimers_scaling_factor L/(g R) in
-! CGS, a rate in g/s, but stored it as Msun/yr, and mdot converted it
-! to CGS again, a rate about 1e25 too large.)
       if(s%physics%use_reimers_wind)then
          rate_msun_yr = s%physics%reimers_scaling_factor* &
               exp10(s%log_L_lsun)* &
@@ -378,7 +375,7 @@ subroutine measure_convective_envelope(s, total_radius_cm, cz_mass)
 end subroutine measure_convective_envelope
 
 !----------------------------------------------------------------------
-! apply_mass_change (formerly mdot)
+! apply_mass_change
 !----------------------------------------------------------------------
 ! Limits the timestep, then removes or adds the step's mass,
 ! dM = Mdot dt, at the surface: the R/P/T shift and the mixing for
@@ -471,8 +468,7 @@ end subroutine require_zone_below_surface
 ! accretion_cz_fraction of the convective envelope (cz_mass, g) and by
 ! half the mass outside the fitting point (mass_change_timestep_limit),
 ! with a line in the run log when it shortens the step; a zero rate
-! sets no limit (it used to divide by zero, which traps in the devel
-! builds). With accretion only (rate_msun_yr > 0, MHP 8/10) and disk
+! sets no limit. With accretion only (rate_msun_yr > 0) and disk
 ! locking, a step that would pass the disk-locking age is clipped to end
 ! there (clip_step_to_disk_locking_age), and disk_exhausted says so: the
 ! mass change stops after this step.
@@ -696,4 +692,15 @@ subroutine mix_in_accreted_composition(s, delta_mass_cgs, &
       end if
 end subroutine mix_in_accreted_composition
 
+! ---------------------------------------------------------------
+! Sources
+!   The F77's MASSLOSS and MDOT (wind/massloss, wind/mdot; MHP 10/01, the
+!   accretion efficiency MHP 5/02, the disk locking and M_cz MHP 8/10, the
+!   accretion entropy llp 06/15/2009). Fixed in 2026: the Reimers law (the
+!   legacy code evaluated reimers_scaling_factor L/(g R) in CGS, a rate in
+!   g/s, but stored it as Msun/yr, and mdot converted it to CGS again, a
+!   rate about 1e25 too large); a zero rate, which divided by zero in the
+!   timestep limit; an accreting model past the disk-locking age, which
+!   took a step of negative length (docs/bug_sweep.md M319). The steps
+!   became module procedures with arguments in round 3 (2026-11).
 end module mass_change
