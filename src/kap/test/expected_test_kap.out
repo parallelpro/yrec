@@ -143,6 +143,20 @@ kap_init: the LAOL 1989 table doctored_size.laol has 12 X, 104 rho and 52 T valu
 kap_init refuses a LAOL89 table with more X than fit                       0.00E+00  ok
 kap_init: the Kurucz 1990 table doctored_row.kurucz has an unreadable row after temperature row 1
 kap_init refuses a Kurucz 1990 table with an unreadable row                0.00E+00  ok
+kap_init: the OPAL 1995 table cut_inside.op17 ends inside table 1
+kap_init: an OPAL95 file that ends inside a table says so                  0.00E+00  ok
+kap_init: the OPAL 1995 table cut_after.op17 ends after 1 of its 126 tables
+kap_init: an OPAL95 file that ends after a whole table says so             0.00E+00  ok
+kap_init: cannot read a row of table 1 of the OPAL 1995 table doctored_row.op17
+kap_init: an OPAL95 row that is not numbers is refused                     0.00E+00  ok
+kap_init: the Alexander 2006 table doctored_logr.alex06 expects log R -8.000 in column 1 and has -8.500
+kap_init refuses an Alexander 2006 table with other log R columns          0.00E+00  ok
+kap_init: the Alexander 2006 table doctored_logt.alex06 expects log T  4.500 in row 85 and has  4.400
+kap_init refuses an Alexander 2006 row at another log T                    0.00E+00  ok
+kap_init: the Alexander 1994 table doctored_row.alex94 expects a row of 17 log R values at log T 4.100 from log R -7.0, and has 16 at log T 4.100 from log R -7.0
+kap_init refuses an Alexander 1994 row of another length                   0.00E+00  ok
+kap_init: the pure-Z table doctored_size.purez has 2 X, 104 rho and 52 T values, where it may have 1, up to 104 and 52
+kap_init refuses a pure-Z table with more than one X                       0.00E+00  ok
 Kurucz 1990 without a value: the interior opacity alone                    0.00E+00  ok
 kap_get: no interior opacity table chosen (use_opal95_tables, use_opal92_tables or use_laol89_tables); X = 0.70000, Z = 0.03000, log T = 6.00000
 kap_get without an interior family says so, at any Z                       0.00E+00  ok

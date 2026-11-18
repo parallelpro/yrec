@@ -525,3 +525,66 @@ check = 'no molecular family: OPAL95 exact at a node below log T 4.1'
 file = 'kap/kap_lib.f90'
 old = '''      if (have_molecular .and. point%log10_temperature <= molecular%logt_max) then'''
 new = '''      if (point%log10_temperature <= molecular%logt_max) then'''
+
+[[mutation]]
+id = 'opal95-ends-inside'
+check = 'kap_init: an OPAL95 file that ends inside a table says so'
+file = 'kap/opal95/opal95_reader.f90'
+old = '''            if (ios < 0) then
+               call ends_inside_table(table_number)'''
+new = '''            if (ios < 0) then
+               call ends_after_tables(table_number)'''
+
+[[mutation]]
+id = 'opal95-ends-after'
+check = 'kap_init: an OPAL95 file that ends after a whole table says so'
+file = 'kap/opal95/opal95_reader.f90'
+old = '''         if (ios < 0) then
+            call ends_after_tables(table_number)
+            return
+         else if (ios > 0) then
+            call unreadable_header(table_number+1)'''
+new = '''         if (ios < 0) then
+            call ends_inside_table(table_number)
+            return
+         else if (ios > 0) then
+            call unreadable_header(table_number+1)'''
+
+[[mutation]]
+id = 'opal95-unreadable-row'
+check = 'kap_init: an OPAL95 row that is not numbers is refused'
+file = 'kap/opal95/opal95_reader.f90'
+old = '''               call ends_inside_table(table_number)
+               return
+            else if (ios > 0) then'''
+new = '''               call ends_inside_table(table_number)
+               return
+            else if (ios > huge(ios) - 1) then'''
+
+[[mutation]]
+id = 'alex06-logr-columns'
+check = 'kap_init refuses an Alexander 2006 table with other log R columns'
+file = 'kap/alex06/alex06_reader.f90'
+old = '''         if (header_logr(column) /= tbl%grid_logr(column)) then'''
+new = '''         if (header_logr(column) > huge(1.0d0)) then'''
+
+[[mutation]]
+id = 'alex06-row-logt'
+check = 'kap_init refuses an Alexander 2006 row at another log T'
+file = 'kap/alex06/alex06_reader.f90'
+old = '''         if (row_logt /= tbl%grid_logt(row)) then'''
+new = '''         if (row_logt > huge(1.0d0)) then'''
+
+[[mutation]]
+id = 'alex94-row-length'
+check = 'kap_init refuses an Alexander 1994 row of another length'
+file = 'kap/alex94/alex94_reader.f90'
+old = '''               if (row_density_count /= n_alex94_d .or. row_temp /= tbl%grid_logt(j) &'''
+new = '''               if (row_temp /= tbl%grid_logt(j) &'''
+
+[[mutation]]
+id = 'pure-z-size'
+check = 'kap_init refuses a pure-Z table with more than one X'
+file = 'kap/laol89/laol_reader.f90'
+old = '''      if (n /= 1.or.tbl%num_rho > n_laol_rho.or.tbl%num_t > n_laol_t) then'''
+new = '''      if (tbl%num_rho > n_laol_rho.or.tbl%num_t > n_laol_t) then'''

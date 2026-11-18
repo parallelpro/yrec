@@ -597,6 +597,44 @@ contains
          call kap_init_with(ierr, opal95=.true., kurucz_path="doctored_row.kurucz")
          call report("kap_init refuses a Kurucz 1990 table with an unreadable row", 0.0d0, &
               0.0d0, ierr == 1 .and. index(last_log_line(), 'unreadable row') > 0)
+! more of the readers' refusals, each by its message: an OPAL95 file cut
+! inside its first table (300 lines), cut after it (316 lines), and with
+! a row that is not numbers; an Alexander 2006 table whose first log R
+! column is -8.5 and one whose first row is at log T 4.4; an Alexander
+! 1994 row that states 16 values; a pure-Z file that states 2 X values
+         call copy_table(trim(atom_dir)//"legacy/opal95/GS98.OP17", "cut_inside.op17", 300)
+         call kap_init_with(ierr, opal95=.true., opal95_path="cut_inside.op17")
+         call report("kap_init: an OPAL95 file that ends inside a table says so", 0.0d0, 0.0d0, &
+              ierr == 1 .and. index(last_log_line(), 'ends inside table 1') > 0)
+         call copy_table(trim(atom_dir)//"legacy/opal95/GS98.OP17", "cut_after.op17", 316)
+         call kap_init_with(ierr, opal95=.true., opal95_path="cut_after.op17")
+         call report("kap_init: an OPAL95 file that ends after a whole table says so", 0.0d0, &
+              0.0d0, ierr == 1 .and. index(last_log_line(), 'ends after 1 of its 126 tables') > 0)
+         call copy_table(trim(atom_dir)//"legacy/opal95/GS98.OP17", "doctored_row.op17", 320, &
+              edit_line=250, edit_column=5, edit_text=" not a number")
+         call kap_init_with(ierr, opal95=.true., opal95_path="doctored_row.op17")
+         call report("kap_init: an OPAL95 row that is not numbers is refused", 0.0d0, 0.0d0, &
+              ierr == 1 .and. index(last_log_line(), 'cannot read a row of table 1') > 0)
+         call copy_table(trim(mol_dir)//"alexmol06gs98.tab", "doctored_logr.alex06", 10, &
+              edit_line=4, edit_column=7, edit_text=" -8.500")
+         call kap_init_with(ierr, opal95=.true., alex06=.true., alex06_path="doctored_logr.alex06")
+         call report("kap_init refuses an Alexander 2006 table with other log R columns", 0.0d0, &
+              0.0d0, ierr == 1 .and. index(last_log_line(), 'in column 1 and has') > 0)
+         call copy_table(trim(mol_dir)//"alexmol06gs98.tab", "doctored_logt.alex06", 10, &
+              edit_line=5, edit_column=1, edit_text="4.400")
+         call kap_init_with(ierr, opal95=.true., alex06=.true., alex06_path="doctored_logt.alex06")
+         call report("kap_init refuses an Alexander 2006 row at another log T", 0.0d0, 0.0d0, &
+              ierr == 1 .and. index(last_log_line(), 'in row 85 and has') > 0)
+         call copy_table(trim(mol_dir)//"legacy/alex/OPACALEXANDER.X00", "doctored_row.alex94", 5, &
+              edit_line=2, edit_column=3, edit_text=" 16")
+         call kap_init_with(ierr, opal95=.true., alex94_first_path="doctored_row.alex94")
+         call report("kap_init refuses an Alexander 1994 row of another length", 0.0d0, 0.0d0, &
+              ierr == 1 .and. index(last_log_line(), 'and has 16 at log T') > 0)
+         call copy_table(trim(atom_dir)//"lanl/PURECO.DBGLAOL", "doctored_size.purez", 20, &
+              edit_line=2, edit_column=19, edit_text=" 2")
+         call kap_init_with(ierr, opal95=.true., pure_z=.true., pure_z_path="doctored_size.purez")
+         call report("kap_init refuses a pure-Z table with more than one X", 0.0d0, 0.0d0, &
+              ierr == 1 .and. index(last_log_line(), 'has 2 X') > 0)
 ! where the Kurucz 1990 table has no value (above log rho = -3) the
 ! interior family's opacity is used alone: OPAL95's (loaded at the same
 ! Z), bit for bit
@@ -1085,12 +1123,12 @@ contains
 ! the error contracts. The table Zs are 0.02, or table_z.
          subroutine kap_init_with(ierr, opal95, opal92, alex06, pure_z, two_z, logt_min, &
               conductive_path, opal92_path, laol_path, kurucz_path, laol_tolerance, table_z, &
-              opal95_path, alex06_path, alex94_first_path)
+              opal95_path, alex06_path, alex94_first_path, pure_z_path)
             integer, intent(out) :: ierr
             logical, intent(in), optional :: opal95, opal92, alex06, pure_z, two_z
             double precision, intent(in), optional :: logt_min, laol_tolerance, table_z
             character(len=*), intent(in), optional :: conductive_path, opal92_path, laol_path, &
-                 kurucz_path, opal95_path, alex06_path, alex94_first_path
+                 kurucz_path, opal95_path, alex06_path, alex94_first_path, pure_z_path
             type(kap_settings_t) :: s
             type(kap_table_paths_t) :: p
             s%use_opal95_tables = present(opal95)
@@ -1123,6 +1161,7 @@ contains
             if (present(laol_path)) p%laol = laol_path
             if (present(opal95_path)) p%opal95 = opal95_path
             if (present(alex06_path)) p%alex06 = alex06_path
+            if (present(pure_z_path)) p%pure_z = pure_z_path
             if (present(alex94_first_path)) then
                p%alex94 = alex95_paths()
                p%alex94(1) = alex94_first_path
