@@ -122,8 +122,8 @@ new = 'temperature_offset = shell_logT - env%env_log10_temperature(2)'
 id = 'refit-17'
 check = 'shift: log(m/M), X, Z and the convective flag move as they are'
 file = 'core/envelope/envelope_refit_kernel.f90'
-old = 'env%env_convective_flag(k) = env%env_convective_flag(k+1)'
-new = 'env%env_convective_flag(k) = env%env_convective_flag(k)'
+old = 'env%env_convective_flag(num_kept) = env%env_convective_flag(k+1)'
+new = 'env%env_convective_flag(num_kept) = env%env_convective_flag(k)'
 
 [[mutation]]
 id = 'refit-18'
@@ -196,3 +196,10 @@ check = "append: X and Z interpolate toward the envelope's"
 file = 'core/envelope/envelope_refit_kernel.f90'
 old = 'xa(i_h1,zone) = between_points(x0, env%env_hydrogen_fraction(k), fraction)'
 new = 'xa(i_h1,zone) = between_points(x0, 2.0d0*x0-env%env_hydrogen_fraction(k), fraction)'
+
+[[mutation]]
+id = 'refit-28'
+check = 'shift: a point within the mass step is dropped, the rest contiguous'
+file = 'core/envelope/envelope_refit_kernel.f90'
+old = 'env%env_log10_mass(num_kept) = env%env_log10_mass(k+1)'
+new = 'env%env_log10_mass(k) = env%env_log10_mass(k+1)'

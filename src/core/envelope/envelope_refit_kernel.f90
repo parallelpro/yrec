@@ -51,18 +51,17 @@ elemental real(dp) function between_points(v0, v2, fraction)
 end function between_points
 
 ! ---------------------------------------------------------------
-! Matches the envelope to the last interior shell and keeps, shifted
-! down by one, the points above its mass. Point 1 of the envelope lies
+! Matches the envelope to the last interior shell and keeps, moved down
+! to slots 1, 2, ..., the points above its mass. Point 1 of the envelope lies
 ! at the mass of the last interior shell; its differences from that
 ! shell (shell_logP, shell_logRho, shell_logT, shell_logR) in log P,
 ! log rho, log T and log r become offsets that make the envelope
 ! continuous with the interior. Every later point whose log m exceeds
 ! the last kept one's (at first the shell's, shell_log_mass) by more
-! than min_log_mass_step moves down one slot, with the offsets added.
-! Log P, log rho, log r, log(m/M), log T, X, Z and the convective flag
-! move; the other arrays are not read for the appended points.
-! num_env_points becomes the number kept. (The slot is the point's own
-! less one, whatever was dropped before it.)
+! than min_log_mass_step is kept: it moves to the next free slot, with
+! the offsets added. Log P, log rho, log r, log(m/M), log T, X, Z and
+! the convective flag move; the other arrays are not read for the
+! appended points. num_env_points becomes the number kept.
 pure subroutine shift_envelope_onto_shell(env, shell_logP, shell_logRho, shell_logT, &
      shell_logR, shell_log_mass, log_total_mass)
       type(envelope_structure_state), intent(inout) :: env
@@ -81,16 +80,16 @@ pure subroutine shift_envelope_onto_shell(env, shell_logP, shell_logRho, shell_l
       do k = 1, env%num_env_points - 1
          log_mass = log_total_mass+env%env_log10_mass(k+1)
          if (log_mass-last_kept_log_mass > min_log_mass_step) then
-            env%env_log10_density(k) = env%env_log10_density(k+1)+density_offset
-            env%env_log10_pressure(k) = env%env_log10_pressure(k+1)+pressure_offset
-            env%env_log10_radius(k) = env%env_log10_radius(k+1)+radius_offset
-            env%env_log10_mass(k) = env%env_log10_mass(k+1)
-            env%env_log10_temperature(k) = env%env_log10_temperature(k+1)+temperature_offset
-            env%env_hydrogen_fraction(k) = env%env_hydrogen_fraction(k+1)
-            env%env_metal_fraction(k) = env%env_metal_fraction(k+1)
-            env%env_convective_flag(k) = env%env_convective_flag(k+1)
-            last_kept_log_mass = log_mass
             num_kept = num_kept + 1
+            env%env_log10_density(num_kept) = env%env_log10_density(k+1)+density_offset
+            env%env_log10_pressure(num_kept) = env%env_log10_pressure(k+1)+pressure_offset
+            env%env_log10_radius(num_kept) = env%env_log10_radius(k+1)+radius_offset
+            env%env_log10_mass(num_kept) = env%env_log10_mass(k+1)
+            env%env_log10_temperature(num_kept) = env%env_log10_temperature(k+1)+temperature_offset
+            env%env_hydrogen_fraction(num_kept) = env%env_hydrogen_fraction(k+1)
+            env%env_metal_fraction(num_kept) = env%env_metal_fraction(k+1)
+            env%env_convective_flag(num_kept) = env%env_convective_flag(k+1)
+            last_kept_log_mass = log_mass
          end if
       end do
       env%num_env_points = num_kept
@@ -297,3 +296,7 @@ end module envelope_refit_kernel
 !   value; the term vanishes when the envelope has the shell's X and Z,
 !   as both drivers integrate it. between_points writes it as the other
 !   variables' since round 3.
+! - GETNEWENV's shift wrote each kept point to its own slot less one
+!   (getnewenv.f:130-144), so that after a dropped point the list had a
+!   stale slot and lost its last point; the kept points are contiguous
+!   since round 3.

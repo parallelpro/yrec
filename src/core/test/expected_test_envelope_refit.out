@@ -18,6 +18,7 @@ append: a degenerate interval returns ierr 1, nz unchanged           1.0E+00  ok
 -- shift
 shift: the kept points carry the offsets of point 1 to the shell     4.3E-16  ok
 shift: log(m/M), X, Z and the convective flag move as they are       0.0E+00  ok
+shift: a point within the mass step is dropped, the rest contiguous  4.0E+00  ok
 -- masses
 masses: m = 10^log m for the new zones                               0.0E+00  ok
 masses: dm(k) = (m(k+1) - m(k-1))/2                                  0.0E+00  ok

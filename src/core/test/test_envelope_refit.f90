@@ -21,7 +21,9 @@
 !             with nz unchanged.
 !   shift     shift_envelope_onto_shell: the kept points carry the
 !             offsets that join point 1 to the shell; log(m/M), X, Z and
-!             the convective flag move unshifted.
+!             the convective flag move unshifted; a point within
+!             min_log_mass_step of the last kept mass is dropped, and
+!             the points after it stay contiguous.
 !   masses    refit_shell_masses: m = 10^log m; dm(k) = (m(k+1) -
 !             m(k-1))/2 and the outermost zone holds the rest, so that
 !             the masses sum to the star's (1e-14); the zones below
@@ -37,7 +39,8 @@ program test_envelope_refit
       use composition_layout, only: i_h1, i_he3, i_he4, i_metals, n_species_basic, &
            n_species_extended
       use envelope_refit_kernel, only: append_envelope_shells, shift_envelope_onto_shell, &
-           refit_shell_masses, guess_new_shell_rotation, between_points
+           refit_shell_masses, guess_new_shell_rotation, between_points, &
+           min_log_mass_step
       use physical_constants, only: cc23
       implicit none
       integer, parameter :: num_zones = 6, num_points = 6, max_zones = 20
@@ -330,6 +333,22 @@ subroutine check_shift()
       call report('shift: the kept points carry the offsets of point 1 to the shell', worst, &
            env%num_env_points == num_points - 1 .and. worst <= 1.0e-13_dp)
       call report('shift: log(m/M), X, Z and the convective flag move as they are', 0.0_dp, moved)
+
+! Point 4 within the mass step of point 3: it is dropped, and the points
+! after it close the gap.
+      call set_model()
+      env%env_log10_mass(4) = env%env_log10_mass(3) + 0.5_dp*min_log_mass_step
+      before = env
+      call shift_envelope_onto_shell(env, before%env_log10_pressure(1), &
+           before%env_log10_density(1), before%env_log10_temperature(1), &
+           before%env_log10_radius(1), before%env_log10_mass(1) + log_total_mass, &
+           log_total_mass)
+      call report('shift: a point within the mass step is dropped, the rest contiguous', &
+           real(env%num_env_points, dp), env%num_env_points == num_points - 2 .and. &
+           env%env_log10_mass(2) == before%env_log10_mass(3) .and. &
+           env%env_log10_mass(3) == before%env_log10_mass(5) .and. &
+           env%env_log10_mass(4) == before%env_log10_mass(6) .and. &
+           env%env_log10_pressure(4) == before%env_log10_pressure(6))
 end subroutine check_shift
 
 ! ---------------------------------------------------------------
