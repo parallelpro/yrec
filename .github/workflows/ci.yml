@@ -32,6 +32,14 @@
 # test_mass_change.py, test_regrid.py, test_henyey_elimination.py,
 # test_envelope_integration.py, test_timestep_limits.py).
 #
+# test_validation_contract.py is the part of the physics validation tier
+# (docs/PHYSICS_VALIDATION.md) that runs here: it runs the standard solar
+# deck (the tables solar-regression lists) and checks the produced
+# profile and pulse files against the structure equations, with
+# tolerances several times what it measures, so it needs no baseline.
+# The tier's other tests (test_validation_*.py) are local: they need
+# GYRE, or decks beyond these tables, or minutes of run time.
+#
 # The test list and the sparse checkout below were derived by tracing
 # which files each test opens (2026-10-31; test_monte_carlo.py, added
 # 2026-11-01, runs cm_monte_carlo twice in a scratch directory and reads
@@ -152,6 +160,7 @@ jobs:
           test_physics.py test_stop_conditions.py test_inlist_convert.py
           test_mesa_output.py test_pyyrec.py test_monte_carlo.py
           test_run_contracts.py test_model_kernels.py
+          test_validation_contract.py
 
   # The unit test programs under the development flags (the header above).
   devel-tests:
