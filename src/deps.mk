@@ -530,7 +530,7 @@ kap/kap_messages.o: run_messages.mod
 kap/kurucz90/kurucz_opacity.o: kurucz_reader.mod math_lib.mod numerics_lib.mod opacity_blending.mod opacity_source.mod opacity_tables.mod
 kap/kurucz90/kurucz_reader.o: kap_messages.mod math_lib.mod opacity_table_files.mod opacity_tables.mod
 kap/laol89/laol_opacity.o: laol_reader.mod math_lib.mod numerics_lib.mod opacity_blending.mod opacity_source.mod opacity_tables.mod
-kap/laol89/laol_reader.o: composition_layout.mod kap_messages.mod math_lib.mod opacity_table_files.mod opacity_tables.mod
+kap/laol89/laol_reader.o: kap_messages.mod math_lib.mod opacity_table_files.mod opacity_tables.mod
 kap/opacity_blending.o: math_lib.mod opacity_source.mod physical_constants.mod
 kap/opacity_families.o: alex06_opacity.mod alex94_opacity.mod conductive_opacity.mod kurucz_opacity.mod laol_opacity.mod opacity_source.mod opacity_tables.mod opal92_opacity.mod opal95_opacity.mod
 kap/opacity_source.o: opacity_tables.mod

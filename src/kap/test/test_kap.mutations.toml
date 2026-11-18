@@ -260,15 +260,15 @@ new = "open(newunit=file_unit, file=path, status='unknown', iostat=ierr)"
 id = 'short-table'
 check = 'kap_init: a short OPAL92 table returns ierr'
 file = 'kap/opal92/opal92_reader.f90'
-old = '''              (tbl%log10_opacity(k+(i-1)*n_opal92_t,density_index),density_index=1,n_opal92_d)
-         if (read_failed(ios, iomsg, 'OPAL 1992', path, unit, ierr)) return'''
-new = '''              (tbl%log10_opacity(k+(i-1)*n_opal92_t,density_index),density_index=1,n_opal92_d)
-         if (ios < 0) then
-            close(unit)
-            tbl%num_temps = n_opal92_t
-            tbl%num_x = n_opal92_x
-            return
-         end if'''
+old = '''                 tbl%log10_opacity(row+(ix-1)*n_opal92_t,:)
+            if (read_failed(ios, iomsg, 'OPAL 1992', path, unit, ierr)) return'''
+new = '''                 tbl%log10_opacity(row+(ix-1)*n_opal92_t,:)
+            if (ios < 0) then
+               close(unit)
+               tbl%num_temps = n_opal92_t
+               tbl%num_x = n_opal92_x
+               return
+            end if'''
 
 [[mutation]]
 id = 'opal95-t-range'
@@ -352,8 +352,8 @@ new = '      if (z_here > no_x095_from_z .and. hydrogen_fraction >= high_x) then
 id = 'opal92-table-z'
 check = 'kap_init refuses an OPAL92 table that is not at opal_table_z1'
 file = 'kap/opal92/opal92_reader.f90'
-old = "        if (table_z_differs(local_grid_z(i), control_z, control_name, 'OPAL 1992', path, &"
-new = "        if (table_z_differs(control_z, control_z, control_name, 'OPAL 1992', path, &"
+old = "         if (table_z_differs(header_z, control_z, control_name, 'OPAL 1992', path, &"
+new = "         if (table_z_differs(control_z, control_z, control_name, 'OPAL 1992', path, &"
 
 [[mutation]]
 id = 'laol-table-z'
@@ -373,8 +373,8 @@ new = '      if (settings%laol_extrapolation_tolerance >= 0.0d0) return'
 id = 'kurucz-no-rows'
 check = 'kap_init refuses a Kurucz 1990 table without rows'
 file = 'kap/kurucz90/kurucz_reader.f90'
-old = '      if (num_read == 0) then'
-new = '      if (num_read < 0) then'
+old = '      if (lines(1)(1:1) == unwritten_line .and. num_temps == 0) then'
+new = '      if (lines(1)(1:1) == unwritten_line .and. num_temps < 0) then'
 
 [[mutation]]
 id = 'no-interior-family-first'
@@ -509,8 +509,8 @@ new = '''      if (tbl%num_rho > n_laol_rho.or.tbl%num_t > n_laol_t) then'''
 id = 'kurucz-unreadable-row'
 check = 'kap_init refuses a Kurucz 1990 table with an unreadable row'
 file = 'kap/kurucz90/kurucz_reader.f90'
-old = '''      if (read_status > 0 .and. num_read == 0) cycle table_read'''
-new = '''      if (read_status > 0) cycle table_read'''
+old = '''         if (ios > 0 .and. num_temps == 0) cycle'''
+new = '''         if (ios > 0) cycle'''
 
 [[mutation]]
 id = 'kurucz-out-of-table'
@@ -586,5 +586,5 @@ new = '''               if (row_temp /= tbl%grid_logt(j) &'''
 id = 'pure-z-size'
 check = 'kap_init refuses a pure-Z table with more than one X'
 file = 'kap/laol89/laol_reader.f90'
-old = '''      if (n /= 1.or.tbl%num_rho > n_laol_rho.or.tbl%num_t > n_laol_t) then'''
+old = '''      if (num_x /= 1.or.tbl%num_rho > n_laol_rho.or.tbl%num_t > n_laol_t) then'''
 new = '''      if (tbl%num_rho > n_laol_rho.or.tbl%num_t > n_laol_t) then'''

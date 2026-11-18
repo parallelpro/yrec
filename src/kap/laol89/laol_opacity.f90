@@ -433,15 +433,11 @@ subroutine load_laol89(settings, paths, envelope_hydrogen_fraction, tables, mess
       type(opacity_table_state), intent(inout) :: tables
       character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
-! the table header's 12-element metal mixture (read, not used: the
-! star takes its surface mixture from the controls)
-      real(dp) :: laol_header_mixture(12)
 
 ! (the reader reports its own errors)
       call check_extrapolation_tolerance(settings, message, ierr)
       if (ierr /= 0) return
-      laol_header_mixture = 0.0d0
-      call read_laol_tables(tables%laol, laol_header_mixture, paths%laol, &
+      call read_laol_tables(tables%laol, paths%laol, &
            paths%laol_z2, settings%use_two_z_tables, &
            [settings%laol_table_z1, settings%laol_table_z2], &
            settings%laol_extrapolation_tolerance, ierr)
