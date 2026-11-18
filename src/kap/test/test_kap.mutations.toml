@@ -127,8 +127,8 @@ new = '               z_weight(3)*tbl%full_opacity(table2_index,j,k)+z_weight(3)
 id = 'opal95-surface-x'
 check = 'kap_update_surface_tables: the new 2D path is the old 3D path'
 file = 'kap/opal95/opal95_opacity.f90'
-old = '            tbl%surface_opacity(j,k) = x_weight(1)*tbl%fixed_z_opacity(table1_index,j,k) + &'
-new = '            tbl%surface_opacity(j,k) = x_weight(2)*tbl%fixed_z_opacity(table1_index,j,k) + &'
+old = '            tbl%surface_opacity(j,k) = x_weight(1)*tbl%fixed_z_opacity(table_index(1),j,k) + &'
+new = '            tbl%surface_opacity(j,k) = x_weight(2)*tbl%fixed_z_opacity(table_index(1),j,k) + &'
 
 [[mutation]]
 id = 'conductive-he-weight'
@@ -326,3 +326,24 @@ check = 'kap_set_envelope_metal_fraction: one Z table serves the new Z only'
 file = 'kap/kap_lib.f90'
 old = '      tables%envelope_metal_fraction = metal_fraction'
 new = '      tables%envelope_metal_fraction = tables%envelope_metal_fraction'
+
+[[mutation]]
+id = 'opal95-x-1mz-node'
+check = 'OPAL95 3D path: exact at a node of the X = 1 - Z table'
+file = 'kap/opal95/opal95_opacity.f90'
+old = '      if (table_index(4) == n_opal95_x) nodes(4) = 1.0d0 - z_here'
+new = '      if (table_index(4) == n_opal95_x) nodes(4) = grid_x(n_opal95_x)'
+
+[[mutation]]
+id = 'opal95-surface-x-above-0.9'
+check = 'OPAL95 surface table at X = 0.92: the 2D path is the 3D path'
+file = 'kap/opal95/opal95_opacity.f90'
+old = '      call opal95_x_tables_at_z(tbl%grid_x, tbl%fixed_z, hydrogen_fraction, first_table, &'
+new = '      call opal95_x_tables_at_z(tbl%grid_x, 0.0d0, hydrogen_fraction, first_table, &'
+
+[[mutation]]
+id = 'opal95-surface-no-x095'
+check = 'OPAL95 at Z = 0.04, X = 0.85: 2D continuous with 4D in Z'
+file = 'kap/opal95/opal95_opacity.f90'
+old = '      if (z_here >= no_x095_from_z .and. hydrogen_fraction >= high_x) then'
+new = '      if (z_here > no_x095_from_z .and. hydrogen_fraction >= high_x) then'

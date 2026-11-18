@@ -67,6 +67,7 @@ OPAL95 2D path (surface X, Z): exact at a table node                       0.00E
 OPAL95 3D path (X off the surface): exact at a table node                  0.00E+00  ok
 OPAL95 4D path (Z off the fixed-Z table): exact at a node                  0.00E+00  ok
 Alexander 2006: exact at a table node (log T 3.40, log R -3)               0.00E+00  ok
+OPAL95 3D path: exact at a node of the X = 1 - Z table                     0.00E+00  ok
 OPAL95 2D: dln kappa/dln rho, dln T against differences                    1.76E-08  ok
 OPAL95 3D: dln kappa/dln rho, dln T against differences                    2.21E-08  ok
 OPAL95 4D: dln kappa/dln rho, dln T against differences                    1.90E-08  ok
@@ -79,6 +80,9 @@ ramp: dln kappa/dln rho, dln T against differences                         7.62E
 OPAL95: kappa continuous at the table's lowest log R                       3.70E-11  ok
 OPAL95: the 2D path continuous with the 4D path in Z                       5.36E-05  ok
 kap_update_surface_tables: the new 2D path is the old 3D path              0.00E+00  ok
+OPAL95 surface table at X = 0.92: the 2D path is the 3D path               2.22E-16  ok
+OPAL95 surface table at Z = 0.06, X = 0.85: 2D is 3D                       2.22E-16  ok
+OPAL95 at Z = 0.04, X = 0.85: 2D continuous with 4D in Z                   7.07E-05  ok
 Potekhin mixture: 1/K = sum x_i/K_i(rho_i), electron fractions             6.66E-16  ok
 Potekhin conduction: kappa_c continuous at log rho = -6                    4.96E-09  ok
 Potekhin conduction below log rho = -6: dln kappa/dln rho                  6.94E-12  ok

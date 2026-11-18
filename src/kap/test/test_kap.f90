@@ -361,6 +361,9 @@ contains
               0.70d0, 0.03d0, 5.5d0, -2.0d0, 74)
          call node_check("Alexander 2006: exact at a table node (log T 3.40, log R -3)", &
               0.70d0, 0.02d0, 3.40d0, -3.0d0)
+! the tenth X table is at X = 1 - Z (TABLE #122 is X = 0.98, Z = 0.02)
+         call opal95_node_check("OPAL95 3D path: exact at a node of the X = 1 - Z table", &
+              0.98d0, 0.02d0, 6.0d0, -3.0d0, 122)
 
 ! --- the production combination (OPAL95 at Z = 0.016232, Alexander 2006,
 ! pure Z, Potekhin conduction): derivatives, the ramp, the seams
@@ -410,6 +413,22 @@ contains
          call report("kap_update_surface_tables: the new 2D path is the old 3D path", err, &
               1.0d-12, ierr + ierr2 == 0)
          call kap_update_surface_tables(0.70d0, ierr2)
+! the same above X = 0.8, where the surface table takes the X tables that
+! exist at its Z, the tenth at X = 1 - Z: at X = 0.92 (tables 7 to 10)
+! and at Z = 0.06 (no X = 0.95 table: 6, 7, 8 and 10); and at Z = 0.04,
+! the first Z whose fixed-Z table has no X = 0.95 slot, against the 4D
+! path a relative 2e-4 off in Z, which reads the full set
+         call surface_table_check("OPAL95 surface table at X = 0.92: the 2D path is the 3D path", &
+              0.016232d0, 0.92d0)
+         call surface_table_check("OPAL95 surface table at Z = 0.06, X = 0.85: 2D is 3D", 0.06d0, 0.85d0)
+         call configure("surface table", opal95=.true., z1=0.04d0, z2=0.0d0, two_z=.false., &
+              opal95_path=trim(atom_dir)//"legacy/opal95/GS98.OP17", quiet=.true.)
+         call kap_update_surface_tables(0.85d0, ierr)
+         call get_point(0.85d0, 0.04d0, 5.53d0, logd_of(5.53d0, -3.3d0), r, ierr)
+         call get_point(0.85d0, 0.04d0*(1.0d0 + 2.0d-4), 5.53d0, logd_of(5.53d0, -3.3d0), r2, ierr2)
+         call report("OPAL95 at Z = 0.04, X = 0.85: 2D continuous with 4D in Z", &
+              abs(r(i_log10_kap) - r2(i_log10_kap)), 10.0d0*log10(1.0d0 + 2.0d-4), ierr + ierr2 == 0)
+         call load_production()
          call conductive_mixture_check()
          call conductive_low_density_check()
          call conductive_no_electrons_check()
@@ -725,6 +744,23 @@ contains
             call report("Potekhin conduction: none for a gas without free electrons", 0.0d0, &
                  0.0d0, ierr + k == 0 .and. .not. got .and. o == o .and. ol == ol)
          end subroutine conductive_no_electrons_check
+
+! OPAL95 loaded with its fixed-Z table at z (surface X = 0.70): the 3D
+! path at (x, z), then the 2D path there once kap_update_surface_tables
+! has rebuilt the surface table at x (one interpolation, two orders)
+         subroutine surface_table_check(label, z, x)
+            character(len=*), intent(in) :: label
+            double precision, intent(in) :: z, x
+            double precision :: r3d(num_kap_results), r2d(num_kap_results)
+            integer :: ierr, ierr2, ierr3
+            call configure("surface table", opal95=.true., z1=z, z2=0.0d0, two_z=.false., &
+                 opal95_path=trim(atom_dir)//"legacy/opal95/GS98.OP17", quiet=.true.)
+            call get_point(x, z, 5.53d0, logd_of(5.53d0, -3.3d0), r3d, ierr)
+            call kap_update_surface_tables(x, ierr2)
+            call get_point(x, z, 5.53d0, logd_of(5.53d0, -3.3d0), r2d, ierr3)
+            call report(label, abs(r3d(i_log10_kap) - r2d(i_log10_kap)), 1.0d-12, &
+                 ierr + ierr2 + ierr3 == 0)
+         end subroutine surface_table_check
 
 ! an OPAL95 node: the lookup's log kappa against the file's entry at
 ! TABLE #table_number's row log T and column log R

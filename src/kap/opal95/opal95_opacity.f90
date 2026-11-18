@@ -184,7 +184,8 @@ end subroutine build_opal95_fixed_z_table
 !----------------------------------------------------------------------
 ! Builds the surface table (in T and log R) at hydrogen_fraction by
 ! 4-point Lagrange interpolation in X of the fixed-Z table set
-! (tbl%fixed_z_opacity), from the X tables that exist at its Z.
+! (tbl%fixed_z_opacity), from the X tables that exist at its Z, each at
+! its own X (opal95_x_tables_at_z: the 3D and 4D paths' rule).
 subroutine build_opal95_surface_table(tbl, hydrogen_fraction)
       type(opal95_table_set), intent(inout) :: tbl
 
@@ -192,65 +193,29 @@ subroutine build_opal95_surface_table(tbl, hydrogen_fraction)
       real(dp), intent(in) :: hydrogen_fraction
 
       real(dp) :: table_x_nodes(4), x_weight(4)
-      integer :: i, j, k, x_table_index
-      integer :: table1_index, table2_index, table3_index, table4_index
-! x_table_index normally names the first of four consecutive X tables;
-! this value means "tables 6, 7, 8 and 10" (table 9 absent).
-      integer, parameter :: x_stencil_6_7_8_10 = 11
+      integer :: i, j, k, first_table, table_index(4)
 
       tbl%surface_x = hydrogen_fraction
-!  Find 4 nearest tables in X to desired value.
-      if (hydrogen_fraction <= high_x .or. &
-           tbl%fixed_z <= no_x095_from_z) then
-! All four X tables present: Either X is below the high-X gap, or
-! the high X tables are present at this low Z.
-         do i = 3,n_opal95_x-1
-            if (tbl%grid_x(i) >= hydrogen_fraction) then
-               x_table_index = i - 2
-               exit
-            end if
-         end do
-         if (i > (n_opal95_x-1)) then
-         x_table_index = n_opal95_x - 3
+!  The first of the four consecutive X tables around X: the first whose
+!  third node reaches X, the top four above the next-to-last node.
+      first_table = n_opal95_x - 3
+      do i = 3,n_opal95_x-1
+         if (tbl%grid_x(i) >= hydrogen_fraction) then
+            first_table = i - 2
+            exit
          end if
-         do i = 1,4
-            table_x_nodes(i) = tbl%grid_x(x_table_index+i-1)
-         end do
-      else if (tbl%fixed_z >= no_x1mz_from_z) then
-! Use tables 6-9
-         x_table_index = 6
-         do i = 1,4
-            table_x_nodes(i) = tbl%grid_x(x_table_index+i-1)
-         end do
-      else
-! If Z is between 0.04 and 0.1, tables 1-8 and 10 exist.
-! Since we have already determined that X > 0.8, use 6-8 and 10.
-         x_table_index = x_stencil_6_7_8_10
-         table_x_nodes(1) = tbl%grid_x(6)
-         table_x_nodes(2) = tbl%grid_x(7)
-         table_x_nodes(3) = tbl%grid_x(8)
-         table_x_nodes(4) = tbl%grid_x(10)
-      end if
+      end do
+!  The four tables that exist at the fixed Z, and their X.
+      call opal95_x_tables_at_z(tbl%grid_x, tbl%fixed_z, hydrogen_fraction, first_table, &
+           table_index, table_x_nodes)
 !
 !  Find interpolation factors in X.
       call interp(table_x_nodes, x_weight, x_eval=hydrogen_fraction)
-! Indices for 4 desired compositions.
-      if (x_table_index /= x_stencil_6_7_8_10) then
-         table1_index = x_table_index
-         table2_index = x_table_index + 1
-         table3_index = x_table_index + 2
-         table4_index = x_table_index + 3
-      else
-         table1_index = 6
-         table2_index = 7
-         table3_index = 8
-         table4_index = 10
-      end if
       do j = 1,n_opal95_t
          do k = 1,n_opal95_d
-            tbl%surface_opacity(j,k) = x_weight(1)*tbl%fixed_z_opacity(table1_index,j,k) + &
-            x_weight(2)*tbl%fixed_z_opacity(table2_index,j,k) + x_weight(3)*tbl%fixed_z_opacity(table3_index,j,k) + &
-            x_weight(4)*tbl%fixed_z_opacity(table4_index,j,k)
+            tbl%surface_opacity(j,k) = x_weight(1)*tbl%fixed_z_opacity(table_index(1),j,k) + &
+            x_weight(2)*tbl%fixed_z_opacity(table_index(2),j,k) + x_weight(3)*tbl%fixed_z_opacity(table_index(3),j,k) + &
+            x_weight(4)*tbl%fixed_z_opacity(table_index(4),j,k)
          end do
       end do
 end subroutine build_opal95_surface_table
@@ -478,14 +443,13 @@ contains
 ! tbl%index_x(k,1:4) bracketing hydrogen_fraction and
 ! store their weights in st%weight_x(1:4,k). The
 ! warm-start search moves tbl%index_x(k,1) from its previous value;
-! at Z >= 0.04 and X >= 0.8 the missing high-X tables (no X=0.95 for
-! Z >= 0.04, no X=1-Z for Z >= 0.1) force the stencil to the top
-! available tables. The 3D path calls it for k = 1 at the fixed Z, the
-! 4D path for each of its Z rows.
+! opal95_x_tables_at_z then takes the tables that exist at this Z. The
+! 3D path calls it for k = 1 at the fixed Z, the 4D path for each of its
+! Z rows.
 subroutine locate_opal95_x_stencil(k, z_here, hydrogen_fraction)
       integer, intent(in) :: k
       real(dp), intent(in) :: z_here, hydrogen_fraction
-      integer :: i, j, x_table_index, x_shift_base
+      integer :: i, j, x_tables(4)
       real(dp) :: interp_nodes(4), weight(4)
 
       if (hydrogen_fraction > tbl%grid_x(tbl%index_x(k,1)+2)) then
@@ -505,42 +469,10 @@ subroutine locate_opal95_x_stencil(k, z_here, hydrogen_fraction)
          end do
          if (i < 2) tbl%index_x(k,1) = 1
       end if
-!     Check for absent tables at high X.
-      if (z_here >= no_x095_from_z) then
-         if (hydrogen_fraction >= high_x) then
-            if (z_here < no_x1mz_from_z) then
-!              no table 9 (X = 0.95)
-               tbl%index_x(k,4) = n_opal95_x
-               tbl%index_x(k,3) = n_opal95_x - 2
-               tbl%index_x(k,2) = n_opal95_x - 3
-               tbl%index_x(k,1) = n_opal95_x - 4
-            else
-!              No table 9 or table 10
-               tbl%index_x(k,4) = n_opal95_x - 2
-               tbl%index_x(k,3) = n_opal95_x - 3
-               tbl%index_x(k,2) = n_opal95_x - 4
-               tbl%index_x(k,1) = n_opal95_x - 5
-            end if
-         else
-            x_shift_base = tbl%index_x(k,1) - 1
-            do i = 1,4
-               tbl%index_x(k,i) = x_shift_base + i
-            end do
-         end if
-      else
-         x_shift_base = tbl%index_x(k,1) - 1
-         do i = 1,4
-            tbl%index_x(k,i) = x_shift_base + i
-         end do
-      end if
-!     X interpolation factors
-      do i = 1,4
-         x_table_index = tbl%index_x(k,i)
-         interp_nodes(i) = tbl%grid_x(x_table_index)
-      end do
-      if (tbl%index_x(k,4) == n_opal95_x) then
-         interp_nodes(4) = 1.0d0 - z_here
-      end if
+!     The four tables that exist at this Z, and their X.
+      call opal95_x_tables_at_z(tbl%grid_x, z_here, hydrogen_fraction, tbl%index_x(k,1), &
+           x_tables, interp_nodes)
+      tbl%index_x(k,:) = x_tables
 !     Get interpolation factors in X
       call interp(interp_nodes, weight, x_eval=hydrogen_fraction)
       do j = 1,4
@@ -549,6 +481,41 @@ subroutine locate_opal95_x_stencil(k, z_here, hydrogen_fraction)
 end subroutine locate_opal95_x_stencil
 
 end subroutine compute_opal95_opacity
+
+!----------------------------------------------------------------------
+! opal95_x_tables_at_z: the X stencil at one Z
+!----------------------------------------------------------------------
+! The four X tables an interpolation in X uses at metal fraction z_here
+! (their indices in table_index) and the X each is at (nodes), given
+! first_table, the first of the four consecutive tables around
+! hydrogen_fraction that a search of grid_x found. The set lacks the
+! X = 0.95 table (9) from Z = 0.04 up and the X = 1 - Z table (10) at
+! Z = 0.1, so there a stencil at X >= 0.8 takes the top tables that
+! exist: 6, 7, 8 and 10, or 5 to 8 at Z = 0.1. The tenth table is at
+! X = 1 - Z, not at grid_x's 1. The surface table's build and the 3D
+! and 4D paths' stencils (locate_opal95_x_stencil) share this rule.
+pure subroutine opal95_x_tables_at_z(grid_x, z_here, hydrogen_fraction, first_table, &
+     table_index, nodes)
+      real(dp), intent(in) :: grid_x(:), z_here, hydrogen_fraction
+      integer, intent(in) :: first_table
+      integer, intent(out) :: table_index(4)
+      real(dp), intent(out) :: nodes(4)
+      integer :: i
+
+      if (z_here >= no_x095_from_z .and. hydrogen_fraction >= high_x) then
+         if (z_here < no_x1mz_from_z) then
+!           no table 9 (X = 0.95)
+            table_index = [n_opal95_x - 4, n_opal95_x - 3, n_opal95_x - 2, n_opal95_x]
+         else
+!           no table 9 or table 10
+            table_index = [n_opal95_x - 5, n_opal95_x - 4, n_opal95_x - 3, n_opal95_x - 2]
+         end if
+      else
+         table_index = [(first_table + i - 1, i = 1, 4)]
+      end if
+      nodes = grid_x(table_index)
+      if (table_index(4) == n_opal95_x) nodes(4) = 1.0d0 - z_here
+end subroutine opal95_x_tables_at_z
 
 !----------------------------------------------------------------------
 ! interpolate_opal95_2d, _3d, _4d: the opacity from the stencil st
