@@ -40,7 +40,9 @@
 !                end at the disk-locking age
 !                (clip_step_to_disk_locking_age): a step that would pass
 !                it ends on it, with disk_exhausted; a shorter one is
-!                left alone.
+!                left alone; a model at or past that age is refused
+!                before the clip (disk_has_dispersed, M319), and a
+!                younger one's clipped step is not negative.
 ! Each check prints its relative error and ok (below 1e-13, round-off)
 ! or FAIL; the program stops with status 1 on any FAIL.
 program test_mass_change
@@ -50,7 +52,7 @@ program test_mass_change
            convection_zone_mass, change_shell_masses, &
            wind_specific_angular_momentum, remove_wind_angular_momentum, &
            mix_accreted_composition, mass_change_timestep_limit, &
-           clip_step_to_disk_locking_age
+           clip_step_to_disk_locking_age, disk_has_dispersed
       use physical_constants, only: seconds_per_year
       implicit none
 
@@ -305,6 +307,19 @@ subroutine check_timestep()
       call clip_step_to_disk_locking_age(age_gyr, disk_age_gyr, dt, disk_exhausted)
       call report('a step short of the disk age is left alone', &
            merge(abs(dt - 1.0d5*seconds_per_year)/dt, 1.0d0, .not. disk_exhausted))
+! The gate before the clip (M319): a model at or past the disk-locking
+! age accretes nothing; a younger one, however close, gets a step that
+! is not negative.
+      call report('a model at or past the disk age: the disk is gone', &
+           merge(0.0d0, 1.0d0, disk_has_dispersed(disk_age_gyr, disk_age_gyr) .and. &
+           disk_has_dispersed(1.5d0*disk_age_gyr, disk_age_gyr) .and. &
+           .not. disk_has_dispersed(age_gyr, disk_age_gyr)))
+      dt = 2.0d6*seconds_per_year
+      call clip_step_to_disk_locking_age(nearest(disk_age_gyr, -1.0d0), disk_age_gyr, dt, &
+           disk_exhausted)
+      call report('a younger model''s clipped step is not negative', &
+           merge(0.0d0, 1.0d0, dt >= 0.0d0 .and. disk_exhausted .and. &
+           .not. disk_has_dispersed(nearest(disk_age_gyr, -1.0d0), disk_age_gyr)))
 end subroutine check_timestep
 
 end program test_mass_change

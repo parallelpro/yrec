@@ -40,7 +40,7 @@ module mass_change
            convection_zone_mass, change_shell_masses, &
            wind_specific_angular_momentum, remove_wind_angular_momentum, &
            mix_accreted_composition, mass_change_timestep_limit, &
-           clip_step_to_disk_locking_age
+           clip_step_to_disk_locking_age, disk_has_dispersed
       use physical_constants, only: c4pi, cc13, cc23, cgl, csig, ln10, &
            log10_radius_from_l_teff, radiation_constant_over_3, &
            seconds_per_year
@@ -61,10 +61,14 @@ contains
 ! envelope; then calls apply_mass_change. Outputs:
 ! old_log_envelope_mass_fraction = log10(m(nz)/M) before the change
 ! (set only when the step runs), and new_atmosphere_fit_needed, true
-! when matter was accreted.
-!   star reads: atm_point, dm, envelope_cz_bottom_index, log_Teff,
-!     log_total_mass, logP, logR, logRho, logT, nz,
-!     physics%mass_accretion_rate, solar_mass_cgs, xa
+! when matter was accreted. With accretion and disk locking, a model at
+! or past the disk-locking age switches the mass change off and returns
+! without a step.
+!   star reads: atm_point, disk_gate_age_gyr, dm,
+!     envelope_cz_bottom_index, log_Teff, log_total_mass, logP, logR,
+!     logRho, logT, nz, physics%disk_locking_active,
+!     physics%disk_locking_age_gyr, physics%mass_accretion_rate,
+!     solar_mass_cgs, xa
 !   star writes: mass_change_active
 subroutine change_mass(s, old_log_envelope_mass_fraction, new_atmosphere_fit_needed, ierr)
       type(star_info), intent(inout) :: s
@@ -120,6 +124,16 @@ subroutine change_mass(s, old_log_envelope_mass_fraction, new_atmosphere_fit_nee
       jenv = s%envelope_cz_bottom_index
       call set_mass_change_rate(s, mass_loss_rate_msun_yr, log10_radius, &
            total_radius_cm, total_mass_grams)
+! Accretion with disk locking, from a model at or past the disk-locking
+! age (a run started from a model saved after it, or the age left at its
+! default 0): the disk is gone, so the mass change stops here, before
+! anything is changed, and the timestep is left alone (M319).
+      if (s%physics%disk_locking_active .and. mass_loss_rate_msun_yr > 0.0d0) then
+         if (disk_has_dispersed(s%disk_gate_age_gyr, s%physics%disk_locking_age_gyr)) then
+            s%mass_change_active = .false.
+            return
+         end if
+      end if
       call measure_convective_envelope(s, total_radius_cm, &
            cz_total_mass_below_fitting)
       if(mass_loss_rate_msun_yr > 0.0d0)then

@@ -27,7 +27,8 @@ module mass_change_kernel
       public :: wind_angular_momentum, convection_zone_mass, &
            change_shell_masses, wind_specific_angular_momentum, &
            remove_wind_angular_momentum, mix_accreted_composition, &
-           mass_change_timestep_limit, clip_step_to_disk_locking_age
+           mass_change_timestep_limit, clip_step_to_disk_locking_age, &
+           disk_has_dispersed
 
 ! A thermal wind's angular momentum over one step (g cm^2/s): lost, dJ =
 ! j_s dM, negative; zone_before, the convection zone's J_cz = sum of
@@ -82,11 +83,26 @@ pure function mass_change_timestep_limit(rate_cgs, total_fraction, &
 end function mass_change_timestep_limit
 
 !----------------------------------------------------------------------
+! disk_has_dispersed
+!----------------------------------------------------------------------
+! Whether a model of the age age_gyr is at or past the disk-locking age
+! (both Gyr): there is no disk left to accrete from, so the caller
+! switches the mass change off without a step (change_mass). The clip
+! below is for a younger model only: it would hand an older one a step
+! of negative length (docs/bug_sweep.md M319).
+pure logical function disk_has_dispersed(age_gyr, disk_locking_age_gyr)
+      real(dp), intent(in) :: age_gyr, disk_locking_age_gyr
+      disk_has_dispersed = age_gyr >= disk_locking_age_gyr
+end function disk_has_dispersed
+
+!----------------------------------------------------------------------
 ! clip_step_to_disk_locking_age
 !----------------------------------------------------------------------
 ! Accretion ends at the disk-locking age: a step dt (s) from the age
 ! age_gyr that would pass disk_locking_age_gyr (both Gyr) is clipped to
 ! end there, and disk_exhausted is set; a shorter step is left alone.
+! For a model younger than the disk-locking age (disk_has_dispersed is
+! false), so that the clipped step is positive.
 pure subroutine clip_step_to_disk_locking_age(age_gyr, &
      disk_locking_age_gyr, dt, disk_exhausted)
       real(dp), intent(in) :: age_gyr, disk_locking_age_gyr
