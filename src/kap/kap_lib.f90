@@ -12,6 +12,9 @@
 !                     i_dlnkap_dlnrho, i_dlnkap_dlnt)
 !     kap_update_surface_tables   rebuild the surface-composition tables
 !                     when the envelope X changes
+!     kap_set_envelope_metal_fraction   the envelope Z, whenever it
+!                     changes (a single-Z interior table serves the
+!                     zones at that Z)
 !     set_kap_settings   install settings without reloading tables (for
 !                     test programs: choosing families the tables of
 !                     which were not loaded gives an error at a lookup)
@@ -34,7 +37,8 @@ module kap_lib
       use kap_messages, only: kap_report, message_length, unwritten_line
       implicit none
       private
-      public :: kap_get, kap_init, kap_update_surface_tables
+      public :: kap_get, kap_init, kap_update_surface_tables, &
+           kap_set_envelope_metal_fraction
 ! the settings record (opacity_tables), its setter, and the paths record
       public :: kap_settings_t, set_kap_settings, kap_table_paths_t
 ! result-array slots for kap_get (MESA's kap-results shape)
@@ -51,8 +55,9 @@ module kap_lib
            helium_core_logt = 7.0d0, max_interior_metal_fraction = 0.12d0
 
 ! kap's state: every family's tables, their warm-start cursors and
-! composition caches (opacity_tables' types), and the envelope metal
-! fraction the tables were loaded for. Only this module writes it: the
+! composition caches (opacity_tables' types), and the envelope's metal
+! fraction (kap_init's, then kap_set_envelope_metal_fraction's). Only
+! this module writes it: the
 ! family routines get their sets as arguments. initial_tables is never
 ! written: it holds what a fresh process starts from (the grids' and
 ! cursors' initial values, zero elsewhere), and kap_init starts each run
@@ -165,7 +170,8 @@ end subroutine molecular_opacity
 
 ! Step 2: the interior family's opacity. A helium-burning core blends it
 ! toward the pure-Z table; above max_interior_metal_fraction, or at a Z
-! off the envelope's for a family without a table there, there is none.
+! off the envelope's (the model's now: kap_set_envelope_metal_fraction)
+! for a family without a table there, there is none.
 subroutine interior_opacity(point, res, message, ierr)
       type(kap_point), intent(in) :: point
       type(kap_result), intent(inout) :: res
@@ -413,5 +419,20 @@ subroutine kap_update_surface_tables(hydrogen_fraction, ierr)
          if (ierr /= 0) call report_reason('kap_update_surface_tables', message)
       end if
 end subroutine kap_update_surface_tables
+
+!----------------------------------------------------------------------
+! kap_set_envelope_metal_fraction
+!----------------------------------------------------------------------
+! The envelope's Z, whenever it changes (setup's
+! install_surface_z_settings: the run plan's Z, the first card's model,
+! a Z rescale). An interior family with one table that does not
+! interpolate in Z (OPAL 1992 or LAOL 1989 without use_two_z_tables)
+! serves the zones at this Z and no other (interior_opacity); kap_init
+! starts from its own argument, the Z the run plan gives.
+subroutine kap_set_envelope_metal_fraction(metal_fraction)
+      real(dp), intent(in) :: metal_fraction
+
+      tables%envelope_metal_fraction = metal_fraction
+end subroutine kap_set_envelope_metal_fraction
 
 end module kap_lib

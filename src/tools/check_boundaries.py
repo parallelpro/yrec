@@ -69,9 +69,11 @@ PUBLIC = {
     # eos/test/test_eos.f90 from their own modules).
     "eos": {"eos_get", "eos_init", "eos_set_mixture"},
     # The kap_lib facade: kap_get (the opacity in the named-index result
-    # array), kap_init and kap_update_surface_tables; kap_eval and its
-    # steps are private to kap_lib.
-    "kap": {"kap_get", "kap_init", "kap_update_surface_tables"},
+    # array), kap_init, kap_update_surface_tables and
+    # kap_set_envelope_metal_fraction; kap_eval and its steps are private
+    # to kap_lib.
+    "kap": {"kap_get", "kap_init", "kap_update_surface_tables",
+            "kap_set_envelope_metal_fraction"},
     # atm_lib's entries: the table loads, the tabulated surface lookup,
     # the Allard Teff range, whether a choice's table was read, what each
     # atm_choice is (atm_choices: known,
@@ -341,7 +343,7 @@ def check_no_global_g(src_root):
 # installer (set_<domain>_settings, the kap_init, eos_init and atm_init of
 # the domains that also load tables, and the setters of the state that
 # follows the surface mixture: set_convection_envelope_metals,
-# eos_set_mixture, kap_update_surface_tables) is in
+# eos_set_mixture, kap_update_surface_tables, kap_set_envelope_metal_fraction) is in
 # setup/settings_install.f90, one procedure per lifetime (per run, per
 # Monte-Carlo run, per card, per surface mixture), so that file is the
 # list of what is installed when. A domain's
@@ -352,7 +354,7 @@ def check_no_global_g(src_root):
 INSTALL_FILES = ["setup/settings_install.f90"]
 INSTALLER_CALL_RE = re.compile(
     r"(?i)\bcall\s+(set_\w+_settings|set_convection_envelope_metals|kap_init|eos_init|atm_init|"
-    r"eos_set_mixture|kap_update_surface_tables)\s*\(")
+    r"eos_set_mixture|kap_update_surface_tables|kap_set_envelope_metal_fraction)\s*\(")
 
 def check_install_sites(src_root):
     layer = [f for f in sorted(src_root.rglob("*.f90"))

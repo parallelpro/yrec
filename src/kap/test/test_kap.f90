@@ -520,6 +520,16 @@ contains
          call get_point(0.0d0, 0.60d0, 7.8d0, 4.0d0, r, ierr)
          call report("kap_get: a helium core without the pure-Z table returns ierr", 0.0d0, &
               0.0d0, ierr == 1)
+! a single-Z interior table serves the zones at the envelope's Z, which
+! follows the model: after the envelope moves to Z = 0.02 a zone there
+! has an opacity (the one table's), and one at the old Z has none
+         call configure("opal92 one table", opal92=.true., z1=0.0188d0, z2=0.0d0, two_z=.false., &
+              opal92_path=trim(atom_dir)//"legacy/opal92/Z0188.OPALN", quiet=.true.)
+         call kap_set_envelope_metal_fraction(0.02d0)
+         call get_point(0.70d0, 0.02d0, 5.53d0, logd_of(5.53d0, -3.3d0), r, ierr)
+         call get_point(0.70d0, 0.0188d0, 5.53d0, logd_of(5.53d0, -3.3d0), r2, ierr2)
+         call report("kap_set_envelope_metal_fraction: one Z table serves the new Z only", 0.0d0, &
+              0.0d0, ierr == 0 .and. ierr2 == 1)
 
          if (check_failures > 0) then
             write(*,'(a,i0,a)') "test_kap: ", check_failures, " checks FAIL"

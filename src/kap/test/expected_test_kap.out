@@ -111,4 +111,6 @@ Alexander 2006: a refused composition fails again on a retry               0.00E
 kap_init again: the first lookup is the first run's, bit for bit           0.00E+00  ok
 kap_get: a helium-burning core (Z = 0.60000 above 0.1, log T = 7.80000 above 7) needs the pure-Z table (use_pure_z_table)
 kap_get: a helium core without the pure-Z table returns ierr               0.00E+00  ok
+kap_get: no interior opacity at Z = 0.01880: the OPAL 1992 table is at the envelope's Z = 0.02000 (use_z_ramp or use_diffusion_z reads two)
+kap_set_envelope_metal_fraction: one Z table serves the new Z only         0.00E+00  ok
 test_kap: done

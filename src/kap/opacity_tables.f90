@@ -273,9 +273,10 @@ module opacity_tables
 ! (the components run from the smallest to the largest: on arm64 Mach-O
 ! a static instance's components must start within 8 MB of it, and the
 ! whole is about 8.7 MB)
-! the envelope metal fraction the tables were loaded for (kap_init's),
-! which a single-Z interior table (OPAL92, LAOL89 without a second Z)
-! must match
+! the envelope's metal fraction (kap_init's, then kap_lib's
+! kap_set_envelope_metal_fraction's whenever it changes), which a zone's
+! Z must match where the interior family has a single table (OPAL92,
+! LAOL89 without a second Z)
            real(dp) :: envelope_metal_fraction = 0.0d0
            type(conductive_table_set) :: conductive
 ! OPAL92 (Livermore) tables: (1) at opal_table_z1, (2) at
