@@ -85,6 +85,11 @@ OPAL95 surface table at Z = 0.06, X = 0.85: 2D is 3D                       2.22E
 OPAL95 at Z = 0.04, X = 0.85: 2D continuous with 4D in Z                   7.07E-05  ok
 OPAL95 high-R shift: independent of the previous lookup's X                0.00E+00  ok
 OPAL95 high-R shift: no empty cell of the stencil's X tables read          2.10E-04  ok
+OPAL95 high-R shift (rows end at different log R): derivatives             1.16E-07  ok
+OPAL95 high-R shift: log kappa within 0.05 of its neighbours'              2.06E-02  ok
+OPAL95 past a row's last log R (extrapolated): derivatives                 4.26E-08  ok
+precedence: OPAL95 with OPAL92 also selected is OPAL95 alone               0.00E+00  ok
+precedence: Alexander 2006 with 1994 also selected is 2006's               0.00E+00  ok
 Potekhin mixture: 1/K = sum x_i/K_i(rho_i), electron fractions             6.66E-16  ok
 Potekhin conduction: kappa_c continuous at log rho = -6                    4.96E-09  ok
 Potekhin conduction below log rho = -6: dln kappa/dln rho                  6.94E-12  ok
@@ -105,6 +110,8 @@ kap_init: molecular_opacity_logt_min ( 4.10000E+00) must be below molecular_opac
 kap_init refuses molecular_opacity_logt_min >= _max                        0.00E+00  ok
 kap_init: cannot open the conductive table no_such_table.cond
 kap_init: a missing table returns ierr (and is not created)                0.00E+00  ok
+kap_init: cannot open the OPAL 1992 table no_such_table.opal92: Cannot open file 'no_such_table.opal92': No such file or directory
+kap_init: a missing OPAL92 table returns ierr (open_table)                 0.00E+00  ok
 kap_init: the OPAL 1992 table short_table.opal92 ends early
 kap_init: a short OPAL92 table returns ierr                                0.00E+00  ok
 kap_get: log T = 8.900000 is outside the OPAL 1995 tables (log T 3.75 to 8.70)
@@ -125,6 +132,17 @@ kap_init: laol_z_tolerance ( 0.00000E+00) must be positive: its natural log is h
 kap_init refuses a laol_z_tolerance that is not positive                   0.00E+00  ok
 kap_init: the Kurucz 1990 table no_rows.kurucz has no table row
 kap_init refuses a Kurucz 1990 table without rows                          0.00E+00  ok
+kap_init: table 1 of the OPAL 1995 table doctored_header.op17 is at X = 0.1000, Z = 0.0000 where X = 0.0000, Z = 0.0000 is expected
+kap_init refuses an OPAL95 table at another X than its slot's              0.00E+00  ok
+kap_init: the Alexander 2006 table doctored_header.alex06 expects X = 0.0000 and has 0.1000, expects Z = 0.0000 and has 0.0000
+kap_init refuses an Alexander 2006 table at another X                      0.00E+00  ok
+kap_init: the Alexander 1994 table doctored_header.alex94 expects X = 0.0000 and has 0.0000, expects Z = 0.1000 and has 0.0800
+kap_init refuses an Alexander 1994 table at another Z                      0.00E+00  ok
+kap_init: the LAOL 1989 table doctored_size.laol has 12 X, 104 rho and 52 T values, more than 11, 104 and 52
+kap_init refuses a LAOL89 table with more X than fit                       0.00E+00  ok
+kap_init: the Kurucz 1990 table doctored_row.kurucz has an unreadable row after temperature row 1
+kap_init refuses a Kurucz 1990 table with an unreadable row                0.00E+00  ok
+Kurucz 1990 without a value: the interior opacity alone                    0.00E+00  ok
 kap_get: no interior opacity table chosen (use_opal95_tables, use_opal92_tables or use_laol89_tables); X = 0.70000, Z = 0.03000, log T = 6.00000
 kap_get without an interior family says so, at any Z                       0.00E+00  ok
 kap_init: use_pure_z_table needs an interior table (use_opal95_tables, use_opal92_tables or use_laol89_tables)

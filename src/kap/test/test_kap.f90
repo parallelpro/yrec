@@ -428,6 +428,8 @@ contains
          call report("OPAL95 at Z = 0.04, X = 0.85: 2D continuous with 4D in Z", &
               abs(r(i_log10_kap) - r2(i_log10_kap)), 10.0d0*log10(1.0d0 + 2.0d-4), ierr + ierr2 == 0)
          call high_r_shift_check()
+         call high_r_edge_checks()
+         call precedence_checks()
          call load_production()
          call conductive_mixture_check()
          call conductive_low_density_check()
@@ -501,7 +503,13 @@ contains
          inquire(file="no_such_table.cond", exist=exists)
          call report("kap_init: a missing table returns ierr (and is not created)", 0.0d0, &
               0.0d0, ierr == 1 .and. .not. exists)
-         call copy_lines(trim(atom_dir)//"legacy/opal92/Z0188.OPALN", "short_table.opal92", 157)
+! the readers' shared open (open_table): a missing OPAL 1992 path
+         call kap_init_with(ierr, opal92=.true., opal92_path="no_such_table.opal92")
+         inquire(file="no_such_table.opal92", exist=exists)
+         call report("kap_init: a missing OPAL92 table returns ierr (open_table)", 0.0d0, &
+              0.0d0, ierr == 1 .and. .not. exists .and. &
+              index(last_log_line(), 'cannot open the OPAL 1992 table') > 0)
+         call copy_table(trim(atom_dir)//"legacy/opal92/Z0188.OPALN", "short_table.opal92", 157)
          call kap_init_with(ierr, opal92=.true., opal92_path="short_table.opal92", table_z=0.0188d0)
          call report("kap_init: a short OPAL92 table returns ierr", 0.0d0, 0.0d0, ierr == 1)
          call load_production()
@@ -537,7 +545,7 @@ contains
          call kap_init_with(ierr, opal92=.true., opal92_path="short_table.opal92")
          call report("kap_init refuses an OPAL92 table that is not at opal_table_z1", 0.0d0, &
               0.0d0, ierr == 1 .and. index(last_log_line(), 'not at opal_table_z1') > 0)
-         call copy_lines(trim(atom_dir)//"legacy/opal92/Z0188AG89.DBGLAOL", "head_of_table.laol", 20)
+         call copy_table(trim(atom_dir)//"legacy/opal92/Z0188AG89.DBGLAOL", "head_of_table.laol", 20)
          call kap_init_with(ierr, laol_path="head_of_table.laol")
          call report("kap_init refuses a LAOL89 table that is not at laol_table_z1", 0.0d0, &
               0.0d0, ierr == 1 .and. index(last_log_line(), 'not at laol_table_z1') > 0)
@@ -549,6 +557,52 @@ contains
          close(u)
          call kap_init_with(ierr, opal95=.true., kurucz_path="no_rows.kurucz")
          call report("kap_init refuses a Kurucz 1990 table without rows", 0.0d0, 0.0d0, ierr == 1)
+! one doctored copy per reader, each refused with the reader's own
+! message (the run log's last line; the copies are short, so a reader
+! that missed its check would end on "ends early"): an OPAL95 table whose
+! first table states X = 0.1; an Alexander 2006 file whose first table
+! states X = 0.1; an Alexander 1994 X = 0 file whose first table states
+! Z = 0.08; a LAOL89 file that states 12 X values; a Kurucz 1990 file
+! with a row that is not numbers
+         call copy_table(trim(atom_dir)//"legacy/opal95/GS98.OP17", "doctored_header.op17", 250, &
+              edit_line=241, edit_column=37, edit_text="0.1000")
+         call kap_init_with(ierr, opal95=.true., opal95_path="doctored_header.op17")
+         call report("kap_init refuses an OPAL95 table at another X than its slot's", 0.0d0, &
+              0.0d0, ierr == 1 .and. index(last_log_line(), 'is expected') > 0)
+         call copy_table(trim(mol_dir)//"alexmol06gs98.tab", "doctored_header.alex06", 10, &
+              edit_line=1, edit_column=31, edit_text=" 0.100000")
+         call kap_init_with(ierr, opal95=.true., alex06=.true., alex06_path="doctored_header.alex06")
+         call report("kap_init refuses an Alexander 2006 table at another X", 0.0d0, 0.0d0, &
+              ierr == 1 .and. index(last_log_line(), 'expects X = 0.0000 and has 0.1000') > 0)
+         call copy_table(trim(mol_dir)//"legacy/alex/OPACALEXANDER.X00", "doctored_header.alex94", 5, &
+              edit_line=1, edit_column=27, edit_text="0.08")
+         call kap_init_with(ierr, opal95=.true., alex94_first_path="doctored_header.alex94")
+         call report("kap_init refuses an Alexander 1994 table at another Z", 0.0d0, 0.0d0, &
+              ierr == 1 .and. index(last_log_line(), 'expects Z = 0.1000 and has 0.0800') > 0)
+         call copy_table(trim(atom_dir)//"legacy/opal92/Z0188AG89.DBGLAOL", "doctored_size.laol", 20, &
+              edit_line=2, edit_column=19, edit_text="12")
+         call kap_init_with(ierr, laol_path="doctored_size.laol")
+         call report("kap_init refuses a LAOL89 table with more X than fit", 0.0d0, 0.0d0, &
+              ierr == 1 .and. index(last_log_line(), 'has 12 X') > 0)
+         call copy_table(trim(mol_dir)//"legacy/kurmol/kapp00.ross", "doctored_row.kurucz", 60, &
+              edit_line=30, edit_column=1, edit_text=" not a row of numbers")
+         call kap_init_with(ierr, opal95=.true., kurucz_path="doctored_row.kurucz")
+         call report("kap_init refuses a Kurucz 1990 table with an unreadable row", 0.0d0, &
+              0.0d0, ierr == 1 .and. index(last_log_line(), 'unreadable row') > 0)
+! where the Kurucz 1990 table has no value (above log rho = -3) the
+! interior family's opacity is used alone: OPAL95's (loaded at the same
+! Z), bit for bit
+         call configure("opal95", opal95=.true., z1=0.0188d0, z2=0.0d0, two_z=.false., &
+              opal95_path=trim(atom_dir)//"legacy/opal95/GS98.OP17", quiet=.true.)
+         call get_point(0.70d0, 0.016232d0, 4.05d0, -2.5d0, r, ierr)
+         call configure("kurucz90", opal95=.true., kurucz90=.true., z1=0.0188d0, &
+              z2=0.00595d0, two_z=.true., &
+              opal95_path=trim(atom_dir)//"legacy/opal95/GS98.OP17", &
+              kurucz_path=trim(mol_dir)//"legacy/kurmol/kapp00.ross", &
+              kurucz_path2=trim(mol_dir)//"legacy/kurmol/kapm05.ross", quiet=.true.)
+         call get_point(0.70d0, 0.016232d0, 4.05d0, -2.5d0, r2, ierr2)
+         call report("Kurucz 1990 without a value: the interior opacity alone", &
+              maxval(abs(r - r2)), 0.0d0, ierr + ierr2 == 0)
 ! without an interior family the reason is that, whatever the zone's Z
 ! (here off the envelope's 0.02, with no table to be at it)
          call kap_init_with(ierr, alex06=.true.)
@@ -832,6 +886,71 @@ contains
                  abs(on_surface(i_log10_kap) - after_low_x(i_log10_kap)) <= 1.0d-12)
          end subroutine high_r_shift_check
 
+! OPAL95's empty high-R corner, at log T 7.45 (X = 0.70, Z = 0.016232,
+! OPAL95 alone): the stencil's rows at log T 7.3 and 7.4 end at log R 0,
+! those at 7.5 and 7.6 at -0.5.
+!   - log R -0.7: the stencil's top column is empty on the last two rows,
+!     so their four columns shift down by one (no extrapolation): the
+!     derivatives, and log kappa against its four neighbours' bilinear
+!     mean (the nodes log T 7.4 and 7.5, log R -1 and -0.5; the cubic
+!     is 0.02 from it), which an empty cell in a stencil would move by
+!     tenths of a dex;
+!   - log R 0.2: past the last two rows' last column by more than a
+!     column, they are extrapolated linearly from it: the derivatives.
+         subroutine high_r_edge_checks()
+            double precision, parameter :: x = 0.70d0, z = 0.016232d0, logt = 7.45d0
+            double precision :: r(num_kap_results), node(num_kap_results)
+            double precision :: neighbours
+            integer :: ierr, k, it, ir
+            call configure("opal95 alone", opal95=.true., z1=z, z2=0.0d0, two_z=.false., &
+                 opal95_path=trim(atom_dir)//"legacy/opal95/GS98.OP17", quiet=.true.)
+            call derivative_check("OPAL95 high-R shift (rows end at different log R): derivatives", &
+                 x, z, logt, -0.7d0, 1.0d-6)
+            call get_point(x, z, logt, logd_of(logt, -0.7d0), r, ierr)
+            neighbours = 0.0d0
+            do it = 0, 1
+               do ir = 0, 1
+                  call get_point(x, z, 7.4d0 + 0.1d0*it, logd_of(7.4d0 + 0.1d0*it, -1.0d0 + 0.5d0*ir), &
+                       node, k)
+                  ierr = ierr + k
+                  neighbours = neighbours + 0.5d0*merge(0.6d0, 0.4d0, ir == 1)*node(i_log10_kap)
+               end do
+            end do
+            call report("OPAL95 high-R shift: log kappa within 0.05 of its neighbours'", &
+                 abs(r(i_log10_kap) - neighbours), 5.0d-2, ierr == 0)
+            call derivative_check("OPAL95 past a row's last log R (extrapolated): derivatives", &
+                 x, z, logt, 0.2d0, 1.0d-6)
+         end subroutine high_r_edge_checks
+
+! The precedence lists (opacity_families): with two families of a role
+! selected, the lookup is the first one's alone, bit for bit (the second
+! is neither loaded nor used).
+         subroutine precedence_checks()
+            double precision :: first(num_kap_results), both(num_kap_results)
+            integer :: ierr, k
+            call configure("opal95", opal95=.true., z1=0.016232d0, z2=0.0d0, two_z=.false., &
+                 opal95_path=trim(atom_dir)//"legacy/opal95/GS98.OP17", quiet=.true.)
+            call get_point(0.70d0, 0.016232d0, 5.53d0, logd_of(5.53d0, -3.3d0), first, ierr)
+            call configure("opal95 and opal92", opal95=.true., opal92=.true., z1=0.016232d0, &
+                 z2=0.0d0, two_z=.false., opal95_path=trim(atom_dir)//"legacy/opal95/GS98.OP17", &
+                 opal92_path=trim(atom_dir)//"legacy/opal92/Z0188.OPALN", quiet=.true.)
+            call get_point(0.70d0, 0.016232d0, 5.53d0, logd_of(5.53d0, -3.3d0), both, k)
+            call report("precedence: OPAL95 with OPAL92 also selected is OPAL95 alone", &
+                 maxval(abs(both - first)), 0.0d0, ierr + k == 0)
+            call configure("alex06", opal95=.true., alex06=.true., z1=0.016232d0, z2=0.0d0, &
+                 two_z=.false., opal95_path=trim(atom_dir)//"legacy/opal95/GS98.OP17", &
+                 alex06_path=trim(mol_dir)//"alexmol06gs98.tab", quiet=.true.)
+            call get_point(0.70d0, 0.016232d0, 3.62d0, logd_of(3.62d0, -3.3d0), first, ierr)
+            call configure("alex06 and alex95", opal95=.true., alex06=.true., alex95=.true., &
+                 z1=0.016232d0, z2=0.0d0, two_z=.false., &
+                 opal95_path=trim(atom_dir)//"legacy/opal95/GS98.OP17", &
+                 alex06_path=trim(mol_dir)//"alexmol06gs98.tab", alex95_paths=alex95_paths(), &
+                 quiet=.true.)
+            call get_point(0.70d0, 0.016232d0, 3.62d0, logd_of(3.62d0, -3.3d0), both, k)
+            call report("precedence: Alexander 2006 with 1994 also selected is 2006's", &
+                 maxval(abs(both - first)), 0.0d0, ierr + k == 0)
+         end subroutine precedence_checks
+
 ! A copy of GS98.OP17 at target in which, in every table whose header
 ! holds x_text, the row that starts with row_text has no value (9.999)
 ! from column first_column to the last
@@ -912,21 +1031,29 @@ contains
                  trim(mol_dir)//"legacy/alex/OPACALEXANDER.X07", trim(mol_dir)//"legacy/alex/OPACALEXANDER.X08"]
          end function alex95_paths
 
-! the first num_lines lines of the file at source, written to target
-         subroutine copy_lines(source, target, num_lines)
+! The first num_lines lines of the file at source, written to target;
+! with edit_line, that line's text from column edit_column on is
+! overwritten with edit_text (a doctored header or row).
+         subroutine copy_table(source, target, num_lines, edit_line, edit_column, edit_text)
             character(len=*), intent(in) :: source, target
             integer, intent(in) :: num_lines
+            integer, intent(in), optional :: edit_line, edit_column
+            character(len=*), intent(in), optional :: edit_text
             character(len=200) :: line
             integer :: u, v, k, ios
             open(newunit=u, file=target, status="replace")
             open(newunit=v, file=source, status="old", action="read")
             do k = 1, num_lines
                read(v,'(a)',iostat=ios) line
+               if (ios /= 0) exit
+               if (present(edit_line)) then
+                  if (k == edit_line) line(edit_column:edit_column+len(edit_text)-1) = edit_text
+               end if
                write(u,'(a)') trim(line)
             end do
             close(v)
             close(u)
-         end subroutine copy_lines
+         end subroutine copy_table
 
 ! the last line of the run log (kap_report writes each message there
 ! too): what the last message said
@@ -949,17 +1076,19 @@ contains
 ! (so that only the settings check, or the table named, can fail), for
 ! the error contracts. The table Zs are 0.02, or table_z.
          subroutine kap_init_with(ierr, opal95, opal92, alex06, pure_z, two_z, logt_min, &
-              conductive_path, opal92_path, laol_path, kurucz_path, laol_tolerance, table_z)
+              conductive_path, opal92_path, laol_path, kurucz_path, laol_tolerance, table_z, &
+              opal95_path, alex06_path, alex94_first_path)
             integer, intent(out) :: ierr
             logical, intent(in), optional :: opal95, opal92, alex06, pure_z, two_z
             double precision, intent(in), optional :: logt_min, laol_tolerance, table_z
             character(len=*), intent(in), optional :: conductive_path, opal92_path, laol_path, &
-                 kurucz_path
+                 kurucz_path, opal95_path, alex06_path, alex94_first_path
             type(kap_settings_t) :: s
             type(kap_table_paths_t) :: p
             s%use_opal95_tables = present(opal95)
             s%use_opal92_tables = present(opal92)
             s%use_laol89_tables = present(laol_path)
+            s%use_alex95_tables = present(alex94_first_path)
             s%use_kurucz90_tables = present(kurucz_path)
             s%use_alex06_tables = present(alex06)
             s%use_pure_z_table = present(pure_z)
@@ -971,6 +1100,7 @@ contains
             s%opal_table_z2 = 0.02d0
             s%laol_table_z1 = 0.02d0
             s%kurucz_table_z1 = 0.02d0
+            s%alex_table_z1 = 0.02d0
             s%metal_fraction_match_tolerance = 1.0d-8
             s%molecular_opacity_logt_min = 4.0d0
             if (present(logt_min)) s%molecular_opacity_logt_min = logt_min
@@ -983,6 +1113,12 @@ contains
             p%opal92 = trim(atom_dir)//"legacy/opal92/Z0188.OPALN"
             p%opal92_z2 = trim(atom_dir)//"legacy/opal92/Z0200.OPALN"
             if (present(laol_path)) p%laol = laol_path
+            if (present(opal95_path)) p%opal95 = opal95_path
+            if (present(alex06_path)) p%alex06 = alex06_path
+            if (present(alex94_first_path)) then
+               p%alex94 = alex95_paths()
+               p%alex94(1) = alex94_first_path
+            end if
             if (present(conductive_path)) p%conductive = conductive_path
             if (present(opal92_path)) p%opal92 = opal92_path
             if (present(kurucz_path)) p%kurucz = kurucz_path
