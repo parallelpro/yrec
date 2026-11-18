@@ -49,8 +49,8 @@
 !   errors      the error contracts: the atmosphere or the envelope
 !               that cannot finish in maxstp steps (steps of 1e-6)
 !               returns ierr = 1 and its maxstp event, last; the
-!               photospheric pressure stays -1e99 when the atmosphere
-!               failed. Bulirsch-Stoer limits out of range (nuse = 1)
+!               photospheric pressure stays no_photosphere_log10_pressure
+!               when the atmosphere failed. Bulirsch-Stoer limits out of range (nuse = 1)
 !               return numerics_bad_input and an envint_bsstep_limits
 !               event with imax and nuse. A step that underflows (an
 !               error tolerance of zero, with the IEEE divide-by-zero and
@@ -92,8 +92,9 @@ program test_envelope_integration
       use envelope_integrands, only: point_physics, compute_atmosphere_derivs, &
            compute_envelope_derivs
       use envelope_integration_kernel, only: envint_config, envint_events, &
-           integrate_envelope_atmosphere, envelope_termination, &
-           max_log_fit_point_mass_fraction, envint_start_retry, &
+           fitting_vertex, integrate_envelope_atmosphere, envelope_termination, &
+           max_log_fit_point_mass_fraction, no_photosphere_log10_pressure, &
+           envint_start_retry, &
            envint_atmosphere_done, envint_atmosphere_maxstp, &
            envint_bsstep_limits, envint_bsstep_failed, envint_vertex, &
            envint_envelope_done, envint_envelope_maxstp
@@ -126,8 +127,9 @@ program test_envelope_integration
       real(dp), parameter :: log_mass_floor = 1.0e-6_dp
       real(dp) :: log10_teff, log10_star_mass, log10_radius_surface, &
            log10_gravity, composition(n_species_extended)
-      real(dp) :: log10_photo_pressure, vtx_logp(3), vtx_logr(3), vtx_logt(3), &
-           stored_state(4)
+      real(dp) :: log10_photo_pressure
+! the vertex the integrations fit (vertex 1)
+      type(fitting_vertex) :: vertex
       logical :: switched_to_gray
       character(len=512) :: deck
       integer :: ierr, nfail
@@ -246,34 +248,22 @@ subroutine set_surface()
 end subroutine set_surface
 
 ! ---------------------------------------------------------------
-! One integration with the settings cfg, saving the boundary at vertex
-! 1; the results go to the program's variables.
+! One integration with the settings cfg, fitting vertex 1; the results
+! go to the program's variables.
 subroutine integrate(cfg)
       type(envint_config), intent(in) :: cfg
       type(envint_config) :: work
-      real(dp) :: luminosity, fp, ft, log10_radius, teff, x, z
-      integer :: stored_vertex, saha_iterations
+      integer :: saha_iterations
       work = cfg
-      luminosity = 1.0_dp
-      fp = 1.0_dp
-      ft = 1.0_dp
-      log10_radius = log10_radius_surface
-      teff = log10_teff
-      x = x_surface
-      z = z_surface
-      stored_state = 0.0_dp
-      stored_vertex = 0
+      vertex = fitting_vertex(index=1)
       saha_iterations = 0
-      vtx_logp = 0.0_dp
-      vtx_logr = 0.0_dp
-      vtx_logt = 0.0_dp
       env_points%num_env_points = 0
       atm_points%num_atm_points = 0
-      call integrate_envelope_atmosphere(work, switched_to_gray, &
-           log10_photo_pressure, luminosity, fp, ft, log10_gravity, &
-           log10_star_mass, 1, .true., 0.0_dp, log10_radius, teff, x, z, &
-           stored_state, stored_vertex, saha_iterations, vtx_logp, vtx_logr, &
-           vtx_logt, env_points, atm_points, atm_point, events, ierr)
+      call integrate_envelope_atmosphere(work, 1.0_dp, 1.0_dp, 1.0_dp, &
+           log10_gravity, log10_radius_surface, log10_teff, x_surface, &
+           z_surface, 0.0_dp, saha_iterations, env_points, atm_points, &
+           atm_point, switched_to_gray, log10_photo_pressure, events, ierr, &
+           vertex)
 end subroutine integrate
 
 ! ---------------------------------------------------------------
@@ -304,21 +294,20 @@ end function event_kind
 subroutine check_integrands()
       type(point_physics) :: pt
       type(atmosphere_point_state) :: point
-      real(dp) :: y1(1), dydx1(1), y3(3), dydx3(3), teff, radius, tau, &
-           g, p, expected, log10_radius, mass
+      real(dp) :: y1(1), dydx1(1), y3(3), dydx3(3), radius, tau, &
+           g, p, expected, mass
       integer :: saha_iterations
 
-      teff = log10_teff
       saha_iterations = 0
       y1(1) = 4.5_dp
       call compute_atmosphere_derivs(log10(0.1_dp), y1, dydx1, 1.0_dp, &
-           log10_gravity, .true., .true., teff, x_surface, z_surface, &
+           log10_gravity, .true., .true., log10_teff, x_surface, z_surface, &
            saha_iterations, atm_eddington_gray, base_cfg%hsra_log_t_offset, &
            composition, point, pt, ierr)
       tau = 10.0_dp**point%log10_tau
       g = 10.0_dp**log10_gravity
       p = 10.0_dp**y1(1)
-      expected = g*tau/(pt%qo*p)
+      expected = g*tau/(pt%opacity*p)
       call report('atmosphere: dlog P/dlog tau = g tau/(kappa P)', &
            abs(dydx1(1)/expected - 1.0_dp), &
            ierr == 0 .and. abs(dydx1(1)/expected - 1.0_dp) <= 1.0e-12_dp)
@@ -330,9 +319,8 @@ subroutine check_integrands()
 ! A point 0.4 dex below the photosphere in P, 2e-5 of the mass in, at
 ! 0.9 Rsun-ish radius and 8000 K.
       y3 = [-2.0e-5_dp, log10(8000.0_dp), log10_radius_surface - 1.0e-3_dp]
-      log10_radius = y3(3)
       call compute_envelope_derivs(5.6_dp, y3, dydx3, 1.0_dp, 1.0_dp, 1.0_dp, &
-           .false., .true., log10_radius, teff, x_surface, z_surface, &
+           .false., .true., log10_teff, x_surface, z_surface, &
            saha_iterations, log10_star_mass, cgl, composition, pt, ierr)
       radius = 10.0_dp**y3(3)
       mass = 10.0_dp**(y3(1) + log10_star_mass)
@@ -341,13 +329,13 @@ subroutine check_integrands()
       call report('envelope: dlog m/dlog P = -4 pi r^4 P/(G m^2)', &
            abs(dydx3(1)/expected - 1.0_dp), &
            ierr == 0 .and. abs(dydx3(1)/expected - 1.0_dp) <= 1.0e-12_dp)
-      expected = -radius*p/(10.0_dp**cgl*mass*pt%qd)
+      expected = -radius*p/(10.0_dp**cgl*mass*pt%density)
       call report('envelope: dlog r/dlog P = -r P/(G m rho)', &
            abs(dydx3(3)/expected - 1.0_dp), &
            abs(dydx3(3)/expected - 1.0_dp) <= 1.0e-12_dp)
       call report('envelope: dlog T/dlog P = grad', &
-           abs(dydx3(2) - pt%current_gradients(3)), &
-           dydx3(2) == pt%current_gradients(3) .and. dydx3(2) > 0.0_dp)
+           abs(dydx3(2) - pt%temperature_gradient), &
+           dydx3(2) == pt%temperature_gradient .and. dydx3(2) > 0.0_dp)
 end subroutine check_integrands
 
 ! ---------------------------------------------------------------
@@ -377,9 +365,9 @@ subroutine check_solve()
            env_points%num_env_points > 2 .and. &
            dmass <= base_cfg%tolerance_fraction*abs(log10_fit_mass))
       call report('the vertex event holds the vertex', &
-           abs(events%event(2)%values(1) - vtx_logp(1)), &
-           all(events%event(2)%values(1:4) == [vtx_logp(1), vtx_logt(1), &
-           vtx_logr(1), log10_fit_mass]))
+           abs(events%event(2)%values(1) - vertex%log10_pressure), &
+           all(events%event(2)%values(1:4) == [vertex%log10_pressure, &
+           vertex%log10_temperature, vertex%log10_radius, log10_fit_mass]))
 end subroutine check_solve
 
 ! ---------------------------------------------------------------
@@ -469,12 +457,10 @@ subroutine atmosphere_rhs(x, y, dydx)
       real(dp), intent(out) :: dydx(1)
       type(point_physics) :: pt
       type(atmosphere_point_state) :: point
-      real(dp) :: teff
       integer :: saha_iterations, jerr
-      teff = log10_teff
       saha_iterations = 0
       call compute_atmosphere_derivs(x, y, dydx, 1.0_dp, log10_gravity, &
-           .true., .true., teff, x_surface, z_surface, saha_iterations, &
+           .true., .true., log10_teff, x_surface, z_surface, saha_iterations, &
            atm_eddington_gray, base_cfg%hsra_log_t_offset, composition, &
            point, pt, jerr)
       if (jerr /= 0) call die('atmosphere_rhs')
@@ -518,7 +504,8 @@ subroutine check_envelope_steps()
            (env_points%env_log10_temperature(2) - env_points%env_log10_temperature(1))
       expected(3) = env_points%env_log10_radius(1) + weight* &
            (env_points%env_log10_radius(2) - env_points%env_log10_radius(1))
-      worst_vertex = maxval(abs([vtx_logp(1), vtx_logt(1), vtx_logr(1)] - expected))
+      worst_vertex = maxval(abs([vertex%log10_pressure, vertex%log10_temperature, &
+           vertex%log10_radius] - expected))
       call report('vertex = interpolation to the fitting mass', worst_vertex, &
            worst_vertex <= 1.0e-10_dp)
 end subroutine check_envelope_steps
@@ -555,13 +542,10 @@ subroutine envelope_rhs(x, y, dydx)
       real(dp), intent(in) :: x, y(3)
       real(dp), intent(out) :: dydx(3)
       type(point_physics) :: pt
-      real(dp) :: teff, log10_radius
       integer :: saha_iterations, jerr
-      teff = log10_teff
-      log10_radius = y(3)
       saha_iterations = 0
       call compute_envelope_derivs(x, y, dydx, 1.0_dp, 1.0_dp, 1.0_dp, &
-           .false., .true., log10_radius, teff, x_surface, z_surface, &
+           .false., .true., log10_teff, x_surface, z_surface, &
            saha_iterations, log10_star_mass, cgl, composition, pt, jerr)
       if (jerr /= 0) call die('envelope_rhs')
 end subroutine envelope_rhs
@@ -577,10 +561,10 @@ subroutine check_thin_envelope()
       call report('thin: ierr = 0, no envelope points', real(ierr, dp), &
            ierr == 0 .and. env_points%num_env_points == 0)
       call report('thin: vertex = the surface point', &
-           abs(vtx_logp(1) - atm_point%log10_pressure), &
-           vtx_logp(1) == atm_point%log10_pressure .and. &
-           vtx_logt(1) == atm_point%log10_temperature .and. &
-           vtx_logr(1) == log10_radius_surface)
+           abs(vertex%log10_pressure - atm_point%log10_pressure), &
+           vertex%log10_pressure == atm_point%log10_pressure .and. &
+           vertex%log10_temperature == atm_point%log10_temperature .and. &
+           vertex%log10_radius == log10_radius_surface)
 end subroutine check_thin_envelope
 
 ! ---------------------------------------------------------------
@@ -623,7 +607,8 @@ subroutine check_errors()
       call report('atmosphere maxstp: ierr = 1, its event last', real(ierr, dp), &
            ierr == 1 .and. last == envint_atmosphere_maxstp)
       call report('atmosphere maxstp: no photospheric pressure', &
-           log10_photo_pressure, log10_photo_pressure == -1.0e99_dp)
+           log10_photo_pressure, &
+           log10_photo_pressure == no_photosphere_log10_pressure)
 
       cfg = base_cfg
       cfg%env_step_begin = 1.0e-6_dp
@@ -635,7 +620,7 @@ subroutine check_errors()
            ierr == 1 .and. last == envint_envelope_maxstp)
       call report('envelope maxstp: the photosphere was reached', &
            log10_photo_pressure, log10_photo_pressure == atm_point%log10_pressure &
-           .and. log10_photo_pressure > -1.0e98_dp)
+           .and. log10_photo_pressure > no_photosphere_log10_pressure)
 
       cfg = base_cfg
       cfg%extrap_order = 1

@@ -998,10 +998,10 @@ subroutine integrate_envelope_to_new_fit(s, sm, ierr)
              spot_adjusted_log_teff = s%log_Teff
           end if
           call atm_get(s, shell_luminosity_lsun,point_pressure_rotation_factor, &
-                 point_temperature_rotation_factor,log10_gravity,s%log_total_mass, &
-                 print_flag,save_boundary_flag, &
-                 log10_pressure_limit,log10_radius,spot_adjusted_log_teff, &
-                 hydrogen_fraction,metal_fraction,s%xa(:,s%nz),sm%saha_iterations, &
+                 point_temperature_rotation_factor,log10_gravity, &
+                 log10_radius,spot_adjusted_log_teff, &
+                 hydrogen_fraction,metal_fraction,s%xa(:,s%nz), &
+                 log10_pressure_limit,sm%saha_iterations, &
                  ierr=jerr_atm,env_steps=env_steps)
 ! atm_get returns integration failures (envelope_termination among
 ! them) in jerr_atm; pass them on.

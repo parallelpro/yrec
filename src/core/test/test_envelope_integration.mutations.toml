@@ -98,8 +98,8 @@ new = 'if(abs(mass_diff_remaining) <= 1.0d3*step_tolerance)then'
 id = 'envelope-13'
 check = 'the vertex event holds the vertex'
 file = 'core/envelope/envelope_integration_kernel.f90'
-old = 'values=[vtx_logp(vertex_index), vtx_logt(vertex_index), &'
-new = 'values=[vtx_logt(vertex_index), vtx_logp(vertex_index), &'
+old = 'values=[vertex%log10_pressure, vertex%log10_temperature, &'
+new = 'values=[vertex%log10_temperature, vertex%log10_pressure, &'
 
 [[mutation]]
 id = 'envelope-14'
@@ -119,8 +119,8 @@ new = '       call compute_envelope_derivs(indep_var+1.0d-3,y,dydx,luminosity_li
 id = 'envelope-16'
 check = 'vertex = interpolation to the fitting mass'
 file = 'core/envelope/envelope_integration_kernel.f90'
-old = 'vtx_logp(vertex_index) = indep_var + interp_weight*(x_start - indep_var)'
-new = 'vtx_logp(vertex_index) = x_start + interp_weight*(x_start - indep_var)'
+old = 'vertex%log10_pressure = indep_var + interp_weight*(x_start - indep_var)'
+new = 'vertex%log10_pressure = x_start + interp_weight*(x_start - indep_var)'
 
 [[mutation]]
 id = 'envelope-17'
@@ -134,10 +134,10 @@ id = 'envelope-18'
 check = 'thin: vertex = the surface point'
 file = 'core/envelope/envelope_integration_kernel.f90'
 old = '''
-          vtx_logr(vertex_index) = log10_radius
+          vertex%log10_radius = log10_radius
 '''
 new = '''
-          vtx_logr(vertex_index) = log10_radius + 1.0d-9
+          vertex%log10_radius = log10_radius + 1.0d-9
 '''
 
 [[mutation]]
@@ -172,7 +172,7 @@ new = 'continue'
 id = 'envelope-23'
 check = 'atmosphere maxstp: no photospheric pressure'
 file = 'core/envelope/envelope_integration_kernel.f90'
-old = 'log10_photo_pressure = -1.0d99'
+old = 'log10_photo_pressure = no_photosphere_log10_pressure'
 new = 'log10_photo_pressure = 0.0d0'
 
 [[mutation]]
@@ -249,8 +249,8 @@ new = 'counts=[jerr]'
 id = 'envelope-gray-01'
 check = 'gray photosphere: log P = the kernel'
 file = 'core/envelope/envelope_integration.f90'
-old = '      pressure_factor = 1.0d0'
-new = '      pressure_factor = 0.5d0'
+old = 'no_distortion = 1.0_dp'
+new = 'no_distortion = 0.5_dp'
 
 [[mutation]]
 id = 'envelope-depth-01'

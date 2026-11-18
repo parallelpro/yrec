@@ -66,7 +66,6 @@ subroutine rebuild_envelope(s, target_envelope_mass, ierr)
       integer :: old_num_zones
       real(dp) :: envelope_mass_before
       type(envint_step_config) :: env_steps
-      logical :: surface_bc_flag, print_flag
       integer :: saha_iterations
       real(dp) :: luminosity_linear
       real(dp) :: log_radius_surface, log_gravity_surface
@@ -170,10 +169,8 @@ subroutine prepare_envelope_rebuild()
       envelope_mass_before = s%log_fit_point_mass_fraction
 ! The envelope integration takes a fixed step in log P,
 ! chi_grid_scale(ichi_dp_env_max), handed to atm_get for this call
-! only. No boundary vertex is saved, and saha_iterations starts at 0.
+! only. No vertex is fitted, and saha_iterations starts at 0.
       env_steps = fixed_envint_step(s%physics%chi_grid_scale(ichi_dp_env_max))
-      surface_bc_flag = .false.
-      print_flag = .true.
       saha_iterations = 0
 end subroutine prepare_envelope_rebuild
 
@@ -211,11 +208,10 @@ subroutine integrate_new_envelope()
       else
          spot_adjusted_log_teff = s%log_Teff
       end if
-      call atm_get(s, luminosity_linear,fp_surface,ft_surface,log_gravity_surface, &
-           s%log_total_mass,print_flag,surface_bc_flag,pressure_limit, &
-           log_radius_surface, &
-           spot_adjusted_log_teff,hydrogen_fraction,metal_fraction, &
-           s%xa(:,s%nz),saha_iterations,ierr=jerr_atm,env_steps=env_steps)
+      call atm_get(s, luminosity_linear, fp_surface, ft_surface, &
+           log_gravity_surface, log_radius_surface, spot_adjusted_log_teff, &
+           hydrogen_fraction, metal_fraction, s%xa(:,s%nz), pressure_limit, &
+           saha_iterations, ierr=jerr_atm, env_steps=env_steps)
 ! An integration failure goes back to evolve_step in ierr.
       if (jerr_atm /= 0) then
          ierr = jerr_atm

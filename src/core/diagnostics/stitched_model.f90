@@ -100,11 +100,12 @@ contains
 ! so a fresh atm_get at the converged values is required, with the
 ! fixed output step sizes. ierr = 1 when a profile column has no value
 ! in a region (fill_stitched_arrays).
-!   star reads: atm_points, convective_flag, env_points, log_L_lsun,
-!     log_Teff, log_total_mass, logP, logR, nz, physics%atm_step_size,
-!     physics%calc_envelope_flag, physics%envelope_step_size,
-!     physics%spot_filling_factor, physics%spot_temp_contrast
-!   star writes: fp_rot, ft_rot, stitched, xa
+!   star reads: atm_points, convective_flag, env_points, fp_rot, ft_rot,
+!     log_L_lsun, log_Teff, log_total_mass, logP, logR, nz,
+!     physics%atm_step_size, physics%calc_envelope_flag,
+!     physics%envelope_step_size, physics%spot_filling_factor,
+!     physics%spot_temp_contrast, xa
+!   star writes: stitched
 subroutine build_stitched_model(s, ierr)
       use star_info_lib, only: i_h1, i_metals
       use envelope_integration, only: atm_get, envint_step_config, fixed_envint_step, &
@@ -172,8 +173,8 @@ subroutine build_stitched_model(s, ierr)
 ! recomputes it. The stitch runs every step, so photosphere_logP is
 ! always current.
       call atm_get(s, b, s%fp_rot(s%nz), s%ft_rot(s%nz), gl, &
-           s%log_total_mass, lprt, lsbc0, plim, rl, ateffl, &
-           s%xa(i_h1,s%nz), s%xa(i_metals,s%nz), s%xa(:,s%nz), saha_iterations, jerr, &
+           rl, ateffl, s%xa(i_h1,s%nz), s%xa(i_metals,s%nz), s%xa(:,s%nz), &
+           plim, saha_iterations, jerr, &
            atm_steps=atm_steps, env_steps=env_steps)
 
       if (jerr /= 0) then
