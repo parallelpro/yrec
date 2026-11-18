@@ -16,6 +16,16 @@
 !     - end_star_calibration_card: the final run's end is the
 !       converged verdict, and a last card that ends without finding
 !       the star is the not-converged one;
+!   the solar calibration's check (check_solar_calibration) on a star
+!   set up here:
+!     - its Newton step solves the 2x2 system of the fixed partial
+!       derivatives, and the next triple's cards take the new X and
+!       alpha; within the tolerances it is converged and writes no card;
+!       with the Z/X calibration, Z is rescaled by target/model;
+!   the central-abundance stops (stop_conditions.f90):
+!     - a stop the starting model has passed is disarmed
+!       (init_stop_conditions), a later crossing ends the card, and
+!       nothing stops a card whose stops are off;
 !   a Monte-Carlo run's start (monte_carlo.f90's begin_monte_carlo_run)
 !   on a star set up here:
 !     - without the solar calibration, cards 2 and 3 keep the deck's
@@ -42,12 +52,14 @@
 program test_run_contracts
       use, intrinsic :: iso_c_binding, only: c_char, c_int, c_loc, c_null_char
       use star_info_lib, only: star_info
-      use control_slots, only: max_runs, i_target_x
+      use control_slots, only: max_runs, i_target_x, i_target_z
+      use composition_layout, only: i_h1, i_he4
       use physical_constants, only: c4pi, csig
       use calibration, only: setup_star_calibration, check_star_calibration, &
-           end_star_calibration_card
-      use stop_conditions, only: check_stop_conditions, step_continue, &
-           step_leave_run_loop
+           end_star_calibration_card, check_solar_calibration, dlogl_dx_fixed, &
+           dlogr_dx_fixed, dlogl_dalpha_fixed, dlogr_dalpha_fixed
+      use stop_conditions, only: check_stop_conditions, init_stop_conditions, &
+           step_continue, step_kind_card_done, step_leave_run_loop
       use monte_carlo, only: begin_monte_carlo_run, setup_monte_carlo_runs
       use yrec_capi, only: yrec_run
       use run_messages, only: run_log_unit
@@ -68,6 +80,8 @@ program test_run_contracts
 
       call star_calibration_checks()
       call star_calibration_pass_checks()
+      call solar_calibration_checks()
+      call abundance_stop_checks()
       call monte_carlo_checks()
       call c_entry_checks()
 
@@ -145,6 +159,103 @@ subroutine star_calibration_checks()
       call run_contract_check_that('star calibration: the last card ended without the star: not converged', &
            .not. runs_complete .and. s%termination_reason == not_converged)
 end subroutine star_calibration_checks
+
+! ---------------------------------------------------------------
+! The solar calibration's check after a triple (check_solar_calibration)
+! on a star whose first triple (cards 1 to 3) ran with X = 0.71,
+! Z = 0.018 and alpha = 1.8 and ended at log L = 0.01, log R = -0.004:
+! the Newton step solves its 2x2 system and goes into cards 4 to 6; a
+! model within the tolerances is converged and writes no card; with the
+! Z/X calibration, Z is rescaled by the ratio of the target to the
+! model's Z/X, and Z/X must match as well.
+subroutine solar_calibration_checks()
+      type(star_info), allocatable :: s
+      double precision, parameter :: log_l = 0.01d0, log_r = -0.004d0
+      double precision :: dx, dalpha
+
+      call new_solar_calibration_star(s)
+      s%log_L_lsun = log_l
+      call check_solar_calibration(s, log_r, 0.0250d0)
+      dx = s%card_rescale_targets(i_target_x, 4) - 0.71d0
+      dalpha = s%card_mixing_length_alpha(4) - 1.8d0
+      call run_contract_check_that('solar calibration: the Newton step solves its 2x2 system for dX and dalpha', &
+           abs(dlogl_dx_fixed*dx + dlogl_dalpha_fixed*dalpha + log_l) < 1.0d-15 .and. &
+           abs(dlogr_dx_fixed*dx + dlogr_dalpha_fixed*dalpha + log_r) < 1.0d-15 .and. &
+           .not. s%solar_calibration_converged .and. dx /= 0.0d0)
+      call run_contract_check_that('solar calibration: the next triple''s three cards take the new X and alpha', &
+           all(s%card_initial_x(4:6) == s%card_rescale_targets(i_target_x, 4)) .and. &
+           all(s%card_mixing_length_alpha(4:6) == s%card_mixing_length_alpha(4)) .and. &
+           s%card_mixing_length_alpha(7) == 0.0d0 .and. s%card_initial_z(4) == 0.0d0)
+
+      call new_solar_calibration_star(s)
+      s%log_L_lsun = 0.5d-5
+      call check_solar_calibration(s, -0.5d-5, 0.0250d0)
+      call run_contract_check_that('solar calibration: L and R within their tolerances: converged, no card written', &
+           s%solar_calibration_converged .and. s%card_mixing_length_alpha(4) == 0.0d0 .and. &
+           s%card_initial_x(4) == 0.0d0)
+
+      call new_solar_calibration_star(s)
+      s%control%calibrate_solar_zx = .true.
+      s%control%target_solar_zx = 0.0245d0
+      s%control%zx_tolerance = 1.0d-4
+      s%log_L_lsun = 0.5d-5
+      call check_solar_calibration(s, -0.5d-5, 0.0250d0)
+      call run_contract_check_that('solar calibration: with Z/X off target, Z is rescaled by target/model', &
+           .not. s%solar_calibration_converged .and. &
+           abs(s%card_rescale_targets(i_target_z, 4)/(0.018d0*0.0245d0/0.0250d0) - 1.0d0) < 1.0d-15 &
+           .and. all(s%card_initial_z(4:6) == s%card_rescale_targets(i_target_z, 4)))
+end subroutine solar_calibration_checks
+
+! A fresh star at the end of its first solar-calibration triple, with
+! tolerances of 1e-5 on log L and log R and no Z/X calibration.
+subroutine new_solar_calibration_star(s)
+      type(star_info), allocatable, intent(inout) :: s
+      if (allocated(s)) deallocate(s)
+      allocate(s)
+      s%control%luminosity_tolerance = 1.0d-5
+      s%control%radius_tolerance = 1.0d-5
+      s%control%calibrate_solar_zx = .false.
+      s%current_card = 3
+      s%card_rescale_targets(i_target_x, 1) = 0.71d0
+      s%card_rescale_targets(i_target_z, 1) = 0.018d0
+      s%card_mixing_length_alpha(1) = 1.8d0
+end subroutine new_solar_calibration_star
+
+! ---------------------------------------------------------------
+! The central-abundance stops on a star set up here: card 1 stops at
+! central X = 0.10 and Y = 0.20, and its starting model has X = 0.05
+! (already past its stop) and Y = 0.60. init_stop_conditions disarms
+! the X stop (its threshold negated), so the model does not end the
+! card; Y falling below its stop does; nothing stops a card whose stops
+! are off.
+subroutine abundance_stop_checks()
+      type(star_info), allocatable :: s
+      integer :: status
+
+      allocate(s)
+      call no_other_stops(s)
+      s%current_card = 1
+      s%card_kind(1) = 1
+      s%card_stops_active(1) = .true.
+      s%card_central_hydrogen_stop(1) = 0.10d0
+      s%card_central_helium_stop(1) = 0.20d0
+      s%xa(i_h1,1) = 0.05d0
+      s%xa(i_he4,1) = 0.60d0
+      call init_stop_conditions(s)
+      call check_stop_conditions(s, 1, status)
+      call run_contract_check_that('abundance stops: a stop the starting model has passed is disarmed', &
+           s%card_central_hydrogen_stop(1) == -0.10d0 .and. s%card_central_helium_stop(1) == 0.20d0 &
+           .and. status == step_continue .and. s%termination_reason == 'model budget exhausted')
+      s%xa(i_he4,1) = 0.15d0
+      s%card_stops_active(1) = .false.
+      call check_stop_conditions(s, 2, status)
+      call run_contract_check_that('abundance stops: none while the card''s stops are off', &
+           status == step_continue)
+      s%card_stops_active(1) = .true.
+      call check_stop_conditions(s, 2, status)
+      call run_contract_check_that('abundance stops: central Y below its stop ends the card', &
+           status == step_kind_card_done .and. s%termination_reason == 'central Y below stop value')
+end subroutine abundance_stop_checks
 
 ! ---------------------------------------------------------------
 ! A pass of the star calibration through check_stop_conditions, as

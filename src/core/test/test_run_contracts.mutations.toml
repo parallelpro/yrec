@@ -239,3 +239,52 @@ file = 'core/run/calibration.f90'
 old = '''      s%age_gyr_prev_model = s%age_gyr
       s%r_rsun_prev_model = model_radius_rsun(s)'''
 new = '''      s%age_gyr_prev_model = s%age_gyr'''
+
+[[mutation]]
+id = 'solar-01'
+check = 'solar calibration: the Newton step solves its 2x2 system for dX and dalpha'
+file = 'core/run/calibration.f90'
+old = 's%delta_alpha = ((log_l_lsun*dlogr_dx_fixed/dlogl_dx_fixed-log_r_rsun)/ &'
+new = 's%delta_alpha = ((log_l_lsun*dlogr_dx_fixed/dlogl_dx_fixed+log_r_rsun)/ &'
+
+[[mutation]]
+id = 'solar-02'
+check = "solar calibration: the next triple's three cards take the new X and alpha"
+file = 'core/run/calibration.f90'
+old = 's%card_mixing_length_alpha(run_index+3) = s%card_mixing_length_alpha(run_index+1)'
+new = 's%card_mixing_length_alpha(run_index+4) = s%card_mixing_length_alpha(run_index+1)'
+
+[[mutation]]
+id = 'solar-03'
+check = 'solar calibration: L and R within their tolerances: converged, no card written'
+file = 'core/run/calibration.f90'
+old = 'abs(log_r_rsun) < s%control%radius_tolerance)then'
+new = 'abs(log_r_rsun) < 0.0d0)then'
+
+[[mutation]]
+id = 'solar-04'
+check = 'solar calibration: with Z/X off target, Z is rescaled by target/model'
+file = 'core/run/calibration.f90'
+old = 's%card_rescale_targets(i_target_z,run_index-2)*s%control%target_solar_zx/current_zx'
+new = 's%card_rescale_targets(i_target_z,run_index-2)*current_zx/s%control%target_solar_zx'
+
+[[mutation]]
+id = 'stops-01'
+check = 'abundance stops: a stop the starting model has passed is disarmed'
+file = 'core/run/stop_conditions.f90'
+old = 'call set_stop_value(s, k, nk, -stop_value(s, k,nk))'
+new = 'call set_stop_value(s, k, nk, stop_value(s, k,nk))'
+
+[[mutation]]
+id = 'stops-02'
+check = "abundance stops: none while the card's stops are off"
+file = 'core/run/stop_conditions.f90'
+old = 'if (s%card_stops_active(nk) .and. stop_value(s, k,nk) > 0.0d0 .and. &'
+new = 'if (stop_value(s, k,nk) > 0.0d0 .and. &'
+
+[[mutation]]
+id = 'stops-03'
+check = 'abundance stops: central Y below its stop ends the card'
+file = 'core/run/stop_conditions.f90'
+old = 'case default;  stop_value = s%card_central_helium_stop(nk)'
+new = 'case default;  stop_value = s%card_central_hydrogen_stop(nk)'
