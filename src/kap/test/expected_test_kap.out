@@ -83,6 +83,8 @@ kap_update_surface_tables: the new 2D path is the old 3D path              0.00E
 OPAL95 surface table at X = 0.92: the 2D path is the 3D path               2.22E-16  ok
 OPAL95 surface table at Z = 0.06, X = 0.85: 2D is 3D                       2.22E-16  ok
 OPAL95 at Z = 0.04, X = 0.85: 2D continuous with 4D in Z                   7.07E-05  ok
+OPAL95 high-R shift: independent of the previous lookup's X                0.00E+00  ok
+OPAL95 high-R shift: no empty cell of the stencil's X tables read          2.10E-04  ok
 Potekhin mixture: 1/K = sum x_i/K_i(rho_i), electron fractions             6.66E-16  ok
 Potekhin conduction: kappa_c continuous at log rho = -6                    4.96E-09  ok
 Potekhin conduction below log rho = -6: dln kappa/dln rho                  6.94E-12  ok

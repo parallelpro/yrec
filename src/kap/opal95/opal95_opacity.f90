@@ -208,6 +208,7 @@ subroutine build_opal95_surface_table(tbl, hydrogen_fraction)
 !  The four tables that exist at the fixed Z, and their X.
       call opal95_x_tables_at_z(tbl%grid_x, tbl%fixed_z, hydrogen_fraction, first_table, &
            table_index, table_x_nodes)
+      tbl%surface_x_tables = table_index
 !
 !  Find interpolation factors in X.
       call interp(table_x_nodes, x_weight, x_eval=hydrogen_fraction)
@@ -225,8 +226,9 @@ end subroutine build_opal95_surface_table
 !----------------------------------------------------------------------
 ! The opacity at (log rho, log T, X, Z) and its log derivatives, by
 ! 4-point Lagrange interpolation: it finds the stencil in T and log R
-! (its first indices are tbl's warm-start cursors), checks the stencil
-! against the table's empty high-R corner, and interpolates
+! (its first indices are tbl's warm-start cursors) and in X and Z, checks
+! the stencil against the table's empty high-R corner in every X table
+! of the point's stencil, and interpolates
 !   2D (T, log R) in the surface table, at the surface X and the fixed Z
 !     (each within opal95_composition_tol);
 !   3D (X, T, log R) in the fixed-Z table, at the fixed Z and another X;
@@ -245,8 +247,8 @@ subroutine compute_opal95_opacity(tbl, log10_density, log10_temperature, hydroge
 
       real(dp) :: interp_nodes(4), weight(4), dweight(4)
       integer :: i, k, j
-      logical :: density_shifted
-      integer :: x_table_index, density_base_index, temp_row_index
+      logical :: density_shifted, at_fixed_z, at_surface_x
+      integer :: density_base_index, temp_row_index, x_tables(4)
       real(dp) :: extrap_logr, z_at_table
 ! the call's stencil: its weights and where log R is extrapolated from
 ! (its first indices are tbl's cursors)
@@ -287,6 +289,61 @@ subroutine compute_opal95_opacity(tbl, log10_density, log10_temperature, hydroge
       end do
 !     Get indices in rho for each of the 4 T values.
       call stencil4_locate_opal95(tbl%grid_logr, n_opal95_d, st%logr, tbl%index_rho(1))
+!     Determine whether a 2d (rho,T); 3d (X,rho,T); or 4d (Z,X,rho,T)
+!     interpolation is needed to get the opacity, and locate the point's
+!     stencil in X (and in Z). x_tables: the X tables of the fixed-Z
+!     table around the point's X, which the corner check below reads
+!     (the tables the surface table was built from; the 3D path's
+!     stencil; the 4D path's at its first Z row).
+      at_fixed_z = abs(metal_fraction-tbl%fixed_z)/max(tbl%fixed_z,1.0d-6) <= opal95_composition_tol
+      at_surface_x = at_fixed_z .and. abs(hydrogen_fraction-tbl%surface_x) <= opal95_composition_tol
+      if (at_surface_x) then
+         x_tables = tbl%surface_x_tables
+      else if (at_fixed_z) then
+         call locate_opal95_x_stencil(1, tbl%fixed_z, hydrogen_fraction)
+         x_tables = tbl%index_x(1,:)
+      else
+!     4d interpolation in Z,X,T,rho
+!     get nearest tables in Z.
+      if (metal_fraction > tbl%grid_z(tbl%index_z+2)) then
+         do i = tbl%index_z+3,n_opal95_z-1
+            if (metal_fraction < tbl%grid_z(i)) then
+               tbl%index_z = i - 2
+               exit
+            end if
+         end do
+         if (i > (n_opal95_z-1)) then
+         tbl%index_z = n_opal95_z - 3
+         end if
+      else
+         do i = tbl%index_z+1,2,-1
+            if (metal_fraction >= tbl%grid_z(i)) then
+               tbl%index_z = i - 1
+               exit
+            end if
+         end do
+         if (i < (2)) then
+         tbl%index_z = 1
+         end if
+      end if
+!     (the last stencil at most)
+      tbl%index_z = min(tbl%index_z,n_opal95_z-3)
+!     Z interpolation factors
+      do i = 1,4
+         interp_nodes(i) = tbl%grid_z(tbl%index_z+i-1)
+      end do
+!     Interpolation factors in Z
+      call interp(interp_nodes, weight, x_eval=metal_fraction)
+      do i = 1,4
+         st%weight_z(i) = weight(i)
+      end do
+!     Get nearest tables in X at each value of Z
+      do k = 1,4
+         z_at_table = tbl%grid_z(tbl%index_z+k-1)
+         call locate_opal95_x_stencil(k, z_at_table, hydrogen_fraction)
+      end do
+      x_tables = tbl%index_x(1,:)
+      end if
 !     Now check if within portion of table with data.
 !     Note that a point can be within the table and still have the
 !     4x4 matrix of T,rho around it outside the table.
@@ -301,8 +358,8 @@ subroutine compute_opal95_opacity(tbl, log10_density, log10_temperature, hydroge
       if (.not. (hydrogen_fraction < low_corner_x .and. tbl%index_t <= low_corner_t_row)) then
 !     Check high rho, high T regime(because of the table geometry, the
 !     point will fall outside the table first at the highest T).
-      if (tbl%fixed_z_opacity(tbl%index_x(1,1),tbl%index_t+3, &
-           tbl%index_rho(1)+3) >= opal95_missing_test) then
+      if (any(tbl%fixed_z_opacity(x_tables,tbl%index_t+3, &
+           tbl%index_rho(1)+3) >= opal95_missing_test)) then
          density_shifted = .true.
 !        Now there are two possible solutions: We can use a different set
 !        of densities for each temperature and stay within the table, or
@@ -310,8 +367,8 @@ subroutine compute_opal95_opacity(tbl, log10_density, log10_temperature, hydroge
 !        temperatures.  If the desired density is outside the table,
 !        linear extrapolation in R at fixed T is used.
          do k = 1,4
-            if (tbl%fixed_z_opacity(tbl%index_x(1,1),tbl%index_t+k-1, &
-                 tbl%index_rho(1)+1) >= opal95_missing_test) then
+            if (any(tbl%fixed_z_opacity(x_tables,tbl%index_t+k-1, &
+                 tbl%index_rho(1)+1) >= opal95_missing_test)) then
                st%extrap_hi = .true.
                st%extrap_hi_row(k) = .true.
             else
@@ -319,16 +376,16 @@ subroutine compute_opal95_opacity(tbl, log10_density, log10_temperature, hydroge
             end if
          end do
 !        Find 4 nearest elements within the table at each of the 4 temperatures
-!        (each row's last filled log R column in the fixed-Z table, the
-!        table tested above).
-         x_table_index = tbl%index_x(1,1)
+!        (each row's last log R column filled in every X table of the
+!        stencil, in the fixed-Z table, the table tested above).
          density_base_index = tbl%index_rho(1)
          do i = 1,4
             temp_row_index = tbl%index_t+i-1
-            if (tbl%fixed_z_opacity(x_table_index,temp_row_index, &
-                 density_base_index+3) > opal95_missing_test) then
+            if (any(tbl%fixed_z_opacity(x_tables,temp_row_index, &
+                 density_base_index+3) > opal95_missing_test)) then
                do j = density_base_index+2,1,-1
-                  if (tbl%fixed_z_opacity(x_table_index,temp_row_index,j) <= opal95_missing_test) then
+                  if (all(tbl%fixed_z_opacity(x_tables,temp_row_index,j) <= &
+                       opal95_missing_test)) then
                      tbl%index_rho(i) = j - 3
                      density_base_index = j - 3
                      exit
@@ -379,61 +436,15 @@ subroutine compute_opal95_opacity(tbl, log10_density, log10_temperature, hydroge
             end do
          end do
       end if
-!     Determine whether a 2d (rho,T); 3d (X,rho,T); or 4d (Z,X,rho,T)
-!     interpolation is needed to get the opacity.
-      if (abs(metal_fraction-tbl%fixed_z)/max(tbl%fixed_z,1.0d-6) <= opal95_composition_tol) then
-         if (abs(hydrogen_fraction-tbl%surface_x) <= opal95_composition_tol) then
-!           2d interpolation in surface table
-            call interpolate_opal95_2d(tbl, st, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
-            return
-         else
-!           3d interpolation in fixed Z table (X,T,rho)
-!           get interpolation factors in X.
-         call locate_opal95_x_stencil(1, tbl%fixed_z, hydrogen_fraction)
+!     Interpolate in the surface table (2d), the fixed-Z table (3d) or
+!     the full set (4d).
+      if (at_surface_x) then
+         call interpolate_opal95_2d(tbl, st, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
+      else if (at_fixed_z) then
          call interpolate_opal95_3d(tbl, st, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
-         return
-      end if
-      end if
-!     4d interpolation in Z,X,T,rho
-!     get nearest tables in Z.
-      if (metal_fraction > tbl%grid_z(tbl%index_z+2)) then
-         do i = tbl%index_z+3,n_opal95_z-1
-            if (metal_fraction < tbl%grid_z(i)) then
-               tbl%index_z = i - 2
-               exit
-            end if
-         end do
-         if (i > (n_opal95_z-1)) then
-         tbl%index_z = n_opal95_z - 3
-         end if
       else
-         do i = tbl%index_z+1,2,-1
-            if (metal_fraction >= tbl%grid_z(i)) then
-               tbl%index_z = i - 1
-               exit
-            end if
-         end do
-         if (i < (2)) then
-         tbl%index_z = 1
-         end if
+         call interpolate_opal95_4d(tbl, st, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
       end if
-!     (the last stencil at most)
-      tbl%index_z = min(tbl%index_z,n_opal95_z-3)
-!     Z interpolation factors
-      do i = 1,4
-         interp_nodes(i) = tbl%grid_z(tbl%index_z+i-1)
-      end do
-!     Interpolation factors in Z
-      call interp(interp_nodes, weight, x_eval=metal_fraction)
-      do i = 1,4
-         st%weight_z(i) = weight(i)
-      end do
-!     Get nearest tables in X at each value of Z
-      do k = 1,4
-         z_at_table = tbl%grid_z(tbl%index_z+k-1)
-         call locate_opal95_x_stencil(k, z_at_table, hydrogen_fraction)
-      end do
-      call interpolate_opal95_4d(tbl, st, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
       return
 
 contains
@@ -449,7 +460,7 @@ contains
 subroutine locate_opal95_x_stencil(k, z_here, hydrogen_fraction)
       integer, intent(in) :: k
       real(dp), intent(in) :: z_here, hydrogen_fraction
-      integer :: i, j, x_tables(4)
+      integer :: i, j, tables_at_z(4)
       real(dp) :: interp_nodes(4), weight(4)
 
       if (hydrogen_fraction > tbl%grid_x(tbl%index_x(k,1)+2)) then
@@ -471,8 +482,8 @@ subroutine locate_opal95_x_stencil(k, z_here, hydrogen_fraction)
       end if
 !     The four tables that exist at this Z, and their X.
       call opal95_x_tables_at_z(tbl%grid_x, z_here, hydrogen_fraction, tbl%index_x(k,1), &
-           x_tables, interp_nodes)
-      tbl%index_x(k,:) = x_tables
+           tables_at_z, interp_nodes)
+      tbl%index_x(k,:) = tables_at_z
 !     Get interpolation factors in X
       call interp(interp_nodes, weight, x_eval=hydrogen_fraction)
       do j = 1,4
@@ -748,6 +759,9 @@ end subroutine core_lookup_opal95
 ! passed in, the per-call stencil local (KA-12); the three interpolators
 ! sharing one row helper and one log R extrapolation; the high-R shift's
 ! search in the fixed-Z table, where the F77 code searched the full set's
-! Z = 0 slot (round 1B, M277).
+! Z = 0 slot (round 1B, M277), and in the X tables of the point's own
+! stencil, where it read the X index the previous lookup had left
+! (round 3, M298); the surface table's X tables those of the lookups'
+! stencil (M339).
 
 end module opal95_opacity

@@ -384,3 +384,26 @@ old = '''      else if (.not. interior%selected) then
          call no_interior_family(point, message, ierr)
       else if ((abs'''
 new = '''      else if ((abs'''
+
+[[mutation]]
+id = 'opal95-shift-stale-x'
+check = "OPAL95 high-R shift: independent of the previous lookup's X"
+file = 'kap/opal95/opal95_opacity.f90'
+old = '''         call locate_opal95_x_stencil(1, tbl%fixed_z, hydrogen_fraction)
+         x_tables = tbl%index_x(1,:)'''
+new = '''         x_tables = tbl%index_x(1,:)
+         call locate_opal95_x_stencil(1, tbl%fixed_z, hydrogen_fraction)'''
+
+[[mutation]]
+id = 'opal95-shift-first-x-table'
+check = "OPAL95 high-R shift: no empty cell of the stencil's X tables read"
+file = 'kap/opal95/opal95_opacity.f90'
+old = '''      if (any(tbl%fixed_z_opacity(x_tables,tbl%index_t+3, &'''
+new = '''      if (any(tbl%fixed_z_opacity(x_tables(1:1),tbl%index_t+3, &'''
+
+[[mutation]]
+id = 'opal95-shift-surface-tables'
+check = "OPAL95 high-R shift: no empty cell of the stencil's X tables read"
+file = 'kap/opal95/opal95_opacity.f90'
+old = '''         x_tables = tbl%surface_x_tables'''
+new = '''         x_tables = tbl%index_x(1,1)'''

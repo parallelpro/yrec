@@ -427,6 +427,7 @@ contains
          call get_point(0.85d0, 0.04d0*(1.0d0 + 2.0d-4), 5.53d0, logd_of(5.53d0, -3.3d0), r2, ierr2)
          call report("OPAL95 at Z = 0.04, X = 0.85: 2D continuous with 4D in Z", &
               abs(r(i_log10_kap) - r2(i_log10_kap)), 10.0d0*log10(1.0d0 + 2.0d-4), ierr + ierr2 == 0)
+         call high_r_shift_check()
          call load_production()
          call conductive_mixture_check()
          call conductive_low_density_check()
@@ -776,6 +777,76 @@ contains
             call report(label, abs(r3d(i_log10_kap) - r2d(i_log10_kap)), 1.0d-12, &
                  ierr + ierr2 + ierr3 == 0)
          end subroutine surface_table_check
+
+! The high-R shift where the tables' empty cells differ by X: a copy of
+! GS98.OP17 whose X = 0.70 tables have no value at log T 6.30 in the last
+! log R column. At X = 0.75, log T 6.15, log R 0.3 the stencil's fourth T
+! row is that one and its last column the empty one, in one of its four
+! X tables (0.5, 0.7, 0.8, 0.9). The lookup must shift that row's log R
+! stencil whatever X the previous lookup had (after X = 0.85, whose
+! stencil starts at the X = 0.70 table, and after X = 0.20), so that no
+! empty cell is read: log kappa within 0.002 of the unedited table's (it
+! is 0.013 off with the empty cell in the stencil), and
+! the 2D path (the surface table rebuilt at X = 0.75) the 3D path's.
+         subroutine high_r_shift_check()
+            double precision, parameter :: x = 0.75d0, z = 0.02d0, logt = 6.15d0, logr = 0.3d0
+            double precision :: original(num_kap_results), after_high_x(num_kap_results), &
+                 after_low_x(num_kap_results), on_surface(num_kap_results), other(num_kap_results)
+            integer :: ierr, k
+            call doctor_opal95_table("doctored.op17", "X=0.7000", "6.30", 19)
+            call configure("original", opal95=.true., z1=z, z2=0.0d0, two_z=.false., &
+                 opal95_path=trim(atom_dir)//"legacy/opal95/GS98.OP17", quiet=.true.)
+            call get_point(x, z, logt, logd_of(logt, logr), original, ierr)
+            call configure("doctored", opal95=.true., z1=z, z2=0.0d0, two_z=.false., &
+                 opal95_path="doctored.op17", quiet=.true.)
+            call get_point(0.85d0, z, 5.53d0, logd_of(5.53d0, -3.3d0), other, k)
+            ierr = ierr + k
+            call get_point(x, z, logt, logd_of(logt, logr), after_high_x, k)
+            ierr = ierr + k
+            call configure("doctored", opal95=.true., z1=z, z2=0.0d0, two_z=.false., &
+                 opal95_path="doctored.op17", quiet=.true.)
+            call get_point(0.20d0, z, 5.53d0, logd_of(5.53d0, -3.3d0), other, k)
+            ierr = ierr + k
+            call get_point(x, z, logt, logd_of(logt, logr), after_low_x, k)
+            ierr = ierr + k
+            call report("OPAL95 high-R shift: independent of the previous lookup's X", &
+                 maxval(abs(after_high_x - after_low_x)), 0.0d0, ierr == 0)
+            call kap_update_surface_tables(x, k)
+            ierr = ierr + k
+            call get_point(x, z, logt, logd_of(logt, logr), on_surface, k)
+            ierr = ierr + k
+            call report("OPAL95 high-R shift: no empty cell of the stencil's X tables read", &
+                 abs(after_low_x(i_log10_kap) - original(i_log10_kap)), 2.0d-3, ierr == 0 .and. &
+                 abs(on_surface(i_log10_kap) - after_low_x(i_log10_kap)) <= 1.0d-12)
+         end subroutine high_r_shift_check
+
+! A copy of GS98.OP17 at target in which, in every table whose header
+! holds x_text, the row that starts with row_text has no value (9.999)
+! from column first_column to the last
+         subroutine doctor_opal95_table(target, x_text, row_text, first_column)
+            character(len=*), intent(in) :: target, x_text, row_text
+            integer, intent(in) :: first_column
+            character(len=200) :: line
+            integer :: u, v, ios, column
+            logical :: in_table
+            in_table = .false.
+            open(newunit=u, file=target, status="replace")
+            open(newunit=v, file=trim(atom_dir)//"legacy/opal95/GS98.OP17", status="old", &
+                 action="read")
+            do
+               read(v,'(a)',iostat=ios) line
+               if (ios /= 0) exit
+               if (line(1:7) == 'TABLE #') in_table = index(line, x_text) > 0
+               if (in_table .and. line(1:4) == row_text) then
+                  do column = first_column, 19
+                     line(5+7*(column-1):4+7*column) = '  9.999'
+                  end do
+               end if
+               write(u,'(a)') trim(line)
+            end do
+            close(v)
+            close(u)
+         end subroutine doctor_opal95_table
 
 ! an OPAL95 node: the lookup's log kappa against the file's entry at
 ! TABLE #table_number's row log T and column log R

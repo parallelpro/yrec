@@ -170,6 +170,9 @@ module opacity_tables
            real(dp) :: fixed_z
            real(dp) :: surface_opacity(n_opal95_t,n_opal95_d)
            real(dp) :: surface_x
+! the four X tables of the fixed-Z table that the surface table was
+! built from (build_opal95_surface_table)
+           integer :: surface_x_tables(4) = 1
 ! the warm-start cursors: the first index of the Z stencil, of each Z
 ! row's X stencil, of the T stencil and of each T row's log R stencil
            integer :: index_z = 1
