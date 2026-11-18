@@ -127,6 +127,8 @@ kap_init: the Kurucz 1990 table no_rows.kurucz has no table row
 kap_init refuses a Kurucz 1990 table without rows                          0.00E+00  ok
 kap_get: no interior opacity table chosen (use_opal95_tables, use_opal92_tables or use_laol89_tables); X = 0.70000, Z = 0.03000, log T = 6.00000
 kap_get without an interior family says so, at any Z                       0.00E+00  ok
+kap_init: use_pure_z_table needs an interior table (use_opal95_tables, use_opal92_tables or use_laol89_tables)
+kap_report: a message before the run log opens waits for it                0.00E+00  ok
 kap_get: no interior opacity at Z = 0.01880: the OPAL 1992 table is at the envelope's Z = 0.02000 (use_z_ramp or use_diffusion_z reads two)
 kap_set_envelope_metal_fraction: one Z table serves the new Z only         0.00E+00  ok
 test_kap: done

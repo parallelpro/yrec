@@ -4,6 +4,10 @@
 ! The opacities' messages, in one place (rotation_messages and
 ! eos_messages are the models). kap writes only errors, and only
 ! through kap_report, which writes to the terminal and to the run log.
+! The run log's lines go through run_messages' log_line, which knows
+! whether the log is open: before it opens (an embedding host, a test
+! program) a line waits for it, and nothing is written to an unconnected
+! unit (bug_sweep M112).
 ! The table readers report their own errors at kap_init; the lookups and
 ! the tables' builds write nothing and return a one-line reason with
 ! ierr, which kap_lib reports with the entry point that met it
@@ -16,7 +20,7 @@
 ! assigned io's units.
 module kap_messages
       use, intrinsic :: iso_fortran_env, only: output_unit
-      use run_messages, only: run_log_unit
+      use run_messages, only: log_line
       implicit none
       private
       public :: kap_report
@@ -27,20 +31,19 @@ module kap_messages
 
 contains
 
+! The written lines of a message, on the terminal (standard output) and
+! in the run log.
 subroutine kap_report(lines)
-      character(len=*), intent(in) :: lines(:)
-      call write_kap_lines(output_unit, lines)
-      call write_kap_lines(run_log_unit, lines)
-end subroutine kap_report
-
-subroutine write_kap_lines(unit, lines)
-      integer, intent(in) :: unit
       character(len=*), intent(in) :: lines(:)
       integer :: k
       do k = 1, size(lines)
          if (lines(k)(1:1) == unwritten_line) cycle
-         write(unit,'(a)') trim(lines(k))
+         write(output_unit,'(a)') trim(lines(k))
       end do
-end subroutine write_kap_lines
+      do k = 1, size(lines)
+         if (lines(k)(1:1) == unwritten_line) cycle
+         call log_line(trim(lines(k)))
+      end do
+end subroutine kap_report
 
 end module kap_messages

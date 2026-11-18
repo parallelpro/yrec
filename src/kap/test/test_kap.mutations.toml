@@ -407,3 +407,10 @@ check = "OPAL95 high-R shift: no empty cell of the stencil's X tables read"
 file = 'kap/opal95/opal95_opacity.f90'
 old = '''         x_tables = tbl%surface_x_tables'''
 new = '''         x_tables = tbl%index_x(1,1)'''
+
+[[mutation]]
+id = 'run-log-through-log-line'
+check = 'kap_report: a message before the run log opens waits for it'
+file = 'kap/kap_messages.f90'
+old = '''         call log_line(trim(lines(k)))'''
+new = '''         write(77,'(a)') trim(lines(k))'''

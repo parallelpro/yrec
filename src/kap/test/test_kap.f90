@@ -17,7 +17,7 @@
 ! "via optional ierr") are pinned and stay as they are.
 program test_kap
       use run_setup, only: set_up_constants_and_tables
-      use run_messages, only: run_log_unit
+      use run_messages, only: run_log_unit, flush_pending_log
       use star_info_lib, only: star_info
       use kap_lib
       use opacity_tables
@@ -337,7 +337,7 @@ contains
          double precision :: r(num_kap_results), r2(num_kap_results), r_off(num_kap_results)
          double precision :: logd, value, value2, err
          type(kap_result) :: radiative, conductive, total, hl_plus, hl_minus
-         integer :: ierr, ierr2, u
+         integer :: ierr, ierr2, u, log_unit
          logical :: exists
 
          check_failures = 0
@@ -555,6 +555,18 @@ contains
          call get_point(0.70d0, 0.03d0, 6.0d0, -3.0d0, r, ierr)
          call report("kap_get without an interior family says so, at any Z", 0.0d0, 0.0d0, &
               ierr == 1 .and. index(last_log_line(), 'no interior opacity table chosen') > 0)
+! a message while the run log is not open (its unit one that nothing has
+! opened) creates no file for that unit, and reaches the log once it is
+! open (flush_pending_log, which open_run_log calls)
+         log_unit = run_log_unit
+         run_log_unit = 77
+         call kap_init_with(ierr, pure_z=.true.)
+         inquire(file="fort.77", exist=exists)
+         run_log_unit = log_unit
+         call flush_pending_log()
+         call report("kap_report: a message before the run log opens waits for it", 0.0d0, &
+              0.0d0, ierr == 1 .and. .not. exists .and. &
+              index(last_log_line(), 'use_pure_z_table needs an interior table') > 0)
 ! a single-Z interior table serves the zones at the envelope's Z, which
 ! follows the model: after the envelope moves to Z = 0.02 a zone there
 ! has an opacity (the one table's), and one at the old Z has none
