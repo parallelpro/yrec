@@ -36,15 +36,15 @@ program test_kap
       character(len=256) :: dummy_paths7(7)
 
       integer :: setups_ierr, ipt, kap_ierr
-      double precision :: logt, logd, x_frac, z_frac
-      double precision :: o, ol, qod, qot, fxion(3)
+      real(dp) :: logt, logd, x_frac, z_frac
+      real(dp) :: o, ol, qod, qot, fxion(3)
 
 ! the checks' failure count and table directories (run_checks)
       integer :: check_failures = 0
       character(len=256) :: atom_dir, mol_dir
 
       integer, parameter :: npts = 7
-      double precision :: grid_logt(npts), grid_logd(npts)
+      real(dp) :: grid_logt(npts), grid_logd(npts)
       data grid_logt /4.2d0, 4.6d0, 5.2d0, 6.0d0, 6.6d0, 7.0d0, 7.4d0/
       data grid_logd /-8.5d0, -7.5d0, -6.0d0, -3.0d0, -1.0d0, 0.2d0, 1.3d0/
 
@@ -58,13 +58,15 @@ program test_kap
       dummy_path = ""
       dummy_paths7 = ""
 
-! unit numbers, per core/read_input.f90
+! the run log's unit and file (a run's controls read assigns the unit,
+! run_files' assign_unit_numbers)
       run_log_unit = 20
       open(run_log_unit, file="test_kap.short", status="replace")
 
-! kap configuration: OPAL95 atomic tables only, per the reference
-! solar namelists (LOPAL95=T, ZOPAL951=0.016232, TMOLMIN/TMOLMAX
-! 4.0/4.1); molecular and conductive paths off
+! kap configuration: OPAL95 atomic tables only, as the reference solar
+! decks (use_opal95_tables, opal95_single_table_z = 0.016232,
+! molecular_opacity_logt_min and _max = 4.0 and 4.1); no molecular
+! family, no conduction
       star%control%use_opal95_tables = .true.
       star%control%use_opal92_tables = .false.
       star%control%use_laol89_tables = .false.
@@ -135,12 +137,9 @@ program test_kap
          write(*,'(a,i2,4(1pe24.15))') "kap ", ipt, o, ol, qod, qot
       end do
 
-! Error paths (2026, docs/ROADMAP.md stage 3): out-of-range points and
-! misconfiguration return ierr /= 0 instead of stopping -- the first
-! time these paths are testable at all. The diagnostic each failure
-! writes goes to run_log_unit / stdout at the point of failure, as
-! always. (The "optional ierr" wording in the output line below is
-! historical and kept because the expected output is byte-compared.)
+! Two error paths: a point off the table, and no interior family, return
+! ierr with the message on standard output and in the run log. (The
+! header line's "via optional ierr" is pinned text.)
       write(*,'(a)') "# test_kap: error paths via optional ierr"
       logt = 3.5d0
       logd = -8.0d0
@@ -236,7 +235,7 @@ contains
          logical, intent(in), optional :: quiet
          logical, intent(in), optional :: opal95, opal92, laol89, alex06, alex95, &
               kurucz90, pure_z, conductive
-         double precision, intent(in) :: z1, z2
+         real(dp), intent(in) :: z1, z2
          logical, intent(in) :: two_z
          character(len=*), intent(in), optional :: opal95_path, opal92_path, &
               opal92_path2, laol_path, laol_path2, alex06_path, kurucz_path, &
@@ -287,9 +286,9 @@ contains
 ! deep interior (log R = log rho - 3 log T6 = -3, the middle of the
 ! tables), or the interior points only.
       subroutine evaluate_points(x, z, interior_only)
-         double precision, intent(in) :: x, z
+         real(dp), intent(in) :: x, z
          logical, intent(in), optional :: interior_only
-         double precision, parameter :: logt_all(9) = [3.40d0, 3.70d0, 4.00d0, &
+         real(dp), parameter :: logt_all(9) = [3.40d0, 3.70d0, 4.00d0, &
               4.05d0, 4.10d0, 4.50d0, 5.50d0, 6.50d0, 7.20d0]
          integer :: k, first
          first = 1
@@ -300,7 +299,7 @@ contains
       end subroutine evaluate_points
 
       subroutine evaluate_point(x, z, logt, logd)
-         double precision, intent(in) :: x, z, logt, logd
+         real(dp), intent(in) :: x, z, logt, logd
          integer :: ierr
          fxion = 0.0d0
          call evaluate(logd, logt, x, z, ierr)
@@ -312,9 +311,9 @@ contains
       end subroutine evaluate_point
 ! kap_get at one point, its results unpacked into o, ol, qod, qot
       subroutine evaluate(logd, logt, x, z, ierr)
-         double precision, intent(in) :: logd, logt, x, z
+         real(dp), intent(in) :: logd, logt, x, z
          integer, intent(out) :: ierr
-         double precision :: res(num_kap_results)
+         real(dp) :: res(num_kap_results)
          res = 0.0d0
          call kap_get(logd, logt, x, z, res, fxion, ierr)
          o = res(i_kap)
@@ -337,8 +336,8 @@ contains
          use opacity_source, only: kap_result
          use opacity_blending, only: blend_in_z, add_conduction, hubbard_lampe_opacity
          character(len=256) :: cond_path
-         double precision :: r(num_kap_results), r2(num_kap_results), r_off(num_kap_results)
-         double precision :: logd, value, value2, err
+         real(dp) :: r(num_kap_results), r2(num_kap_results), r_off(num_kap_results)
+         real(dp) :: logd, value, value2, err
          type(kap_result) :: radiative, conductive, total, hl_plus, hl_minus
          integer :: ierr, ierr2, u, log_unit
          logical :: exists
@@ -692,7 +691,7 @@ contains
 
          subroutine report(label, err, tol, ok_otherwise)
             character(len=*), intent(in) :: label
-            double precision, intent(in) :: err, tol
+            real(dp), intent(in) :: err, tol
             logical, intent(in) :: ok_otherwise
             if (ok_otherwise .and. err <= tol) then
                write(*,'(a,t74,1pe10.2,a)') label, err, "  ok"
@@ -703,14 +702,14 @@ contains
          end subroutine report
 
 ! log rho at log T and log R = log rho - 3 log T6
-         double precision function logd_of(logt, logr)
-            double precision, intent(in) :: logt, logr
+         real(dp) function logd_of(logt, logr)
+            real(dp), intent(in) :: logt, logr
             logd_of = logr + 3.0d0*(logt - 6.0d0)
          end function logd_of
 
          subroutine get_point(x, z, logt, logd, res, ierr)
-            double precision, intent(in) :: x, z, logt, logd
-            double precision, intent(inout) :: res(num_kap_results)
+            real(dp), intent(in) :: x, z, logt, logd
+            real(dp), intent(inout) :: res(num_kap_results)
             integer, intent(out) :: ierr
             call kap_get(logd, logt, x, z, res, fxion, ierr)
          end subroutine get_point
@@ -718,8 +717,8 @@ contains
 ! the node's log kappa is the file's, a multiple of 0.001
          subroutine node_check(label, x, z, logt, logr)
             character(len=*), intent(in) :: label
-            double precision, intent(in) :: x, z, logt, logr
-            double precision :: res(num_kap_results)
+            real(dp), intent(in) :: x, z, logt, logr
+            real(dp) :: res(num_kap_results)
             integer :: ierr
             res = 0.0d0
             call get_point(x, z, logt, logd_of(logt, logr), res, ierr)
@@ -732,10 +731,10 @@ contains
 ! log R unless logd_is_log_rho
          subroutine derivative_check(label, x, z, logt, logd_in, tol, logd_is_log_rho)
             character(len=*), intent(in) :: label
-            double precision, intent(in) :: x, z, logt, logd_in, tol
+            real(dp), intent(in) :: x, z, logt, logd_in, tol
             logical, intent(in), optional :: logd_is_log_rho
-            double precision, parameter :: h = 1.0d-4
-            double precision :: res(num_kap_results), plus(num_kap_results), &
+            real(dp), parameter :: h = 1.0d-4
+            real(dp) :: res(num_kap_results), plus(num_kap_results), &
                  minus(num_kap_results), logd, err_rho, err_t
             integer :: ierr, jerr
             logd = logd_of(logt, logd_in)
@@ -760,8 +759,8 @@ contains
 ! log R: the relative jump
          subroutine continuity_check(label, x, z, logt_edge, logr, tol)
             character(len=*), intent(in) :: label
-            double precision, intent(in) :: x, z, logt_edge, logr, tol
-            double precision :: below(num_kap_results), above(num_kap_results)
+            real(dp), intent(in) :: x, z, logt_edge, logr, tol
+            real(dp) :: below(num_kap_results), above(num_kap_results)
             integer :: ierr, jerr
             call get_point(x, z, logt_edge - 1.0d-9, logd_of(logt_edge - 1.0d-9, logr), below, ierr)
             call get_point(x, z, logt_edge + 1.0d-9, logd_of(logt_edge + 1.0d-9, logr), above, jerr)
@@ -783,10 +782,10 @@ contains
             use conductive_reader, only: read_conductive_table
             use conductive_opacity, only: compute_conductive_opacity
             type(conductive_table_set), save :: cond
-            double precision, parameter :: logt = 7.33d0, logd = 2.93d0, x = 0.5d0, z = 0.1d0
-            double precision, parameter :: a_h = 1.008d0, a_he = 4.004d0, a_o = 16.0d0
-            double precision, parameter :: a_over_z(3) = [1.0d0, 2.0d0, 2.0d0]
-            double precision :: species(3), mix, ol, dr, dt, n(3), w(3), f(3), ions(3), &
+            real(dp), parameter :: logt = 7.33d0, logd = 2.93d0, x = 0.5d0, z = 0.1d0
+            real(dp), parameter :: a_h = 1.008d0, a_he = 4.004d0, a_o = 16.0d0
+            real(dp), parameter :: a_over_z(3) = [1.0d0, 2.0d0, 2.0d0]
+            real(dp) :: species(3), mix, ol, dr, dt, n(3), w(3), f(3), ions(3), &
                  charge(3), y_e, pure_y_e(3), logd_pure(3)
             logical :: got
             character(len=512) :: msg
@@ -826,8 +825,8 @@ contains
             use conductive_reader, only: read_conductive_table
             use conductive_opacity, only: compute_conductive_opacity
             type(conductive_table_set), save :: cond
-            double precision, parameter :: logt = 3.6d0, x = 0.7d0, z = 0.02d0, h = 1.0d-4
-            double precision :: below, above, ol, dr, dt, o, ol_plus, ol_minus, f(3)
+            real(dp), parameter :: logt = 3.6d0, x = 0.7d0, z = 0.02d0, h = 1.0d-4
+            real(dp) :: below, above, ol, dr, dt, o, ol_plus, ol_minus, f(3)
             logical :: got, got_all
             character(len=512) :: msg
             integer :: ierr, k
@@ -866,7 +865,7 @@ contains
             use conductive_reader, only: read_conductive_table
             use conductive_opacity, only: compute_conductive_opacity
             type(conductive_table_set), save :: cond
-            double precision :: o, ol, dr, dt, f(3)
+            real(dp) :: o, ol, dr, dt, f(3)
             logical :: got
             character(len=512) :: msg
             integer :: ierr, k
@@ -884,8 +883,8 @@ contains
 ! has rebuilt the surface table at x (one interpolation, two orders)
          subroutine surface_table_check(label, z, x)
             character(len=*), intent(in) :: label
-            double precision, intent(in) :: z, x
-            double precision :: r3d(num_kap_results), r2d(num_kap_results)
+            real(dp), intent(in) :: z, x
+            real(dp) :: r3d(num_kap_results), r2d(num_kap_results)
             integer :: ierr, ierr2, ierr3
             call configure("surface table", opal95=.true., z1=z, z2=0.0d0, two_z=.false., &
                  opal95_path=trim(atom_dir)//"legacy/opal95/GS98.OP17", quiet=.true.)
@@ -907,8 +906,8 @@ contains
 ! is 0.013 off with the empty cell in the stencil), and
 ! the 2D path (the surface table rebuilt at X = 0.75) the 3D path's.
          subroutine high_r_shift_check()
-            double precision, parameter :: x = 0.75d0, z = 0.02d0, logt = 6.15d0, logr = 0.3d0
-            double precision :: original(num_kap_results), after_high_x(num_kap_results), &
+            real(dp), parameter :: x = 0.75d0, z = 0.02d0, logt = 6.15d0, logr = 0.3d0
+            real(dp) :: original(num_kap_results), after_high_x(num_kap_results), &
                  after_low_x(num_kap_results), on_surface(num_kap_results), other(num_kap_results)
             integer :: ierr, k
             call doctor_opal95_table("doctored.op17", "X=0.7000", "6.30", 19)
@@ -950,9 +949,9 @@ contains
 !   - log R 0.2: past the last two rows' last column by more than a
 !     column, they are extrapolated linearly from it: the derivatives.
          subroutine high_r_edge_checks()
-            double precision, parameter :: x = 0.70d0, z = 0.016232d0, logt = 7.45d0
-            double precision :: r(num_kap_results), node(num_kap_results)
-            double precision :: neighbours
+            real(dp), parameter :: x = 0.70d0, z = 0.016232d0, logt = 7.45d0
+            real(dp) :: r(num_kap_results), node(num_kap_results)
+            real(dp) :: neighbours
             integer :: ierr, k, it, ir
             call configure("opal95 alone", opal95=.true., z1=z, z2=0.0d0, two_z=.false., &
                  opal95_path=trim(atom_dir)//"legacy/opal95/GS98.OP17", quiet=.true.)
@@ -978,7 +977,7 @@ contains
 ! selected, the lookup is the first one's alone, bit for bit (the second
 ! is neither loaded nor used).
          subroutine precedence_checks()
-            double precision :: first(num_kap_results), both(num_kap_results)
+            real(dp) :: first(num_kap_results), both(num_kap_results)
             integer :: ierr, k
             call configure("opal95", opal95=.true., z1=0.016232d0, z2=0.0d0, two_z=.false., &
                  opal95_path=trim(atom_dir)//"legacy/opal95/GS98.OP17", quiet=.true.)
@@ -1035,9 +1034,9 @@ contains
 ! TABLE #table_number's row log T and column log R
          subroutine opal95_node_check(label, x, z, logt, logr, table_number)
             character(len=*), intent(in) :: label
-            double precision, intent(in) :: x, z, logt, logr
+            real(dp), intent(in) :: x, z, logt, logr
             integer, intent(in) :: table_number
-            double precision :: res(num_kap_results), row_logt, file_value
+            real(dp) :: res(num_kap_results), row_logt, file_value
             character(len=200) :: line
             integer :: ierr, u, n, ios, column
             res = 0.0d0
@@ -1132,7 +1131,7 @@ contains
               opal95_path, alex06_path, alex94_first_path, pure_z_path)
             integer, intent(out) :: ierr
             logical, intent(in), optional :: opal95, opal92, alex06, pure_z, two_z
-            double precision, intent(in), optional :: logt_min, laol_tolerance, table_z
+            real(dp), intent(in), optional :: logt_min, laol_tolerance, table_z
             character(len=*), intent(in), optional :: conductive_path, opal92_path, laol_path, &
                  kurucz_path, opal95_path, alex06_path, alex94_first_path, pure_z_path
             type(kap_settings_t) :: s
