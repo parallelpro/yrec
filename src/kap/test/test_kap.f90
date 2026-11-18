@@ -504,7 +504,10 @@ contains
          call report("kap_init refuses the pure-Z table without an interior table", 0.0d0, &
               0.0d0, ierr == 1)
          call kap_init_with(ierr, opal92=.true., two_z=.true.)
-         call report("kap_init refuses two OPAL92 tables at one Z", 0.0d0, 0.0d0, ierr == 1)
+! (by its message: the first table's file is not at that Z either, which
+! its reader would refuse next)
+         call report("kap_init refuses two OPAL92 tables at one Z", 0.0d0, 0.0d0, &
+              ierr == 1 .and. index(last_log_line(), 'need two Zs') > 0)
          call kap_init_with(ierr, opal95=.true., alex06=.true., logt_min=4.1d0)
          call report("kap_init refuses molecular_opacity_logt_min >= _max", 0.0d0, 0.0d0, ierr == 1)
          call kap_init_with(ierr, opal95=.true., conductive_path="no_such_table.cond")

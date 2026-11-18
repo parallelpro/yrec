@@ -588,3 +588,10 @@ check = 'kap_init refuses a pure-Z table with more than one X'
 file = 'kap/laol89/laol_reader.f90'
 old = '''      if (num_x /= 1.or.tbl%num_rho > n_laol_rho.or.tbl%num_t > n_laol_t) then'''
 new = '''      if (tbl%num_rho > n_laol_rho.or.tbl%num_t > n_laol_t) then'''
+
+[[mutation]]
+id = 'opal95-surface-x-weights'
+check = 'OPAL95 surface table at Z = 0.06, X = 0.85: 2D is 3D'
+file = 'kap/opal95/opal95_opacity.f90'
+old = '''      call interp(table_x_nodes, x_weight, x_eval=hydrogen_fraction)'''
+new = '''      call interp(table_x_nodes, x_weight, x_eval=hydrogen_fraction + 1.0d-3*tbl%fixed_z)'''
