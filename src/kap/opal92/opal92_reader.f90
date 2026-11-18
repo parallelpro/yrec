@@ -10,7 +10,7 @@ module opal92_reader
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use opacity_tables, only: n_opal92_d, n_opal92_t, n_opal92_x, opal92_table_set
       use kap_messages, only: kap_report, message_length, unwritten_line
-      use opacity_table_files, only: open_table, read_failed, table_z_differs
+      use opacity_table_files, only: open_table, read_failed, table_z_differs, iomsg_length
       use math_lib
       implicit none
       private
@@ -30,7 +30,7 @@ subroutine read_opal92_tables(tables, opal92_table_path, opal92_table2_path, &
      two_z_tables, table_z, ierr)
 ! (1) at opal_table_z1 and, with two_z_tables, (2) at opal_table_z2
       type(opal92_table_set), intent(inout) :: tables(:)
-      character(len=256), intent(in) :: opal92_table_path, opal92_table2_path
+      character(len=*), intent(in) :: opal92_table_path, opal92_table2_path
       logical, intent(in) :: two_z_tables
 ! opal_table_z1 and opal_table_z2
       real(dp), intent(in) :: table_z(:)
@@ -49,14 +49,14 @@ end subroutine read_opal92_tables
 ! its control (control_z, of control_name). The rows give T6 = T/1e6 K,
 ! stored as log10 T6.
 subroutine read_opal92_table(path, tbl, control_z, control_name, ierr)
-      character(len=256), intent(in) :: path
+      character(len=*), intent(in) :: path
       type(opal92_table_set), intent(inout) :: tbl
       real(dp), intent(in) :: control_z
       character(len=*), intent(in) :: control_name
       integer, intent(inout) :: ierr   ! left at the caller's 0 on success
       integer :: unit, ix, row, ios
       real(dp) :: header_z, t6
-      character(len=256) :: iomsg
+      character(len=iomsg_length) :: iomsg
       character(len=message_length) :: lines(1)
 
       call open_table(path, 'OPAL 1992', unit, ierr)

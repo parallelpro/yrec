@@ -79,7 +79,7 @@ contains
 ! from the Z tables it has: X tables 1-8 at every Z, table 9 (X = 0.95)
 ! below Z = 0.04 only, table 10 (X = 1 - Z) below Z = 0.1. A Z above the
 ! top node (0.1) returns ierr = 1 with the reason in message.
-subroutine build_opal95_fixed_z_table(tbl, metal_fraction, message, ierr)
+pure subroutine build_opal95_fixed_z_table(tbl, metal_fraction, message, ierr)
       type(opal95_table_set), intent(inout) :: tbl
       real(dp), intent(in) :: metal_fraction
       character(len=*), intent(out) :: message
@@ -145,7 +145,7 @@ end subroutine build_opal95_fixed_z_table
 ! The fixed-Z table's X table ix: the full set's tables of that X at the
 ! four Z from Z index first_z, combined with z_weight (the slot of X
 ! index ix at Z index iz is table_start_index(iz) + ix).
-subroutine interpolate_x_table_in_z(tbl, ix, first_z, z_weight)
+pure subroutine interpolate_x_table_in_z(tbl, ix, first_z, z_weight)
       type(opal95_table_set), intent(inout) :: tbl
       integer, intent(in) :: ix, first_z
       real(dp), intent(in) :: z_weight(:)
@@ -168,7 +168,7 @@ end subroutine interpolate_x_table_in_z
 ! 4-point Lagrange interpolation in X of the fixed-Z table set
 ! (tbl%fixed_z_opacity), from the X tables that exist at its Z, each at
 ! its own X (opal95_x_tables_at_z: the 3D and 4D paths' rule).
-subroutine build_opal95_surface_table(tbl, hydrogen_fraction)
+pure subroutine build_opal95_surface_table(tbl, hydrogen_fraction)
       type(opal95_table_set), intent(inout) :: tbl
 
 
@@ -229,7 +229,7 @@ end subroutine build_opal95_surface_table
 ! A log T off the table returns ierr = 1 with the reason in message.
 ! Below the table's first log R column the opacity is extrapolated
 ! linearly in log R (extrapolate_in_logr), without a limit.
-subroutine compute_opal95_opacity(tbl, log10_density, log10_temperature, hydrogen_fraction, &
+pure subroutine compute_opal95_opacity(tbl, log10_density, log10_temperature, hydrogen_fraction, &
      metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, message, ierr)
       type(opal95_table_set), intent(inout) :: tbl
 
@@ -275,7 +275,7 @@ end subroutine compute_opal95_opacity
 ! table's first column (extrap_lo); the stencil in T (tbl%index_t) with
 ! its weights and their T derivatives; and the first column of the
 ! stencil in log R (tbl%index_rho(1)), which step 3 may move row by row.
-subroutine locate_opal95_t_and_logr(tbl, log10_density, log10_temperature, st)
+pure subroutine locate_opal95_t_and_logr(tbl, log10_density, log10_temperature, st)
       type(opal95_table_set), intent(inout) :: tbl
       real(dp), intent(in) :: log10_density, log10_temperature
       type(opal95_stencil), intent(inout) :: st
@@ -296,7 +296,7 @@ end subroutine locate_opal95_t_and_logr
 ! point's X, which step 3 reads: the tables the surface table was built
 ! from, the 3D path's stencil, or the 4D path's at its first Z row. The
 ! 2D path locates no X stencil, so it leaves the X cursors alone.
-subroutine locate_opal95_composition(tbl, hydrogen_fraction, metal_fraction, st, path, x_tables)
+pure subroutine locate_opal95_composition(tbl, hydrogen_fraction, metal_fraction, st, path, x_tables)
       type(opal95_table_set), intent(inout) :: tbl
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction
       type(opal95_stencil), intent(inout) :: st
@@ -328,7 +328,7 @@ end subroutine locate_opal95_composition
 ! from its previous value to the first of the four Z tables around
 ! metal_fraction (the last four above the next-to-last node), and
 ! st%weight_z takes their weights.
-subroutine locate_opal95_z_stencil(tbl, metal_fraction, st)
+pure subroutine locate_opal95_z_stencil(tbl, metal_fraction, st)
       type(opal95_table_set), intent(inout) :: tbl
       real(dp), intent(in) :: metal_fraction
       type(opal95_stencil), intent(inout) :: st
@@ -365,7 +365,7 @@ end subroutine locate_opal95_z_stencil
 ! (tbl%index_x(k,1:4)), and st%weight_x(1:4,k) takes their weights. The
 ! 3D path calls it for k = 1 at the fixed Z, the 4D path for each of its
 ! Z rows.
-subroutine locate_opal95_x_stencil(tbl, k, z_here, hydrogen_fraction, st)
+pure subroutine locate_opal95_x_stencil(tbl, k, z_here, hydrogen_fraction, st)
       type(opal95_table_set), intent(inout) :: tbl
       integer, intent(in) :: k
       real(dp), intent(in) :: z_here, hydrogen_fraction
@@ -411,7 +411,7 @@ end subroutine locate_opal95_x_stencil
 ! first T row at or below low_corner_t_row) is not checked: its empty
 ! region depends on Z, and the check the F77 code postponed was never
 ! written, so there the stencil is used as found.
-subroutine shift_rows_off_empty_corner(tbl, hydrogen_fraction, x_tables, st, rows_shifted)
+pure subroutine shift_rows_off_empty_corner(tbl, hydrogen_fraction, x_tables, st, rows_shifted)
       type(opal95_table_set), intent(inout) :: tbl
       real(dp), intent(in) :: hydrogen_fraction
       integer, intent(in) :: x_tables(:)
@@ -463,7 +463,7 @@ end subroutine shift_rows_off_empty_corner
 ! row marked for extrapolation takes its weights at its last column
 ! (st%logr_hi_edge(row)). extrapolate_in_logr carries each such row from
 ! its edge to the point.
-subroutine opal95_logr_weights(tbl, rows_shifted, st)
+pure subroutine opal95_logr_weights(tbl, rows_shifted, st)
       type(opal95_table_set), intent(inout) :: tbl
       logical, intent(in) :: rows_shifted
       type(opal95_stencil), intent(inout) :: st
@@ -676,7 +676,7 @@ end subroutine extrapolate_in_logr
 ! An interior family that interpolates in Z itself (the 4D path), so it
 ! needs no second table at another Z; in a helium-burning core it is
 ! read at its top Z.
-function opal95_source(settings) result(source)
+pure function opal95_source(settings) result(source)
       type(kap_settings_t), intent(in) :: settings
       type(kap_source) :: source
 
@@ -706,7 +706,7 @@ subroutine load_opal95(settings, paths, envelope_hydrogen_fraction, tables, mess
       call build_opal95_surface_table(tables%opal95, envelope_hydrogen_fraction)
 end subroutine load_opal95
 
-subroutine refresh_opal95(settings, hydrogen_fraction, tables, message, ierr)
+pure subroutine refresh_opal95(settings, hydrogen_fraction, tables, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       real(dp), intent(in) :: hydrogen_fraction
       type(opacity_table_state), intent(inout) :: tables
@@ -718,7 +718,7 @@ subroutine refresh_opal95(settings, hydrogen_fraction, tables, message, ierr)
       call build_opal95_surface_table(tables%opal95, hydrogen_fraction)
 end subroutine refresh_opal95
 
-subroutine lookup_opal95(settings, tables, point, res, in_table, message, ierr)
+pure subroutine lookup_opal95(settings, tables, point, res, in_table, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(opacity_table_state), intent(inout) :: tables
       type(kap_point), intent(in) :: point
@@ -734,7 +734,7 @@ subroutine lookup_opal95(settings, tables, point, res, in_table, message, ierr)
 end subroutine lookup_opal95
 
 ! in a helium-burning core: the tables at their top Z
-subroutine core_lookup_opal95(settings, tables, point, res, table_z, message, ierr)
+pure subroutine core_lookup_opal95(settings, tables, point, res, table_z, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(opacity_table_state), intent(inout) :: tables
       type(kap_point), intent(in) :: point

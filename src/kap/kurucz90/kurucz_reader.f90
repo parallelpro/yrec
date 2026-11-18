@@ -10,7 +10,7 @@ module kurucz_reader
       use opacity_tables, only: kurucz_max_num_densities, kurucz_max_num_temps, &
            kurucz_table_set
       use kap_messages, only: kap_report, message_length, unwritten_line
-      use opacity_table_files, only: open_table, read_failed
+      use opacity_table_files, only: open_table, read_failed, iomsg_length
       use math_lib
       implicit none
       private
@@ -29,7 +29,7 @@ subroutine read_kurucz_tables(tables, kurucz_table_path, kurucz_table2_path, &
      two_z_tables, ierr)
 ! (1) at kurucz_table_z1 and, with two_z_tables, (2) at kurucz_table_z2
       type(kurucz_table_set), intent(inout) :: tables(:)
-      character(len=256), intent(in) :: kurucz_table_path, kurucz_table2_path
+      character(len=*), intent(in) :: kurucz_table_path, kurucz_table2_path
       logical, intent(in) :: two_z_tables
       integer, intent(out) :: ierr
 
@@ -50,7 +50,7 @@ end subroutine read_kurucz_tables
 ! velocities (0, 1, 2, 4 and 8 km/s), log Ne, log Na, log rho and a last
 ! column; log T, log rho and kappa at no microturbulence are kept.
 subroutine read_kurucz_table(path, tbl, ierr)
-      character(len=256), intent(in) :: path
+      character(len=*), intent(in) :: path
       type(kurucz_table_set), intent(inout) :: tbl
       integer, intent(inout) :: ierr   ! left at the caller's 0 on success
       integer :: unit, ios, num_temps, density_index
@@ -58,7 +58,7 @@ subroutine read_kurucz_table(path, tbl, ierr)
       real(dp) :: logt, previous_logt, log_pressure, log10_opacity(5), log_electron_density, &
            log_atom_density, log_rho, last_column
       character(len=message_length) :: lines(1)
-      character(len=256) :: iomsg
+      character(len=iomsg_length) :: iomsg
 
       call open_table(path, 'Kurucz 1990', unit, ierr)
       if (ierr /= 0) return

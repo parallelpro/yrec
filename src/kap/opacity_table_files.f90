@@ -22,6 +22,8 @@ module opacity_table_files
       implicit none
       private
       public :: open_table, read_failed, table_z_differs
+! the length of the buffer a read's or an open's iomsg is returned in
+      integer, parameter, public :: iomsg_length = 256
 
 ! How far the Z a table file states may be from its control's: the files
 ! state Z to four or five decimals, rounded (Z01895.OPALN states 0.0190,
@@ -35,7 +37,7 @@ subroutine open_table(path, label, unit, ierr)
       character(len=*), intent(in) :: path, label
       integer, intent(out) :: unit, ierr
       integer :: ios
-      character(len=256) :: iomsg
+      character(len=iomsg_length) :: iomsg
       character(len=message_length) :: line
 
       ierr = 0
@@ -79,8 +81,6 @@ logical function table_z_differs(file_z, control_z, control_name, label, path, u
       lines = unwritten_line
       write(lines,'(a,f8.5,a,f8.5)') 'kap_init: the ' // label // ' table ' // trim(path) // &
            ' is at Z =', file_z, ', not at ' // control_name // ' =', control_z
-      call kap_report(lines)
-      ierr = 1
       call refuse_table(unit, lines, ierr)
 end function table_z_differs
 
@@ -92,6 +92,8 @@ subroutine refuse_table(unit, lines, ierr)
       integer, intent(inout) :: ierr
 
       close(unit)
+      call kap_report(lines)
+      ierr = 1
 end subroutine refuse_table
 
 end module opacity_table_files

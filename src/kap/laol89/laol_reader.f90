@@ -12,7 +12,7 @@ module laol_reader
       use opacity_tables, only: laol_table_set, n_laol_rho, n_laol_t, n_laol_x, &
            pure_z_table_set
       use kap_messages, only: kap_report, message_length, unwritten_line
-      use opacity_table_files, only: open_table, read_failed, table_z_differs
+      use opacity_table_files, only: open_table, read_failed, table_z_differs, iomsg_length
       use math_lib
       implicit none
       private
@@ -32,7 +32,7 @@ subroutine read_laol_tables(tables, laol_table_path, laol_table2_path, two_z_tab
      table_z, extrapolation_tolerance, ierr)
 ! (1) at laol_table_z1 and, with two_z_tables, (2) at laol_table_z2
       type(laol_table_set), intent(inout) :: tables(:)
-      character(len=256), intent(in) :: laol_table_path, laol_table2_path
+      character(len=*), intent(in) :: laol_table_path, laol_table2_path
       logical, intent(in) :: two_z_tables
 ! laol_table_z1 and laol_table_z2
       real(dp), intent(in) :: table_z(:)
@@ -60,7 +60,7 @@ end subroutine read_laol_tables
 ! mixture, M37). The Z the header states for the two parts (zlot, zhit)
 ! must be the Z of the table's control (control_z, of control_name).
 subroutine read_laol_table(path, tbl, control_z, control_name, ierr)
-      character(len=256), intent(in) :: path
+      character(len=*), intent(in) :: path
       type(laol_table_set), intent(inout) :: tbl
       real(dp), intent(in) :: control_z
       character(len=*), intent(in) :: control_name
@@ -68,7 +68,7 @@ subroutine read_laol_table(path, tbl, control_z, control_name, ierr)
       integer :: laol_unit, ix, ir, ios
       real(dp) :: zlot, zhit, cox_stewart_mixture(10), debye_huckel_mixture(18)
       character(len=message_length) :: lines(1)
-      character(len=256) :: iomsg
+      character(len=iomsg_length) :: iomsg
 
       call open_table(path, 'LAOL 1989', laol_unit, ierr)
       if (ierr /= 0) return
@@ -130,14 +130,14 @@ end subroutine read_laol_table
 ! not fit pure_z_table_set, returns ierr = 1.
 subroutine read_pure_z_table(tbl, pure_z_table_path, extrapolation_tolerance, ierr)
       type(pure_z_table_set), intent(inout) :: tbl
-      character(len=256), intent(in) :: pure_z_table_path
+      character(len=*), intent(in) :: pure_z_table_path
 ! laol_extrapolation_tolerance (its ln is the distance in log rho)
       real(dp), intent(in) :: extrapolation_tolerance
       integer, intent(out) :: ierr
       integer :: pure_z_unit, num_x, ir, ios
       real(dp) :: header_z, cox_stewart_mixture(10), header_x
       character(len=message_length) :: lines(1)
-      character(len=256) :: iomsg
+      character(len=iomsg_length) :: iomsg
 
       tbl%log_extrapolation_tolerance = log(extrapolation_tolerance)
       call open_table(pure_z_table_path, 'pure-Z', pure_z_unit, ierr)

@@ -50,7 +50,7 @@ contains
 ! table(s) (spline_opal92_rows), as coefficients per interval: the
 ! second table's with two_z_tables. A row that does not start at the
 ! first log R returns ierr with the reason in message.
-subroutine prepare_opal92_tables(tables, two_z_tables, message, ierr)
+pure subroutine prepare_opal92_tables(tables, two_z_tables, message, ierr)
       type(opal92_table_set), intent(inout) :: tables(:)
       logical, intent(in) :: two_z_tables
       character(len=*), intent(out) :: message
@@ -68,7 +68,7 @@ end subroutine prepare_opal92_tables
 ! T row + (X index - 1) x the number of T rows: by the rows read for
 ! the spline's arrays and by n_opal92_t in log10_opacity, where the
 ! reader stored it (the two are equal: a short table is refused).
-subroutine spline_opal92_rows(tbl, message, ierr)
+pure subroutine spline_opal92_rows(tbl, message, ierr)
       type(opal92_table_set), intent(inout) :: tbl
       character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
@@ -124,7 +124,7 @@ end subroutine spline_opal92_rows
 ! density cursor carries from the first set into the second. A row that
 ! does not start at the first log R returns ierr with the reason in
 ! message.
-subroutine build_opal92_surface_table(tables, hydrogen_fraction, table_z, &
+pure subroutine build_opal92_surface_table(tables, hydrogen_fraction, table_z, &
      two_z_tables, message, ierr)
 ! (1) at table_z(1) and, with two_z_tables, (2) at table_z(2)
 ! (opal_table_z1 and opal_table_z2)
@@ -155,7 +155,7 @@ end subroutine build_opal92_surface_table
 ! the grid, the first two below it), then splined in log R (only
 ! log kappa is kept; interpolate_opal92_2d's derivatives are not used
 ! here). x_index and logr_cursor are findex's cursors, the caller's.
-subroutine build_opal92_surface_rows(tbl, hydrogen_fraction, table_z, x_index, logr_cursor, &
+pure subroutine build_opal92_surface_rows(tbl, hydrogen_fraction, table_z, x_index, logr_cursor, &
      message, ierr)
       type(opal92_table_set), intent(inout) :: tbl
       real(dp), intent(in) :: hydrogen_fraction, table_z
@@ -230,7 +230,7 @@ end subroutine build_opal92_surface_rows
 ! linearly in X. A point off the tables returns ierr = 1 with the reason
 ! in message. tbl%index_x, index_t and index_rho are the warm-start
 ! cursors.
-subroutine compute_opal92_opacity(tbl, log10_density, log10_temperature, hydrogen_fraction, &
+pure subroutine compute_opal92_opacity(tbl, log10_density, log10_temperature, hydrogen_fraction, &
      opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, message, ierr)
       type(opal92_table_set), intent(inout) :: tbl
       real(dp), intent(in) :: log10_density, log10_temperature, &
@@ -328,7 +328,7 @@ end subroutine compute_opal92_opacity
 ! and dlnkap_dlnrho. logr_cursor is the density cursor. A row that does
 ! not start at the first density, a log T6 outside the rows or a failed
 ! spline returns ierr with the reason in message.
-subroutine interpolate_opal92_2d(tbl, log_t6, log_r, x_table, t_index, &
+pure subroutine interpolate_opal92_2d(tbl, log_t6, log_r, x_table, t_index, &
      logr_cursor, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, message, ierr)
       type(opal92_table_set), intent(inout) :: tbl
       real(dp), intent(in) :: log_t6, log_r
@@ -440,7 +440,7 @@ end subroutine interpolate_opal92_2d
 ! An interior family of one table per Z: with use_two_z_tables, a second
 ! table at opal_table_z2, blended linearly in Z with the first; in a
 ! helium-burning core, the first table alone, at opal_table_z1.
-function opal92_source(settings) result(source)
+pure function opal92_source(settings) result(source)
       type(kap_settings_t), intent(in) :: settings
       type(kap_source) :: source
 
@@ -475,7 +475,7 @@ subroutine load_opal92(settings, paths, envelope_hydrogen_fraction, tables, mess
            settings%use_two_z_tables, message, ierr)
 end subroutine load_opal92
 
-subroutine refresh_opal92(settings, hydrogen_fraction, tables, message, ierr)
+pure subroutine refresh_opal92(settings, hydrogen_fraction, tables, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       real(dp), intent(in) :: hydrogen_fraction
       type(opacity_table_state), intent(inout) :: tables
@@ -487,7 +487,7 @@ subroutine refresh_opal92(settings, hydrogen_fraction, tables, message, ierr)
            settings%use_two_z_tables, message, ierr)
 end subroutine refresh_opal92
 
-subroutine lookup_opal92(settings, tables, point, res, in_table, message, ierr)
+pure subroutine lookup_opal92(settings, tables, point, res, in_table, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(opacity_table_state), intent(inout) :: tables
       type(kap_point), intent(in) :: point
@@ -512,7 +512,7 @@ subroutine lookup_opal92(settings, tables, point, res, in_table, message, ierr)
       end if
 end subroutine lookup_opal92
 
-subroutine core_lookup_opal92(settings, tables, point, res, table_z, message, ierr)
+pure subroutine core_lookup_opal92(settings, tables, point, res, table_z, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(opacity_table_state), intent(inout) :: tables
       type(kap_point), intent(in) :: point

@@ -30,7 +30,7 @@ contains
 ! tables is reported, with ierr 1.
 subroutine read_opal95_tables(tbl, opal95_table_path, ierr)
       type(opal95_table_set), intent(inout) :: tbl
-      character(len=256), intent(in) :: opal95_table_path
+      character(len=*), intent(in) :: opal95_table_path
       integer, intent(out) :: ierr
 
       integer :: table_unit, ios

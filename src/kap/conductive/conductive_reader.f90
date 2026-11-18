@@ -11,7 +11,7 @@ module conductive_reader
       use math_lib
       use opacity_tables, only: cond_n_rho, cond_n_temp, cond_n_z, conductive_table_set
       use kap_messages, only: kap_report, message_length
-      use opacity_table_files, only: read_failed
+      use opacity_table_files, only: read_failed, iomsg_length
       implicit none
       private
       public :: read_conductive_table
@@ -31,7 +31,7 @@ subroutine read_conductive_table(tbl, path, ierr)
       real(dp) :: z_grid_value
       character(len=message_length) :: line
       integer :: ios
-      character(len=256) :: iomsg
+      character(len=iomsg_length) :: iomsg
 
 ! (opacity_table_files' open_table would add the compiler's iomsg)
       open(newunit=file_unit, file=path, status='old', action='read', iostat=ierr)

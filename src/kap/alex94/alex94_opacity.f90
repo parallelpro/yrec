@@ -36,7 +36,7 @@ contains
 !----------------------------------------------------------------------
 ! Builds the fixed-Z tables tbl%opacity(1:7,:,:), one per X, by 4-point
 ! Lagrange interpolation in Z of the full set, and records their Z.
-subroutine build_alex94_fixed_z_table(tbl, metal_fraction)
+pure subroutine build_alex94_fixed_z_table(tbl, metal_fraction)
       type(alex94_table_set), intent(inout) :: tbl
 
 
@@ -86,7 +86,7 @@ end subroutine build_alex94_fixed_z_table
 ! Builds the surface table, tbl%opacity(alex94_surface_slot,:,:), at
 ! hydrogen_fraction by 4-point Lagrange interpolation in X of the
 ! fixed-Z tables, and records its X.
-subroutine build_alex94_surface_table(tbl, hydrogen_fraction)
+pure subroutine build_alex94_surface_table(tbl, hydrogen_fraction)
       type(alex94_table_set), intent(inout) :: tbl
 
 
@@ -121,7 +121,7 @@ end subroutine build_alex94_surface_table
 ! log R), else also in X among the fixed-Z tables. A Z other than the
 ! fixed-Z tables' rebuilds them, and the surface table, at the lookup's
 ! composition.
-subroutine compute_alex94_opacity(tbl, log10_density, log10_temperature, hydrogen_fraction, &
+pure subroutine compute_alex94_opacity(tbl, log10_density, log10_temperature, hydrogen_fraction, &
      metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt)
       type(alex94_table_set), intent(inout) :: tbl
 
@@ -272,7 +272,7 @@ end function alex_x_stencil_start
 ! A molecular family (the controls call it alex95: use_alex95_tables,
 ! alex95_table_paths): fixed-Z tables at alex_table_z1, rebuilt when a
 ! lookup's Z differs, and a surface-X table at the envelope X.
-function alex94_source(settings) result(source)
+pure function alex94_source(settings) result(source)
       type(kap_settings_t), intent(in) :: settings
       type(kap_source) :: source
 
@@ -300,7 +300,7 @@ subroutine load_alex94(settings, paths, envelope_hydrogen_fraction, tables, mess
       call build_alex94_surface_table(tables%alex94, envelope_hydrogen_fraction)
 end subroutine load_alex94
 
-subroutine refresh_alex94(settings, hydrogen_fraction, tables, message, ierr)
+pure subroutine refresh_alex94(settings, hydrogen_fraction, tables, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       real(dp), intent(in) :: hydrogen_fraction
       type(opacity_table_state), intent(inout) :: tables
@@ -312,7 +312,7 @@ subroutine refresh_alex94(settings, hydrogen_fraction, tables, message, ierr)
       call build_alex94_surface_table(tables%alex94, hydrogen_fraction)
 end subroutine refresh_alex94
 
-subroutine lookup_alex94(settings, tables, point, res, in_table, message, ierr)
+pure subroutine lookup_alex94(settings, tables, point, res, in_table, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(opacity_table_state), intent(inout) :: tables
       type(kap_point), intent(in) :: point

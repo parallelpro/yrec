@@ -45,7 +45,7 @@ contains
 ! The table is built at (hydrogen_fraction, metal_fraction); the caller
 ! (compute_alex06_opacity) records that composition as the cache's only
 ! when the build succeeds.
-subroutine build_alex06_composition_table(tbl, hydrogen_fraction, metal_fraction, message, ierr)
+pure subroutine build_alex06_composition_table(tbl, hydrogen_fraction, metal_fraction, message, ierr)
       type(alex06_table_set), intent(inout) :: tbl
 
       real(dp), intent(in) :: hydrogen_fraction, metal_fraction
@@ -170,7 +170,7 @@ end subroutine build_alex06_composition_table
 ! the top log R the opacity is extrapolated linearly from the last two
 ! columns. A composition off the tables returns ierr with the reason in
 ! message.
-subroutine compute_alex06_opacity(tbl, log10_density, log10_temperature, hydrogen_fraction, &
+pure subroutine compute_alex06_opacity(tbl, log10_density, log10_temperature, hydrogen_fraction, &
      metal_fraction, opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, message, ierr)
       type(alex06_table_set), intent(inout) :: tbl
 
@@ -265,7 +265,7 @@ end subroutine compute_alex06_opacity
 !----------------------------------------------------------------------
 ! A molecular family that interpolates in X and Z itself (a table built
 ! at each new composition).
-function alex06_source(settings) result(source)
+pure function alex06_source(settings) result(source)
       type(kap_settings_t), intent(in) :: settings
       type(kap_source) :: source
 
@@ -289,7 +289,7 @@ subroutine load_alex06(settings, paths, envelope_hydrogen_fraction, tables, mess
       call read_alex06_tables(tables%alex06, paths%alex06, ierr)
 end subroutine load_alex06
 
-subroutine lookup_alex06(settings, tables, point, res, in_table, message, ierr)
+pure subroutine lookup_alex06(settings, tables, point, res, in_table, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(opacity_table_state), intent(inout) :: tables
       type(kap_point), intent(in) :: point

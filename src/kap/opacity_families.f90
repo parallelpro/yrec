@@ -33,7 +33,7 @@ module opacity_families
 contains
 
 ! the interior families, in precedence order
-function interior_families(settings) result(families)
+pure function interior_families(settings) result(families)
       type(kap_settings_t), intent(in) :: settings
       type(kap_source) :: families(3)
 
@@ -43,7 +43,7 @@ function interior_families(settings) result(families)
 end function interior_families
 
 ! the molecular families, in precedence order
-function molecular_families(settings) result(families)
+pure function molecular_families(settings) result(families)
       type(kap_settings_t), intent(in) :: settings
       type(kap_source) :: families(3)
 
@@ -58,7 +58,7 @@ end function molecular_families
 ! of the molecular ramp: the molecular family below
 ! molecular_opacity_logt_max, the interior one above
 ! molecular_opacity_logt_min.
-subroutine select_families(settings, interior, molecular, helium_core, conduction)
+pure subroutine select_families(settings, interior, molecular, helium_core, conduction)
       type(kap_settings_t), intent(in) :: settings
       type(kap_source), intent(out) :: interior, molecular, helium_core, conduction
 
@@ -70,7 +70,7 @@ subroutine select_families(settings, interior, molecular, helium_core, conductio
       conduction = conductive_source(settings)
 end subroutine select_families
 
-function first_selected(families) result(first)
+pure function first_selected(families) result(first)
       type(kap_source), intent(in) :: families(:)
       type(kap_source) :: first
       integer :: k

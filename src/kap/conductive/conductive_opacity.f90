@@ -86,7 +86,7 @@ contains
 ! where kappa_c = 10**no_conduction_log10_opacity is returned unused. A
 ! lookup the table cannot give returns ierr with the reason in message
 ! (written nowhere).
-subroutine compute_conductive_opacity(tbl, log10_density, log10_temperature, &
+pure subroutine compute_conductive_opacity(tbl, log10_density, log10_temperature, &
      hydrogen_fraction, metal_fraction, conductive_opacity, &
      conductive_log10_opacity, conductive_dlnkap_dlnrho, &
      conductive_dlnkap_dlnt, ion_fraction, got_conductive_opacity, message, ierr)
@@ -215,7 +215,7 @@ end subroutine compute_conductive_opacity
 ! inside the table's density range. (Where that clamp binds, K_i does
 ! not follow rho, but the table's slope at the clamp is returned:
 ! bug_sweep M341.)
-subroutine species_conductivities(tbl, log10_density, log10_temperature, electrons_per_amu, &
+pure subroutine species_conductivities(tbl, log10_density, log10_temperature, electrons_per_amu, &
      log10_cond, dlogk_dlogrho, dlogk_dlogt, message, ierr)
       type(conductive_table_set), intent(in) :: tbl
       real(dp), intent(in) :: log10_density, log10_temperature, electrons_per_amu
@@ -261,7 +261,7 @@ end subroutine species_conductivities
 !     (Here the table is tbl, read once per run by read_conductive_table.)
 !     Please address any questions/comments to Alexander Potekhin:
 !     e-mail: palex@astro.ioffe.rssi.ru
-subroutine condopacp(tbl, ion_charge, log10_temperature, log10_density, &
+pure subroutine condopacp(tbl, ion_charge, log10_temperature, log10_density, &
      log10_conductivity, dlnkappa_dlnrho, dlnkappa_dlnt, message, ierr)
       type(conductive_table_set), intent(in) :: tbl
 
@@ -435,7 +435,7 @@ end subroutine condopacp
 !           interp_frac - fraction of the path from grid_index to
 !                         grid_index+1
 !           message, ierr - a grid index off the grid: the reason, and 1
-subroutine cinterp3(grid_lo2,grid_lo1,grid_hi1,grid_hi2,grid_target, &
+pure subroutine cinterp3(grid_lo2,grid_lo1,grid_hi1,grid_hi2,grid_target, &
      grid_index,grid_size,val_lo2,val_lo1,val_hi1,val_hi2, &
      interp_value,interp_deriv,interp_deriv2,interp_frac, message, ierr)
 
@@ -499,7 +499,7 @@ end subroutine cinterp3
 !----------------------------------------------------------------------
 ! The Potekhin conductive opacity: in_table is .false. where the table
 ! gives none (kap_eval then tries Hubbard & Lampe's fit).
-function conductive_source(settings) result(source)
+pure function conductive_source(settings) result(source)
       type(kap_settings_t), intent(in) :: settings
       type(kap_source) :: source
 
@@ -522,7 +522,7 @@ subroutine load_conductive(settings, paths, envelope_hydrogen_fraction, tables, 
       call read_conductive_table(tables%conductive, paths%conductive, ierr)
 end subroutine load_conductive
 
-subroutine lookup_conductive(settings, tables, point, res, in_table, message, ierr)
+pure subroutine lookup_conductive(settings, tables, point, res, in_table, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(opacity_table_state), intent(inout) :: tables
       type(kap_point), intent(in) :: point

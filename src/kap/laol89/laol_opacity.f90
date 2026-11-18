@@ -50,7 +50,7 @@ contains
 ! Converts each table's T grid to log10 T and builds the natural cubic
 ! spline in log rho of every (X, T) row (spline_laol_table), for
 ! compute_laol_opacity; the second table with two_z_tables.
-subroutine build_laol_splines(tables, two_z_tables)
+pure subroutine build_laol_splines(tables, two_z_tables)
       type(laol_table_set), intent(inout) :: tables(:)
       logical, intent(in) :: two_z_tables
 
@@ -60,7 +60,7 @@ end subroutine build_laol_splines
 
 ! One table: its T grid to log10 T, and each (X, T) row's spline in
 ! log rho (spline_row_in_log_rho).
-subroutine spline_laol_table(tbl)
+pure subroutine spline_laol_table(tbl)
       type(laol_table_set), intent(inout) :: tbl
       integer :: ix, it
 
@@ -82,7 +82,7 @@ end subroutine spline_laol_table
 ! (0 behind them), with the natural cubic spline's second derivatives;
 ! num_points of them, or 0 (no spline) for a row with fewer than
 ! min_spline_points.
-subroutine spline_row_in_log_rho(opacity, grid_rho, num_rho, spline_opacity, spline_log_rho, &
+pure subroutine spline_row_in_log_rho(opacity, grid_rho, num_rho, spline_opacity, spline_log_rho, &
      spline_d2opacity, num_points)
       real(dp), intent(in) :: opacity(:), grid_rho(:)
       integer, intent(in) :: num_rho
@@ -126,7 +126,7 @@ end subroutine spline_row_in_log_rho
 ! outside the X grid, extrapolated). log10 kappa is capped at
 ! laol_log10_opacity_cap. A point no column covers returns ierr = 1 with
 ! the reason in message, which names the table (the second Z's too).
-subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_fraction, &
+pure subroutine compute_laol_opacity(tbl, log10_density, log10_temperature, hydrogen_fraction, &
      opacity, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, message, ierr)
       type(laol_table_set), intent(inout) :: tbl
       real(dp), intent(in) :: log10_density, log10_temperature, &
@@ -185,7 +185,7 @@ end subroutine compute_laol_opacity
 ! Converts the pure-Z table's T grid to log10 T and builds the natural
 ! cubic spline in log rho of each T row (spline_row_in_log_rho), for
 ! compute_pure_z_opacity.
-subroutine build_pure_z_splines(tbl)
+pure subroutine build_pure_z_splines(tbl)
       type(pure_z_table_set), intent(inout) :: tbl
       integer :: it
 
@@ -204,7 +204,7 @@ end subroutine build_pure_z_splines
 !----------------------------------------------------------------------
 ! The pure-Z table's opacity at (log rho, log T): its one column
 ! (laol_column_opacity), log10 kappa capped as compute_laol_opacity's.
-subroutine compute_pure_z_opacity(tbl, log10_density, log10_temperature, opacity, &
+pure subroutine compute_pure_z_opacity(tbl, log10_density, log10_temperature, opacity, &
      log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, message, ierr)
       type(pure_z_table_set), intent(in) :: tbl
       real(dp), intent(in) :: log10_density, log10_temperature
@@ -246,7 +246,7 @@ end subroutine compute_pure_z_opacity
 ! (a row with fewer than 4 points), laol_column_outside_temperature
 ! (fewer than 4 rows reach log rho), or laol_column_splint_failed with
 ! splint's code in jerr.
-subroutine laol_column_opacity(spline_opacity, spline_log_rho, spline_d2opacity, &
+pure subroutine laol_column_opacity(spline_opacity, spline_log_rho, spline_d2opacity, &
      spline_num_points, logt_grid, num_t, log_extrapolation_tolerance, log10_density, &
      log10_temperature, log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, status, jerr)
       real(dp), intent(in) :: spline_opacity(:,:), spline_log_rho(:,:), spline_d2opacity(:,:)
@@ -341,7 +341,7 @@ end subroutine laol_column_opacity
 ! the table named: a spline's numerics status (jerr), or the point off
 ! the table's rows in log rho or its columns in log T, beyond the
 ! extrapolation tolerance.
-subroutine laol_column_message(status, jerr, table_name, log10_density, &
+pure subroutine laol_column_message(status, jerr, table_name, log10_density, &
      log10_temperature, message)
       integer, intent(in) :: status, jerr
       character(len=*), intent(in) :: table_name
@@ -382,7 +382,7 @@ end subroutine cap_laol_opacity
 ! grid_index of a grid of grid_size points, for a 4-point interpolation:
 ! the first or last four points near the ends, else grid_index-1 ..
 ! grid_index+2.
-subroutine select_four_point_window(grid_index, grid_size, window_start, window_end)
+pure subroutine select_four_point_window(grid_index, grid_size, window_start, window_end)
       integer, intent(in) :: grid_index, grid_size
       integer, intent(out) :: window_start, window_end
       if (grid_index <= 2) then
@@ -402,7 +402,7 @@ end subroutine select_four_point_window
 !----------------------------------------------------------------------
 ! An interior family of one table per Z, as OPAL 1992 (laol_table_z1,
 ! laol_table_z2).
-function laol89_source(settings) result(source)
+pure function laol89_source(settings) result(source)
       type(kap_settings_t), intent(in) :: settings
       type(kap_source) :: source
 
@@ -435,7 +435,7 @@ subroutine load_laol89(settings, paths, envelope_hydrogen_fraction, tables, mess
       call build_laol_splines(tables%laol, settings%use_two_z_tables)
 end subroutine load_laol89
 
-subroutine lookup_laol89(settings, tables, point, res, in_table, message, ierr)
+pure subroutine lookup_laol89(settings, tables, point, res, in_table, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(opacity_table_state), intent(inout) :: tables
       type(kap_point), intent(in) :: point
@@ -460,7 +460,7 @@ subroutine lookup_laol89(settings, tables, point, res, in_table, message, ierr)
       end if
 end subroutine lookup_laol89
 
-subroutine core_lookup_laol89(settings, tables, point, res, table_z, message, ierr)
+pure subroutine core_lookup_laol89(settings, tables, point, res, table_z, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(opacity_table_state), intent(inout) :: tables
       type(kap_point), intent(in) :: point
@@ -477,7 +477,7 @@ end subroutine core_lookup_laol89
 
 ! The pure-Z table (Z = 1, pure C and O), the helium-burning core's
 ! table: kap_eval blends an interior family's opacity toward it.
-function pure_z_source(settings) result(source)
+pure function pure_z_source(settings) result(source)
       type(kap_settings_t), intent(in) :: settings
       type(kap_source) :: source
 
@@ -521,7 +521,7 @@ pure subroutine check_extrapolation_tolerance(settings, message, ierr)
       ierr = 1
 end subroutine check_extrapolation_tolerance
 
-subroutine lookup_pure_z(settings, tables, point, res, in_table, message, ierr)
+pure subroutine lookup_pure_z(settings, tables, point, res, in_table, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(opacity_table_state), intent(inout) :: tables
       type(kap_point), intent(in) :: point

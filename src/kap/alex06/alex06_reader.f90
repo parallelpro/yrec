@@ -10,7 +10,7 @@ module alex06_reader
       use opacity_tables, only: alex06_table_set, n_alex06_d, n_alex06_t, n_alex06_x, &
            n_alex06_z
       use kap_messages, only: kap_report, message_length, unwritten_line
-      use opacity_table_files, only: open_table, read_failed
+      use opacity_table_files, only: open_table, read_failed, iomsg_length
       implicit none
       private
       public :: read_alex06_tables
@@ -32,7 +32,7 @@ contains
 ! index iz goes to slot n_alex06_z (ix - 1) + iz.
 subroutine read_alex06_tables(tbl, alex06_table_path, ierr)
       type(alex06_table_set), intent(inout) :: tbl
-      character(len=256), intent(in) :: alex06_table_path
+      character(len=*), intent(in) :: alex06_table_path
       integer, intent(out) :: ierr
 
       integer :: table_unit, ix, iz
@@ -75,7 +75,7 @@ subroutine read_alex06_table(tbl, table_unit, path, slot, expected_x, expected_z
 
       real(dp) :: header_x, header_z, header_logr(n_alex06_d), row_logt
       integer :: row, column, ios
-      character(len=256) :: iomsg
+      character(len=iomsg_length) :: iomsg
       character(len=message_length) :: lines(1)
 
       read(table_unit,'(30x,f9.6,7x,f9.6//)',iostat=ios,iomsg=iomsg) header_x, header_z

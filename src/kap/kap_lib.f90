@@ -82,13 +82,13 @@ subroutine kap_get(log10_density, log10_temperature, &
       real(dp), intent(in) :: log10_density, log10_temperature, &
            hydrogen_fraction, metal_fraction
       real(dp), intent(inout) :: res(:)
-      real(dp), intent(inout) :: ion_fraction(:)
+      real(dp), intent(in) :: ion_fraction(:)
       integer, intent(out) :: ierr
       type(kap_point) :: point
       type(kap_result) :: result
 
       point = kap_point(log10_density, log10_temperature, hydrogen_fraction, &
-           metal_fraction, ion_fraction)
+           metal_fraction, ion_fraction(1:3))
       call kap_eval(point, result, ierr)
       if (ierr /= 0) return
       res(i_kap) = result%opacity

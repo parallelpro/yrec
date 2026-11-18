@@ -333,6 +333,8 @@ module opacity_tables
       type(kap_settings_t), public, protected :: kap_settings
       public :: install_kap_settings
 
+! the length of a table's path (the controls' own)
+      integer, parameter, public :: path_length = 256
 ! The tables kap_init reads, by path (blank: not given): the interior
 ! tables (OPAL 1995-format; OPAL 1992 and LAOL 1989, each with a second-Z
 ! table for use_two_z_tables; the pure-Z table), the molecular tables
@@ -341,11 +343,11 @@ module opacity_tables
 ! layer fills it from the controls (kap_table_paths_from_star,
 ! setup/kap_settings_builder.f90).
       type, public :: kap_table_paths_t
-         character(len=256) :: opal95 = '', opal92 = '', opal92_z2 = '', &
+         character(len=path_length) :: opal95 = '', opal92 = '', opal92_z2 = '', &
               laol = '', laol_z2 = '', pure_z = ''
-         character(len=256) :: alex06 = '', alex94(7) = '', kurucz = '', &
+         character(len=path_length) :: alex06 = '', alex94(7) = '', kurucz = '', &
               kurucz_z2 = ''
-         character(len=256) :: conductive = ''
+         character(len=path_length) :: conductive = ''
       end type kap_table_paths_t
 
 contains

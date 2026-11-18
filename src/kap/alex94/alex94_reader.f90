@@ -11,7 +11,7 @@ module alex94_reader
       use opacity_tables, only: alex94_table_set, n_alex94_d, n_alex94_t, n_alex94_x, &
            n_alex94_z
       use kap_messages, only: kap_report, message_length, unwritten_line
-      use opacity_table_files, only: open_table, read_failed
+      use opacity_table_files, only: open_table, read_failed, iomsg_length
       implicit none
       private
       public :: read_alex94_tables
@@ -33,7 +33,7 @@ subroutine read_alex94_tables(tbl, alex95_table_paths, ierr)
 
 ! the table file's unit
       integer :: table_unit
-      character(len=256), intent(in) :: alex95_table_paths(:)
+      character(len=*), intent(in) :: alex95_table_paths(:)
 
 ! a row as read (its index goes to tbl%index_t, as in the F77 code, so
 ! the last row read seeds the T cursor)
@@ -42,7 +42,7 @@ subroutine read_alex94_tables(tbl, alex95_table_paths, ierr)
       real(dp) :: header_x, header_z, row_temp, row_logr0
       character(len=message_length) :: lines(1)
       integer :: ios
-      character(len=256) :: iomsg
+      character(len=iomsg_length) :: iomsg
 
       do table_index=1,n_alex94_x
 !        the file of the table_index-th X, with every Z

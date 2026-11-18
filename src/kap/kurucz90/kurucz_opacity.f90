@@ -52,7 +52,7 @@ contains
 ! count. A row that does not start at the first density, or has fewer
 ! than min_row_densities (25) points, returns ierr = 1 with the reason in
 ! message.
-subroutine build_kurucz_splines(tbl, message, ierr)
+pure subroutine build_kurucz_splines(tbl, message, ierr)
       type(kurucz_table_set), intent(inout) :: tbl
       character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
@@ -115,7 +115,7 @@ end subroutine build_kurucz_splines
 ! interior opacity alone. A point with fewer than four T rows of data
 ! at its density, or a failed spline, returns ierr with the reason in
 ! message.
-subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity, &
+pure subroutine compute_kurucz_opacity(tbl, log10_density, log10_temperature, opacity, &
      log10_opacity, dlnkap_dlnrho, dlnkap_dlnt, in_table, message, ierr)
       type(kurucz_table_set), intent(inout) :: tbl
       real(dp), intent(in) :: log10_density, log10_temperature
@@ -189,7 +189,7 @@ end subroutine compute_kurucz_opacity
 ! log10_density (num_rows of them, in order): each row's log T, and its
 ! log kappa and dln kappa/dln rho there from the row's cubic spline in
 ! log rho.
-subroutine kurucz_rows_at_density(tbl, first_row, last_row, log10_density, num_rows, &
+pure subroutine kurucz_rows_at_density(tbl, first_row, last_row, log10_density, num_rows, &
      row_logt, row_log10_opacity, row_dlnkap_dlnrho)
       type(kurucz_table_set), intent(inout) :: tbl
       integer, intent(in) :: first_row, last_row
@@ -225,7 +225,7 @@ end subroutine kurucz_rows_at_density
 ! from the cursor tbl%ix_rho (reset to the row's last density when it is
 ! outside the row) and left in it; found is .false. when the row has no
 ! data at that density (below its first density or above its last).
-subroutine locate_kurucz_density(tbl, row, log10_density, found)
+pure subroutine locate_kurucz_density(tbl, row, log10_density, found)
       type(kurucz_table_set), intent(inout) :: tbl
       integer, intent(in) :: row
       real(dp), intent(in) :: log10_density
@@ -271,7 +271,7 @@ end subroutine locate_kurucz_density
 ! use_two_z_tables kurucz_table_z2, blended linearly in Z), with no
 ! value outside its table (in_table .false.: the interior opacity is
 ! used alone there).
-function kurucz90_source(settings) result(source)
+pure function kurucz90_source(settings) result(source)
       type(kap_settings_t), intent(in) :: settings
       type(kap_source) :: source
 
@@ -302,7 +302,7 @@ subroutine load_kurucz90(settings, paths, envelope_hydrogen_fraction, tables, me
       if (settings%use_two_z_tables) call build_kurucz_splines(tables%kurucz(2), message, ierr)
 end subroutine load_kurucz90
 
-subroutine lookup_kurucz90(settings, tables, point, res, in_table, message, ierr)
+pure subroutine lookup_kurucz90(settings, tables, point, res, in_table, message, ierr)
       type(kap_settings_t), intent(in) :: settings
       type(opacity_table_state), intent(inout) :: tables
       type(kap_point), intent(in) :: point
