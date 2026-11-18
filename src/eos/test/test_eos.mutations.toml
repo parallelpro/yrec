@@ -674,3 +674,20 @@ check = "continuity: across the same T6 row, lower in the corner's cell (M356)"
 file = 'eos/opal/opal_eos.f90'
 old = '(1d0-density_fraction)*node(1,1) + density_fraction*node(1,2)) + &'
 new = '(1d0-density_fraction)*node(1,1) + density_fraction*node(1,1)) + &'
+
+# the OPAL density search across a jump of the table's pressure (M357)
+[[mutation]]
+id = 'density_search-01'
+check = "OPAL 2006: the density search finds a density at every pressure across a jump of the table's (M357)"
+file = 'eos/opal/opal_eos.f90'
+old = '''               call eos_log_once(once_opal_pressure_jump, eos_lines)
+               found_density = density_trial3'''
+new = '''               call eos_log_once(once_opal_pressure_jump, eos_lines)
+               found_density = opal_rho_not_found'''
+
+[[mutation]]
+id = 'density_search-02'
+check = "OPAL 2006: the density search finds a density at every pressure across a jump of the table's (M357)"
+file = 'eos/opal/opal_eos.f90'
+old = 'density_trial3 = 0.5d0*(density_trial1 + density_trial2)'
+new = 'density_trial3 = density_trial2'

@@ -1634,6 +1634,10 @@ subroutine continuity_checks()
            log10(4.75d4), 12.20d0)
       call continuity_at_inner_corner("continuity: across the same T6 row, lower in the corner's cell (M356)", &
            log10(4.75d4), 12.17d0)
+! the OPAL 2006 density search across a jump of the table's own
+! pressure (M357)
+      call check("OPAL 2006: the density search finds a density at every pressure across a jump of the table's (M357)", &
+           density_search_covers_jump())
 ! SCV's tables' edges in P_gas (M88): its result is blended into the Saha
 ! one within one table interval (0.2 dex) of an edge, the ionization
 ! fractions too, so every blended field is continuous at both ends of
@@ -1699,6 +1703,40 @@ logical function blend_equals_reference(lt, lp, reference)
       call reference(lt, lp, x, z, ref)
       blend_equals_reference = blend%log10_density == ref%log10_density
 end function blend_equals_reference
+
+! At T6 = 0.94974 (X = 0.71961) the OPAL 2006 table's interpolated
+! pressure jumps by 3e-5 across one density near P = 3.3884e15: no
+! density reproduces a pressure inside the jump. The search must still
+! return a density at each of 400 pressures across it (the table's
+! answer: the density of the jump, to the search's 1e-14), and one that
+! does not fall as the pressure rises (beyond 1e-12). (It gave up there,
+! and the blend took the SCV result, 2.7% away in density.)
+logical function density_search_covers_jump()
+      real(dp), parameter :: x = 0.71961d0, z = 0.016492d0, t6 = 0.94974d0
+      real(dp), parameter :: p_first = 3.3874d15, p_last = 3.3894d15
+      integer, parameter :: n = 400
+      type(eos_result) :: r
+      real(dp) :: lp, previous_density
+      integer :: k, ierr, missing, falling
+      logical :: covers
+      missing = 0
+      falling = 0
+      previous_density = 0.0d0
+      do k = 0, n
+         lp = log10(p_first + (p_last - p_first)*real(k, dp)/real(n, dp))
+         r = eos_result()
+         call compute_opal_eos(iv_opal06, log10(t6*1.0d6), lp, x, z, r, ierr, covers)
+         if (ierr /= 0 .or. .not. covers) then
+            missing = missing + 1
+         else
+            if (r%density < previous_density*(1.0d0 - 1.0d-12)) falling = falling + 1
+            previous_density = r%density
+         end if
+      end do
+      density_search_covers_jump = missing == 0 .and. falling == 0
+      if (.not. density_search_covers_jump) write(*,'(a,i0,a,i0)') &
+           "     pressures without a density: ", missing, "; where the density falls: ", falling
+end function density_search_covers_jump
 
 ! The references of the OPAL 2006 edge ramp: OPAL's own result, and the
 ! blend with OPAL switched off.

@@ -33,7 +33,8 @@ module opal_eos
            opal_radiation_constant_over_3, opal_empty_entry, opal_empty_sum, &
            opal_usable_corner_sum, opal_beyond_stencil, opal_x_interp_overflow, opal_range_overflow
       use physical_constants, only: gas_constant
-      use eos_messages, only: eos_log, eos_report, message_length, unwritten_line
+      use eos_messages, only: eos_log, eos_log_once, eos_report, message_length, &
+           once_opal_pressure_jump, unwritten_line
       use eos_mixture, only: compute_mean_weights
       use eos_configuration, only: eos_settings, eos_table_paths_t, opal_vintage_none
       use eos_table_source, only: eos_table_source_t, stage_over_the_gas, adopt_table_result, &
@@ -295,13 +296,20 @@ end subroutine find_table_edge_ramp
 ! from the table's highest one scaled by P over the pressure there, then
 ! the lower density shrunk by 0.2 until its pressure is below the target
 ! (at most 20 times, down to the table's 1e-14), or the upper one grown
-! by 5 (to the table's edge); at most 30 steps to |dP/P| < 0.5e-7. The
+! by 5 (to the table's edge); at most 30 steps to |dP/P| < 0.5e-7, and
+! then, where the pair brackets the pressure, bisection to the same
+! tolerance (regula falsi keeps one end of the bracket where P(rho) is
+! strongly curved, and 30 of its steps can leave |dP/P| at 1e-4). The
 ! vintage's row of opal_layout says how radiation enters (2006 subtracts
 ! its pressure from the target and asks for the gas alone; 1995 and 2001
 ! add it to the table's bounds and ask for gas plus radiation), the highest
 ! density at each T6 row, a/c, and the name in messages. Returns
 ! opal_rho_not_found (-999) when the point is not in the table, and,
-! with a run-log message, when the search does not converge.
+! with a run-log message, when the search does not converge (a pair that
+! does not bracket the pressure after the regula falsi steps, or a
+! bisection that runs out of steps). Where the bracket closes on a jump
+! of the table's own pressure, that density is returned, with a note the
+! run log gets once.
 function opal_density_search(v, vintage, hydrogen_fraction, t6_temperature, &
      pressure_e12, rad_flag, ierr) result(found_density)
       type(opal_eos_vintage), intent(inout) :: v
@@ -312,6 +320,11 @@ function opal_density_search(v, vintage, hydrogen_fraction, t6_temperature, &
       real(dp) :: found_density
       character(len=message_length) :: eos_lines(4)
       integer, parameter :: mx = n_eos_mx, max_refine = 30, max_shrink = 20
+! the bisection after the regula falsi steps: at most max_bisect steps,
+! down to a bracket of closed_bracket of the density (reached only where
+! the table's pressure itself jumps past P)
+      integer, parameter :: max_bisect = 60
+      real(dp), parameter :: closed_bracket = 1.0d-14
 ! the table-priming call's point (its result is discarded)
       real(dp), parameter :: priming_x = 0.5d0, priming_t6 = 1.0d0, priming_density = 0.001d0
       real(dp) :: rat, radiation_pressure, bound_radiation, pressure_no_rad
@@ -320,7 +333,7 @@ function opal_density_search(v, vintage, hydrogen_fraction, t6_temperature, &
       real(dp) :: pressure_trial1, pressure_trial2, pressure_trial3
       integer :: lo_idx, hi_idx, mid_idx, x_bisect_idx, t6_bisect_idx, nt, edge
       integer :: refine_count, shrink_count, trial_rad
-      logical :: in_table
+      logical :: in_table, bracketed
 
       ierr = 0
       nt = opal_layout(vintage)%nt
@@ -408,12 +421,18 @@ function opal_density_search(v, vintage, hydrogen_fraction, t6_temperature, &
          if (.not. trial_pressure(density_trial2, pressure_trial2)) return
       end if
 
-! regula falsi
+! regula falsi for max_refine steps; then, where the pair brackets the
+! pressure, bisection, until the pressure matches or the bracket has
+! closed
       refine_count = 0
       refine: do
          refine_count = refine_count + 1
-         density_trial3 = density_trial1 + (density_trial2-density_trial1)* &
-              (pressure_no_rad-pressure_trial1)/(pressure_trial2-pressure_trial1)
+         if (refine_count <= max_refine) then
+            density_trial3 = density_trial1 + (density_trial2-density_trial1)* &
+                 (pressure_no_rad-pressure_trial1)/(pressure_trial2-pressure_trial1)
+         else
+            density_trial3 = 0.5d0*(density_trial1 + density_trial2)
+         end if
          if (.not. trial_pressure(density_trial3, pressure_trial3)) return
          if (abs((pressure_trial3-pressure_no_rad)/pressure_no_rad) < 0.5d-7) then
             found_density = density_trial3
@@ -427,9 +446,27 @@ function opal_density_search(v, vintage, hydrogen_fraction, t6_temperature, &
             pressure_trial1 = pressure_trial3
          end if
          if (refine_count < max_refine) cycle refine
+         bracketed = pressure_trial1 <= pressure_no_rad .and. pressure_no_rad <= pressure_trial2 &
+              .and. density_trial1 < density_trial2
+         if (bracketed) then
+            if (density_trial2 - density_trial1 <= closed_bracket*density_trial2) then
+! The bracket has closed on a density across which the table's own
+! pressure jumps past P (its interpolation changes stencil there): no
+! density matches more closely, and this one is the table's answer.
+               eos_lines = unwritten_line
+               write(eos_lines,'(A,": the table''s pressure jumps across the density that gives P;", &
+                    &" X, T6, P12, |dP/P| =",4ES12.4," -- that density is taken (reported once)")') &
+                    trim(opal_layout(vintage)%search_name), hydrogen_fraction, t6_temperature, &
+                    pressure_e12, abs((pressure_trial3-pressure_no_rad)/pressure_no_rad)
+               call eos_log_once(once_opal_pressure_jump, eos_lines)
+               found_density = density_trial3
+               return
+            end if
+            if (refine_count < max_refine + max_bisect) cycle refine
+         end if
          eos_lines = unwritten_line
          write(eos_lines,'(A,": no convergence after ",I0," tries;", " X, T6, P12, |dP/P| =",4ES12.4," -- falling back")') &
-              trim(opal_layout(vintage)%search_name), max_refine, &
+              trim(opal_layout(vintage)%search_name), refine_count, &
               hydrogen_fraction, t6_temperature, pressure_e12, abs((pressure_trial3-pressure_no_rad)/pressure_no_rad)
          call eos_log(eos_lines)
          found_density = opal_rho_not_found

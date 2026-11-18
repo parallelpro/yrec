@@ -2,7 +2,7 @@
 
 ## 1. About this report
 
-This report lists every defect found on the `yrec-next` branch after it diverged from `main` at [0ff84d7e](https://github.com/parallelpro/yrec/commit/0ff84d7e) (2026-09-03), up to [8d7feee2](https://github.com/parallelpro/yrec/commit/8d7feee2) (2026-11-13, round 2's last merge) round 2's closing commits after it, and round 2B (2026-11-13/14). There are 388 items: 290 fixed and 98 open. Bugs fixed before the divergence (bug-sweep batches 1-3, such as the CF88 deuterium rate) are in `docs/MODERNIZATION_CHANGES.md` and are not repeated here.
+This report lists every defect found on the `yrec-next` branch after it diverged from `main` at [0ff84d7e](https://github.com/parallelpro/yrec/commit/0ff84d7e) (2026-09-03), up to [8d7feee2](https://github.com/parallelpro/yrec/commit/8d7feee2) (2026-11-13, round 2's last merge) round 2's closing commits after it, and round 2B (2026-11-13/14). There are 389 items: 293 fixed and 96 open. Bugs fixed before the divergence (bug-sweep batches 1-3, such as the CF88 deuterium rate) are in `docs/MODERNIZATION_CHANGES.md` and are not repeated here.
 
 Each item answers the same questions:
 
@@ -133,7 +133,7 @@ Answered by the owner on 2026-11-11 (round 1B's B lists, approved with their rec
 | **O** | **Open: structure, solver and composition (§5)** | | |
 | O1 | Jacobian gaps: convective gradient, OPAL ρ derivatives | Yes | Open (decision; the owner, 2026-11-13: stays open, a later round) |
 | O2 | EOS second derivatives with OPAL and in the Saha ramp | Yes | Open (the ramp's QDTT/QDTP blend fixed, M39) |
-| O3 | Low-mass convergence (0.03, 0.05, 0.1 Msun) | Yes | Open (the owner, 2026-11-13: stays open, a later round) |
+| O3 | Low-mass convergence (0.03, 0.05, 0.1 Msun) | Yes | Fixed (the convergence round, 2026-11-17): the EOS's jumps, M356 and M357 |
 | O4 | Starting model's stitched atmosphere reads out of bounds | No (2025/2026) | Fixed in round 2B (2026-11-13); byte-identical |
 | O5 | Accretion entropy term at levels 1-2 (latent) | No (2026) | Fixed in round 2B (2026-11-13); byte-identical |
 | O6 | Rezone's deuterium gate reads the old surface index | Yes | Open in part: A (the gate on the new surface) fixed in round 2B (2026-11-13), byte-identical; B (the regrid unconditional) with M176's part B |
@@ -463,7 +463,7 @@ Answered by the owner on 2026-11-11 (round 1B's B lists, approved with their rec
 | M291 | OPAL's reader keeps the last X block's T6 grid and compares no grid across blocks | Yes | Fixed in round 1B, [03be24fe](https://github.com/parallelpro/yrec/commit/03be24fe) |
 | M292 | OPAL's range checks pass a huge entry with a negative weight: a negative value back | Yes | Fixed in round 1B, [4b9aecff](https://github.com/parallelpro/yrec/commit/4b9aecff) |
 | M293 | The Saha solver's non-convergence is a run-log warning, and decks reach it | Yes | Fixed in round 2B (2026-11-13): an error (the owner's decision), after M86 and a count of the shipped decks (none reaches it after M86); no deck moves |
-| M294 | Two shipped low-mass decks stop with "MODEL FAILED TO CONVERGE" at the round-0 tree | Not determined | Open |
+| M294 | Two shipped low-mass decks stop with "MODEL FAILED TO CONVERGE" at the round-0 tree | Yes (M356) | Fixed (the convergence round, 2026-11-17); the 0.03 Msun Allard deck then leaves its atmosphere tables at 1.1 Gyr |
 | M295 | check_boundaries' name map ignores scope: a contained procedure shadows another domain's | No (2026) | Open (tool); struck again in round 1B |
 | M296 | check_boundaries' scratch-module check reads `use, intrinsic ::` as a module variable | No (2026) | Open (tool) |
 | M297 | devel_tests.py's known failure for test_eos named a deleted file and moved lines | No (2026) | Fixed (integrator, round 1) |
@@ -493,6 +493,7 @@ Answered by the owner on 2026-11-11 (round 1B's B lists, approved with their rec
 | M318 | A devel or debug build on x86 Linux stopped at the first model's output: the GYRE interval's mod by 0 | No (2026) | Fixed after round 2B; CI's devel job found it |
 | **M** | **Found in the convergence round (§20)** | | |
 | M356 | The OPAL 2006 EOS's edge weight jumps at every inner corner of the table's ragged edge | Yes | Fixed (the convergence round, 2026-11-17) |
+| M357 | The OPAL density search gave up on a jump of the table's own pressure; the point fell back to Yale/SCV | Yes | Fixed (the convergence round, 2026-11-17) |
 
 
 ## 2. Nuclear network and burning (fixed; results change)
@@ -1252,7 +1253,7 @@ These are found, recorded and left as they are, because each fix changes results
 
 ### O3. Low-mass convergence: the 0.03 Msun two-cycle and the 0.05 and 0.1 Msun Allard decks
 
-- **Status:** open.
+- **Status:** fixed (the convergence round, 2026-11-17): the cause was the blended EOS's jumps, M356 and M357 (section 20); all six decks reach their stops.
 - **In the original F77?** Yes for the 0.03 Msun deck: the original code also hits a Newton two-cycle, after 210 models (0.047 Gyr). The Allard testsuite decks are newer than 6cd56739, so no F77 run exists. Neither code cuts the timestep and retries after a failed solve ([main.f:775-778](https://github.com/parallelpro/yrec/blob/6cd56739/src/main.f#L775-L778)).
 - **Now:** [step_driver.f90:140-159](https://github.com/parallelpro/yrec/blob/e8549036/src/core/step/step_driver.f90#L140-L159) (a diverged step is not retried) and [starting_model.f90:175-186](https://github.com/parallelpro/yrec/blob/e8549036/src/core/model/starting_model.f90#L175-L186) ("MODEL FAILED TO CONVERGE"). The decks are `examples/run_from_dbl_to_zams/Test_m0030_feh0_noGS_ZAMS.inlist`, `testsuite/Test_m0p05feh+0p0GS98_allard_15Gyr.inlist` and `testsuite/Test_m0p1feh+0p0GS98_allard_ZAMS.inlist`.
 - **What is wrong:**
@@ -1269,6 +1270,12 @@ These are found, recorded and left as they are, because each fix changes results
   A step retry with a smaller timestep would also make the code more robust, independent of the cause.
 - **Round 2 (2026-11-12/13):** core's B list (`audit/module-evaluation-7-2026-11-10/B_LIST_CORE.md`, item 23, with O1): an investigation; recommended for a later round.
 - **The owner's decision (2026-11-13):** stays open (core's B list item 23), an investigation for a later round. Round 2B's count of the shipped decks (M293) met three more low-mass decks that stop before model 50 of card 1, before and after M86's fix: `examples/run_from_dbl_to_zams/Test_m0040_feh0_noGS_ZAMS`, `Test_m0050_feh0_noGS_ZAMS` and `Test_m0060_feh0_noGS_ZAMS`.
+- **What we did (the convergence round, 2026-11-17):** the diagnosis (the work directory's `notes/CONV_DIAGNOSIS.md`) tested each of the three explanations above on the failing steps.
+  - The residual jumps: yes, and that is the cause. The blended EOS was discontinuous along these fully convective models in two ways: the OPAL 2006 table's edge weight at every inner corner of its ragged edge (M356: log ρ by up to 1.7e-2, ∇_ad by up to 0.067), and single points where the OPAL density search gave up and the point took the SCV result (M357: 2.7% in ρ). At the 0.03 Msun deck's failing step no convective flag flips and the triangle is not refitted; the corrections repeat with period 5.
+  - The Jacobian (O1, O2): inaccurate where the tables are used ((T, ln T) off by up to 0.9 of the term), but not the cause: with every partial replaced by a finite difference of the residual the 0.03 Msun deck still stops (model 70 against 81), and decks that run take the same number of Newton solves (cm_base 73 and 73; Test_solarGS98_base 7246 and 7241).
+  - The boundary row: no. The plane fit's two relative pivots at the failing step are 0.75 and 0.47; L14's 6e-3 is not met there.
+  - A retry with a shorter timestep is not needed once the EOS is continuous, and was not added.
+  - After M356 and M357, each deck as shipped: Test_m0030_feh0_noGS_ZAMS reaches its 50-model stop (and model 782, 67 Gyr, with the cap lifted, against 81); Test_m0p05feh+0p0GS98_allard_15Gyr reaches 15 Gyr (396 models, against 72); Test_m0p1feh+0p0GS98_allard_ZAMS its central-X stop (216, against 139); Test_m0040, Test_m0050 and Test_m0060_feh0_noGS_ZAMS their central-X stops (251, 227 and 197 models, against 17, 30 and 44). `test_low_mass_decks.py` keeps the five that are not in the compare set running.
 
 ### O4. The starting model's stitched atmosphere reads the envelope radius out of bounds
 
@@ -5696,7 +5703,7 @@ Round 1 of the seventh evaluation's plan (`audit/module-evaluation-7-2026-11-10/
 
 ### M294. Two shipped low-mass decks stop with "MODEL FAILED TO CONVERGE" at the round-0 tree
 
-- **Status:** open, size unknown. Found by round 1's atm agent (hand-back §5, item 4) and measured by the round's integrator (2026-11-10). Round 1 did not cause it: with copies of the two decks capped at 600 models, every output file of a 916ee23a build is identical to the atm round's final tree's (only the version string differs). Not traced further back. Neither deck is pinned or in compare_decks' set. Not on the B lists.
+- **Status:** fixed (the convergence round, 2026-11-17): the failed solves were M356's (section 20); the 0.15 Msun deck reaches its stop, and the 0.03 Msun Allard deck now runs to 1.1 Gyr, where it leaves its atmosphere tables (below). Was: open, size unknown. Found by round 1's atm agent (hand-back §5, item 4) and measured by the round's integrator (2026-11-10). Round 1 did not cause it: with copies of the two decks capped at 600 models, every output file of a 916ee23a build is identical to the atm round's final tree's (only the version string differs). Not traced further back. Neither deck is pinned or in compare_decks' set. Not on the B lists.
 - **In the original F77?** Not determined: no F77 run exists for the Allard testsuite decks, which are newer than 6cd56739 (O3), and neither deck was run on a tree older than 916ee23a.
 - **Now:** [testsuite/Test_m0p03feh+0p0GS98_allard_15Gyr.inlist](https://github.com/parallelpro/yrec/blob/2c9a6ec4/testsuite/Test_m0p03feh+0p0GS98_allard_15Gyr.inlist) and [sample_cases/lowerMS/SamplelowerMS_m0p15feh+0p0GS98_kurucz_ZAMS.inlist](https://github.com/parallelpro/yrec/blob/2c9a6ec4/sample_cases/lowerMS/SamplelowerMS_m0p15feh+0p0GS98_kurucz_ZAMS.inlist); the stop is the starting model's "STARIN: ***** MODEL FAILED TO CONVERGE *****" (O3's).
 - **What is wrong:**
@@ -5705,6 +5712,9 @@ Round 1 of the seventh evaluation's plan (`audit/module-evaluation-7-2026-11-10/
   - No atm range message comes before either stop. Both are of O3's kind (its 0.05 and 0.1 Msun Allard decks stop the same way after 50-100 models), and may share its cause.
 - **Expected behaviour, and why:** a shipped deck runs to its stop.
 - **What we did:** measured, not traced; the integrator's runs are in the work directory's `scratch_integrator/ref916/`. Proposed: run both on older trees to find where the stop appeared, then take them with O3's convergence work.
+- **What we did (the convergence round, 2026-11-17):** both are O3's stop, cured by M356 alone (the edge weight is the F77's EQBOUND06, so there is no commit of ours where the stop appeared; the bisection was not run).
+  - `SamplelowerMS_m0p15feh+0p0GS98_kurucz_ZAMS` reaches its central-X stop (212 models, 9.77 Gyr), against model 188; it is in `test_low_mass_decks.py`.
+  - `Test_m0p03feh+0p0GS98_allard_15Gyr` runs to model 359 (1.107 Gyr), against 84, and ends there with atm's message, "atm_get_surface_pt: log Teff = 2.907046 is below the Allard tables (log Teff 2.908485 to 4.008774)", exit 1: a 0.03 Msun brown dwarf cools below 810 K at 1.1 Gyr, and the deck asks for 15 Gyr. No solve fails. Whether the deck gets a stop it can reach (an age, or a `Teff_lower_limit`) is the authors' choice; not changed here.
 
 ### M295. check_boundaries' name map ignores scope, so a contained procedure in one domain shadows another domain's procedure of the same name
 
@@ -6054,3 +6064,15 @@ The convergence round took O3, M294 and M316 (the shipped low-mass decks that st
   - Measured on the 56-deck set and the 35 pins against the round's starting baseline: RESULT: 1 NOT IDENTICAL; pins 34 OK, 1 DIFF: `examples/run_from_dbl_to_zams/Test_m0030_feh0_noGS_ZAMS` (.log, its pin, .mod), the set's one fully convective low-mass deck: 52 models both; first visible change at model 2 (9.6e-6 in log Teff, log L and log R); the final model at 1.2791e-2 Gyr against 1.2160e-2 (its timesteps differ, the last by 14%), log L -2.75106 against -2.73605 (-1.0e-3 from the base's track at that age), log Teff -4.7e-4. The other 55 decks are byte-identical: none meets an inner-corner cell.
   - On the stopped decks (scratch runs, each deck as shipped; before -> after): Test_m0060_feh0_noGS_ZAMS model 44 -> its stop (198 models), Test_m0p05feh+0p0GS98_allard_15Gyr 72 -> its stop (15 Gyr, 396), Test_m0p1feh+0p0GS98_allard_ZAMS 139 -> its stop (216), SamplelowerMS_m0p15feh+0p0GS98_kurucz_ZAMS 188 -> its stop (212); Test_m0040 17 -> 33 and Test_m0050 30 -> 47 (M357 is what stops them next); Test_m0p03feh+0p0GS98_allard_15Gyr 84 -> 359 (1.1 Gyr, where it leaves the Allard table); Test_m0030_feh0_noGS_ZAMS with its 50-model cap lifted 81 -> 803.
   - Pins re-seeded: `Test_m0030_feh0_noGS_ZAMS.log`; `expected_test_eos.out` gains the two checks' lines.
+
+### M357. The OPAL density search gave up on a jump of the table's own pressure, and the point fell back to the Yale/SCV result
+
+- **Status:** fixed (the convergence round, 2026-11-17). The second cause of O3's stops.
+- **In the original F77?** Yes. RHOOFP06 ran regula falsi for 10 tries and returned -999 ([rhoofp06.f:92-120](https://github.com/parallelpro/yrec/blob/6cd56739/src/rhoofp06.f#L92-L120)); M41 made it 30 and gave the fallback its run-log line.
+- **Before the fix** (at [229ae4b1](https://github.com/parallelpro/yrec/tree/229ae4b1/src)): `opal_density_search`, [opal_eos.f90:305-460](https://github.com/parallelpro/yrec/blob/229ae4b1/src/eos/opal/opal_eos.f90#L305-L460).
+- **What was wrong:** the search looks for the density at which the table's interpolated pressure equals P to 5e-8. Near the table's high-density edge the interpolation changes stencil from one density to the next, and its pressure jumps there, by 1e-5 to 4e-4. For a P inside such a jump no density matches: the bracket closes on the density of the jump, the 30 steps run out, the search reports "no convergence ... falling back", and the blend takes the Yale/SCV result for that point alone, 2.7% away in density and 0.014 in ∇_ad (measured at log T 5.9776 of a 0.04 Msun model, shell 412 of 982), while the shells either side take OPAL. A shell that the iteration moves in and out of the jump's pressure window makes the corrections alternate (an exact 2-cycle of ±1.78e-4 in log P in that model, the step after model 33). The eight low-mass decks logged 5 to 63 such fallbacks each.
+- **Expected behaviour, and why:** where the table brackets the pressure it has an answer, the density at which its pressure crosses P; a pressure mismatch of 1e-4 at that density is the table's own, and far smaller than the 2.7% of another equation of state.
+- **What we did:** after the 30 regula falsi steps the search goes on by bisection while the pair brackets P, to the same tolerance; when the bracket has closed (to 1e-14 of the density) it returns that density, with a note the run log gets once per run ("the table's pressure jumps across the density that gives P ... that density is taken"). A pair that does not bracket P still falls back, with its line. Searches that converged before take the same steps as before. `test_eos` scans 401 pressures across the jump at T6 = 0.94974 (1 check, 2 mutations). The jump of the interpolated pressure itself is not touched (it is the interpolation scheme's).
+  - Measured on the 56-deck set and the 35 pins against M356's snapshot: RESULT: 1 NOT IDENTICAL; pins 34 OK, 1 DIFF: `examples/run_from_dbl_to_zams/Test_m0030_feh0_noGS_ZAMS` (.log, its pin, .mod): 52 models both, no progress line changes, the final model's age +1.5e-9 (relative), log L -1.8e-9, log Teff -5.1e-10; its log loses six "falling back" lines and gains the note. The other 55 decks are byte-identical: none logged a fallback.
+  - On the stopped decks, each as shipped (before -> after, both with M356): Test_m0040_feh0_noGS_ZAMS model 33 -> its stop (central X, 251 models), Test_m0050_feh0_noGS_ZAMS 47 -> its stop (227); no deck of the eight logs a fallback any more. `test_low_mass_decks.py` (new, in CI's list) runs the six decks that now reach their stops (Test_m0040, m0050 and m0060_feh0_noGS_ZAMS, Test_m0p05feh+0p0GS98_allard_15Gyr, Test_m0p1feh+0p0GS98_allard_ZAMS, SamplelowerMS_m0p15feh+0p0GS98_kurucz_ZAMS) and requires exit 0, the stop the deck asks for and no fallback line: 10 to 40 s a deck, under 3 minutes in all.
+  - Pins re-seeded: `Test_m0030_feh0_noGS_ZAMS.log`; `expected_test_eos.out` gains the check's line.

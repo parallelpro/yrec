@@ -67,6 +67,7 @@ jobs:
             /examples/run_config_matrix/mc_input.dat
             /examples/other_energy/
             /testsuite/
+            /sample_cases/lowerMS/SamplelowerMS_m0p15feh+0p0GS98_kurucz_ZAMS.inlist
             /startmodels/dbl/
             /startmodels/seed/
             /startmodels/start/
@@ -152,6 +153,7 @@ jobs:
           test_physics.py test_stop_conditions.py test_inlist_convert.py
           test_mesa_output.py test_pyyrec.py test_monte_carlo.py
           test_run_contracts.py test_model_kernels.py
+          test_low_mass_decks.py
 
   # The unit test programs under the development flags (the header above).
   devel-tests:

@@ -26,9 +26,11 @@ module eos_messages
       integer, parameter, public :: message_length = 400
       character(len=*), parameter, public :: unwritten_line = achar(0)
 ! the warnings written once per eos_init: the fully ionized gas
-! extrapolating the Fermi-Dirac table
-      integer, parameter, public :: once_fermi_extrapolation = 1
-      integer, parameter :: n_once = 1
+! extrapolating the Fermi-Dirac table, and an OPAL density search that
+! ends on a jump of the table's own pressure
+      integer, parameter, public :: once_fermi_extrapolation = 1, &
+           once_opal_pressure_jump = 2
+      integer, parameter :: n_once = 2
       logical :: warned(n_once) = .false.
 
 contains
