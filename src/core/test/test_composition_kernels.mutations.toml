@@ -1,0 +1,79 @@
+# Mutations of test_composition_kernels: each check must print FAIL under
+# a mutation of the code it covers (core/README.md, the tests). Run, after
+# `make tests` in src/: python3 src/tools/mutate.py core --program
+# test_composition_kernels (src/tools/mutate.py describes this format and
+# the verdicts). One mutation per check, in the report's order.
+program = "test_composition_kernels"
+timeout = 60
+
+[[mutation]]
+id = 'composition-01'
+check = 'deep mixing: mixed out to the mass limit, the flag beyond'
+file = 'core/step/composition_kernels.f90'
+old = 'mix_flag(k:num_zones) = convective_flag(k:num_zones)'
+new = 'mix_flag(k:num_zones) = .false.'
+
+[[mutation]]
+id = 'composition-02'
+check = 'deep mixing: a shell at the limit is mixed'
+file = 'core/step/composition_kernels.f90'
+old = 'if (enclosed_mass(k) > max_mixed_mass) then'
+new = 'if (enclosed_mass(k) >= max_mixed_mass) then'
+
+[[mutation]]
+id = 'composition-03'
+check = 'homogenize: each species keeps its mass in a region'
+file = 'core/step/composition_kernels.f90'
+old = 'species_sum(i) = species_sum(i)/weight_sum'
+new = 'species_sum(i) = species_sum(i)/shell_mass(first)'
+
+[[mutation]]
+id = 'composition-04'
+check = 'homogenize: the region is uniform'
+file = 'core/step/composition_kernels.f90'
+old = '''
+         do k = first, last
+            composition(1:num_species,k) = species_sum'''
+new = '''
+         do k = first, last-1
+            composition(1:num_species,k) = species_sum'''
+
+[[mutation]]
+id = 'composition-05'
+check = 'homogenize: the shells and slots outside are untouched'
+file = 'core/step/composition_kernels.f90'
+old = '''
+         do k = first, last
+            weight_sum = weight_sum + shell_mass(k)'''
+new = '''
+         do k = first, last
+            composition(:,last+1) = 0.0d0
+            weight_sum = weight_sum + shell_mass(k)'''
+
+[[mutation]]
+id = 'composition-06'
+check = 'homogenize: a one-shell region away from the centre is skipped'
+file = 'core/step/composition_kernels.f90'
+old = 'if (first /= 1 .and. first >= last) cycle'
+new = 'if (first /= 1 .and. first > last) cycle'
+
+[[mutation]]
+id = 'composition-07'
+check = 'closure: every abundance in [0, 1]'
+file = 'core/step/composition_kernels.f90'
+old = 'composition(i,k) = min(composition(i,k), 1.0d0)'
+new = 'composition(i,k) = min(composition(i,k), 2.0d0)'
+
+[[mutation]]
+id = 'composition-08'
+check = 'closure: Z <= 1 - X - He3'
+file = 'core/step/composition_kernels.f90'
+old = '1.0d0 - composition(i_h1,k) - composition(i_he3,k))'
+new = '1.0d0 - composition(i_h1,k))'
+
+[[mutation]]
+id = 'composition-09'
+check = 'closure: X + Y + Z + He3 = 1'
+file = 'core/step/composition_kernels.f90'
+old = 'composition(i_metals,k) - composition(i_he3,k)'
+new = 'composition(i_metals,k)'

@@ -1,0 +1,14 @@
+test_composition_kernels report
+-- deep mixing
+deep mixing: mixed out to the mass limit, the flag beyond            0.0E+00  ok
+deep mixing: a shell at the limit is mixed                           0.0E+00  ok
+-- homogenize
+homogenize: each species keeps its mass in a region                  1.7E-16  ok
+homogenize: the region is uniform                                    0.0E+00  ok
+homogenize: the shells and slots outside are untouched               0.0E+00  ok
+homogenize: a one-shell region away from the centre is skipped       0.0E+00  ok
+-- closure
+closure: every abundance in [0, 1]                                   1.0E+00  ok
+closure: Z <= 1 - X - He3                                            2.0E-01  ok
+closure: X + Y + Z + He3 = 1                                         0.0E+00  ok
+test_composition_kernels: done

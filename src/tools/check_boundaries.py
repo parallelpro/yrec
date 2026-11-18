@@ -192,6 +192,9 @@ STAR_BLIND_FILES = [
     "core/step/timestep_limits.f90",
     # the rezone's regridding arithmetic (2026-10, GUIDELINES star rule 6)
     "core/model/regridding.f90",
+    # core/step/ (round 3): the composition step's mixing flags, mixed-region
+    # mean and closure (test_composition_kernels)
+    "core/step/composition_kernels.f90",
     "atm/t_tau_relations.f90",
     # atm's table lookups (2026-11-10): the table in, the result and a
     # status out; atm_lib reports through atm_messages
