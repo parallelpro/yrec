@@ -659,3 +659,18 @@ old = '''              '; E, last step',2F20.12)
          ierr = 1'''
 new = '''              '; E, last step',2F20.12)
          ierr = 0'''
+
+# the OPAL 2006 edge weight at an inner corner of the staircase (M356)
+[[mutation]]
+id = 'ragged_edge-01'
+check = "continuity: across a T6 row at an inner corner of the OPAL 2006 edge (M356)"
+file = 'eos/opal/opal_eos.f90'
+old = 'if (any(node /= legacy_node)) then'
+new = 'if (.false.) then'
+
+[[mutation]]
+id = 'ragged_edge-02'
+check = "continuity: across the same T6 row, lower in the corner's cell (M356)"
+file = 'eos/opal/opal_eos.f90'
+old = '(1d0-density_fraction)*node(1,1) + density_fraction*node(1,2)) + &'
+new = '(1d0-density_fraction)*node(1,1) + density_fraction*node(1,1)) + &'

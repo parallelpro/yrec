@@ -1543,6 +1543,25 @@ subroutine continuity_in_t(label, lt0, lp, mean_weights)
            results_agree(below, above, 1.0d-6, 1.0d-4, mean_weights, .true.))
 end subroutine continuity_in_t
 
+! The blended quantities 1e-7 dex either side of log T = lt0 at an inner
+! corner of the OPAL 2006 table's edge, where the edge weight changes by
+! its whole range within one table cell: the first-order quantities
+! agree to 1e-4 (the weight's own change across the step is 4e-6; the
+! product-form weight left 1e-2 in log rho, 5e-2 in grad_ad and 26% in
+! c_P here). The second derivatives are the Yale solution's on both
+! sides and are not compared.
+subroutine continuity_at_inner_corner(label, lt0, lp)
+      character(len=*), intent(in) :: label
+      real(dp), intent(in) :: lt0, lp
+      real(dp), parameter :: x = 0.70d0, z = 0.016492d0, h = 1.0d-7
+      type(eos_result) :: below, above
+      integer :: ierr1, ierr2
+      call eos_at(lt0 - h, lp, x, z, below, ierr1)
+      call eos_at(lt0 + h, lp, x, z, above, ierr2)
+      call check(label, ierr1 == 0 .and. ierr2 == 0 .and. &
+           results_agree(below, above, 1.0d-4, 1.0d0, .true., .false.))
+end subroutine continuity_at_inner_corner
+
 ! Whether two results agree field by field (a to tol, the second
 ! derivatives to tol2 when second is set; rho, R/mu and cp relative),
 ! naming in the output the fields that do not.
@@ -1608,6 +1627,13 @@ subroutine continuity_checks()
            ramp_end_is_continuous(5.0d0, 12.80d0, 12.94d0, opal2006_alone))
       call check("continuity: at the OPAL 2006 table's edge (the Yale/SCV result beyond)", &
            ramp_end_is_continuous(5.0d0, 13.05d0, 12.94d0, without_opal))
+! the OPAL 2006 table's ragged edge at an inner corner of its staircase
+! (M356): across the T6 row 0.0475 (log T 4.6767), where the row's last
+! density column steps down, the edge weight is continuous
+      call continuity_at_inner_corner("continuity: across a T6 row at an inner corner of the OPAL 2006 edge (M356)", &
+           log10(4.75d4), 12.20d0)
+      call continuity_at_inner_corner("continuity: across the same T6 row, lower in the corner's cell (M356)", &
+           log10(4.75d4), 12.17d0)
 ! SCV's tables' edges in P_gas (M88): its result is blended into the Saha
 ! one within one table interval (0.2 dex) of an edge, the ionization
 ! fractions too, so every blended field is continuous at both ends of

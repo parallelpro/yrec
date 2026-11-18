@@ -2,7 +2,7 @@
 
 ## 1. About this report
 
-This report lists every defect found on the `yrec-next` branch after it diverged from `main` at [0ff84d7e](https://github.com/parallelpro/yrec/commit/0ff84d7e) (2026-09-03), up to [8d7feee2](https://github.com/parallelpro/yrec/commit/8d7feee2) (2026-11-13, round 2's last merge) round 2's closing commits after it, and round 2B (2026-11-13/14). There are 387 items: 289 fixed and 98 open. Bugs fixed before the divergence (bug-sweep batches 1-3, such as the CF88 deuterium rate) are in `docs/MODERNIZATION_CHANGES.md` and are not repeated here.
+This report lists every defect found on the `yrec-next` branch after it diverged from `main` at [0ff84d7e](https://github.com/parallelpro/yrec/commit/0ff84d7e) (2026-09-03), up to [8d7feee2](https://github.com/parallelpro/yrec/commit/8d7feee2) (2026-11-13, round 2's last merge) round 2's closing commits after it, and round 2B (2026-11-13/14). There are 388 items: 290 fixed and 98 open. Bugs fixed before the divergence (bug-sweep batches 1-3, such as the CF88 deuterium rate) are in `docs/MODERNIZATION_CHANGES.md` and are not repeated here.
 
 Each item answers the same questions:
 
@@ -34,6 +34,7 @@ Each item answers the same questions:
 - Section 17's items were found in round 2, by its two core agents and its closing agent, and checked in the code at 8d7feee2: M311 and M314 were fixed in it; the rest are open.
 - Round 2B (2026-11-13/14) made core's B list's measured fixes (`audit/module-evaluation-7-2026-11-10/B_LIST_CORE.md`, approved by the owner on 2026-11-13 with its recommendations), one commit each, in two parts, from 9059d0b1 and from 1592edca: each was run on the 56-deck set against the previous fix's snapshot and the 35 pins, and its entry's "What we did" gives what moved; for the path-sensitive decks, the first progress line (one every 50 models) that differs from the base, which is the fix's own size.
 - Section 18's items were found in round 2B, by its first core agent, and checked in the code at 9059d0b1: M315 was fixed in it, in a commit outside the B list; M316 is open.
+- Section 20's items were found in the convergence round (2026-11-17), in its diagnosis of O3's, M294's and M316's decks, and fixed in it as round 2B's were, each run on the 56-deck set against the previous fix's snapshot and the 35 pins; its introduction says how.
 - Several fixes are protected by unit tests that fail if the fix is reverted: `test_structure` (every Henyey partial against finite differences), `test_mass_change`, `test_net`, `test_eos`, `test_triangle_fit` and `test_braking`.
 
 **Conventions.**
@@ -490,6 +491,8 @@ Answered by the owner on 2026-11-11 (round 1B's B lists, approved with their rec
 | M316 | Two shipped decks stop at their first model: "beta = P_gas/P is not positive" | Not determined | Open |
 | M317 | The solar starting models' total mass is 1.98900e33 g; the decks' solar mass 1.9891e33 | Yes | Open |
 | M318 | A devel or debug build on x86 Linux stopped at the first model's output: the GYRE interval's mod by 0 | No (2026) | Fixed after round 2B; CI's devel job found it |
+| **M** | **Found in the convergence round (§20)** | | |
+| M356 | The OPAL 2006 EOS's edge weight jumps at every inner corner of the table's ragged edge | Yes | Fixed (the convergence round, 2026-11-17) |
 
 
 ## 2. Nuclear network and burning (fixed; results change)
@@ -6019,3 +6022,35 @@ Round 2B made core's B list's measured fixes (`audit/module-evaluation-7-2026-11
 - **What was wrong:** Fortran does not require `.and.` to skip its second operand when the first is false, and at -O0 gfortran 15 does not: it computes the mod, then combines the two tests (checked in the generated code). The devel and debug build modes have no -O (`src/Makefile`'s `MODE_FFLAGS_devel` and `GNU_DBG_FFLAGS`), and `pulse_gyre_interval`'s default is 0, so every model's output divided by 0. On x86-64 an integer division by 0 raises SIGFPE whatever the floating-point trap flags say; on arm64 it gives 0 and nothing is raised, which is why the local devel battery, on macOS/arm64, passed. A devel or debug build on x86 Linux could therefore not run a deck past its first model. Release builds (-O3) test the interval first: CI's solar-regression job and the users' Linux runs were not affected. Before round 2B the devel battery's one full run, `test_run_contracts`, was skipped as an O4 known failure, so CI never reached this line.
 - **Expected behaviour, and why:** a deck runs under every build mode on every platform; a guard on a divisor must be a test of its own, not an operand of the same `.and.`.
 - **What we did:** two nested tests, with a comment saying why ([yrec_output.f90:225-229](https://github.com/parallelpro/yrec/blob/yrec-next/src/io/yrec_output.f90#L225-L229)). A scan of `src` for any statement that pairs `.and.` or `.or.` with `mod`, or with a division by a name the same statement tests against 0, found no other: the five other such `mod`s divide by 2 or by a parameter, or (`settling_substeps.f90`) are a real mod, which the local floating-point traps would catch (a deliberate 1/0 under the devel flags stops with SIGILL on the owner's macOS/arm64 machine). Measured: compare_decks `--set all` ALL IDENTICAL, 35 pins. No new test: CI's devel job running `test_run_contracts` is the check, and no local one can see it (arm64 does not trap an integer division by 0, and gfortran's `-fsanitize=integer-divide-by-zero` does not instrument Fortran).
+
+## 20. Found in the convergence round (2026-11-17)
+
+The convergence round took O3, M294 and M316 (the shipped low-mass decks that stop with a failed solve, and the two that stop at their first model): a diagnosis first (the work directory's `notes/CONV_DIAGNOSIS.md`: every failing deck rerun at [1179afbf](https://github.com/parallelpro/yrec/commit/1179afbf), the failing step's iterations dumped, the Jacobian replaced by finite differences of its own residual in a scratch build, and the deck's EOS scanned along the failing model), then the fixes as round 2B made its own, one measured commit each (the 56-deck set against the previous fix's snapshot and the 35 pins).
+
+- **How they were checked.** Each was measured on the failing decks before its entry was written, read in the code at 1179afbf, and against the F77 at 6cd56739.
+- Current-code links point at [1179afbf](https://github.com/parallelpro/yrec/tree/1179afbf/src).
+
+### M356. The OPAL 2006 EOS's edge weight jumps at every inner corner of the table's ragged edge
+
+- **Status:** fixed (the convergence round, 2026-11-17). The first cause of O3's and M294's stops.
+- **In the original F77?** Yes. EQBOUND06 (LLP 10/16/06) forms the weight as the product of a density ramp, set only in the last tabulated density cell of the point's T6 row, and a T6 ramp, set only in the last tabulated T6 cell of its density column ([eqbound06.f:81-100](https://github.com/parallelpro/yrec/blob/6cd56739/src/eqbound06.f#L81-L100)):
+  ```fortran
+        IF(l .EQ. nra(k)) THEN
+          LRAMP = .TRUE.
+          DRampF = (rho(l)-D)/(rho(l)-rho(l-1))
+        ENDIF
+  ...
+        IF(k .EQ. nta(l)) THEN
+          LRAMP = .TRUE.
+          TRampF = (T6-T6a(k))/(T6a(k-1)-T6A(k))
+        ENDIF
+
+        FAC = DRampF * TRampF
+  ```
+- **Before the fix** (at [1179afbf](https://github.com/parallelpro/yrec/tree/1179afbf/src)): `find_ragged_edge_ramp`, [opal_eos.f90:895-1014](https://github.com/parallelpro/yrec/blob/1179afbf/src/eos/opal/opal_eos.f90#L895-L1014).
+- **What was wrong:** the table's high-density edge is a staircase: the highest tabulated density column steps down as T6 falls (`opal06_density_index_edge`). Take a T6 row where it steps from column j to j-1. Just below the row the cell at column j-1 is the last of its row, and the weight is the density ramp, (ρ_j-1 − ρ)/(ρ_j-1 − ρ_j-2), anywhere from 0 to 1; just above the row the same column is neither the last of its row nor the last of its column, and the weight is 1. So the weight jumps along the whole edge the two cells share, and with it the blended EOS, by the difference between OPAL and SCV there. Measured along a 0.03 Msun model (X = 0.71962, Z = 0.016492): the weight goes 1 → 0.062 at log T 4.6767, 1 → 0.22 at 4.5280, and four more between 4.40 and 4.29; log ρ jumps by up to 1.7e-2, ∇_ad by up to 0.067 and c_P by up to 31%. A fully convective star of 0.03 to 0.15 Msun runs along this staircase from log T 4.8 to 4.2; a shell that a Newton iteration moves across one of the lines changes its residual by that much, and the iteration cycles (O3's "two-cycle"; at the 0.03 Msun deck's failing step the corrections repeat with period 5, no convective flag flips, and the triangle is not refitted).
+- **Expected behaviour, and why:** an equation of state is continuous in (T, P) at fixed composition; Newton's method needs a continuous residual.
+- **What we did:** the weight is the bilinear interpolant, in the point's cell, of node weights that are 1 at a node whose four cells are all tabulated and 0 at the others. In every cell but those with an inner corner of the staircase this is the product the code had, and it is still formed that way (so a model that meets no inner corner is unchanged to the last bit); in an inner-corner cell, where the product gave 1, it is 1 − (1 − u) w (u, w the cell's fractions in T6 and ρ, the corner at u = 0, w = 1). `test_eos` checks the blended quantities either side of the T6 row 0.0475 at two pressures of an inner-corner cell (2 checks, 2 mutations).
+  - Measured on the 56-deck set and the 35 pins against the round's starting baseline: RESULT: 1 NOT IDENTICAL; pins 34 OK, 1 DIFF: `examples/run_from_dbl_to_zams/Test_m0030_feh0_noGS_ZAMS` (.log, its pin, .mod), the set's one fully convective low-mass deck: 52 models both; first visible change at model 2 (9.6e-6 in log Teff, log L and log R); the final model at 1.2791e-2 Gyr against 1.2160e-2 (its timesteps differ, the last by 14%), log L -2.75106 against -2.73605 (-1.0e-3 from the base's track at that age), log Teff -4.7e-4. The other 55 decks are byte-identical: none meets an inner-corner cell.
+  - On the stopped decks (scratch runs, each deck as shipped; before -> after): Test_m0060_feh0_noGS_ZAMS model 44 -> its stop (198 models), Test_m0p05feh+0p0GS98_allard_15Gyr 72 -> its stop (15 Gyr, 396), Test_m0p1feh+0p0GS98_allard_ZAMS 139 -> its stop (216), SamplelowerMS_m0p15feh+0p0GS98_kurucz_ZAMS 188 -> its stop (212); Test_m0040 17 -> 33 and Test_m0050 30 -> 47 (M357 is what stops them next); Test_m0p03feh+0p0GS98_allard_15Gyr 84 -> 359 (1.1 Gyr, where it leaves the Allard table); Test_m0030_feh0_noGS_ZAMS with its 50-model cap lifted 81 -> 803.
+  - Pins re-seeded: `Test_m0030_feh0_noGS_ZAMS.log`; `expected_test_eos.out` gains the two checks' lines.

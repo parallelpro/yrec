@@ -883,132 +883,149 @@ end subroutine t6rinteos
 !----------------------------------------------------------------------
 ! find_ragged_edge_ramp (formerly eqbound06)
 !----------------------------------------------------------------------
-! LLP 10/16/06: checks whether a (T, log10 rho) point falls within the
-! OPAL 2006 EOS table, and if it is near the table's edge, computes
-! the ramp factor used to blend the OPAL result with the Yale/SCV
-! result (blend_eos's opal_step calls it, through find_opal_edge_ramp,
-! right after compute_opal_eos). Unlike find_table_edge_ramp (1995 and
-! 2001), it tracks the table's ragged edge through the vintage's
-! per-column and per-row index arrays (lay%t6_index_lo,
-! lay%density_index_edge) rather than one edge value per T6 row, from
-! the stencil the last interpolation left in v.
+! LLP 10/16/06: whether a (T, log10 rho) point falls within the OPAL
+! 2006 EOS table, and the weight of the OPAL result there (ramp_factor;
+! blend_eos's opal_step calls it, through find_opal_edge_ramp, right
+! after compute_opal_eos, and blends the OPAL result with the Yale/SCV
+! one where needs_ramp is set).
+!
+! The table's edge is ragged: lay%density_index_edge(k) is the highest
+! tabulated density column of T6 row k, and lay%t6_index_lo(j) the row
+! of the lowest tabulated T6 of density column j. The cell of the point
+! has the rows t6_row - 1 (warmer) and t6_row and the columns
+! density_row - 1 and density_row; it is in the table when its coldest,
+! densest node is (cell_in_table). The weight is continuous in (T6, rho):
+! it is the bilinear interpolant, in the cell, of node weights that are 1
+! at a node whose four cells are all in the table and 0 at the others
+! (node_weight), so it is 1 in the table's interior, 0 on its edge, and
+! takes one cell to get from one to the other. With u the cell's
+! fraction in T6 (0 at the cold row) and w its fraction in rho (0 at the
+! low column):
+!   - where only the two dense nodes are on the edge the weight is the
+!     density ramp 1 - w; where only the two cold ones are, the T6 ramp
+!     u; at an outer corner of the staircase their product; and the
+!     same at the table's first T6 row and first density column
+!     (legacy_ramp, which forms them as the F77 did);
+!   - at an inner corner of the staircase (one node of the cell on the
+!     edge, the cell colder or denser beyond it outside the table) it is
+!     the full interpolant. (The product form gave 1 there, against the
+!     density ramp of the cell across the T6 row: a jump of the blended
+!     density, gradients and c_P wherever a model crossed that line;
+!     docs/bug_sweep.md M356.)
+! The stencil the last interpolation left in v (v%t6_index_3,
+! v%density_index_2) starts the search for the cell.
 pure subroutine find_ragged_edge_ramp(v, lay, temperature, log10_density, ramp_factor, &
      in_opal_table, needs_ramp)
       type(opal_eos_vintage), intent(in) :: v
       type(opal_vintage_layout), intent(in) :: lay
-
       real(dp), intent(in) :: temperature, log10_density
       real(dp), intent(out) :: ramp_factor
       logical, intent(out) :: in_opal_table, needs_ramp
-
-
-
       integer :: t6_row, density_row
-! --- locals ---
-      real(dp) :: t6, density, density_ramp_factor, &
-           t6_ramp_factor
+      real(dp) :: t6, density, t6_fraction, density_fraction
+! the node weights of the cell: (cold, warm) x (low, high density)
+      real(dp) :: node(2,2), legacy_node(2,2)
 
       t6 = temperature*1.0d-6
       density = pow(10d0, log10_density)
+      in_opal_table = .false.
+      needs_ramp = .true.
+      ramp_factor = 0d0
+! outside the table's density or T6 range
+      if ((density < v%density_grid(1)) .or. (density >= v%density_grid(lay%nr))) return
+      if ((t6 > v%t6_grid(1)) .or. (t6 <= v%t6_grid(lay%nt))) return
 
-!     Exit if outside table in rho
-      if ((density < v%density_grid(1)) .or. (density >= v%density_grid(lay%nr))) then
-         in_opal_table = .false.
-         needs_ramp = .true.
-         ramp_factor = 0d0
-         return
+! the cell: v%t6_grid(t6_row-1) >= T6 > v%t6_grid(t6_row) (the grid
+! decreases) and v%density_grid(density_row-1) < rho <=
+! v%density_grid(density_row), by a linear search from the last stencil
+      t6_row = v%t6_index_3
+      do while (t6 <= v%t6_grid(t6_row))
+         t6_row = t6_row+1
+      end do
+      do while (t6 > v%t6_grid(t6_row-1))
+         t6_row = t6_row-1
+      end do
+      density_row = v%density_index_2
+      do while (density > v%density_grid(density_row))
+         density_row = density_row+1
+      end do
+      do while (density <= v%density_grid(density_row-1))
+         density_row = density_row-1
+      end do
+      if (.not. cell_in_table(t6_row, density_row)) return
+
+      in_opal_table = .true.
+      node(1,1) = node_weight(t6_row, density_row-1)
+      node(1,2) = node_weight(t6_row, density_row)
+      node(2,1) = node_weight(t6_row-1, density_row-1)
+      node(2,2) = node_weight(t6_row-1, density_row)
+      call legacy_ramp(ramp_factor, legacy_node)
+      needs_ramp = any(node < 1d0)
+      if (any(node /= legacy_node)) then
+         t6_fraction = (t6-v%t6_grid(t6_row))/(v%t6_grid(t6_row-1)-v%t6_grid(t6_row))
+         density_fraction = (density-v%density_grid(density_row-1))/ &
+              (v%density_grid(density_row)-v%density_grid(density_row-1))
+         ramp_factor = (1d0-t6_fraction)*((1d0-density_fraction)*node(1,1) + density_fraction*node(1,2)) + &
+              t6_fraction*((1d0-density_fraction)*node(2,1) + density_fraction*node(2,2))
       end if
 
-!     Exit if outside table in T6
-      if ((t6 > v%t6_grid(1)) .or. (t6 <= v%t6_grid(lay%nt))) then
-         in_opal_table = .false.
-         needs_ramp = .true.
-         ramp_factor = 0d0
-         return
-      end if
+contains
 
-!     Initialize
-      density_ramp_factor = 1d0   ! Initialize density ramp factor to 1
-      t6_ramp_factor = 1d0        ! Initialize temperature ramp factor to 1
-      in_opal_table = .true.      ! Presume that T6,D point is in OPAL table
-      needs_ramp = .false.        ! presume ramping is not needed,
-                                   ! i.e. we are not in the border of the table.
+! The cell between T6 rows tr - 1 and tr and density columns dr - 1 and
+! dr is in the table when the node (tr, dr), its coldest and densest, is
+! tabulated: column dr is at or below row tr's highest, and row tr at or
+! above column dr's lowest T6.
+pure logical function cell_in_table(tr, dr)
+      integer, intent(in) :: tr, dr
+      cell_in_table = .false.
+      if (tr < 2 .or. tr > lay%nt .or. dr < 2 .or. dr > lay%nr) return
+      cell_in_table = dr <= lay%density_index_edge(tr) .and. tr <= lay%t6_index_lo(dr)
+end function cell_in_table
 
-!     Check for easy borders
+! 1 at a node all of whose four cells are in the table, 0 at a node on
+! the table's edge.
+pure real(dp) function node_weight(tr, dr)
+      integer, intent(in) :: tr, dr
+      node_weight = 0d0
+      if (cell_in_table(tr, dr) .and. cell_in_table(tr, dr+1) .and. &
+           cell_in_table(tr+1, dr) .and. cell_in_table(tr+1, dr+1)) node_weight = 1d0
+end function node_weight
+
+! The product of the density ramp and the T6 ramp of the cell, each 1
+! unless the cell is the last one of its row or column (or the first
+! one of the table), and the node weights that product interpolates.
+pure subroutine legacy_ramp(product_ramp, product_node)
+      real(dp), intent(out) :: product_ramp, product_node(:,:)
+      real(dp) :: density_ramp_factor, t6_ramp_factor, t6_node(2), density_node(2)
+      density_ramp_factor = 1d0
+      t6_ramp_factor = 1d0
+      t6_node = 1d0
+      density_node = 1d0
+! the table's first T6 row and first density column
       if (t6 > v%t6_grid(2)) then
-          t6_ramp_factor = (t6-v%t6_grid(1))/(v%t6_grid(2)-v%t6_grid(1)) ! Ramp in temperature
-          needs_ramp = .true.
+         t6_ramp_factor = (t6-v%t6_grid(1))/(v%t6_grid(2)-v%t6_grid(1))
+         t6_node = [1d0, 0d0]
       end if
       if (density < v%density_grid(2)) then
-          density_ramp_factor = (density - v%density_grid(1))/ &
-               (v%density_grid(2)-v%density_grid(1)) ! Ramp in density
-          needs_ramp = .true.
+         density_ramp_factor = (density - v%density_grid(1))/ &
+              (v%density_grid(2)-v%density_grid(1))
+         density_node = [0d0, 1d0]
       end if
-
-!     Find a t6_row such that v%t6_grid(t6_row-1) >= T6 > v%t6_grid(t6_row)
-!     and a density_row such that v%density_grid(density_row-1) < D <=
-!     v%density_grid(density_row)
-!     The ESAC06 variables (k=)v%t6_index_3 and (l-)v%density_index_2 are
-!     close to what we need. A linear search will work fine.
-      t6_row = v%t6_index_3
-   do while (t6 <= v%t6_grid(t6_row))
-        t6_row = t6_row+1
-   end do
-   do while (t6 > v%t6_grid(t6_row-1))
-        t6_row = t6_row-1
-   end do
-!     We now have: v%t6_grid(t6_row-1) >= T6 > v%t6_grid(t6_row)
-
-      density_row = v%density_index_2
-   do while (density > v%density_grid(density_row))
-        density_row = density_row+1
-   end do
-   do while (density <= v%density_grid(density_row-1))
-        density_row = density_row-1
-   end do
-!     We now have: v%density_grid(density_row-1) < D <= v%density_grid(density_row)
-
-!     For a given temperature in array v%t6_grid with index t6_row, e.g.,
-!     v%t6_grid(t6_row), element lay%density_index_edge(t6_row) of array
-!     lay%density_index_edge contains the index to the max allowed density
-!     in array v%density_grid. So, for a given v%t6_grid(t6_row), the
-!     associated D must be less than v%density_grid(lay%density_index_edge(t6_row)).
-!     A valid index in array v%density_grid must be less than or equal
-!     to lay%density_index_edge(t6_row)
-
-      if (density_row > lay%density_index_edge(t6_row)) then
-        in_opal_table = .false.
-        needs_ramp = .true.
-        ramp_factor = 0d0
-        return
-      end if
+! the last density column of the row, the last T6 row of the column
       if (density_row == lay%density_index_edge(t6_row)) then
-        needs_ramp = .true.
-        density_ramp_factor = (v%density_grid(density_row)-density)/ &
-             (v%density_grid(density_row)-v%density_grid(density_row-1))
-      end if
-
-!     For a given density in array v%density_grid with index density_row,
-!     i.e., v%density_grid(density_row), element lay%t6_index_lo(density_row)
-!     of array lay%t6_index_lo contains the index to the min allowed
-!     temperature in array v%t6_grid. So for a given
-!     v%density_grid(density_row), the associated T6 must be greater
-!     than v%t6_grid(lay%t6_index_lo(density_row)). (Note that v%t6_grid is a
-!     decreasing array.) A valid index in v%t6_grid must be less than or
-!     equal to lay%t6_index_lo(density_row).
-
-      if (t6_row > lay%t6_index_lo(density_row)) then
-        in_opal_table = .false.
-        needs_ramp = .true.
-        ramp_factor = 0d0
-        return
+         density_ramp_factor = (v%density_grid(density_row)-density)/ &
+              (v%density_grid(density_row)-v%density_grid(density_row-1))
+         density_node = [1d0, 0d0]
       end if
       if (t6_row == lay%t6_index_lo(density_row)) then
-        needs_ramp = .true.
-        t6_ramp_factor = (t6-v%t6_grid(t6_row))/(v%t6_grid(t6_row-1)-v%t6_grid(t6_row))
+         t6_ramp_factor = (t6-v%t6_grid(t6_row))/(v%t6_grid(t6_row-1)-v%t6_grid(t6_row))
+         t6_node = [0d0, 1d0]
       end if
+      product_ramp = density_ramp_factor * t6_ramp_factor
+      product_node(1,:) = t6_node(1)*density_node
+      product_node(2,:) = t6_node(2)*density_node
+end subroutine legacy_ramp
 
-      ramp_factor = density_ramp_factor * t6_ramp_factor
 end subroutine find_ragged_edge_ramp
 
 
