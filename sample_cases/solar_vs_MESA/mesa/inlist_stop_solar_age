@@ -1,0 +1,5 @@
+! Run a: to the solar age of YREC's deck; the last model's pulse file
+! and profile are written (inlist_project).
+&controls
+   max_age = 4.568d9
+/

@@ -1,0 +1,12 @@
+! Run b with an experiment: the opacity raised by 2.5% between log T =
+! 6.3 and 6.75 (ramped to no change at 6.1 and 6.95), the size of YREC's
+! excess there.
+&controls
+   xa_central_lower_limit_species(1) = 'h1'
+   xa_central_lower_limit(1) = 0.05d0
+   opacity_factor = 1.025d0
+   min_logT_for_opacity_factor_off = 6.10d0
+   min_logT_for_opacity_factor_on = 6.30d0
+   max_logT_for_opacity_factor_on = 6.75d0
+   max_logT_for_opacity_factor_off = 6.95d0
+/
