@@ -90,6 +90,7 @@ OPAL95 high-R shift: log kappa within 0.05 of its neighbours'              2.06E
 OPAL95 past a row's last log R (extrapolated): derivatives                 4.26E-08  ok
 precedence: OPAL95 with OPAL92 also selected is OPAL95 alone               0.00E+00  ok
 precedence: Alexander 2006 with 1994 also selected is 2006's               0.00E+00  ok
+no molecular family: OPAL95 exact at a node below log T 4.1                6.66E-16  ok
 Potekhin mixture: 1/K = sum x_i/K_i(rho_i), electron fractions             6.66E-16  ok
 Potekhin conduction: kappa_c continuous at log rho = -6                    4.96E-09  ok
 Potekhin conduction below log rho = -6: dln kappa/dln rho                  6.94E-12  ok

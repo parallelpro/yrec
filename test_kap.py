@@ -33,4 +33,8 @@ def test_kap_standalone(tmp_path):
         [str(BINARY)], cwd=tmp_path, env=env, capture_output=True, text=True
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    compare_output(result.stdout, EXPECTED.read_text(), "test_kap")
+    # The checks print their error; one at round-off (a few 1e-16, say)
+    # may differ between platforms, so under YREC_TEST_TOLERANT two
+    # numbers both below 1e-12 count as equal (every check's tolerance is
+    # 1e-12 or more, and no opacity or derivative is that small).
+    compare_output(result.stdout, EXPECTED.read_text(), "test_kap", abs_floor=1.0e-12)

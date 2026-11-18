@@ -430,6 +430,14 @@ contains
          call high_r_shift_check()
          call high_r_edge_checks()
          call precedence_checks()
+! without a molecular family the interior opacity is used as it is below
+! molecular_opacity_logt_max too (no ramp toward a table that is not
+! there): OPAL95 alone, after a lookup elsewhere, at the node log T 4.05
+         call configure("opal95 alone", opal95=.true., z1=0.02d0, z2=0.0d0, two_z=.false., &
+              opal95_path=trim(atom_dir)//"legacy/opal95/GS98.OP17", quiet=.true.)
+         call get_point(0.70d0, 0.02d0, 6.0d0, logd_of(6.0d0, -3.0d0), r, ierr)
+         call opal95_node_check("no molecular family: OPAL95 exact at a node below log T 4.1", &
+              0.70d0, 0.02d0, 4.05d0, -3.0d0, 73)
          call load_production()
          call conductive_mixture_check()
          call conductive_low_density_check()

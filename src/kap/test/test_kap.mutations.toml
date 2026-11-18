@@ -522,3 +522,10 @@ check = 'Kurucz 1990 without a value: the interior opacity alone'
 file = 'kap/kurucz90/kurucz_opacity.f90'
 old = '''      if (.not.(log10_density <= kurucz_logrho_max .and. &'''
 new = '''      if (.not.(log10_density <= 0.0d0 .and. &'''
+
+[[mutation]]
+id = 'ramp-without-molecular'
+check = 'no molecular family: OPAL95 exact at a node below log T 4.1'
+file = 'kap/kap_lib.f90'
+old = '''      if (have_molecular .and. point%log10_temperature <= molecular%logt_max) then'''
+new = '''      if (point%log10_temperature <= molecular%logt_max) then'''
