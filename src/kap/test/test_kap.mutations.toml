@@ -389,17 +389,17 @@ new = '''      else if ((abs'''
 id = 'opal95-shift-stale-x'
 check = "OPAL95 high-R shift: independent of the previous lookup's X"
 file = 'kap/opal95/opal95_opacity.f90'
-old = '''         call locate_opal95_x_stencil(1, tbl%fixed_z, hydrogen_fraction)
+old = '''         call locate_opal95_x_stencil(tbl, 1, tbl%fixed_z, hydrogen_fraction, st)
          x_tables = tbl%index_x(1,:)'''
 new = '''         x_tables = tbl%index_x(1,:)
-         call locate_opal95_x_stencil(1, tbl%fixed_z, hydrogen_fraction)'''
+         call locate_opal95_x_stencil(tbl, 1, tbl%fixed_z, hydrogen_fraction, st)'''
 
 [[mutation]]
 id = 'opal95-shift-first-x-table'
 check = "OPAL95 high-R shift: no empty cell of the stencil's X tables read"
 file = 'kap/opal95/opal95_opacity.f90'
-old = '''      if (any(tbl%fixed_z_opacity(x_tables,tbl%index_t+3, &'''
-new = '''      if (any(tbl%fixed_z_opacity(x_tables(1:1),tbl%index_t+3, &'''
+old = '''      if (.not. any(tbl%fixed_z_opacity(x_tables,tbl%index_t+3, &'''
+new = '''      if (.not. any(tbl%fixed_z_opacity(x_tables(1:1),tbl%index_t+3, &'''
 
 [[mutation]]
 id = 'opal95-shift-surface-tables'
@@ -426,34 +426,30 @@ new = "      open(newunit=unit, file=path, status='unknown', iostat=ios, iomsg=i
 id = 'opal95-shift-derivative'
 check = 'OPAL95 high-R shift (rows end at different log R): derivatives'
 file = 'kap/opal95/opal95_opacity.f90'
-old = '''               st%logr_hi_edge(j) = extrap_logr
+old = '''               call interp(interp_nodes, weight, dweight, st%logr_hi_edge(j))
             end if
-            do i = 1,4
-               st%weight_rho(j,i) = weight(i)
-               st%dweight_rho(j,i) = dweight(i)'''
-new = '''               st%logr_hi_edge(j) = extrap_logr
+            st%weight_rho(j,:) = weight
+            st%dweight_rho(j,:) = dweight'''
+new = '''               call interp(interp_nodes, weight, dweight, st%logr_hi_edge(j))
             end if
-            do i = 1,4
-               st%weight_rho(j,i) = weight(i)
-               st%dweight_rho(j,i) = 0.5d0*dweight(i)'''
+            st%weight_rho(j,:) = weight
+            st%dweight_rho(j,:) = 0.5d0*dweight'''
 
 [[mutation]]
 id = 'opal95-shift-row-end'
 check = "OPAL95 high-R shift: log kappa within 0.05 of its neighbours'"
 file = 'kap/opal95/opal95_opacity.f90'
-old = '''                     tbl%index_rho(i) = j - 3
-                     density_base_index = j - 3'''
-new = '''                     tbl%index_rho(i) = j - 2
-                     density_base_index = j - 2'''
+old = '''                  tbl%index_rho(i) = j - 3
+                  first_column = j - 3'''
+new = '''                  tbl%index_rho(i) = j - 2
+                  first_column = j - 2'''
 
 [[mutation]]
 id = 'opal95-no-shift'
 check = "OPAL95 high-R shift: log kappa within 0.05 of its neighbours'"
 file = 'kap/opal95/opal95_opacity.f90'
-old = '''           tbl%index_rho(1)+3) >= opal95_missing_test)) then
-         density_shifted = .true.'''
-new = '''           tbl%index_rho(1)+3) >= 2.0d0*opal95_missing_test)) then
-         density_shifted = .true.'''
+old = '''           tbl%index_rho(1)+3) >= opal95_missing_test)) return'''
+new = '''           tbl%index_rho(1)+3) >= 2.0d0*opal95_missing_test)) return'''
 
 [[mutation]]
 id = 'opal95-extrapolation-high'
