@@ -592,6 +592,10 @@ module controls_buffer
 ! Henyey under-relaxation: the correction factor grows by this each corrector
 ! pass, up to 1
       real(dp) :: solver_underrelax_increment = 0.1d0
+! Henyey correction limit: no corrector pass changes log10 P, log10 T or
+! log10 R of any shell by more than this; a larger correction is scaled
+! down to it, the luminosity's by the same factor (0 = no limit)
+      real(dp) :: solver_max_correction = 0.0d0
 ! Henyey iteration limit, level 1 (fresh surface BC)
       integer :: max_iter_level1 = 2
 ! Henyey iteration limit, level 2

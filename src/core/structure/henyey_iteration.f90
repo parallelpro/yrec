@@ -393,8 +393,11 @@ end subroutine test_henyey_convergence
 
 ! ---------------------------------------------------------------
 ! Ramp the under-relaxation factor and pick the correction factor (eased
-! in during the helium flash); count the iterations if converged.
-!   star reads: physics%helium_flash_active,
+! in during the helium flash, and cut to the correction limit); count the
+! iterations if converged. On entry star%max_residual holds the signed
+! largest corrections (test_henyey_convergence).
+!   star reads: max_residual, physics%helium_flash_active,
+!     physics%solver_max_correction,
 !     physics%solver_underrelax_increment,
 !     physics%solver_underrelax_start
 !   star writes: newton_correction_factor, newton_iterations
@@ -404,6 +407,7 @@ subroutine set_henyey_correction_factor(s, luminosity_correction_max, converged,
       logical, intent(in) :: converged
       integer, intent(in) :: iterations_done
       real(dp), intent(out) :: correction_factor
+      real(dp) :: largest_log_correction
        if (s%physics%solver_underrelax_start > 0.0d0) s%newton_correction_factor = min(1.d0,s%newton_correction_factor+s%physics%solver_underrelax_increment)
 ! During the helium flash, apply 0.8 of the correction once the largest
 ! L correction is at most 0.5, and all of it once it is at most 5e-3.
@@ -411,6 +415,18 @@ subroutine set_henyey_correction_factor(s, luminosity_correction_max, converged,
        if (s%physics%helium_flash_active) then
           if (luminosity_correction_max <= 5.0d-1) correction_factor=8.0d-1
           if (luminosity_correction_max <= 5.0d-3) correction_factor=1.0d0
+       end if
+! With physics%solver_max_correction > 0, no pass changes log P, log T or
+! log R by more than it: the factor is cut to limit/(the largest of the
+! three corrections) when it would. (Far from a solution, a rescaled
+! model's first steps, Newton can ask for a change of a dex, and applying
+! most of it leaves the next linearization without a physical state;
+! docs/bug_sweep.md M316.)
+       if (s%physics%solver_max_correction > 0.0d0) then
+          largest_log_correction = max(abs(s%max_residual(1)), abs(s%max_residual(2)), &
+               abs(s%max_residual(3)))
+          if (correction_factor*largest_log_correction > s%physics%solver_max_correction) &
+               correction_factor = s%physics%solver_max_correction/largest_log_correction
        end if
        if (converged) s%newton_iterations = iterations_done + 1
 end subroutine set_henyey_correction_factor

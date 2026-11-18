@@ -100,7 +100,7 @@ The stops (`run/stop_conditions.f90`, `check_stop_conditions`, after each conver
 
 The observables only fill the output's quantities. The turnover time, which the next step's deuterium cap and wind read, is a stage of the step: `refresh_turnover_timescale` walks the stitched model (`compute_turnover_timescale`) and copies the turnover time and `photosphere_logP` to their `_prev` members, the start values the wind interpolates from during the next step. The walk also writes the radius of the convection zone's base it finds into `envelope_radius_rsun`, over `compute_observables`' value, so the output has the walk's.
 
-A step that diverges stops the run: nothing cuts the timestep.
+A step that diverges stops the run: nothing cuts the timestep. `physics%solver_max_correction` (0 = off, the default) limits what one Newton pass may change: no shell's log P, log T or log R by more than it (`set_henyey_correction_factor`), for a model far from a solution (a rescaled model's first steps).
 
 ## 3. Conventions
 
@@ -135,6 +135,8 @@ Build the programs with `make tests` in `src/`, then run each root `test_*.py` w
 | `test_monte_carlo.py` | Two Monte-Carlo runs of identical samples are the same run (M169: no state carries over between runs). | none |
 | `test_pyyrec.py` | The C entry through pyyrec (ctypes): a run, and two runs in one process, byte-identical to a fresh process's (`make lib` first). | none |
 | `test_other_energy.py` | The energy-source hook end to end (`make other_energy` first): a registered source that adds nothing changes nothing, and a positive one brightens the star and fills the history column `lum_extra`. | none |
+| `test_low_mass_decks.py` | Six shipped fully convective low-mass decks (0.04 to 0.15 Msun) run to the stop each asks for, exit 0, with no OPAL density-search fallback in their logs (bug_sweep O3, M294, M356, M357). | none (deck runs) |
+| `test_correction_limit.py` | `solver_max_correction` on the deck that needs it, `examples/run_from_seed_to_start/m3000gs98z040000_prems`: as shipped (0.1) it reaches its five models; with the limit off it stops with eos's "beta = P_gas/P is not positive" (bug_sweep M316). | none (deck runs) |
 | `test_error_exit.py` | Error paths end the process with status 1 and an ERROR line; among them core's inputs: a malformed or missing starting model, the envelope triangle's size and the envelope's Bulirsch-Stoer controls (refused at the controls read). | none |
 | `test_physics.py` | The standard solar model is still a solar model at the solar age, within loose bounds. | none |
 

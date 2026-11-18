@@ -97,11 +97,12 @@
            solar_luminosity_cgs, solar_mass_cgs, solar_omega_sat, &
            solar_radius_cgs, solberg_hoiland_mixing_scale, &
            solberg_hoiland_velocity_scale, solid_body_mode_flag, &
-           solver_tolerances, solver_underrelax_increment, &
-           solver_underrelax_start, specify_teff_flag, spot_depth_varies, &
-           spot_filling_factor, spot_temp_contrast, star_history_name, &
-           surface_composition_file, target_carbon_cno_fraction, &
-           target_end_age, target_luminosity_lsun, target_metal_fraction, &
+           solver_max_correction, solver_tolerances, &
+           solver_underrelax_increment, solver_underrelax_start, &
+           specify_teff_flag, spot_depth_varies, spot_filling_factor, &
+           spot_temp_contrast, star_history_name, surface_composition_file, &
+           target_carbon_cno_fraction, target_end_age, &
+           target_luminosity_lsun, target_metal_fraction, &
            target_nitrogen_cno_fraction, target_oxygen_cno_fraction, &
            target_radius_rsun, target_solar_age, target_solar_zx, &
            target_star_luminosity_tolerance, target_teff, teff_lower_limit, &
@@ -255,10 +256,11 @@
            & env_error_tol, env_step_max, env_step_min, env_step_begin, &
            & envelope_step_size, debye_huckel_eta_min, debye_huckel_eta_max, &
            & solver_underrelax_start, solver_underrelax_increment, &
-           & wind_law_constant, difad_velocity_scale, mixing_velocity_scale, &
-           & coupling_factor, es_velocity_scale, core_mass_reduction_factor, &
-           & gsf_velocity_scale, secular_shear_velocity_scale, &
-           & es_mixing_scale, secular_shear_mixing_scale, gsf_mixing_scale, &
+           & solver_max_correction, wind_law_constant, difad_velocity_scale, &
+           & mixing_velocity_scale, coupling_factor, es_velocity_scale, &
+           & core_mass_reduction_factor, gsf_velocity_scale, &
+           & secular_shear_velocity_scale, es_mixing_scale, &
+           & secular_shear_mixing_scale, gsf_mixing_scale, &
            & solberg_hoiland_velocity_scale, solberg_hoiland_mixing_scale, &
            & settling_y_factor, settling_z_factor, settling_tolerance, &
            & solver_tolerances, zoning_tolerances, fpft_iter1, fpft_iter2, &

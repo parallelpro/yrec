@@ -80,6 +80,7 @@ jobs:
             /input/eos/scv/z_tab_i.dat
             /input/eos/opal2006/EOSOPAL06Z0.016492
             /input/eos/opal2006/EOSOPAL06Z0.018776
+            /input/eos/opal2006/EOSOPAL06Z0.040000000
             /input/eos/legacy/opal/OPALeos.0188
             /input/eos/legacy/opal2001/O01EOS0188z
             /input/opacity/atomic/lanl/PURECO.DBGLAOL
@@ -153,7 +154,7 @@ jobs:
           test_physics.py test_stop_conditions.py test_inlist_convert.py
           test_mesa_output.py test_pyyrec.py test_monte_carlo.py
           test_run_contracts.py test_model_kernels.py
-          test_low_mass_decks.py
+          test_low_mass_decks.py test_correction_limit.py
 
   # The unit test programs under the development flags (the header above).
   devel-tests:
