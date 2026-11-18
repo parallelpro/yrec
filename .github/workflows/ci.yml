@@ -140,19 +140,13 @@ jobs:
       - name: Library-based link check (archives complete, layout self-consistent)
         run: make -C src -j4 libs && make -C src yrec_libs
 
-      # the decks write into their own output/ directories (untracked, so
-      # a fresh checkout has none); cm_monte_carlo's Monte Carlo files are
-      # named relative to its deck, and test_controls opens them
-      - name: Make the decks' output directories
-        run: mkdir -p examples/run_config_matrix/output
-
       - name: Run the unit tests and the solar-deck tests
         env:
           YREC_TEST_TOLERANT: "1"
         run: >
           python3 -m pytest -v -rs
           test_numerics.py test_math.py test_io.py test_controls.py
-          test_generated_files.py test_boundaries.py test_structure.py
+          test_generated_files.py test_boundaries.py test_harness.py test_structure.py
           test_rotation.py test_rotation_kernels.py test_element_diffusion.py
           test_convection.py test_triangle_fit.py test_mass_change.py
           test_henyey_elimination.py test_envelope_integration.py

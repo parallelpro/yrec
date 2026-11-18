@@ -89,7 +89,7 @@
       ! Solar mass (g), which converts Msun to grams everywhere (the rescaling, log g, the seismic scalings)
       solar_mass_cgs = 1.9891d33
 
-      ! Newton's G (cgs). Negative (the default) keeps YREC's log10 G = -7.17571 (G = 6.6726e-8) bit for bit; a positive value (e.g. 6.6743d-8, CODATA 2018) replaces it
+      ! Newton's G (cgs). Negative (the default) keeps YREC's log10 G = -7.17571 (G = 6.67252e-8) bit for bit; a positive value (e.g. 6.6743d-8, CODATA 2018) replaces it
       G_cgs = -1.0d0
 
       ! Deep mixing: below 1, the composition step mixes every shell from the centre out to the mass envelope_logp_step times the star's (a mass fraction, whatever the name says); 1 or more is off
@@ -979,7 +979,7 @@
       ! Write profile{N}.data every N converged models (0 = off); the history's profile_number column maps models to profiles
       profile_interval = 50
 
-      ! The pulsation files' format (GYRE text, FGONG, or GSM = GYRE HDF5 [needs make USE_HDF5=1]), written beside each profile as profile{N}.data.{format}
+      ! The pulsation files' format (GYRE text, FGONG, or GSM = GYRE HDF5 [needs make USE_HDF5=1]), written beside each profile as profile{N}.data.{format}. The GYRE and GSM formats carry no Newton's G (FGONG does): give the pulsation code the run's, 6.6725218e-8 unless G_cgs sets another (GYRE's own default is 2.7e-4 higher)
       pulse_format = 'GYRE'
 
       ! Write the profile{N}.data files (every profile_interval models)

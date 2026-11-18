@@ -20,10 +20,12 @@ import subprocess
 
 import pytest
 
+from conftest import INPUT_ROOT, START_ROOT
+
 REPO = pathlib.Path(__file__).parent
 YREC = REPO / "src" / "yrec"
 DECK = REPO / "examples" / "run_from_seed_to_start" / "m3000gs98z040000_prems.inlist"
-TABLE = REPO / "input" / "eos" / "opal2006" / "EOSOPAL06Z0.040000000"
+TABLE = INPUT_ROOT / "eos" / "opal2006" / "EOSOPAL06Z0.040000000"
 
 
 def _run(tmp_path, text):
@@ -35,8 +37,8 @@ def _run(tmp_path, text):
     out = tmp_path / "out"
     out.mkdir()
     env = dict(os.environ)
-    env.update({"YREC_INPUT": str(REPO / "input"),
-                "YREC_START": str(REPO / "startmodels"),
+    env.update({"YREC_INPUT": str(INPUT_ROOT),
+                "YREC_START": str(START_ROOT),
                 "YREC_OUTPUT": str(out)})
     return subprocess.run([str(YREC), DECK.name], cwd=tmp_path, env=env,
                           capture_output=True, text=True, timeout=600)

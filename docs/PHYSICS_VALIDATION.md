@@ -40,17 +40,22 @@ python3 -m pytest -s test_validation_gyre.py                        # -s prints 
 - The four files CI does not run carry the pytest marker `local`:
   `pytest -m "not local"` leaves them out of a run of everything.
 - The tests run this repository's own `src/yrec` with its `input/` and
-  `startmodels/`, whatever `YREC_INPUT` and the like name in the
-  environment. To validate another build, run them from its tree.
+  `startmodels/`, whatever `YREC_INPUT` and `YREC_START` name in the
+  shell, as every root test does (conftest.py; pytest's header prints
+  the two roots). `YREC_TEST_EXTERNAL_ROOTS=1` is the one opt-in that
+  takes them from the environment. To validate another build, run the
+  tests from its tree.
 - `YREC_TEST_HDF5=1`, when `src/yrec` is an HDF5 build, adds the GSM
   file to the contract and GYRE tests.
 - `YREC_VALIDATION_REPORT=<file>` writes a test file's measured values.
 - `python3 -I src/tools/validate_model.py FILE.GYRE|.FGONG|.GSM` audits
   one pulse file from the command line. The same module holds the
   readers and the re-derivations the tests use (standard library only).
-- Reference data: `validation/` (the Sun, the rotation landmarks) and
+- Reference data: `validation/` (the Sun's published tables; the
+  rotation landmarks, which are YREC's own) and
   `sample_cases/solar_vs_MESA/mesa/` (MESA's side), 100 kB in all, each
-  with a note on how it was made.
+  with a note on how it was made. Section 9 lists every published value
+  the tier uses, with where it was read.
 
 An expected failure (`xfail`, strict) marks a defect the tier found and
 did not fix (section 6). Its check states the law at the tolerance a
@@ -139,16 +144,32 @@ mixture and diffusion (`testsuite/Test_solarGS98_dif`) at 4.568 Gyr.
 | L | 3.828e33 erg/s (IAU 2015 B3) | | +6.5e-5 | 1e-3 | calibrated |
 | R | 6.957e10 cm (IAU 2015 B3) | | -1.6e-4 | 1e-3 | calibrated |
 | Teff | 5772 K (IAU 2015 B3) | 5772.5 K | +0.5 K | 1 K | |
-| R_cz/R | 0.713 +- 0.001 (Basu & Antia 1997) | 0.7127 | -0.3 sigma | 3 sigma | 0.713 to 0.714 (Bahcall et al. 2005; Serenelli et al. 2009) |
-| Surface Y | 0.2485 +- 0.0035 (Basu & Antia 2004) | 0.2434 | -1.5 sigma | 3 sigma | 0.242 to 0.243, -1.6 to -1.8 sigma (the same) |
-| Surface Z/X | 0.0229 (Grevesse & Sauval 1998) | 0.022894 | -0.02% | 1% | calibrated |
-| c(r), 0.1 to 0.95 R, 71 radii | MDI inversion (Rhodes et al. 1997) | | rms 8.9e-4, largest 2.7e-3 | 2e-3, 5e-3 | rms about 1e-3 (the same) |
-| nu(l = 0), n = 6..10 | BiSON (Broomhall et al. 2009) | | +3.9e-4 to +9.4e-4 | 2e-3 | |
-| Large separation, n = 15..25 | 134.59 uHz (the same fit to BiSON) | 135.84 uHz | +0.93% | 0 to 2% | the surface effect: +8.9 uHz at n = 21 |
+| R_cz/R | 0.713 +- 0.001 (Basu & Antia 1997) | 0.7127 | -0.3 sigma | 3 sigma | 0.713 (Serenelli et al. 2009) and 0.7138 (Bahcall et al. 2005, BS05(OP)) |
+| Surface Y | 0.2485 +- 0.0035 (Basu & Antia 2004, as Serenelli et al. 2009 quote it) | 0.2434 | -1.5 sigma | 3 sigma | 0.2423 and 0.243, -1.8 and -1.6 sigma (the same two) |
+| Surface Z/X | 0.0229 (the GS98 value those papers adopt; the release paper's target is 0.02292) | 0.022894 | -0.02% | 1% | calibrated |
+| c(r), 0.1 to 0.95 R, 71 radii | MDI inversion (Rhodes et al. 1997, table 6b) | | rms 8.9e-4, largest 2.7e-3 | 2e-3, 5e-3 | rms 1.0e-3 and 0.97e-3 (the same two, against their own inversions) |
+| nu(l = 0), n = 6..10 | BiSON (Davies et al. 2014) | | +3.9e-4 to +9.4e-4 | 2e-3 | |
+| Large separation, n = 15..25 | 134.59 uHz (the same fit to BiSON: Broomhall et al. 2009, table 3) | 135.84 uHz | +0.93% | 0 to 2% | the surface effect: +8.9 uHz at n = 21 |
 
-The literature values are quoted from memory of those papers' tables
-and should be checked against them before they are cited further; the
-observed values and their sources are in the test's header.
+Every observed and literature value in this table was read in its
+source on 2026-11-17 and 18 (section 9 has the references, where each was
+read and what was compared). Three corrections came of it, none of
+which moves a check:
+
+- the BiSON file is two published tables, not one: Davies et al. 2014
+  below 2000 uHz (n = 6 to 13) and Broomhall et al. 2009's table 3, the
+  frequencies corrected to the quiet Sun, above (the file's header had
+  named Broomhall et al.'s table 1, the raw fit);
+- Basu & Antia (2004) give the envelope's X from GONG and from MDI data
+  (Y = 0.2482 and 0.2489, each with 0.0034); 0.2485 +- 0.0035 is the
+  mean as the solar-model papers quote it;
+- Grevesse & Sauval (1998) itself could not be read (paywalled, no
+  preprint): **unverified** at the source. 0.0229 is what the
+  solar-model papers adopt for that mixture (Serenelli et al. 2009,
+  table 1) and 0.02292 the release paper's calibration target; Asplund
+  et al. (2021, table 4) give the same mixture's Z/X as 0.0231, against
+  which the model is at -0.9%, still inside the 1% band. The check is
+  of the calibration's target, and says no more than that.
 
 The checks can fail: the standard solar deck without diffusion has the
 same L, R and Teff and fails three (R_cz/R = 0.7267, 13.7 sigma; Y =
@@ -200,18 +221,21 @@ has the account. On the testsuite's rotating solar deck:
 | Check | Measured | Tolerance |
 |---|---|---|
 | The paper's rotation period, 25.4 d at 4.568 Gyr | 25.412 d | 1% (the paper's) |
-| The paper's L, R (1e-4) and Z/X (1% of 0.02292) | +7.0e-5, +3.8e-5, -0.01% | 2e-4, 1% |
+| The paper's L, R (1e-4) and Z/X (1% of 0.02292), L and R in the deck's units (3.828e33 erg/s, 6.957e10 cm) | +7.0e-5, +3.8e-5, -0.01% | 2e-4, 1% |
+| The same L and R against the Lsun and Rsun the paper prints (3.827e33, 6.958e10) | +3.3e-4, -1.1e-4 | 1e-4: V13, expected failure |
 | The paper's Li7 depletion, 2.3 dex within 1% | 2.086 dex | V9, expected failure |
 | J(t) = J_0 - int torque dt, the torque from the published law and the history | 4.9e-3 of J_0 | 1.5e-2 |
 | Per step on the main sequence, J lost over torque dt | 0.9993 (median) | 3e-3 |
 | Spin-down exponent, 1 to 4.568 Gyr, against a solid body under the law | -0.677 against -0.689 | 0.03 |
 | That body with frozen structure against the law's analytic solution | 1.5e-3 | 4e-3 |
 | omega(m) at five ages against the stored landmarks | reproduced | 1% (a pin by tolerance) |
-| Interior over surface rotation at the solar age | 1.04 to 1.06 (the Sun: 0.94) | 0.85 to 1.15 |
+| Interior over surface rotation at the solar age | 1.04 to 1.06 (the Sun: about 0.96, section 9) | 0.85 to 1.15 |
 
 ## 6. Defects and surprises the tier found
 
-None is fixed here (this round changes no result). V-numbers are this
+None is fixed here (this round changes no result; M367's descriptions
+were written in round 3: the column list's `delta_nu`, the pulse
+writers' and `pulse_format`'s note on G). V-numbers are this
 document's; M317 is docs/bug_sweep.md's, and so is the number in
 parentheses after each V: its entry in that file's section 21, which
 has the origin, the proposed fix and what the fix would move.
@@ -231,6 +255,7 @@ has the origin, the proposed fix and what the fix would move.
 | V10 (M366) | Two decks build the fixed-Z opacity table at a Z the model does not have | `opal95_single_table_z = 0.016232` with Z = 0.016492 in `Test_solar_noGS_norot` and `testsuite/Test_solarGS98_base` | none that matters: log L at 4.568 Gyr moves by 1.2e-6 dex between the two table Z (the benchmark deck, in scratch), so the table is at most a speed-up that never applies | measured in scratch |
 | V11 (M367) | The atmosphere's heights depart from hydrostatic equilibrium | plane-parallel gravity; the depth step dtau/<rho kappa> | up to 0.6% of a step (6e-6 R over the atmosphere) | contract: the atmosphere tolerance |
 | V12 (M367) | The GYRE text and GSM files carry no G, and YREC's is not GYRE's | `physical_constants.f90` (log G = -7.17571) | 2.7e-4 in G | section 2 |
+| V13 (found 2026-11-17 when the tier's published values were read in their sources; not yet in docs/bug_sweep.md) | The release paper prints Lsun = 3.827e33 erg/s and Rsun = 6.958e10 cm for its solar calibration; the testsuite's solar decks set 3.828e33 and 6.957e10 (the IAU 2015 nominal values) | the paper's section 3.1; `solar_luminosity_cgs` and `solar_radius_cgs` in the decks | 2.6e-4 in L and 1.4e-4 in R, both above the paper's own 1e-4: the model calibrated to the decks' units is +3.3e-4 and -1.1e-4 from the printed ones | rotation: `test_published_solar_units` |
 
 The registration (2026-11-17) checked each row in the code, and its
 entries correct three of them. V1: the cause is the residual test,
@@ -279,3 +304,34 @@ model remains the byte pins' and the measured commits' business.
 - The cross-code reference is one MESA version with one set of options.
 - No van Saders & Pinsonneault (2013) track: the repository does not
   hold that grid's parameters.
+
+## 9. Sources
+
+The tier's first version was written without network access, and its
+published numbers were quoted from memory. Each was read in its source
+on 2026-11-17 and 18. "Read" names the copy that was read: where the journal's
+page is paywalled or shows its tables as images, the arXiv version or
+another paper's quotation was used, and the row says so.
+
+| Value, as the tier uses it | Source | Read | Verdict |
+|---|---|---|---|
+| Lsun = 3.828e33 erg/s, Rsun = 6.957e10 cm, Teff = 5772 K | IAU 2015 Resolution B3; Prša et al. 2016, AJ 152, 41 | arXiv:1605.09788, the table of nominal values | confirmed |
+| Solar age 4.568 Gyr | Bouvier & Wadhwa 2010, Nature Geoscience 3, 637 | the abstract (4568.2 Myr), doi:10.1038/ngeo941 | confirmed (the deck's 4.568) |
+| R_cz/R = 0.713 +- 0.001 | Basu & Antia 1997, MNRAS 287, 189 | the abstract, doi:10.1093/mnras/287.1.189 | confirmed |
+| Surface Y = 0.2485 +- 0.0035 | Basu & Antia 2004, ApJ 606, L85 | arXiv:astro-ph/0403485: X = 0.7392 +- 0.0034 (GONG) and 0.7385 +- 0.0034 (MDI), Y = 0.2482 and 0.2489 | confirmed as the mean that Serenelli et al. 2009 quote; the paper's own error is 0.0034 |
+| Surface Z/X = 0.0229 for the GS98 mixture | Grevesse & Sauval 1998, Space Sci. Rev. 85, 161 | not read (paywalled, no preprint). Serenelli et al. 2009, table 1: 0.0229; Asplund et al. 2021, A&A 653, A141, table 4 (arXiv:2105.01661): X = 0.7347, Y = 0.2483, Z = 0.0169, Z/X = 0.0231 for it | **unverified** at the source; kept as the calibration's target |
+| Standard models with GS98: R_cz/R = 0.713 and 0.7138, surface Y = 0.2423 and 0.243, sound-speed rms 0.0010 and 0.00097 | Serenelli, Basu, Ferguson & Asplund 2009, ApJ 705, L123, table 1; Bahcall, Serenelli & Basu 2005, ApJ 621, L85, BS05(OP) | arXiv:0909.2668 and arXiv:astro-ph/0412440 | confirmed; the doc's "0.713 to 0.714" and "0.242 to 0.243" now give the papers' digits |
+| c(r) of the Sun, 79 radii (`validation/solar/sound_speed_mdi.txt`) | Rhodes, Kosovichev, Scherrer, Schou & Reiter 1997, Solar Physics 175, 287: electronic table 6b | https://soho.nascom.nasa.gov/publications/CDROM1/papers/rhodes/table6b.txt, compared by program | confirmed: 79 of 79 rows equal in the four columns kept. A published inversion result, not a reconstruction. The printed article was not read |
+| nu(l = 0), n = 6 to 13 (`validation/solar/bison_l0.txt`) | Davies, Broomhall, Chaplin, Elsworth & Hale 2014, MNRAS 439, 2025 | the journal's page, doi:10.1093/mnras/stu080 | **corrected**: the file's header named Broomhall et al. 2009, table 1; 8 of 8 values and errors are Davies et al.'s |
+| nu(l = 0), n = 14 to 28 (the same file) | Broomhall, Chaplin, Davies, Elsworth, Fletcher, Hale, Miller & New 2009, MNRAS 396, L100, table 3 (quiet Sun) | arXiv:0903.5219v1, compared by program (the journal's tables are images) | **corrected** from "table 1": 15 of 15 values and errors equal table 3; table 1 (the raw fit) is 0.02 to 0.29 uHz higher |
+| Large separation of those frequencies, 134.59 uHz at n = 15 to 25 | computed here from the file by a linear fit | | not a literature value |
+| The release paper: 25.4 d, Li7 2.3 dex, Z/X 0.02292, 4.568 Gyr, L and R to 1e-4, each rotation and lithium number within 1% | `YREC_Public_Data_Release_Paper_revised.pdf` in the repository's root, section 3.1 | the PDF | confirmed; the same sentence prints Lsun = 3.827e33 and Rsun = 6.958e10, which are not the decks' (V13) |
+| The wind law: dJ/dt = f_K K_M omega (...)^2, K_M ~ R^3.1 M^-0.22 L^0.56 P_phot^0.44 | van Saders & Pinsonneault 2013, ApJ 776, 67, equations 1 and 2 | arXiv:1306.3701 | confirmed; **corrected** "eqs. 1-3" (equation 3 is the Kawaler law). The paper sets the centrifugal factor c(omega) to 1; YREC keeps it |
+| K_2 = 0.0506, m = 0.2177 (0.22 in the exponents above) | Matt, MacGregor, Pinsonneault & Greene 2012, ApJ 754, L26 | arXiv:1206.2354 | confirmed |
+| Skumanich's law, omega ~ t^-1/2 | Skumanich 1972, ApJ 171, 565 | reviews that quote it (doi:10.1086/151310 itself was not opened) | confirmed |
+| The Sun's radiative interior rotates almost as a solid body; the surface plasma at the equator at 452 nHz | Howe 2009, Living Rev. Solar Phys. 6, 1, sections 1, 6 and 8 | arXiv:0902.2406 | confirmed; **corrected** "456 nHz" |
+| The interior's rate, "about 430 nHz" (a ratio of about 0.95 to the surface) | Howe 2009, section 5.5, the table "Summary of l = 1 splitting measurements, 1988-2002" | arXiv:0902.2406 | **corrected** to 433 to 436 nHz, the table's last entries (Bertello et al. 2000, GOLF; Chaplin et al. 2001, BiSON; Gelly et al. 2002, GOLF), about 0.96 of the surface's 452; the review states no single interior rate in its text ("quite close to ... the surface rate"). The band 0.85 to 1.15 does not use it |
+| sigma = 5.67051e-5 and G = 6.67259e-8 cgs (CODATA 1986), GYRE's G = 6.67430e-8 (CODATA 2018) | Cohen & Taylor 1987, Rev. Mod. Phys. 59, 1121; GYRE 9.1.1's `const_m.fypp` | compilations that reprint the 1986 set (5.67051(19)e-8 W m^-2 K^-4, 6.67259(85)e-11 m^3 kg^-1 s^-2); GYRE's source | confirmed |
+
+The copies that were read are not in the repository; `validation/`'s
+README says which files were compared by program and with what.

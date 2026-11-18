@@ -14,7 +14,7 @@ import subprocess
 
 import pytest
 
-from conftest import compare_output
+from conftest import INPUT_ROOT, compare_output
 
 REPO = pathlib.Path(__file__).parent
 BINARY = REPO / "src" / "test_convection"
@@ -25,7 +25,7 @@ def test_convection_standalone(tmp_path):
     if not BINARY.exists():
         pytest.skip("src/test_convection not built (run `make tests` in src/)")
     env = dict(os.environ)
-    env["YREC_INPUT"] = str(REPO / "input")
+    env["YREC_INPUT"] = str(INPUT_ROOT)
     result = subprocess.run(
         [str(BINARY)], cwd=tmp_path, env=env, capture_output=True, text=True
     )

@@ -1,7 +1,17 @@
-# Observed solar radial (l = 0) mode frequencies, BiSON: Broomhall et al. 2009,
-# MNRAS 396, L100, table 1, as MESA 26.04.1 ships them
-# (astero/test_suite/surface_effects/inlist_astero_search_controls, freq_target(0,:)
-# and freq_sigma(0,:)). n is the radial order (the first is n = 6: 972.615 uHz).
+# Observed solar radial (l = 0) mode frequencies and their 1-sigma errors, BiSON.
+# Two published tables, joined at 2000 uHz as MESA 26.04.1 joins them
+# (astero/test_suite/surface_effects: its README.rst names both papers and BiSON's
+# open data portal; these are inlist_astero_search_controls' freq_target(0,:) and
+# freq_sigma(0,:)):
+#   n =  6..13  Davies, Broomhall, Chaplin, Elsworth & Hale 2014, MNRAS 439, 2025
+#               (22 years of data, the low-frequency modes)
+#   n = 14..28  Broomhall, Chaplin, Davies, Elsworth, Fletcher, Hale, Miller & New 2009,
+#               MNRAS 396, L100, table 3: the frequencies corrected to the quiet Sun
+#               (not table 1, the raw fit, which is 0.02 to 0.29 uHz higher at these orders)
+# Compared value by value with the papers on 2026-11-17: n = 14..28 with table 3 of
+# arXiv:0903.5219v1 (15 of 15 frequencies and errors equal; the journal's tables are
+# images), n = 6..13 with the table on the journal's page of Davies et al. (8 of 8).
+# n is the radial order (the first is n = 6: 972.615 uHz).
 # n   frequency_uHz   sigma_uHz
   6     972.615    0.002
   7    1117.993    0.004

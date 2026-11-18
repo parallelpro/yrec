@@ -32,12 +32,14 @@ import sys
 
 import pytest
 
+from conftest import INPUT_ROOT
+
 REPO = pathlib.Path(__file__).parent
 sys.path.insert(0, str(REPO / "src" / "tools"))
 import validate_model as vm  # noqa: E402
 
-# this repository's own build, whatever the environment names (to validate
-# another build, run these tests from its tree)
+# this repository's own build (to validate another build, run these tests
+# from its tree); the tables and starting models are conftest.py's roots
 YREC = REPO / "src" / "yrec"
 
 # not in CI (needs GYRE): deselect with `pytest -m "not local"`
@@ -90,7 +92,7 @@ def sun(tmp_path_factory):
         pytest.skip("GYRE_DIR does not name a GYRE installation (bin/gyre)")
     if not YREC.exists():
         pytest.skip("build src/yrec first")
-    if not (REPO / "input" / "eos" / "opal2006" / "EOSOPAL06Z0.016492").exists():
+    if not (INPUT_ROOT / "eos" / "opal2006" / "EOSOPAL06Z0.016492").exists():
         pytest.skip("needs the standard solar deck's tables under input/")
     tmp = tmp_path_factory.mktemp("gyre")
     inlist = tmp / "inlist_conv"

@@ -1,8 +1,13 @@
 # The solar sound speed from helioseismic inversion of SOHO/MDI mean-multiplet
-# frequencies: Rhodes, Kosovichev, Scherrer, Schou & Reiter 1997, Solar Physics 175, 287,
-# table 6b (soho.nascom.nasa.gov/publications/CDROM1/papers/rhodes/table6b.txt), as MESA
-# 26.04.1 ships it (data/star_data/solar_csound.data). Columns kept: the target radius,
-# the inferred solar sound speed, its 1-sigma error, and the averaging kernel's width.
+# frequencies (144 days of the medium-l program): Rhodes, Kosovichev, Scherrer, Schou &
+# Reiter 1997, Solar Physics 175, 287, the electronic table 6b of the paper's SOHO CD-ROM
+# version (soho.nascom.nasa.gov/publications/CDROM1/papers/rhodes/table6b.txt), as MESA
+# 26.04.1 ships it (data/star_data/solar_csound.data). A published inversion result, not
+# a reconstruction: compared with the file at that address on 2026-11-17, all 79 rows of
+# the four columns kept are equal. Columns kept: the central radius of the averaging
+# kernel, the inferred solar sound speed, its standard error, and the kernel's width.
+# Not kept: the sound speed of the inversion's reference model (Model S,
+# Christensen-Dalsgaard et al. 1996) and the relative difference of c^2 with its error.
 # r/R   c_sun_cm_s   sigma_c_cm_s   width/R
 8.9600e-02  5.0950e+07  1.7153e+04  6.5600e-02
 9.0400e-02  5.0937e+07  1.7123e+04  6.0200e-02

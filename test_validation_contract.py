@@ -33,7 +33,8 @@ which point the xfail mark is removed.
 
 Run time: about 45 s. Needs only the tables CI's sparse checkout has.
 The binary, the tables and the starting models are this repository's
-(src/yrec, input/, startmodels/), whatever the environment names.
+(src/yrec, input/, startmodels/), whatever YREC_INPUT and YREC_START name
+in the shell (conftest.py has the one opt-in).
 """
 import copy
 import math
@@ -45,12 +46,14 @@ import sys
 
 import pytest
 
+from conftest import INPUT_ROOT
+
 REPO = pathlib.Path(__file__).parent
 sys.path.insert(0, str(REPO / "src" / "tools"))
 import validate_model as vm  # noqa: E402
 
-# this repository's own build, whatever the environment names (to validate
-# another build, run these tests from its tree)
+# this repository's own build (to validate another build, run these tests
+# from its tree); the tables and starting models are conftest.py's roots
 YREC = REPO / "src" / "yrec"
 CONVERTER = REPO / "src" / "tools" / "upgrade_inlist.py"
 CASE = REPO / "examples" / "run_standard_solar_model"
@@ -173,7 +176,7 @@ _edit = vm.edit_inlist
 def runs(tmp_path_factory):
     if not YREC.exists():
         pytest.skip("build src/yrec first")
-    if not (REPO / "input" / "eos" / "opal2006" / "EOSOPAL06Z0.016492").exists():
+    if not (INPUT_ROOT / "eos" / "opal2006" / "EOSOPAL06Z0.016492").exists():
         pytest.skip("needs the standard solar deck's tables under input/")
     tmp = tmp_path_factory.mktemp("contract")
     inlist = tmp / "inlist_conv"

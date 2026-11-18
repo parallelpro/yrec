@@ -4,8 +4,9 @@ produces them.
 Runs src/test_controls (built by `make tests` in src/) on the pristine
 defaults and on every deck in examples/ and testsuite/: the single-file
 inlists and the legacy CONTROL/PHYSICS (.nml1/.nml2) pairs. Each deck runs
-from its own directory (some name inputs relative to it) with YREC_OUTPUT a
-scratch directory. Each dump is normalized: the YREC_OUTPUT, YREC_INPUT and
+from a stand-in for its own directory (some name files relative to it; the
+stand-in links the files beside the deck and has an empty output/, so that a
+read leaves nothing in the repository) with YREC_OUTPUT a scratch directory. Each dump is normalized: the YREC_OUTPUT, YREC_INPUT and
 YREC_START directories become placeholders and NUL bytes are escaped. A deck
 whose starting model is another run's output (the testsuite's HeIgnite,
 ZAHB and TAHB chains) stops in open_run_files, which cannot open it (the
@@ -34,6 +35,8 @@ import tempfile
 
 import pytest
 
+import harness  # src/tools, on the path since conftest.py
+
 REPO = pathlib.Path(__file__).parent
 BINARY = REPO / "src" / "test_controls"
 EXPECTED = REPO / "src" / "io" / "test" / "expected_controls"
@@ -57,13 +60,18 @@ def representative(name):
     return name.startswith("examples/run_config_matrix/") or name.endswith("+nml2")
 
 
-def run(files):
-    """the normalized dump; decks run from their own directory (some name
-    inputs relative to it), with their output in a scratch directory"""
+def run(files, cwd=None, start=None):
+    """the normalized dump; a deck runs from cwd, a stand-in for its own
+    directory (harness.stand_in_directory: some decks name files relative
+    to theirs), with start, a stand-in for the starting models
+    (harness.stand_in_tree), as YREC_START and its output in a scratch
+    directory"""
     env = dict(os.environ)
+    if start:
+        env["YREC_START"] = str(start)
     with tempfile.TemporaryDirectory() as tmp:
         env["YREC_OUTPUT"] = tmp
-        cwd = files[0].parent if files else tmp
+        cwd = cwd or tmp
         result = subprocess.run([str(BINARY)] + [str(f) for f in files], cwd=cwd, env=env,
                                 capture_output=True)
     text = result.stdout.decode("latin-1").replace("\x00", "\\0")
@@ -107,8 +115,26 @@ def test_controls_every_deck():
     if not expect(EXPECTED / "pristine.txt", pristine):
         failures.append("pristine")
     all_decks = decks()
-    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
-        dumps = list(pool.map(lambda d: run(d[1]), all_decks))
+    # A read of the controls opens the run's files, and creates the ones it
+    # would write (M373). Each deck is therefore read from a stand-in for
+    # its directory (cm_monte_carlo names its sample file and its two Monte
+    # Carlo files relative to it, and class exercise 2 an output
+    # directory), with a stand-in for the starting models (four testsuite
+    # decks write their final model under {YREC_START}): what the reads
+    # create stays in scratch, and a fresh checkout, which has no output/
+    # directory, reads as a used one does.
+    with tempfile.TemporaryDirectory() as scratch:
+        scratch = pathlib.Path(scratch)
+        start = harness.stand_in_tree(os.environ["YREC_START"], scratch / "startmodels")
+        directories = sorted({files[0].parent for _, files in all_decks})
+        stand_in = {d: harness.stand_in_directory(d, scratch / str(k)) for k, d in enumerate(directories)}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+            dumps = list(pool.map(lambda d: run(d[1], stand_in[d[1][0].parent], start), all_decks))
+        # what the reads created is in the stand-ins (it was in the tree)
+        matrix = stand_in[REPO / "examples" / "run_config_matrix"]
+        assert sorted(p.name for p in (matrix / "output").iterdir()) == \
+            ["cm_monte_carlo.mc1", "cm_monte_carlo.mc2"]
+        assert [p for p in start.rglob("*.mod") if not p.is_symlink()], "no final model under {YREC_START}"
     hashes, written = [], {"pristine.txt", "hashes.txt"}
     for (name, _), dump in zip(all_decks, dumps):
         own = differing(dump, pristine)
@@ -479,6 +505,11 @@ def test_a_monte_carlo_run_range_outside_1_to_max_is_an_error(tmp_path):
     deck = REPO / "examples" / "run_config_matrix" / "cm_monte_carlo.inlist"
     text = deck.read_text()
     assert " mc_run_start = 1\n" in text and " mc_run_end = 1\n" in text
+    # the deck names mc_input.dat and output/cm_monte_carlo.mc1 and .mc2
+    # relative to its directory, and the shipped range's read creates the
+    # two: read it in a stand-in for that directory, not in the tree
+    assert 'monte_carlo_file1_path = "output/cm_monte_carlo.mc1"' in text
+    cwd = harness.stand_in_directory(deck.parent, tmp_path / "deck_directory")
     cases = {"start0": (0, 1), "end1001": (1, 1001), "after": (2, 1), "shipped": (1, 1)}
     for name, (start, end) in cases.items():
         body = text.replace(" mc_run_start = 1\n", f" mc_run_start = {start}\n").replace(
@@ -487,11 +518,13 @@ def test_a_monte_carlo_run_range_outside_1_to_max_is_an_error(tmp_path):
         d.write_text(body)
         out = tmp_path / name
         out.mkdir()
-        r = subprocess.run([str(BINARY), str(d)], cwd=deck.parent, capture_output=True,
+        r = subprocess.run([str(BINARY), str(d)], cwd=cwd, capture_output=True,
                            env=dict(os.environ, YREC_OUTPUT=str(out)))
         stdout = r.stdout.decode("latin-1")
         if name == "shipped":
             assert "ierr = 0" in stdout.splitlines(), stdout[-300:]
+            assert sorted(p.name for p in (cwd / "output").iterdir()) == \
+                ["cm_monte_carlo.mc1", "cm_monte_carlo.mc2"]
             continue
         assert "ierr = 1" in stdout.splitlines(), (name, stdout[-300:])
         assert (f" ERROR: the Monte Carlo runs need 1 <= mc_run_start (IMBEG) <= mc_run_end (IMEND)"

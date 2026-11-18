@@ -19,17 +19,34 @@ composition and j/m changes).
 """
 import os
 import pathlib
+import sys
 
-# Absolute table/startmodel roots for every test-driven yrec run.
-# Decks reference {YREC_INPUT}/{YREC_START}; the in-code fallback
-# ('../../input') assumes the examples/<case>/ depth and silently
-# breaks for testsuite/ (one level deep), so the harness pins the
-# real locations once, absolutely, unless the caller already did.
+# The table and starting-model roots of every program a test starts.
+# Decks name their files as {YREC_INPUT}/... and {YREC_START}/...; the
+# in-code fallback ('../../input') assumes the examples/<case>/ depth and
+# silently breaks for testsuite/ (one level deep), so the harness sets
+# the two variables once, absolutely. They are this repository's input/
+# and startmodels/, whatever the shell exports: a test run tests its own
+# tree. YREC_TEST_EXTERNAL_ROOTS=1 is the one opt-in that takes them
+# from the environment (src/tools/harness.py has the rule).
+# A test file names the roots as INPUT_ROOT and START_ROOT (imported
+# from here), never as its own tree's directories, so that the opt-in
+# and pytest's header hold for every test.
 _REPO = pathlib.Path(__file__).parent
-os.environ.setdefault("YREC_INPUT", str(_REPO / "input"))
-os.environ.setdefault("YREC_START", str(_REPO / "startmodels"))
+sys.path.insert(0, str(_REPO / "src" / "tools"))
+import harness  # noqa: E402
+
+_ROOT_LINES = harness.describe(_REPO)   # before the two are set below
+_ROOTS = harness.apply(_REPO, os.environ)
+INPUT_ROOT = _ROOTS["YREC_INPUT"]
+START_ROOT = _ROOTS["YREC_START"]
 
 REL_TOL = 1.0e-9
+
+
+def pytest_report_header(config):
+    """What this run tests: the binaries' directory and the two roots."""
+    return [f"yrec binaries: {_REPO / 'src'}"] + _ROOT_LINES
 
 
 def pytest_configure(config):

@@ -31,7 +31,7 @@ import subprocess
 
 import pytest
 
-from conftest import compare_output
+from conftest import INPUT_ROOT, compare_output
 
 REPO = pathlib.Path(__file__).parent
 BINARY = REPO / "src" / "test_eos"
@@ -42,7 +42,7 @@ def test_eos_standalone(tmp_path):
     if not BINARY.exists():
         pytest.skip("src/test_eos not built (run `make tests` in src/)")
     env = dict(os.environ)
-    env["YREC_INPUT"] = str(REPO / "input")
+    env["YREC_INPUT"] = str(INPUT_ROOT)
     env.pop("YREC_MHD_TABLES", None)  # baseline covers shipped data only
     result = subprocess.run(
         [str(BINARY)], cwd=tmp_path, env=env, capture_output=True, text=True

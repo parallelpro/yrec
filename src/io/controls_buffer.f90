@@ -425,7 +425,10 @@ module controls_buffer
 ! Write a pulsation file (pulse_format) with each profile
       logical :: write_pulse_flag = .false.
 ! The pulsation files' format (GYRE text, FGONG, or GSM = GYRE HDF5 [needs
-! make USE_HDF5=1]), written beside each profile as profile{N}.data.{format}
+! make USE_HDF5=1]), written beside each profile as profile{N}.data.{format}.
+! The GYRE and GSM formats carry no Newton's G (FGONG does): give the
+! pulsation code the run's, 6.6725218e-8 unless G_cgs sets another (GYRE's
+! own default is 2.7e-4 higher)
       character(len=8) :: pulse_format = 'GYRE'
 ! Print the compact per-model progress line (terminal + run log) every N
 ! models; 0 = off; the final model always prints
@@ -455,7 +458,7 @@ module controls_buffer
 ! The solar radius (cm) used for the tracks and the output
       real(dp) :: solar_radius_cgs = 6.9598d10
 ! Newton's G (cgs). Negative (the default) keeps YREC's log10 G = -7.17571
-! (G = 6.6726e-8) bit for bit; a positive value (e.g. 6.6743d-8, CODATA
+! (G = 6.67252e-8) bit for bit; a positive value (e.g. 6.6743d-8, CODATA
 ! 2018) replaces it
       real(dp) :: G_cgs = -1.0d0
 ! Solar nu_max [uHz] for the scaling relation (Huber et al. 2011)

@@ -7,7 +7,8 @@
 -fcheck=all -ffpe-trap=invalid,zero,overflow, and -g for the line of a
 trap; src/Makefile's build modes). This runs each program the way its
 root test runs it (a fresh temporary directory, YREC_INPUT and YREC_START
-the repository's), with its arguments for each case. A case passes when
+the repository's: harness.py has the rule and its one opt-in), with
+its arguments for each case. A case passes when
 the program exits 0, prints no gfortran runtime error ("Fortran runtime
 error", "Program received signal", "Error termination"), and prints no
 line whose last word is FAIL. Nothing is byte-compared: the devel flags
@@ -31,13 +32,19 @@ import subprocess
 import sys
 import tempfile
 
+# a sibling module: `python3 -I` leaves the script's directory off sys.path
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import harness  # noqa: E402
+
 REPO = pathlib.Path(__file__).resolve().parents[2]
 SRC = REPO / "src"
 SOLAR = "examples/run_standard_solar_model/Test_solar_noGS_norot"
 
 # (case, program, arguments, extra environment, working directory or None
 # for the temporary one). {repo} is the repository root, {work} the
-# temporary directory.
+# temporary directory. A working directory is a deck's: the program runs
+# in a stand-in for it under {work} (harness.stand_in_directory), so that
+# a deck's relative names resolve and nothing is written in the tree.
 CASES = [
     ("test_math", "test_math", [], {}, None),
     ("test_math_crmath", "test_math_crmath", [], {}, None),
@@ -92,8 +99,7 @@ def run_case(case, program, args, env_extra, cwd, timeout):
     if not binary.exists():
         return None, [f"{program} not built"]
     env = dict(os.environ)
-    env.setdefault("YREC_INPUT", str(REPO / "input"))
-    env.setdefault("YREC_START", str(REPO / "startmodels"))
+    harness.apply(REPO, env)
     with tempfile.TemporaryDirectory(prefix="devel_") as work:
         (pathlib.Path(work) / "output").mkdir()
         for k, v in env_extra.items():
@@ -109,7 +115,10 @@ def run_case(case, program, args, env_extra, cwd, timeout):
             shutil.copy2(SRC / program, binary)
             subprocess.run(["dsymutil", str(binary)], capture_output=True)
         argv = [str(binary)] + [a.replace("{repo}", str(REPO)) for a in args]
-        where = (cwd or "{work}").replace("{repo}", str(REPO)).replace("{work}", work)
+        where = work
+        if cwd:
+            where = harness.stand_in_directory(cwd.replace("{repo}", str(REPO)),
+                                               pathlib.Path(work) / "deck_directory")
         try:
             r = subprocess.run(argv, cwd=where, env=env, capture_output=True, text=True,
                                errors="replace", timeout=timeout)
@@ -139,6 +148,7 @@ def main():
     ap.add_argument("--only", default="", help="the cases whose name matches REGEX")
     ap.add_argument("--timeout", type=int, default=900, help="seconds per case")
     a = ap.parse_args()
+    print("\n".join(harness.describe(REPO)), flush=True)
     failed = 0
     for case, program, args, env_extra, cwd in CASES:
         if a.only and not re.search(a.only, case):

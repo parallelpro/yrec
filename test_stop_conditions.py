@@ -17,12 +17,14 @@ import sys
 
 import pytest
 
+from conftest import INPUT_ROOT, START_ROOT
+
 REPO = pathlib.Path(__file__).parent
 YREC = REPO / "src" / "yrec"
 CONVERTER = REPO / "src" / "tools" / "upgrade_inlist.py"
 CASE_DIR = REPO / "examples" / "run_standard_solar_model"
 CASE = "Test_solar_noGS_norot"
-ENV = {"YREC_INPUT": REPO / "input", "YREC_START": REPO / "startmodels"}
+ENV = {"YREC_INPUT": INPUT_ROOT, "YREC_START": START_ROOT}
 
 
 def _run_with_controls(tmp_path, extra_physics, extra_control=""):
