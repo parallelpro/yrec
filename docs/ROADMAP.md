@@ -5233,22 +5233,28 @@ follows.
   heads' compares, not one by one; core3 compared some commits as
   groups.
 - **The integration check** of 7ea92ace in the main tree (the work
-  directory's `notes/r3_verify.log`, as it stood when this was written):
-  the builds rc 0; `make check` rc 0 (247 star contracts, 330 style
-  counts at or below the table); `compare_decks --set all` RESULT ALL
-  IDENTICAL, `pins: 35 OK, 0 DIFF`; CI's pytest list (41 files) running.
+  directory's `notes/r3_verify.log`): the builds rc 0; `make check` rc 0
+  (247 star contracts, 330 style counts at or below the table);
+  `compare_decks --set all` RESULT ALL IDENTICAL, `pins: 35 OK, 0 DIFF`;
+  CI's pytest list (41 files), with the shell's exports unset, 153
+  passed, 2 skipped, 6 xfailed and one failure in exact and tolerant
+  modes, test_controls in a used tree (M404, fixed in b712425a: 15
+  passed); one file with the exports present passes; mutate core, kap
+  and atm, 0 survived; the devel build and `devel_tests.py`, 0 failed
+  (with c10dbaa3); the release rebuild; the MESA baselines, 2 passed;
+  the validation tier with GYRE, 64 passed, 1 skipped, 10 xfailed.
 - The closing agent found by reading that devel_tests.py's new row for
   test_stitched passes no deck, so that case will stop with status 2
   under `make devel_tests` and CI's devel job (M403; the row core3 gave
   is the fix).
 
 **What the check changed.**
-- bug_sweep now holds 472 items, 317 fixed and 155 open (443, 296 and
-  147 before): seventeen entries fixed or decided in round 3 (M298,
+- bug_sweep now holds 473 items, 319 fixed and 154 open (443, 296 and
+  147 before; with M403 and M404, fixed at the merge): seventeen entries fixed or decided in round 3 (M298,
   M310, M312, M319, M320, M322, M328-M331, M338-M340, M342, M343, M373,
   M374), six fixed in part (M112, M326, M327, M333, M344, M367), and
-  section 22, M375-M403, the round's 29 new items (four fixed in it:
-  M388, M389, M392's dead line removed, M400).
+  section 22, M375-M404, the round's 30 new items (six fixed in it:
+  M388, M389, M392's dead line removed, M400, M403, M404).
 - Claims corrected after reading the code: M322's "the first depth step
   builds the stitched atmosphere's radii" (the heights sum the steps
   from the second on); M324's and M202's Kind B (no deck takes M324's
