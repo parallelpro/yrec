@@ -1092,6 +1092,11 @@ contains
             call get_point(0.70d0, 0.016232d0, 3.60d0, logd_of(3.60d0, 1.5d0), at_15, k)
             call report(label, abs(at_15(i_log10_kap) - (2.0d0*at_10(i_log10_kap) - at_05(i_log10_kap))), &
                  1.0d-12, ierr + k == 0)
+! and its density derivative there, d log kappa/d log rho at fixed T, is
+! that secant's slope (bug_sweep M375)
+            call report(label(1:index(label, ':')-1)//": slope the secant (M375)", &
+                 abs(at_15(i_dlnkap_dlnrho) - (at_10(i_log10_kap) - at_05(i_log10_kap))/0.5d0), &
+                 1.0d-9, ierr + k == 0)
          end subroutine top_logr_check
 
 ! X = 0, Z = 0.6 at log T 7.8, log rho 2 (no conduction there: below

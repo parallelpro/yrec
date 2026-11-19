@@ -631,6 +631,22 @@ file = 'kap/opacity_tables.f90'
 old = '''                 (grid_logr(n_logr)-grid_logr(n_logr-1))'''
 new = '''                 (grid_logr(n_logr)-grid_logr(n_logr-2))'''
 
+# bug_sweep M375: above the top log R the density derivative is the
+# extrapolation's secant (both Alexander families share the code).
+[[mutation]]
+id = 'alex06-top-logr-deriv'
+check = "Alexander 2006 above its top log R: slope the secant (M375)"
+file = 'kap/opacity_tables.f90'
+old = '''            dlnkap_dlnr_row(i) = (opacity_tr(t_row,n_logr)-opacity_tr(t_row,n_logr-1))/ &'''
+new = '''            dlnkap_dlnr_row(i) = dlnkap_dlnr_row(i) + 0.0d0*(opacity_tr(t_row,n_logr)-opacity_tr(t_row,n_logr-1))/ &'''
+
+[[mutation]]
+id = 'alex94-top-logr-deriv'
+check = "Alexander 1994 above its top log R: slope the secant (M375)"
+file = 'kap/opacity_tables.f90'
+old = '''            dlnkap_dlnr_row(i) = (opacity_tr(t_row,n_logr)-opacity_tr(t_row,n_logr-1))/ &'''
+new = '''            dlnkap_dlnr_row(i) = dlnkap_dlnr_row(i) + 0.0d0*(opacity_tr(t_row,n_logr)-opacity_tr(t_row,n_logr-1))/ &'''
+
 [[mutation]]
 id = 'kurucz-no-value'
 check = 'Kurucz 1990: a density no row has returns ierr'

@@ -104,7 +104,9 @@ Alexander 1994 off the surface X: derivatives against differences          1.33E
 Alexander 1994 at another Z: its tables rebuilt, exact at a node           0.00E+00  ok
 Alexander 1994 surface table at X = 0.62: 2D is 3D                         0.00E+00  ok
 Alexander 1994 above its top log R: linear from the last two               0.00E+00  ok
+Alexander 1994 above its top log R: slope the secant (M375)                0.00E+00  ok
 Alexander 2006 above its top log R: linear from the last two               0.00E+00  ok
+Alexander 2006 above its top log R: slope the secant (M375)                0.00E+00  ok
 kap_get: the Kurucz 1990 table has no value at log rho =-25.0000, log T =  3.6000
 Kurucz 1990: a density no row has returns ierr                             0.00E+00  ok
 OPAL92 between two X tables: derivatives against differences               8.02E-08  ok
