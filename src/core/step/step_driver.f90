@@ -557,8 +557,7 @@ end subroutine converge_with_rotation
 ! The caller checks ierr and the divergence flag after each level. A
 ! level with an iteration limit <= 0 is skipped, and leaves
 ! step%converged as the level before set it.
-!   star reads: dt, envelope_cz_bottom_index, nz,
-!     physics%use_extended_composition, xa_start
+!   star reads: dt, nz, physics%use_extended_composition, xa_start
 !   star writes: xa
 subroutine solve_level(s, step, level, level_max_iterations, check_surface_bc, ierr)
       use star_info_lib, only: max_convective_zones, n_species_basic, &
@@ -570,13 +569,11 @@ subroutine solve_level(s, step, level, level_max_iterations, check_surface_bc, i
       integer, intent(in) :: level, level_max_iterations
       logical, intent(in) :: check_surface_bc
       integer, intent(out) :: ierr
-      integer :: saha_iterations, envelope_zone_index, num_species, i, j
+      integer :: saha_iterations, num_species, i, j
       logical :: envelope_recomputed_flag, recompute_surface_bc
-! The zone outputs of the redone composition step. Only the envelope
-! edge is used (by the Newton iterations, below); the others are
-! discarded, so star's copies keep their values from the predictor
-! pass.
-      integer :: core_cz_edge_rerun
+! The zone outputs of the redone composition step, discarded: star's
+! copies keep their values from the predictor pass.
+      integer :: core_cz_edge_rerun, envelope_cz_edge_rerun
       integer :: mixed_zone_bounds_rerun(max_convective_zones,2)
 
       ierr = 0
@@ -587,13 +584,8 @@ subroutine solve_level(s, step, level, level_max_iterations, check_surface_bc, i
            saha_iterations, envelope_recomputed_flag, ierr)
       if (ierr /= 0) return
 
-! envelope_zone_index gates the accretion correction to the entropy term
-! of the energy equation (compute_henyey_coefficients adds it from that
-! zone out, the surface convection zone the accreted matter mixes into).
-! It is the predictor's envelope edge (star%envelope_cz_bottom_index) at
-! levels 1-2 and the redone composition step's at levels >= 3.
-      envelope_zone_index = s%envelope_cz_bottom_index
       core_cz_edge_rerun = 0
+      envelope_cz_edge_rerun = 0
       mixed_zone_bounds_rerun = 0
       if (level > 2 .and. step%evolve_model .and. s%dt > 0.0d0) then
          num_species = n_species_basic
@@ -604,7 +596,7 @@ subroutine solve_level(s, step, level, level_max_iterations, check_surface_bc, i
             end do
          end do
          call advance_composition(s, s%dt, corrector_pass, &
-              core_cz_edge_rerun, envelope_zone_index, &
+              core_cz_edge_rerun, envelope_cz_edge_rerun, &
               mixed_zone_bounds_rerun, ierr)
          if (ierr /= 0) return
       end if
@@ -613,8 +605,7 @@ subroutine solve_level(s, step, level, level_max_iterations, check_surface_bc, i
 ! time derivatives).
       call henyey_iterate(s, merge(s%dt, 0.0d0, step%evolve_model), &
            level_max_iterations, step%converged, recompute_surface_bc, &
-           envelope_recomputed_flag, saha_iterations, envelope_zone_index, &
-           step%iterations_done, ierr)
+           envelope_recomputed_flag, saha_iterations, step%iterations_done, ierr)
 end subroutine solve_level
 
 ! ---------------------------------------------------------------

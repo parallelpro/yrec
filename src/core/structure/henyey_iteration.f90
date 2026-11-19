@@ -115,9 +115,7 @@ end subroutine refresh_surface_bc
 ! equations, accepts the model if the residuals are already small,
 ! closes the system with the surface rows, solves for the corrections,
 ! tests them and applies them, scaled by the correction factor.
-! Inputs: delta_time, the time step in s; envelope_zone_index, from which
-!   zone up the entropy term of compute_henyey_coefficients adds the
-!   accretion shifts of T and P (see solve_level for its value).
+! Inputs: delta_time, the time step in s.
 ! Outputs: converged, true once the model has converged (on entry, the
 !   previous level's result); star%model_diverged_flag, true if a
 !   correction exceeded its limit (false on every other return);
@@ -127,7 +125,7 @@ end subroutine refresh_surface_bc
 !   star writes: model_diverged_flag
 subroutine henyey_iterate(s, delta_time, max_iterations, converged, &
      recompute_surface_bc, envelope_recomputed_flag, &
-     saha_iterations, envelope_zone_index, iterations_done, ierr)
+     saha_iterations, iterations_done, ierr)
       implicit none
       type(star_info), intent(inout) :: s
 
@@ -136,7 +134,6 @@ subroutine henyey_iterate(s, delta_time, max_iterations, converged, &
       logical, intent(inout) :: converged
       logical, intent(in) :: recompute_surface_bc, envelope_recomputed_flag
       integer, intent(inout) :: saha_iterations
-      integer, intent(in) :: envelope_zone_index
       integer, intent(inout) :: iterations_done
       integer, intent(out) :: ierr
 
@@ -156,8 +153,7 @@ subroutine henyey_iterate(s, delta_time, max_iterations, converged, &
            converged) return
       converged = .false.
       do iter = 1,max_iterations
-         call linearize_structure_equations(s, delta_time, saha_iterations, &
-              envelope_zone_index, ierr)
+         call linearize_structure_equations(s, delta_time, saha_iterations, ierr)
          if (ierr /= 0) return
          call renormalize_luminosity_channels(s)
          call accept_small_residuals(s, iter, iterations_done, converged)
@@ -203,11 +199,10 @@ end subroutine solve_henyey_corrections
 ! a failure leaves ierr nonzero.
 !   star reads: none
 !   star writes: max_residual
-subroutine linearize_structure_equations(s, delta_time, saha_iterations, envelope_zone_index, ierr)
+subroutine linearize_structure_equations(s, delta_time, saha_iterations, ierr)
       type(star_info), intent(inout) :: s
       real(dp), intent(in) :: delta_time
       integer, intent(inout) :: saha_iterations
-      integer, intent(in) :: envelope_zone_index
       integer, intent(out) :: ierr
       integer :: jerr
       ierr = 0
@@ -215,8 +210,7 @@ subroutine linearize_structure_equations(s, delta_time, saha_iterations, envelop
        s%max_residual(2) = 0.0d0
        s%max_residual(3) = 0.0d0
        s%max_residual(4) = 0.0d0
-       call compute_henyey_coefficients(s, delta_time, saha_iterations, &
-            envelope_zone_index, jerr)
+       call compute_henyey_coefficients(s, delta_time, saha_iterations, jerr)
        if (jerr /= 0) then
        ! Propagate the failure to the caller.
           ierr = jerr

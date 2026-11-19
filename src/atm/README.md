@@ -33,7 +33,7 @@ The atmosphere integration itself (`core/envelope/envelope_integration_kernel.f9
 
 **At each surface boundary** (`core/structure/surface_boundary.f90`'s `switch_atmosphere_choice`): `atm_leaves_table` says when the run's working choice (`star%atm_choice_in_use`) leaves its table for the gray relation, `atm_reenters_table` when the deck's choice takes the surface back, and `atm_note_choice_switch` writes the note of each switch, to the terminal and the run log.
 
-**At accretion** (`core/step/mass_change.f90`'s `find_accreted_surface_state`): when `atm_table_is_loaded(atm_allard)` (the deck's choice is 4), `atm_get_surface_pt(atm_allard, ...)` at the star's Teff and log g; otherwise, or when the point is outside the tables, core takes the photosphere of the last envelope integration (O19).
+**At accretion**: nothing since 2026-11-18. The accretion-entropy path looked up the Allard surface with `atm_table_is_loaded(atm_allard)` and `atm_get_surface_pt(atm_allard, ...)` at the star's Teff and log g (O19); its result was unused and the path is retired (`core/step/retired/accretion_entropy.f90.txt`, bug_sweep M323). `atm_table_is_loaded` keeps its check in test_atm.
 
 **In the run log's header** (`io/derived_controls.f90`): `atm_choice_name` gives the "surface boundary:" line.
 

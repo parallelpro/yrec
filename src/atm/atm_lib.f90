@@ -211,7 +211,9 @@ end function atm_allard_teff_max
 !----------------------------------------------------------------------
 ! Whether atm_init read the table of atm_choice (3 Kurucz, 4 Allard, 5
 ! Castelli/Kurucz) for this run; false for any other choice. The
-! accretion surface asks it before it looks up the Allard tables (O19).
+! accretion surface of the retired accretion-entropy path asked it
+! before it looked up the Allard tables (O19); no caller in the run
+! since (core/step/retired/accretion_entropy.f90.txt, bug_sweep M323).
 pure logical function atm_table_is_loaded(atm_choice)
       integer, intent(in) :: atm_choice
       select case (atm_choice)
