@@ -23,7 +23,7 @@
 ! (the index map, the atmosphere's heights, N^2) is stitched_kernels'.
 module stitched_model
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use physical_constants, only: cgl, gas_constant, ln10
+      use physical_constants, only: cgl, gas_constant, ln10, cpi
       use math_lib
       use star_info_lib, only: json, star_info
       use output_columns, only: output_column, real_column, integer_column
@@ -33,7 +33,7 @@ module stitched_model
       implicit none
       private
       public :: build_stitched_model, fill_stitched_arrays, profile_columns, &
-           n_prof_cols, n_pulse_cols
+           n_prof_cols, n_pulse_cols, add_centre_points, num_centre_points
       public :: ip_zone, ip_mass, ip_logR, ip_logT, ip_logRho, ip_logP, &
            ip_mixing_type, ip_gradr, ip_gradT, ip_grada, ip_conv_vel, &
            ip_brunt_N2, ip_csound
@@ -83,6 +83,9 @@ module stitched_model
            ipul_mu_e_inv = 20, ipul_h1 = 21, ipul_z = 22, &
            ipul_species_base = 22, ipul_eps_grav = 34
       integer, parameter :: ipul_gyre_last = ipul_omega, n_pulse_species = 11
+! The points the pulse files add inside the innermost point
+! (add_centre_points).
+      integer, parameter :: num_centre_points = 30
 ! The extended model: interior (center -> fitting point) + envelope
 ! (fitting point -> photosphere) + atmosphere (photosphere -> tau~0),
 ! assembled inward-to-outward. Profiles and pulse files both cover the
@@ -610,6 +613,7 @@ subroutine envelope_value(s, icol, i, value, found)
       case (ip_logR);         value = s%env_points%env_log10_radius(i)
       case (ip_logT);         value = s%env_points%env_log10_temperature(i)
       case (ip_logRho);       value = s%env_points%env_log10_density(i)
+      case (ip_mu_e_inv);     value = s%env_points%env_electron_mean_weight_inverse(i)
       case (ip_logP);         value = s%env_points%env_log10_pressure(i)
       case (ip_luminosity);   value = s%env_points%env_luminosity(i)
       case (ip_mixing_type);  value = convective_indicator(s%env_points%env_convective_flag(i))
@@ -642,7 +646,7 @@ subroutine envelope_value(s, icol, i, value, found)
            ip_h2, ip_he3, ip_he4, ip_li6, ip_li7, ip_be9, ip_c12, ip_c13, &
            ip_n14, ip_n15, ip_o16, ip_o17, ip_o18, &
            ip_j_rot, ip_i_rot, ip_fp_rot, ip_ft_rot, ip_v_es, ip_v_gsf, &
-           ip_v_ss, ip_v_sh, ip_mu_e_inv, ip_D_omega, ip_D_mix_rot)
+           ip_v_ss, ip_v_sh, ip_D_omega, ip_D_mix_rot)
          value = 0.0d0
       case default
          value = 0.0d0
@@ -744,6 +748,46 @@ subroutine build_pulse_points(s)
            s%stitched%pulse(ipul_gamma1,1:s%stitched%n_ext), exp(ln10*cgl), &
            s%stitched%pulse(ipul_N2,1:s%stitched%n_ext))
 end subroutine build_pulse_points
+
+! ---------------------------------------------------------------
+! The pulse points the files hold: points(:,1:n), centre outward (a
+! pulse point set: the extended model's, or its interior), with
+! num_centre_points points added inside the first, at r = x r_1,
+! x = k/(num_centre_points + 1), k = 1..num_centre_points, from the
+! expansions about the centre (bug_sweep M363): the density uniform,
+! rho_1, so m = m_1 x^3, and L as m, L_1 x^3; hydrostatic equilibrium,
+! P = P_c - (2 pi/3) G rho_1^2 r^2 with P_c = P_1 + (2 pi/3) G rho_1^2
+! r_1^2; N^2 as r^2, N^2_1 x^2; every other column the first point's. A
+! pulsation code then needs no centre treatment of its own: GYRE's l = 1
+! period spacing on the standard solar model was 2.4% low without them
+! (the innermost point lies at about 0.01 R). newton_g is G [cgs]. When
+! the first point is at r = 0 nothing is added.
+pure subroutine add_centre_points(points, newton_g, extended)
+      real(dp), intent(in) :: points(:,:), newton_g
+      real(dp), allocatable, intent(out) :: extended(:,:)
+      real(dp) :: x, r1, pressure_curvature, centre_pressure
+      integer :: k, num_points
+
+      num_points = size(points, 2)
+      r1 = points(ipul_r,1)
+      if (num_points < 1 .or. .not. r1 > 0.0d0) then
+         extended = points
+         return
+      end if
+      allocate(extended(size(points,1), num_points + num_centre_points))
+      pressure_curvature = (2.0d0*cpi/3.0d0)*newton_g*points(ipul_rho,1)**2
+      centre_pressure = points(ipul_P,1) + pressure_curvature*r1*r1
+      do k = 1, num_centre_points
+         x = real(k, dp)/real(num_centre_points + 1, dp)
+         extended(:,k) = points(:,1)
+         extended(ipul_r,k) = x*r1
+         extended(ipul_m,k) = points(ipul_m,1)*x**3
+         extended(ipul_L,k) = points(ipul_L,1)*x**3
+         extended(ipul_P,k) = centre_pressure - pressure_curvature*(x*r1)**2
+         extended(ipul_N2,k) = points(ipul_N2,1)*x**2
+      end do
+      extended(:,num_centre_points+1:) = points
+end subroutine add_centre_points
 
 ! ---------------------------------------------------------------
 ! Interior point i: its structure, and the pulse columns the converged

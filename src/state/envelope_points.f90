@@ -50,6 +50,8 @@ module envelope_points
 ! written as zero, which switches off the kappa mechanism of the
 ! hydrogen ionisation zone in any nonadiabatic calculation on the file).
             real(dp) :: env_dlnkap_dlnrho(json), env_dlnkap_dlnt(json)
+! 1/mu_e at every envelope point, for the profile's mu_e_inv column
+            real(dp) :: env_electron_mean_weight_inverse(json)
             integer :: num_env_points
       end type envelope_structure_state
 

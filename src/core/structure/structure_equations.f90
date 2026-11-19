@@ -36,15 +36,13 @@ contains
 ! and dln rho/dln T were carried into the next pass through the star, as
 ! a starting value every eos family overwrites before reading it;
 ! docs/bug_sweep.md O23.)
-!   star reads: convective_turnover_timescale, delta_log_pressure,
-!     delta_log_temperature, dm, envelope_cz_bottom_index_start,
-!     envelope_overshoot_bottom_index, envelope_overshoot_top_index,
-!     fp_rot, ft_rot, kinetic_energy_rot, kinetic_energy_rot_start,
-!     ln10_over_lsun, log_mass, log_pressure_delta, log_Teff,
-!     log_temperature_delta, logP, logR, logT, luminosity_lsun, m,
-!     mass_change_active, nz, physics%calc_neutrinos,
-!     physics%mass_accretion_rate, physics%rotation_active,
-!     solar_luminosity_cgs, xa
+!   star reads: convective_turnover_timescale, dm,
+!     envelope_cz_bottom_index_start, envelope_overshoot_bottom_index,
+!     envelope_overshoot_top_index, fp_rot, ft_rot, kinetic_energy_rot,
+!     kinetic_energy_rot_start, ln10_over_lsun, log_mass,
+!     log_pressure_delta, log_Teff, log_temperature_delta, logP, logR,
+!     logT, luminosity_lsun, m, nz, physics%calc_neutrinos,
+!     physics%rotation_active, solar_luminosity_cgs, xa
 !   star writes: adiabatic_index_gamma1, beta, conv_vel,
 !     convective_flag, elim_coeff, elim_rhs, eps_channels, eps_extra,
 !     eps_grav, eps_total, eta, grada, gradr, gradT, logRho,
@@ -53,8 +51,7 @@ contains
 !     pulse_dlnkap_dlnrho, pulse_dlnkap_dlnt, pulse_dlnrho_dlnt,
 !     pulse_electron_mean_weight_inverse, pulse_mean_molecular_weight,
 !     pulse_specific_heat
-subroutine compute_henyey_coefficients(s, delta_time, saha_iterations, &
-     envelope_zone_index, ierr)
+subroutine compute_henyey_coefficients(s, delta_time, saha_iterations, ierr)
       use henyey_elimination, only: eliminate_star_shell_pair
       use core_messages, only: core_report, message_length, unwritten_line
       use shell_equations, only: henyey_shell_terms, shell_state, &
@@ -71,7 +68,6 @@ subroutine compute_henyey_coefficients(s, delta_time, saha_iterations, &
 
       real(dp), intent(in) :: delta_time
       integer, intent(inout) :: saha_iterations
-      integer, intent(in) :: envelope_zone_index
       integer, intent(out) :: ierr
 
 ! --- locals ---
@@ -142,9 +138,7 @@ subroutine set_structure_settings()
 end subroutine set_structure_settings
 
 ! ---------------------------------------------------------------
-! Shell im's state. With accretion, the zones at or above
-! envelope_zone_index add the accretion shifts of log T and log P
-! (mass_change.f90) to their change over the step.
+! Shell im's state.
 subroutine gather_shell_state()
        sh%log_mass = s%log_mass(im)
        sh%mass = s%m(im)
@@ -159,14 +153,6 @@ subroutine gather_shell_state()
        sh%ft = s%ft_rot(im)
        sh%log_temperature_delta = s%log_temperature_delta(im)
        sh%log_pressure_delta = s%log_pressure_delta(im)
-       if (s%mass_change_active.and.s%physics%mass_accretion_rate > 0.0d0) then
-          if (im >= envelope_zone_index) then
-             sh%log_temperature_delta = s%log_temperature_delta(im)+ &
-                  s%delta_log_temperature
-             sh%log_pressure_delta = s%log_pressure_delta(im)+ &
-                  s%delta_log_pressure
-          end if
-       end if
        sh%rotational_ke = s%kinetic_energy_rot(im)
        sh%rotational_ke_start = s%kinetic_energy_rot_start(im)
        sh%in_overshoot = im >= s%envelope_overshoot_bottom_index .and. im <= s%envelope_overshoot_top_index

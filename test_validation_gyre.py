@@ -103,7 +103,11 @@ def sun(tmp_path_factory):
     formats = ["GYRE", "FGONG"] + (["GSM"] if os.environ.get("YREC_TEST_HDF5") == "1" else [])
     out = vm.run_with_final_profile(YREC, tmp / "yrec", inlist.read_text(), pulse_formats=formats)
     _, hist = vm.read_mesa_table(out["history"] / "history.data")
-    header, cols = vm.read_gyre_text(out["GYRE"] / "profile1.data.GYRE")
+    header, as_written = vm.read_gyre_text(out["GYRE"] / "profile1.data.GYRE")
+    # the mesh's points: the file without the points YREC adds inside the
+    # innermost one (M363), which the history's integrals do not walk
+    assert vm.centre_points(as_written) == vm.CENTRE_POINTS
+    cols = vm.mesh_part(as_written)
     result = {"tmp": tmp, "out": out, "formats": formats, "header": header, "cols": cols,
               "inlist": inlist.read_text(),
               "hist": {k: v[-1] for k, v in hist.items()}}
@@ -155,8 +159,12 @@ def centre_extended(cols, points=30):
 def yrec_delta_pg_rule(cols, n_ie):
     """delta_Pg as observables.f90 documents it: sqrt(2) pi^2 over the sum
     of N/r times half the span to the neighbours, from the second point
-    outward while N^2 > 0, to the first point where it is not."""
+    outward while N^2 > 0, to the first point where it is not, with the
+    centre's part, N/r at the second point times (r_1 + r_2)/2, when the
+    second point is in the cavity (M362)."""
     total, inside = 0.0, False
+    if cols["N2"][1] > 0.0:
+        total = math.sqrt(cols["N2"][1]) / cols["r"][1] * 0.5 * (cols["r"][0] + cols["r"][1])
     for k in range(1, n_ie - 1):
         n2 = cols["N2"][k]
         if n2 > 0.0:
@@ -269,17 +277,18 @@ def test_buoyancy_integral_against_gyre(sun):
                       integral / spacing - 1.0)) <= TOL["asymptotic_period_spacing"]
 
 
-@pytest.mark.xfail(strict=True, reason="V5, M362 (docs/PHYSICS_VALIDATION.md, docs/bug_sweep.md): delta_Pg's sum starts at "
-                   "the second mesh point and leaves out the centre's part, 6% of the integral")
 def test_delta_pg_against_gyre(sun):
+    """delta_Pg, with the centre's part (V5, M362, fixed in round 3B),
+    is GYRE's l = 1 period spacing on the centre-extended file."""
     spacing, _ = vm.mean_period_spacing(vm.mode_table(sun["g_extended"], 1), 120, 200)
     assert abs(record("V5: delta_Pg / GYRE(centre-extended) - 1",
                       sun["hist"]["delta_Pg"] / spacing - 1.0)) <= TOL["delta_pg_vs_gyre"]
 
 
-@pytest.mark.xfail(strict=True, reason="V6, M363 (docs/PHYSICS_VALIDATION.md, docs/bug_sweep.md): the pulse files' innermost "
-                   "point is at r = 0.01 R; GYRE's g-mode periods depend on how it fills the centre")
 def test_g_modes_do_not_depend_on_the_centre_fill(sun):
+    """GYRE's g modes on the file as written are those of the mesh with
+    the centre filled by the expansions about it: the file holds those
+    points (V6, M363, fixed in round 3B)."""
     as_written, _ = vm.mean_period_spacing(vm.mode_table(sun["g"], 1), 120, 200)
     extended, _ = vm.mean_period_spacing(vm.mode_table(sun["g_extended"], 1), 120, 200)
     record("GYRE period spacing, l = 1, n_g = 120..200, file as written (s)", as_written)

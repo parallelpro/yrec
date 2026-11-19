@@ -442,8 +442,9 @@ module controls_buffer
 ! run asks
       logical :: report_solver_diagnostics = .false.
 ! Diagnostic: write the per-zone solar neutrino production table (fluxes per
-! shell, normalized profiles, Bahcall-Pinsonneault layout) to the run log at
-! the start of each run
+! shell, normalized profiles, Bahcall-Pinsonneault layout) to the run log for
+! each kind card's starting model; needs calc_neutrinos, which computes the
+! fluxes (the controls read refuses it without)
       logical :: compute_neutrino_fluxes = .false.
 
 ! ---- The solar units (prepare_run copies them to the star, where a

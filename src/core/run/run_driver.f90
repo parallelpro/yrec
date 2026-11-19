@@ -54,8 +54,8 @@ contains
 !     physics%compute_neutrino_fluxes, physics%diffuse_helium_active,
 !     physics%helium_flash_active, physics%use_structure_dt_limits,
 !     solar_calibration_converged, star_mass, xa
-!   star writes: atm_choice_in_use, convective_turnover_timescale,
-!     current_card, current_card_envelope_x, current_card_envelope_z,
+!   star writes: atm_choice_in_use, current_card,
+!     current_card_envelope_x, current_card_envelope_z,
 !     dln_luminosity_dt, dlog_pressure_dt, dlog_radius_dt,
 !     dlog_temperature_dt, dt_saved, envelope_cz_bottom_index_start,
 !     fit_point_move_requested, mixing_length_alpha,
@@ -390,11 +390,6 @@ subroutine begin_kind_card
       s%pulsation_mass_msun=s%star_mass
 ! Record the starting base of the surface convection zone.
       s%envelope_cz_bottom_index_start = s%envelope_cz_bottom_index
-! Zero the convective turnover timescale (MHP 08/02), which
-! read_starting_model has just computed: the card's first step runs
-! with it at zero (docs/bug_sweep.md M325, open: the fix is to delete
-! this assignment, a measured commit).
-      s%convective_turnover_timescale = 0.0D0
 ! Write the headers of the output files.
       call output_run_header(s, s%star_mass, ierr)
       if (ierr /= 0) return

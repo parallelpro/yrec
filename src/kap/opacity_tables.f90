@@ -429,8 +429,9 @@ end subroutine stencil4_locate_opal95
 ! four T rows from t_first, with the weights weight_r and dweight_r of
 ! the four columns from r_first; above the top column (extrapolate_linear:
 ! the weights are the top column's) the value is carried on to logr
-! with the secant of the last two columns, and d log kappa/d log R stays
-! the cubic's at the edge (the F77 code's). Then in log T with weight_t
+! with the secant of the last two columns, and d log kappa/d log R is
+! that secant, the slope of the value returned (the F77 code kept the
+! cubic's at the edge; bug_sweep M375). Then in log T with weight_t
 ! and dweight_t: log10 kappa, d log kappa/d log T at fixed R, and
 ! d log kappa/d log R (= d log kappa/d log rho at fixed T).
 pure subroutine alex_table_at_point(opacity_tr, grid_logr, t_first, r_first, weight_t, dweight_t, &
@@ -461,6 +462,8 @@ pure subroutine alex_table_at_point(opacity_tr, grid_logr, t_first, r_first, wei
             opacity_row(i) = opacity_row(i)+(logr-grid_logr(n_logr))* &
                  (opacity_tr(t_row,n_logr)-opacity_tr(t_row,n_logr-1))/ &
                  (grid_logr(n_logr)-grid_logr(n_logr-1))
+            dlnkap_dlnr_row(i) = (opacity_tr(t_row,n_logr)-opacity_tr(t_row,n_logr-1))/ &
+                 (grid_logr(n_logr) - grid_logr(n_logr-1))
          end do
       end if
       log10_opacity = lagrange4(weight_t, opacity_row)

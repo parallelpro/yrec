@@ -78,8 +78,9 @@ contains
 ! does not conduct better (M278).
 ! Below the table's lowest density (log rho = -6), where log R >= 0, the
 ! mixture's kappa_c at that density is extrapolated linearly in log rho
-! to the point, with the H table's slope there, and its dln kappa/dln T
-! is H's too (not the mixture's: bug_sweep M299).
+! to the point, with the mixture's slope there, and its dln kappa/dln T
+! is the mixture's there too (they were the H table's alone: bug_sweep
+! M299).
 ! got_conductive_opacity is .false. outside the table's reach (log T
 ! 3-9, log rho up to 9.75, and below log rho = -6 only where log R >= 0)
 ! and for a gas without free electrons (Z = 0 and no ionized H or He),
@@ -181,18 +182,15 @@ pure subroutine compute_conductive_opacity(tbl, log10_density, log10_temperature
 ! d mix/dx = sum_i w_i 10^-K_i dK_i/dx / sum_i w_i 10^-K_i
       mix_log10_cond = -log10(weight_h1*cond_h1 + weight_he4*cond_he4 + &
            weight_ox*cond_ox)
-      if (in_table) then
-         mix_dlogk_dlogrho = (weight_h1*cond_h1*dlogk_dlogrho(i_h1) &
-              + weight_he4*cond_he4*dlogk_dlogrho(i_he4) + weight_ox*cond_ox*dlogk_dlogrho(i_ox)) &
-              / (weight_h1*cond_h1 + weight_he4*cond_he4 + weight_ox*cond_ox)
-         mix_dlogk_dlogt = (weight_h1*cond_h1*dlogk_dlogt(i_h1) &
-              + weight_he4*cond_he4*dlogk_dlogt(i_he4) + weight_ox*cond_ox*dlogk_dlogt(i_ox)) &
-              / (weight_h1*cond_h1 + weight_he4*cond_he4 + weight_ox*cond_ox)
-      else
-! (below the table: the H table's derivatives at its lowest density)
-         mix_dlogk_dlogrho = dlogk_dlogrho(i_h1)
-         mix_dlogk_dlogt = dlogk_dlogt(i_h1)
-      end if
+! (below the table too: the mixture's derivatives at the table's lowest
+! density, which the value is carried down with; they were the H table's
+! alone, bug_sweep M299)
+      mix_dlogk_dlogrho = (weight_h1*cond_h1*dlogk_dlogrho(i_h1) &
+           + weight_he4*cond_he4*dlogk_dlogrho(i_he4) + weight_ox*cond_ox*dlogk_dlogrho(i_ox)) &
+           / (weight_h1*cond_h1 + weight_he4*cond_he4 + weight_ox*cond_ox)
+      mix_dlogk_dlogt = (weight_h1*cond_h1*dlogk_dlogt(i_h1) &
+           + weight_he4*cond_he4*dlogk_dlogt(i_he4) + weight_ox*cond_ox*dlogk_dlogt(i_ox)) &
+           / (weight_h1*cond_h1 + weight_he4*cond_he4 + weight_ox*cond_ox)
 
 ! kappa_c = 16 sigma T^3/(3 rho K) at the table's density, and below the
 ! table carried to the point with its slope there
@@ -212,9 +210,9 @@ end subroutine compute_conductive_opacity
 ! mass unit, at log10_density):
 !   log rho_i = log rho + log10((A_i/Z_i) electrons_per_amu),
 ! A/Z = 1, 2 and 2 for the table's H, He and O, kept table_edge_margin
-! inside the table's density range. (Where that clamp binds, K_i does
-! not follow rho, but the table's slope at the clamp is returned:
-! bug_sweep M341.)
+! inside the table's density range. Where that clamp binds, K_i does
+! not follow rho, and its density slope is 0 (bug_sweep M341); its
+! temperature slope is the table's at the clamp.
 pure subroutine species_conductivities(tbl, log10_density, log10_temperature, electrons_per_amu, &
      log10_cond, dlogk_dlogrho, dlogk_dlogt, message, ierr)
       type(conductive_table_set), intent(in) :: tbl
@@ -222,15 +220,17 @@ pure subroutine species_conductivities(tbl, log10_density, log10_temperature, el
       real(dp), intent(out) :: log10_cond(:), dlogk_dlogrho(:), dlogk_dlogt(:)
       character(len=*), intent(out) :: message
       integer, intent(out) :: ierr
-      real(dp) :: species_logrho
+      real(dp) :: species_logrho, unclamped_logrho
       integer :: i
 
       do i = 1, num_species
-         species_logrho = min(max(log10_density + log10(mass_per_charge(i)*electrons_per_amu), &
+         unclamped_logrho = log10_density + log10(mass_per_charge(i)*electrons_per_amu)
+         species_logrho = min(max(unclamped_logrho, &
               conductive_logrho_min + table_edge_margin), conductive_logrho_max - table_edge_margin)
          call condopacp(tbl, species_charge(i), log10_temperature, species_logrho, &
               log10_cond(i), dlogk_dlogrho(i), dlogk_dlogt(i), message, ierr)
          if (ierr /= 0) return
+         if (species_logrho /= unclamped_logrho) dlogk_dlogrho(i) = 0.0d0
       end do
 end subroutine species_conductivities
 

@@ -12,39 +12,30 @@
 !     accretion_cz_fraction of its surface convection zone and half the
 !     mass outside the outer zone, and with accretion ends the step at
 !     the disk-locking age, where the mass change stops;
-!   - with accretion, shifts R, P and T of the convection zone for the
-!     entropy of the accreted matter (a zero shift at present, see
-!     change_mass) and mixes the accreted composition into the zone;
+!   - with accretion, mixes the accreted composition into the
+!     convection zone;
 !   - with mass loss from a rotating star, removes the angular momentum
 !     the lost matter carries (a thermal wind);
 !   - with mass loss, compresses the zone masses of the convection
 !     zone; then sets the new total mass and the shell masses dm.
-! The thermal-energy and entropy bookkeeping for accretion is
-! experimental and valid for Allard atmospheres only (llp 06/15/2009).
+! (The thermal-energy and entropy bookkeeping for accretion, llp
+! 06/15/2009, whose shift of the convection zone was zero, is retired:
+! step/retired/accretion_entropy.f90.txt; docs/bug_sweep.md M323.)
 ! The model is read from and written to star; the timestep is star%dt.
 ! The step's timestep limits, the convection zone's new masses, the
 ! wind's angular momentum and the accreted composition are computed by
 ! the star-blind kernels of mass_change_kernel.f90. change_mass and
 ! apply_mass_change call their steps in order; the steps are module
-! procedures with the star and what they need as arguments, but for the
-! three of the accretion-entropy path (average_envelope_energies,
-! find_accreted_surface_state, evaluate_stahler_surface), which stay
-! internal to change_mass on its locals until that path is retired
-! (docs/bug_sweep.md M323).
+! procedures with the star and what they need as arguments.
 module mass_change
       use, intrinsic :: iso_fortran_env, only: dp => real64
-      use atm_lib, only: atm_get_surface_pt, atm_table_is_loaded, atm_allard
-      use envelope_integration, only: gray_photosphere
       use star_info_lib, only: star_info, i_h1, i_metals
       use mass_change_kernel, only: wind_angular_momentum, &
            convection_zone_mass, change_shell_masses, &
            wind_specific_angular_momentum, remove_wind_angular_momentum, &
            mix_accreted_composition, mass_change_timestep_limit, &
            clip_step_to_disk_locking_age, disk_has_dispersed
-      use physical_constants, only: c4pi, cc13, cc23, cgl, csig, ln10, &
-           log10_radius_from_l_teff, radiation_constant_over_3, &
-           seconds_per_year
-      use eos_lib, only: eos_get, eos_result
+      use physical_constants, only: log10_radius_from_l_teff, seconds_per_year
       use math_lib
       use core_messages, only: core_log, core_report, message_length, unwritten_line
       implicit none
@@ -56,74 +47,32 @@ contains
 !----------------------------------------------------------------------
 ! change_mass
 !----------------------------------------------------------------------
-! Sets the rate and, for accretion, the energy per gram of the accreted
-! matter and the mean thermal energy and entropy of the convective
-! envelope; then calls apply_mass_change. Outputs:
+! Sets the rate and measures the convective envelope; then calls
+! apply_mass_change. Outputs:
 ! old_log_envelope_mass_fraction = log10(m(nz)/M) before the change
 ! (set only when the step runs), and new_atmosphere_fit_needed, true
 ! when matter was accreted. With accretion and disk locking, a model at
 ! or past the disk-locking age switches the mass change off and returns
 ! without a step.
-!   star reads: atm_point, disk_gate_age_gyr, dm,
-!     envelope_cz_bottom_index, log_Teff, log_total_mass, logP, logR,
-!     logRho, logT, nz, physics%disk_locking_active,
-!     physics%disk_locking_age_gyr, physics%mass_accretion_rate,
-!     solar_mass_cgs, xa
+!   star reads: disk_gate_age_gyr, physics%disk_locking_active,
+!     physics%disk_locking_age_gyr, physics%mass_accretion_rate
 !   star writes: mass_change_active
 subroutine change_mass(s, old_log_envelope_mass_fraction, new_atmosphere_fit_needed, ierr)
       type(star_info), intent(inout) :: s
       real(dp), intent(out) :: old_log_envelope_mass_fraction
       logical, intent(out) :: new_atmosphere_fit_needed
       integer, intent(out) :: ierr
-! The efficiency of the accreted matter's thermal energy: it brings
-! accretion_efficiency G M/R per gram (MHP 5/02).
-      real(dp), parameter :: accretion_efficiency = 1.0d0
       logical :: disk_exhausted
-      integer :: nz, jenv, zone_idx
-      real(dp) :: mass_loss_rate_msun_yr
-      real(dp) :: log10_radius, total_radius_cm
-      real(dp) :: total_mass_grams
+      real(dp) :: mass_loss_rate_msun_yr, total_radius_cm
       real(dp) :: cz_total_mass_below_fitting
-      real(dp) :: local_temperature, local_pressure, local_density, &
-           local_beta, mean_molecular_weight_local
-      real(dp) :: accretion_specific_energy, &
-           accretion_specific_energy0
-      real(dp) :: sum_thermal_energy, thermal_energy_accreted_bar
-      real(dp) :: local_radius_cm, delta_accretion_energy, &
-           thermal_energy_accreted, local_entropy, thermal_energy_per_gram
-      real(dp) :: mean_thermal_energy
-! the mass-weighted mean specific entropy of the convective envelope
-! (ideal gas, up to a constant; erg/(g K)), zeroed after it is computed
-! (below), so the accretion shifts it drives are zero
-      real(dp) :: envelope_specific_entropy
-      real(dp) :: log10_gravity, allard_log10_pressure, allard_log10_temperature
-      logical :: allard_lookup_failed
-      real(dp) :: log10_temperature_local, log10_pressure_local, &
-           log10_density_local
-      real(dp) :: hydrogen_fraction_local, metal_fraction_local
-      logical :: eos_deriv_flag, eos_atmosphere_flag
-      integer :: saha_iterations
-      real(dp) :: beta_local
-! Nothing here is saved between calls: the eos seeds log10 rho and beta
-! start at zero on every call (below). The legacy blanket SAVE carried
-! the previous call's values; zero is what it saw on its first call.
-      type(eos_result) :: eos_res
-      real(dp) :: mass_loss_rate_cgs, pressure_from_wind, &
-           temperature_from_wind
 
 ! Start from the constant rate mass_accretion_rate (Msun/yr); the step
 ! runs only with mass_change_active.
       ierr = 0
       new_atmosphere_fit_needed = .false.
-      log10_density_local = 0.0d0
-      beta_local = 0.0d0
       mass_loss_rate_msun_yr = s%physics%mass_accretion_rate
-      envelope_specific_entropy = 0.0d0
       if(.not.s%mass_change_active) return
-      nz = s%nz
-      jenv = s%envelope_cz_bottom_index
-      call set_mass_change_rate(s, mass_loss_rate_msun_yr, log10_radius, &
-           total_radius_cm, total_mass_grams)
+      call set_mass_change_rate(s, mass_loss_rate_msun_yr, total_radius_cm)
 ! Accretion with disk locking, from a model at or past the disk-locking
 ! age (a run started from a model saved after it, or the age left at its
 ! default 0): the disk is gone, so the mass change stops here, before
@@ -136,193 +85,31 @@ subroutine change_mass(s, old_log_envelope_mass_fraction, new_atmosphere_fit_nee
       end if
       call measure_convective_envelope(s, total_radius_cm, &
            cz_total_mass_below_fitting)
-      if(mass_loss_rate_msun_yr > 0.0d0)then
-         new_atmosphere_fit_needed = .true.
-         call average_envelope_energies()
-         call find_accreted_surface_state()
-         if (ierr /= 0) return
-         call evaluate_stahler_surface()
-         if (ierr /= 0) return
-! The envelope entropy is zeroed after all, so apply_mass_change shifts
-! R, P and T by zero: the entropy correction is switched off.
-         envelope_specific_entropy = 0.0d0
-      end if
+      if(mass_loss_rate_msun_yr > 0.0d0) new_atmosphere_fit_needed = .true.
       call apply_mass_change(s, total_radius_cm, mass_loss_rate_msun_yr, &
-           accretion_specific_energy, mean_thermal_energy, &
-           cz_total_mass_below_fitting, envelope_specific_entropy, &
-           old_log_envelope_mass_fraction, disk_exhausted, ierr)
+           cz_total_mass_below_fitting, old_log_envelope_mass_fraction, &
+           disk_exhausted, ierr)
 ! The disk-locking age was reached this step: the mass change stops for
 ! the rest of the run.
       if(disk_exhausted) s%mass_change_active = .false.
 
-contains
-
-! ---------------------------------------------------------------
-! For accretion: the energy per gram the accreted matter brings, and the
-! mass-weighted thermal energy and entropy of the convective envelope.
-subroutine average_envelope_energies()
-! By the virial theorem at most half of the gravitational potential
-! energy of the accreted matter becomes kinetic energy. The energy per
-! gram the accreted matter brings is taken as
-!   e_acc = accretion_efficiency G M/R
-! (twice that bound, G M/(2R), with accretion_efficiency = 1), and is
-! compared with the mean thermal energy per gram of the convection zone.
-      accretion_specific_energy = accretion_efficiency*total_mass_grams* &
-           (exp10(cgl))/total_radius_cm
-      accretion_specific_energy0 = accretion_specific_energy
-! The mass-weighted means over the convective envelope (zones jenv..nz)
-! of the accreted matter's energy per gram mixed down to radius r,
-!   e(r) = e_acc [1 + (R/r - 1)/2]
-! (it gains half the further potential energy released on the way
-! down), of the thermal energy per gram and of the specific entropy.
-      sum_thermal_energy = 0.0d0
-      thermal_energy_accreted_bar = 0.0d0
-      envelope_specific_entropy = 0.0d0
-      do zone_idx = jenv, nz
-         local_temperature = exp10(s%logT(zone_idx))
-         local_pressure = exp10(s%logP(zone_idx))
-         local_density = exp10(s%logRho(zone_idx))
-         local_radius_cm = exp10(s%logR(zone_idx))
-         delta_accretion_energy = 0.5d0*accretion_specific_energy* &
-              (total_radius_cm/local_radius_cm-1.0d0)
-         thermal_energy_accreted = accretion_specific_energy+ &
-              delta_accretion_energy
-         thermal_energy_accreted_bar = thermal_energy_accreted_bar+ &
-              s%dm(zone_idx)*thermal_energy_accreted
-! beta = P_gas/P = 1 - a T^4/(3 P). mean_molecular_weight_local holds
-! P_gas/(rho T) = k/(mu m_u), the gas constant over mu, not mu itself.
-! The ideal-gas specific entropy, up to a constant, is
-!   s = (k/(mu m_u)) (3/2 ln T - ln rho).
-         local_beta = 1.0d0-(radiation_constant_over_3*local_temperature**4/ &
-              local_pressure)
-         mean_molecular_weight_local = local_pressure*local_beta/ &
-              (local_density*local_temperature)
-         local_entropy = mean_molecular_weight_local* &
-              (1.5d0*log(local_temperature)-log(local_density))
-         envelope_specific_entropy = envelope_specific_entropy+ &
-              local_entropy*s%dm(zone_idx)
-! The thermal energy per gram of the shell, taken as P_gas/rho =
-! kT/(mu m_u) (2/3 of the monatomic ideal-gas value 3/2 P_gas/rho).
-         thermal_energy_per_gram = local_pressure*local_beta/local_density
-         sum_thermal_energy = sum_thermal_energy+thermal_energy_per_gram* &
-              s%dm(zone_idx)
-      end do
-! The means: the thermal energy per gram of the convective envelope
-! before accretion, the accreted matter's energy per gram, and the
-! specific entropy.
-      mean_thermal_energy = sum_thermal_energy/cz_total_mass_below_fitting
-      accretion_specific_energy = thermal_energy_accreted_bar/ &
-           cz_total_mass_below_fitting
-      envelope_specific_entropy = envelope_specific_entropy/ &
-           cz_total_mass_below_fitting
-end subroutine average_envelope_energies
-
-! ---------------------------------------------------------------
-! The surface the accreted matter joins, and the eos there, meant as the
-! state of the accreted matter. Only the eos seeds (log10 rho, beta) and
-! the inputs evaluate_stahler_surface reuses are used afterwards: no
-! entropy of the accreted matter is formed from this state.
-subroutine find_accreted_surface_state()
-! log g = log G + log M - 2 log R. The surface, at the star's Teff and
-! log g: the Allard tables when atm_init read them (atm_choice 4), and
-! the Eddington gray atmosphere's photosphere (gray_photosphere) when
-! the point is outside them (O19). Without the Allard tables, the
-! photosphere of the last envelope integration (s%atm_point: the point
-! its atmosphere integration ended at, or its table's surface point).
-      log10_gravity = cgl+s%log_total_mass-2.0d0*log10_radius
-      hydrogen_fraction_local = s%xa(i_h1,nz)
-      metal_fraction_local = s%xa(i_metals,nz)
-      log10_temperature_local = s%atm_point%log10_temperature
-      log10_pressure_local = s%atm_point%log10_pressure
-      if (atm_table_is_loaded(atm_allard)) then
-         call atm_get_surface_pt(atm_allard, s%log_Teff, log10_gravity, &
-              allard_log10_pressure, allard_log10_temperature, &
-              allard_lookup_failed, ierr)
-         if (ierr /= 0) return
-         if (allard_lookup_failed) then
-            call gray_photosphere(s, s%log_Teff, log10_gravity, &
-                 hydrogen_fraction_local, metal_fraction_local, s%xa(:,nz), &
-                 log10_pressure_local, log10_temperature_local, ierr)
-            if (ierr /= 0) return
-         else
-            log10_temperature_local = allard_log10_temperature
-            log10_pressure_local = allard_log10_pressure
-         end if
-      end if
-      eos_deriv_flag = .false.
-      saha_iterations = 1
-      eos_atmosphere_flag = .true.
-      eos_res%log10_density = log10_density_local
-      eos_res%beta = beta_local
-      call eos_get(log10_temperature_local, log10_pressure_local, &
-           hydrogen_fraction_local, metal_fraction_local, eos_res, &
-           eos_deriv_flag, eos_atmosphere_flag, saha_iterations, &
-           composition_at_zone=s%xa(:,nz), ierr=ierr)
-      if (ierr /= 0) return
-! The new seeds; beta and P_gas/(rho T) at the surface (the latter is
-! not used afterwards).
-      log10_density_local = eos_res%log10_density
-      beta_local = 1.0d0-(radiation_constant_over_3*eos_res%temperature**4/ &
-           eos_res%pressure)
-      mean_molecular_weight_local = eos_res%pressure*beta_local/ &
-           (eos_res%density*eos_res%temperature)
-end subroutine find_accreted_surface_state
-
-! ---------------------------------------------------------------
-! The eos at the surface pressure and temperature of Stahler (1988) for
-! the accretion rate (its results are unused; see inside).
-subroutine evaluate_stahler_surface()
-! An alternative surface pressure and temperature, from Stahler (1988):
-! the ram pressure and the radiating temperature of matter falling
-! freely onto the star,
-!   P_s = Mdot v_ff/(4 pi R^2),  v_ff = sqrt(2 accretion_efficiency g R),
-!   T_s^4 = (3/4) Mdot e_acc/(4 pi R^2 sigma),  e_acc as above.
-! Nothing this second eos call returns is used (apply_mass_change
-! recomputes P_gas/(rho T) before using it); the call is kept because
-! the eos carries solver state (the Saha solver's starting guesses)
-! from one call to the next.
-      if(accretion_efficiency > 0.0d0)then
-         mass_loss_rate_cgs = mass_loss_rate_msun_yr*s%solar_mass_cgs/ &
-              seconds_per_year
-         pressure_from_wind = mass_loss_rate_cgs/c4pi* &
-              sqrt(2.0d0*accretion_efficiency*exp10(log10_gravity)/ &
-              total_radius_cm**3)
-         temperature_from_wind = pow(mass_loss_rate_cgs* &
-              accretion_specific_energy0*0.75d0/c4pi/total_radius_cm**2/ &
-              csig, 0.25d0)
-         log10_pressure_local = log10(pressure_from_wind)
-         log10_temperature_local = log10(temperature_from_wind)
-         eos_res%log10_density = log10_density_local
-         eos_res%beta = beta_local
-         call eos_get(log10_temperature_local, log10_pressure_local, &
-              hydrogen_fraction_local, metal_fraction_local, eos_res, &
-              eos_deriv_flag, eos_atmosphere_flag, saha_iterations, &
-              composition_at_zone=s%xa(:,nz), ierr=ierr)
-         if (ierr /= 0) return
-      end if
-end subroutine evaluate_stahler_surface
-
 end subroutine change_mass
 
 ! ---------------------------------------------------------------
-! The star's radius (log10_radius, log10 cm; total_radius_cm) and mass
-! (total_mass_grams) in CGS, and the rate (rate_msun_yr, Msun/yr,
-! positive for accretion): the constant mass_accretion_rate it holds on
-! entry, or the Reimers law with use_reimers_wind.
+! The star's radius (total_radius_cm, cm), and the rate (rate_msun_yr,
+! Msun/yr, positive for accretion): the constant mass_accretion_rate it
+! holds on entry, or the Reimers law with use_reimers_wind.
 !   star reads: log10_solar_luminosity, log_L_lsun, log_Teff,
 !     physics%reimers_scaling_factor, physics%use_reimers_wind,
-!     solar_mass_cgs, solar_radius_cgs, star_mass
+!     solar_radius_cgs, star_mass
 !   star writes: none
-subroutine set_mass_change_rate(s, rate_msun_yr, log10_radius, &
-     total_radius_cm, total_mass_grams)
+subroutine set_mass_change_rate(s, rate_msun_yr, total_radius_cm)
       type(star_info), intent(inout) :: s
       real(dp), intent(inout) :: rate_msun_yr
-      real(dp), intent(out) :: log10_radius, total_radius_cm, total_mass_grams
-! R from L = 4 pi R^2 sigma Teff^4, and M, in CGS.
-      log10_radius = log10_radius_from_l_teff(s%log_L_lsun, s%log_Teff, &
-           s%log10_solar_luminosity)
-      total_radius_cm = exp10(log10_radius)
-      total_mass_grams = s%star_mass*s%solar_mass_cgs
+      real(dp), intent(out) :: total_radius_cm
+! R from L = 4 pi R^2 sigma Teff^4.
+      total_radius_cm = exp10(log10_radius_from_l_teff(s%log_L_lsun, s%log_Teff, &
+           s%log10_solar_luminosity))
 ! The Reimers law replaces the constant rate:
 !   Mdot [Msun/yr] = reimers_scaling_factor (L/Lsun) (R/Rsun)/(M/Msun),
 ! with reimers_scaling_factor = -4e-13 by default (eta = 1, mass loss).
@@ -378,20 +165,17 @@ end subroutine measure_convective_envelope
 ! apply_mass_change
 !----------------------------------------------------------------------
 ! Limits the timestep, then removes or adds the step's mass,
-! dM = Mdot dt, at the surface: the R/P/T shift and the mixing for
-! accretion, the angular momentum carried off by mass loss, and the
+! dM = Mdot dt, at the surface: the mixing for accretion, the angular
+! momentum carried off by mass loss, and the
 ! convection zone's masses. The arithmetic is in the star-blind kernels
 ! of mass_change_kernel; this driver calls its steps in order (the
 ! module procedures below, each with the star and what it needs as
 ! arguments), and they gather the zone from the star, call the kernels
 ! and store the results. Inputs: total_radius_cm (R), the rate
-! mass_loss_rate_msun_yr (Msun/yr, positive for accretion),
-! accretion_specific_energy and mean_thermal_energy (the energies per
-! gram of the accreted matter and of the convection zone),
+! mass_loss_rate_msun_yr (Msun/yr, positive for accretion) and
 ! cz_total_mass_below_fitting (the convective envelope's mass M_cz, sum
-! of its shell masses: the step's timestep limit, entropy shift,
-! compression and mixing all take it) and envelope_specific_entropy
-! (its mean specific entropy, zero at present).
+! of its shell masses: the step's timestep limit, the wind's angular
+! momentum and the compression take it).
 ! Outputs: old_log_envelope_mass_fraction = log10(m(nz)/M) before the
 ! change; disk_exhausted, true when the disk-locking age was reached
 ! (the timestep is clipped to land on it); ierr = 1 when the envelope
@@ -399,16 +183,12 @@ end subroutine measure_convective_envelope
 !   star reads: dt, log_mass, log_total_mass, nz, solar_mass_cgs
 !   star writes: none
 subroutine apply_mass_change(s, total_radius_cm, mass_loss_rate_msun_yr, &
-     accretion_specific_energy, mean_thermal_energy, &
-     cz_total_mass_below_fitting, envelope_specific_entropy, &
-     old_log_envelope_mass_fraction, disk_exhausted, ierr)
+     cz_total_mass_below_fitting, old_log_envelope_mass_fraction, &
+     disk_exhausted, ierr)
       type(star_info), intent(inout) :: s
       real(dp), intent(in) :: total_radius_cm
       real(dp), intent(in) :: mass_loss_rate_msun_yr
-      real(dp), intent(in) :: accretion_specific_energy, &
-           mean_thermal_energy
       real(dp), intent(in) :: cz_total_mass_below_fitting
-      real(dp), intent(in) :: envelope_specific_entropy
       real(dp), intent(out) :: old_log_envelope_mass_fraction
       logical, intent(out) :: disk_exhausted
       integer, intent(out) :: ierr
@@ -433,9 +213,6 @@ subroutine apply_mass_change(s, total_radius_cm, mass_loss_rate_msun_yr, &
 ! The mass change of the step, dM = Mdot dt, in g (negative for loss).
       delta_mass_cgs = mass_loss_rate_msun_yr*s%solar_mass_cgs*s%dt/ &
            seconds_per_year
-      call adjust_cz_for_accreted_entropy(s, delta_mass_cgs, &
-           accretion_specific_energy, mean_thermal_energy, &
-           cz_total_mass_below_fitting, envelope_specific_entropy)
       call update_masses(s, delta_mass_cgs, cz_shell_masses_before)
       call spin_down_cz_by_wind(s, total_radius_cm, delta_mass_cgs, &
            cz_shell_masses_before, cz_total_mass_below_fitting)
@@ -503,83 +280,6 @@ subroutine limit_mass_change_timestep(s, rate_msun_yr, rate_cgs, cz_mass, &
            call clip_step_to_disk_locking_age(s%disk_gate_age_gyr, &
            s%physics%disk_locking_age_gyr, s%dt, disk_exhausted)
 end subroutine limit_mass_change_timestep
-
-! ---------------------------------------------------------------
-! With accretion (delta_mass_cgs = dM > 0): the convection zone's R, P
-! and T shifted for the entropy of the accreted matter. change_mass
-! zeroes envelope_specific_entropy first, so every shift is zero at
-! present (bug_sweep M323). The other inputs: the energies per gram of
-! the accreted matter and of the zone, and the zone's mass cz_mass (g).
-!   star reads: envelope_cz_bottom_index, logRho, nz
-!   star writes: delta_log_pressure, delta_log_temperature, logP, logR,
-!     logT
-subroutine adjust_cz_for_accreted_entropy(s, delta_mass_cgs, &
-     accretion_specific_energy, mean_thermal_energy, cz_mass, &
-     envelope_specific_entropy)
-      type(star_info), intent(inout) :: s
-      real(dp), intent(in) :: delta_mass_cgs, accretion_specific_energy, &
-           mean_thermal_energy, cz_mass, envelope_specific_entropy
-      integer :: nz, jenv, zone_idx
-      real(dp) :: new_thermal_energy
-      real(dp) :: local_temperature, local_pressure, local_density, &
-           local_beta, mean_molecular_weight_local
-      real(dp) :: delta_log_specific_entropy, delta_ln_mass, &
-           delta_log_radius
-      real(dp) :: boundary_radius_cm, radius_scale_factor, &
-           radius_before_cm, radius_after_cm
-
-      if (.not. (delta_mass_cgs > 0.0d0)) return
-      nz = s%nz
-      jenv = s%envelope_cz_bottom_index
-! The mean thermal energy per gram of the convection zone once the
-! accreted matter has mixed in (new_thermal_energy, not used further).
-      new_thermal_energy = (accretion_specific_energy*delta_mass_cgs+ &
-           mean_thermal_energy*cz_mass)/ &
-           (delta_mass_cgs+cz_mass)
-! The overall scale factor in R. P_gas/(rho T) = k/(mu m_u) at the base
-! turns the envelope's mean entropy <s> into the dimensionless change
-!   d s = (dM/M_cz) <s>/(k/(mu m_u)),
-! and the homology of an n = 3/2 polytrope (R ~ K M^(-1/3), with
-! ln K = (2/3) s + const for P = K rho^(5/3)) gives
-!   d log R = (2/3 d s - 1/3 d ln M)/ln 10,
-!   d log T = d ln M/ln 10 - d log R,  d log P = 2 d ln M/ln 10 - 4 d log R.
-      local_temperature = exp10(s%logT(jenv))
-      local_pressure = exp10(s%logP(jenv))
-      local_density = exp10(s%logRho(jenv))
-      local_beta = 1.0d0-(radiation_constant_over_3*local_temperature**4/ &
-           local_pressure)
-      mean_molecular_weight_local = local_pressure*local_beta/ &
-           (local_density*local_temperature)
-      delta_log_specific_entropy = (delta_mass_cgs/cz_mass)* &
-           envelope_specific_entropy/mean_molecular_weight_local
-! The mass term d ln M = ln((M_cz + dM)/M_cz) is deliberately left out.
-      delta_ln_mass = 0.0d0
-      delta_log_radius = (cc23*delta_log_specific_entropy- &
-           cc13*delta_ln_mass)/ln10
-      s%delta_log_temperature = delta_ln_mass/ln10 - delta_log_radius
-      s%delta_log_pressure = 2.0d0*delta_ln_mass/ln10 - 4.0d0*delta_log_radius
-! A fully convective star (jenv = 1) shifts every zone. Otherwise only
-! the base zone's P and T shift, and the radii above it stretch about
-! the base, r' = r_b + 10^(d log R) (r - r_b).
-      if (jenv == 1) then
-         do zone_idx = jenv,nz
-            s%logR(zone_idx) = s%logR(zone_idx)+delta_log_radius
-            s%logP(zone_idx) = s%logP(zone_idx)+s%delta_log_pressure
-            s%logT(zone_idx) = s%logT(zone_idx)+s%delta_log_temperature
-         end do
-      else
-         s%logP(jenv) = s%logP(jenv)+s%delta_log_pressure
-         s%logT(jenv) = s%logT(jenv)+s%delta_log_temperature
-         boundary_radius_cm = exp10(s%logR(jenv))
-         radius_scale_factor = exp10(delta_log_radius)
-         do zone_idx = jenv+1,nz
-            radius_before_cm = exp10(s%logR(zone_idx))
-            radius_after_cm = boundary_radius_cm+radius_scale_factor* &
-                 (radius_before_cm-boundary_radius_cm)
-            s%logR(zone_idx) = log10(radius_after_cm)
-         end do
-      end if
-end subroutine adjust_cz_for_accreted_entropy
 
 ! ---------------------------------------------------------------
 ! The new total mass after the step's change delta_mass_cgs = dM (g),
@@ -696,7 +396,9 @@ end subroutine mix_in_accreted_composition
 ! Sources
 !   The F77's MASSLOSS and MDOT (wind/massloss, wind/mdot; MHP 10/01, the
 !   accretion efficiency MHP 5/02, the disk locking and M_cz MHP 8/10, the
-!   accretion entropy llp 06/15/2009). Fixed in 2026: the Reimers law (the
+!   accretion entropy llp 06/15/2009, retired in 2026-11: its shift was
+!   zero, and its surface lookup and two EOS calls could only stop the
+!   step, bug_sweep M323). Fixed in 2026: the Reimers law (the
 !   legacy code evaluated reimers_scaling_factor L/(g R) in CGS, a rate in
 !   g/s, but stored it as Msun/yr, and mdot converted it to CGS again, a
 !   rate about 1e25 too large); a zero rate, which divided by zero in the

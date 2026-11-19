@@ -40,6 +40,8 @@ module envelope_integrands
             real(dp) :: radiative_gradient = 0.0_dp, temperature_gradient = 0.0_dp, &
                  convective_velocity = 0.0_dp
             real(dp) :: beta = 0.0_dp, ion_fraction(3) = 0.0_dp
+! 1/mu_e, the electrons per atomic mass unit (the EOS's)
+            real(dp) :: electron_mean_weight_inverse = 0.0_dp
       end type point_physics
 
 contains
@@ -271,6 +273,7 @@ subroutine compute_envelope_derivs(log10_pressure_indep, y, dydx, luminosity_lin
       pt%convective_velocity = convective_velocity
 ! and beta, the gas-pressure fraction, with the ionization fractions.
       pt%beta = eos_res%beta
+      pt%electron_mean_weight_inverse = eos_res%electron_mean_weight_inverse
       pt%ion_fraction(1) = eos_res%ion_fraction(1)
       pt%ion_fraction(2) = eos_res%ion_fraction(2)
       pt%ion_fraction(3) = eos_res%ion_fraction(3)

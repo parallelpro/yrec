@@ -12,8 +12,10 @@
 ! lookup), and reports the kernel's events (report_envint_events). The
 ! points it integrates go to the star's env_points, atm_points and
 ! atm_point. gray_photosphere integrates the Eddington gray atmosphere
-! alone, at a given Teff and g, into its own points (change_mass's
-! accretion surface after a failed Allard lookup). The tables and their
+! alone, at a given Teff and g, into its own points (the accretion
+! surface of the retired accretion-entropy path, after a failed Allard
+! lookup: core/step/retired/accretion_entropy.f90.txt; no caller in the
+! run since, bug_sweep M323). The tables and their
 ! surface lookups are atm's. The helpers fixed_envint_step,
 ! surface_log10_radius_cm and ambient_log10_teff serve atm_get's callers
 ! (compute_surface_boundary, rebuild_envelope, read_starting_model,

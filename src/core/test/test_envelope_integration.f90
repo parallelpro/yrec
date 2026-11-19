@@ -392,6 +392,15 @@ subroutine check_solve()
       call report('envelope ends at the fitting mass', dmass, &
            env_points%num_env_points > 2 .and. &
            dmass <= base_cfg%tolerance_fraction*abs(log10_fit_mass))
+! 1/mu_e of the recorded points: between 1/2 (ionized helium and metals)
+! and 1 (ionized hydrogen) times the ionized fraction, and largest at
+! the innermost, most ionized point.
+      call report('the points record 1/mu_e (largest at the fitting point)', &
+           env_points%env_electron_mean_weight_inverse(1), &
+           env_points%env_electron_mean_weight_inverse(1) > 0.0_dp .and. &
+           env_points%env_electron_mean_weight_inverse(1) < 1.0_dp .and. &
+           env_points%env_electron_mean_weight_inverse(1) > &
+           env_points%env_electron_mean_weight_inverse(env_points%num_env_points))
       call report('the vertex event holds the vertex', &
            abs(events%event(2)%values(1) - vertex%log10_pressure), &
            all(events%event(2)%values(1:4) == [vertex%log10_pressure, &
@@ -588,6 +597,9 @@ subroutine check_thin_envelope()
       call integrate(cfg)
       call report('thin: ierr = 0, no envelope points', real(ierr, dp), &
            ierr == 0 .and. env_points%num_env_points == 0)
+      call report('thin: no envelope event (the atmosphere''s is the last)', &
+           real(events%num_events, dp), events%num_events == 1 .and. &
+           event_kind(1) == envint_atmosphere_done)
       call report('thin: vertex = the surface point', &
            abs(vertex%log10_pressure - atm_point%log10_pressure), &
            vertex%log10_pressure == atm_point%log10_pressure .and. &

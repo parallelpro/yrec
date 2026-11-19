@@ -1041,6 +1041,14 @@ contains
                  two_z=.false., opal95_path=trim(atom_dir)//"legacy/opal95/GS98.OP17", &
                  alex06_path=trim(mol_dir)//"alexmol06gs98.tab", quiet=.true.)
             call top_logr_check("Alexander 2006 above its top log R: linear from the last two")
+! --- OPAL 1995 past a row's last filled column (the empty high-R corner:
+! at log T 7.45 a row's cubic gave way to the linear rule at log R 0.0,
+! with a jump of 6.6e-3 in log kappa): one rule, continuous there
+! (bug_sweep M376)
+            call get_point(0.70d0, 0.016232d0, 7.45d0, logd_of(7.45d0, -1.0d-9), r, ierr)
+            call get_point(0.70d0, 0.016232d0, 7.45d0, logd_of(7.45d0, 1.0d-9), r2, ierr2)
+            call report("OPAL 1995 past a row's last column: one rule, continuous (M376)", &
+                 abs(r(i_log10_kap) - r2(i_log10_kap)), 1.0d-6, ierr + ierr2 == 0)
 ! --- Kurucz 1990: no row of the table has the density
             call configure("kurucz90", opal95=.true., kurucz90=.true., z1=0.0188d0, z2=0.0d0, &
                  two_z=.false., opal95_path=trim(atom_dir)//"legacy/opal95/GS98.OP17", &
@@ -1092,6 +1100,11 @@ contains
             call get_point(0.70d0, 0.016232d0, 3.60d0, logd_of(3.60d0, 1.5d0), at_15, k)
             call report(label, abs(at_15(i_log10_kap) - (2.0d0*at_10(i_log10_kap) - at_05(i_log10_kap))), &
                  1.0d-12, ierr + k == 0)
+! and its density derivative there, d log kappa/d log rho at fixed T, is
+! that secant's slope (bug_sweep M375)
+            call report(label(1:index(label, ':')-1)//": slope the secant (M375)", &
+                 abs(at_15(i_dlnkap_dlnrho) - (at_10(i_log10_kap) - at_05(i_log10_kap))/0.5d0), &
+                 1.0d-9, ierr + k == 0)
          end subroutine top_logr_check
 
 ! X = 0, Z = 0.6 at log T 7.8, log rho 2 (no conduction there: below

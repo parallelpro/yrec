@@ -876,9 +876,10 @@ module star_info_lib
 ! (docs/bug_sweep.md M190).
             real(dp) :: disk_gate_age_gyr
 ! convective turnover time one pressure scale height above the base of
-! the surface convection zone [s]; turnover_timescale, run_driver,
-! mass_change. From the stitched model, every converged model; zero at a
-! card start and without a surface convection zone.
+! the surface convection zone [s]; turnover_timescale, mass_change.
+! From the stitched model, every converged model and the starting model
+! of each card (which the card's first step keeps: bug_sweep M325); zero
+! without a surface convection zone.
             real(dp) :: convective_turnover_timescale
 ! log10 photospheric pressure of the last atmosphere integration that
 ! reached the photosphere [log10 dyn/cm^2]; envelope_integration. Set
@@ -892,6 +893,7 @@ module star_info_lib
 ! secular_transport, evolve_rotation. evolve_rotation copies it into
 ! omega at the end of the step; it outlives the step: the next step's
 ! first solid-body sub-step starts its Newton iteration from its mean.
+! 0 after a model read (M202).
             real(dp) :: omega_substep(json)
 ! Li6 proton-capture rate rho X lambda at the end of the step, on the
 ! converged model [1/s]; burn_step. With physics%use_extended_composition.
@@ -920,12 +922,6 @@ module star_info_lib
 ! mass accreted during the step [g]; mass_change. Set only when the star
 ! accretes; its readers check that it does.
             real(dp) :: accreted_mass
-! shift of log P of the convection zone for the entropy of accreted
-! matter [log10]; mass_change. Zero at present: change_mass zeroes
-! envelope_specific_entropy first.
-            real(dp) :: delta_log_pressure
-! shift of log T for the same [log10]; mass_change
-            real(dp) :: delta_log_temperature
 ! specific heat at constant pressure, for rotation (the viscosity, the
 ! transport) [erg/(g K)]; shell_physics
             real(dp) :: cp(json)
@@ -947,12 +943,6 @@ module star_info_lib
 ! the atmosphere of the latest envelope integration, point by point
 ! [cgs, logs base 10]; envelope_integration
             type(atmosphere_structure_state) :: atm_points
-! the atmosphere integration's current point: log tau, log P, log T,
-! log rho, the opacity, the ionization fractions [logs base 10];
-! envelope_integration. After an integration it holds the photosphere
-! (or the table's surface point), which the mass change's accretion
-! surface takes unless the Allard tables give it.
-            type(atmosphere_point_state) :: atm_point
 
 ! ==== Newton ===========================================================
 ! Arrays of the Henyey solve, rewritten on every iteration, with the
@@ -1226,6 +1216,11 @@ module star_info_lib
 ! outer boundary-condition rows from the envelope fit, in henyey_solve's
 ! form [-]; henyey_iteration
             real(dp) :: surface_bc(6)
+! the atmosphere integration's current point: log tau, log P, log T,
+! log rho, the opacity, the ionization fractions [logs base 10];
+! envelope_integration. After an integration it holds the photosphere
+! (or the table's surface point).
+            type(atmosphere_point_state) :: atm_point
       end type star_info
 
 ! Module-level (deliberately outside the star, which run_yrec builds

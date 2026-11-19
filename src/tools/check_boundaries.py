@@ -97,9 +97,11 @@ PUBLIC = {
             "deuterium_rate", "burn_deuterium_region", "compute_li_be_rates"},
     # convection_lib's entries (2026-10: mixing/ became convection/; its
     # burn-settle-mix sub-stepping moved to rotation; 2026-11: the
-    # envelope overshoot depth core and rotation take).
+    # envelope overshoot depth core and rotation take; 2026-11-18: the
+    # mean of one region, which core's composition step mixes with).
     "convection": {"compute_temperature_gradients", "find_convection_zones",
-                   "homogenize_convection_zones", "extend_by_semiconvection",
+                   "homogenize_convection_zones", "homogenize_region",
+                   "extend_by_semiconvection",
                    "set_convection_settings", "set_convection_envelope_metals",
                    "envelope_overshoot_depth"},
     # rotation deliberately has no facade (multi-primitive surface, a

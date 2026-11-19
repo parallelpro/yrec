@@ -354,3 +354,28 @@ check = 'gray photosphere: T = Teff'
 file = 'core/envelope/envelope_integration.f90'
 old = 'log10_temperature = atm_point%log10_temperature'
 new = 'log10_temperature = atm_point%log10_pressure'
+
+# bug_sweep M393: the envelope points keep 1/mu_e for the profile.
+[[mutation]]
+id = 'envelope-mue-01'
+check = 'the points record 1/mu_e (largest at the fitting point)'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = """         env_points%env_electron_mean_weight_inverse(1:n) = &
+              env_points%env_electron_mean_weight_inverse(n:1:-1)
+"""
+new = """         continue
+"""
+
+# bug_sweep M309: no envelope event when no envelope is integrated.
+[[mutation]]
+id = 'envelope-thin-event'
+check = "thin: no envelope event (the atmosphere's is the last)"
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = """            vertex%log10_temperature = st%eqs%atm_point%log10_temperature
+         end if
+      else"""
+new = """            vertex%log10_temperature = st%eqs%atm_point%log10_temperature
+         end if
+         call add_envint_event(events, envint_envelope_done, counts=[0, 0], &
+              values=[0.0d0, 0.0d0, 0.0d0, 0.0d0, 0.0d0])
+      else"""

@@ -111,5 +111,5 @@ log_P_photosphere         ! log10 photospheric pressure
 ! delta_nu is defined the same way. To compare with an observed large
 ! separation use delta_nu_rho (within 0.5% on that model) or a pulsation
 ! code on the pulse files (docs/PHYSICS_VALIDATION.md, section 2).
-!delta_nu                 ! asymptotic p-mode large separation [uHz], [2 int dr/c]^-1, innermost point -> photosphere: 5% above the observed one (above)
-!delta_Pg                 ! asymptotic l=1 g-mode period spacing [s] (Brunt-Vaisala integral over the innermost cavity)
+!delta_nu                 ! asymptotic p-mode large separation [uHz], [2 int dr/c]^-1, centre -> photosphere: 5% above the observed one (above)
+!delta_Pg                 ! asymptotic l=1 g-mode period spacing [s] (Brunt-Vaisala integral over the innermost cavity, from the centre)

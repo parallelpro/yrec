@@ -106,6 +106,33 @@ pure subroutine average_over_mixed_region(composition, mass_coordinate, &
       log_rate_mean = log(rate_sum/region_mass)
 end subroutine average_over_mixed_region
 
+! ---------------------------------------------------------------
+! The mass-averaged Li6, Li7 and Be9 of the mixed region from base_zone
+! out, x_mean, and its mass, region_mass [g], as
+! average_over_mixed_region takes them, without the rates (a region too
+! cool to burn).
+pure subroutine mixed_region_mean(composition, mass_coordinate, shell_mass, &
+     base_zone, base_frac, num_zones, x_mean, region_mass)
+      real(dp), intent(in) :: composition(:,:), mass_coordinate(:), shell_mass(:)
+      integer, intent(in) :: base_zone, num_zones
+      real(dp), intent(in) :: base_frac
+      real(dp), intent(out) :: x_mean(:), region_mass
+      real(dp) :: mass
+      integer :: zone_idx
+
+      x_mean = 0.0d0
+      region_mass = 0.0d0
+      do zone_idx = base_zone,num_zones
+         mass = shell_mass(zone_idx)
+         if (zone_idx == base_zone .and. base_zone > 1 .and. &
+              base_zone < num_zones) mass = mass + base_frac* &
+              (mass_coordinate(base_zone)-mass_coordinate(base_zone-1))
+         x_mean = x_mean + composition(li_be_species,zone_idx)*mass
+         region_mass = region_mass + mass
+      end do
+      x_mean = x_mean/region_mass
+end subroutine mixed_region_mean
+
 !----------------------------------------------------------------------
 ! burn_li_be_zones
 !----------------------------------------------------------------------
@@ -125,7 +152,8 @@ end subroutine average_over_mixed_region
 !      depth; the new abundance is set from the shallower base out (when
 !      the region deepened, the shells between the two bases are left as
 !      they are). Nothing more burns when the region's base is too cool
-!      at the start or at the end;
+!      at the start or at the end, but the accreted gas is still mixed in
+!      by mass, unburnt, over the end-of-step region (bug_sweep M383);
 !   3. shells the region left during the step (a retreating convection
 !      zone), each on one rate held over the step, weighted in the log
 !      between its own end-of-step rate and the region's start-of-step
@@ -177,7 +205,19 @@ pure subroutine burn_li_be_zones(timestep, composition, mass_coordinate, &
 
 ! 2. The mixed region as one unit.
       if (rate_start(k_be9,base%zone_start) <= min_li_be_rate .or. &
-           rate_end(k_be9,base%zone_end) <= min_li_be_rate) return
+           rate_end(k_be9,base%zone_end) <= min_li_be_rate) then
+         if (accretion%inflow) then
+            call mixed_region_mean(composition, mass_coordinate, shell_mass, &
+                 base%zone_end, base%frac_end, num_zones, x_cz_end, cz_mass_end)
+            x_cz_end = (x_cz_end*cz_mass_end + accretion%abundance*accretion%mass)/ &
+                 (accretion%mass + cz_mass_end)
+            where (x_cz_end < min_li_be_abundance) x_cz_end = 0.0d0
+            do zone_idx = max_zone,num_zones
+               composition(li_be_species,zone_idx) = x_cz_end
+            end do
+         end if
+         return
+      end if
       call average_over_mixed_region(composition, mass_coordinate, shell_mass, &
            rate_start, base%zone_start, base%frac_start, num_zones, &
            x_cz_start, log_rate_cz_start, cz_mass_start)

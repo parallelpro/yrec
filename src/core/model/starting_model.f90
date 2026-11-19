@@ -329,12 +329,15 @@ end subroutine check_model_against_controls
 ! Reset the store and trial-sign flags, require a fresh envelope, take
 ! the surface X and Z from the outermost interior point, start the
 ! disk-locking tests' age at the model's, and clear the start-of-step
-! deuterium burning rates and the base the last Li/Be burn left.
-!   star reads: age_gyr, nz, xa
+! deuterium burning rates, the base the last Li/Be burn left and the
+! last rotation sub-step's omega, and set the fitting point's mass
+! fraction from the model.
+!   star reads: age_gyr, log_mass, log_total_mass, nz, xa
 !   star writes: deuterium_burning_rate_start, disk_gate_age_gyr,
-!     li_be_mixed_base_mass, recompute_envelope_triangle,
-!     stored_vertex_index, surface_hydrogen_fraction,
-!     surface_metal_fraction, triangle_orientation
+!     li_be_mixed_base_mass, log_fit_point_mass_fraction, omega_substep,
+!     recompute_envelope_triangle, stored_vertex_index,
+!     surface_hydrogen_fraction, surface_metal_fraction,
+!     triangle_orientation
 subroutine reset_state_after_read(s)
       type(star_info), intent(inout) :: s
       s%stored_vertex_index = 0
@@ -360,6 +363,14 @@ subroutine reset_state_after_read(s)
 ! Nor with the previous card's Li/Be mixed-region base (O9): its first
 ! burn takes the whole start zone.
       s%li_be_mixed_base_mass = 0.0d0
+! Nor with the previous card's or Monte-Carlo run's last sub-step omega,
+! whose mean the first solid-body sub-step's Newton iteration starts from
+! (M202): it starts from 0, as the run's first card does.
+      s%omega_substep = 0.0d0
+! The fitting point's mass fraction, log10(m(nz)/M), which the starting
+! model's stitched envelope is integrated down to; the step sets it again
+! before every solve (M396).
+      s%log_fit_point_mass_fraction = s%log_mass(s%nz) - s%log_total_mass
 end subroutine reset_state_after_read
 
 

@@ -24,7 +24,7 @@ module controls_check
            envelope_overshoot_active, intermediate_overshoot_active, tri_delta_teffl, tri_delta_logl, &
            rotation_active, max_diffusion_iters, tolerance_fraction, max_stage_index, &
            extrap_order, num_runs, run_kind, monte_carlo_active, mc_run_start, &
-           mc_run_end
+           mc_run_end, compute_neutrino_fluxes, calc_neutrinos
       use rotation_configuration, only: max_transport_iterations
       use run_cards, only: card_evolve, card_rescale, card_rescale_and_evolve
       implicit none
@@ -68,7 +68,11 @@ end subroutine warn
 !     mc_run_end <= max_mc_runs (state's 1000, the size of the sample
 !     arrays): a start below 1 indexed the arrays at 0, an end past
 !     max_mc_runs was cut to it without a word, and a start after the end
-!     ran nothing (docs/bug_sweep.md M115).
+!     ran nothing (docs/bug_sweep.md M115);
+!   - compute_neutrino_fluxes is on without calc_neutrinos (legacy LSNU):
+!     the fluxes the table holds are computed only with calc_neutrinos
+!     (net's compute_nuclear_energy), so the table would be zeros
+!     (docs/bug_sweep.md M139).
 ! It reads the controls in the read's buffer, after the deck is read
 ! and map_user_inputs.
 subroutine check_controls(ierr)
@@ -137,6 +141,12 @@ subroutine check_controls(ierr)
               //' <= mc_run_end (IMEND) <= ', max_mc_runs, ', not ', mc_run_start, ' and ', &
               mc_run_end
          call report_error(line)
+         ierr = 1
+         return
+      end if
+      if (compute_neutrino_fluxes .and. .not. calc_neutrinos) then
+         call report_error('compute_neutrino_fluxes needs calc_neutrinos (LSNU), which' &
+              //' computes the fluxes its table holds')
          ierr = 1
          return
       end if

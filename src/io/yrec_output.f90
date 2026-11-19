@@ -233,21 +233,25 @@ end subroutine output_write_model
 ! ---------------------------------------------------------------
 ! The interior-only GYRE file, interior_gyre_path's
 ! profile<model>.data.GYRE: the stitched model's interior points, which
-! are the first nz of its point set (centre to the fitting point), with
-! the outermost interior shell's mass, radius and luminosity as M_star,
+! are the first nz of its point set (centre to the fitting point), after
+! the points inside the innermost one (add_centre_points), with the
+! outermost interior shell's mass, radius and luminosity as M_star,
 ! R_star and L_star.
 !   star reads: model_number, nz, physics%profile_data_prefix, stitched
 !   star writes: none
 subroutine write_interior_gyre(s, output, ierr)
       use star_info_lib, only: star_info
-      use stitched_model, only: ipul_m, ipul_r, ipul_L
+      use physical_constants, only: cgl
+      use stitched_model, only: ipul_m, ipul_r, ipul_L, add_centre_points
       type(star_info), intent(in) :: s
       type(output_state), intent(in) :: output
       integer, intent(inout) :: ierr
       character(len=:), allocatable :: path
+      real(dp), allocatable :: points(:,:)
 
       path = interior_gyre_path(output%out_dir, s%physics%profile_data_prefix, s%model_number)
-      call write_gyre_pulse(s%nz, s%stitched%pulse(:,1:s%nz), s%stitched%pulse(ipul_m,s%nz), &
+      call add_centre_points(s%stitched%pulse(:,1:s%nz), exp(ln10*cgl), points)
+      call write_gyre_pulse(size(points,2), points, s%stitched%pulse(ipul_m,s%nz), &
            s%stitched%pulse(ipul_r,s%nz), s%stitched%pulse(ipul_L,s%nz), path, ierr)
 end subroutine write_interior_gyre
 
@@ -298,21 +302,25 @@ end function profile_write_due
 
 ! ---------------------------------------------------------------
 ! The pulsation file of profile iprof, profile<N>.data.GYRE / .FGONG /
-! .GSM, over the whole extended model (s%stitched's pulse points).
-! M_star, R_star and L_star refer to the photosphere (atmosphere points
-! sit above R_star, as in MESA's add_atmosphere).
+! .GSM, over the whole extended model (s%stitched's pulse points), after
+! the points inside the innermost one (add_centre_points). M_star, R_star
+! and L_star refer to the photosphere (atmosphere points sit above
+! R_star, as in MESA's add_atmosphere).
 !   star reads: control%pulse_gyre_interval, log10_solar_radius,
 !     log_L_lsun, log_R_surface_rsun, log_total_mass,
 !     physics%profile_data_prefix, solar_luminosity_cgs, stitched
 !   star writes: none
 subroutine write_pulse(s, output, iprof, ierr)
       use star_info_lib, only: star_info
+      use physical_constants, only: cgl
+      use stitched_model, only: add_centre_points
       type(star_info), intent(in) :: s
       type(output_state), intent(in) :: output
       integer, intent(in) :: iprof
       integer, intent(inout) :: ierr
       character(len=:), allocatable :: path
       real(dp) :: mstar_g, rstar_cm, lstar_cgs
+      real(dp), allocatable :: points(:,:)
       integer :: n
 
       mstar_g = exp(ln10*s%log_total_mass)
@@ -321,17 +329,18 @@ subroutine write_pulse(s, output, iprof, ierr)
 
       path = profile_pulse_path(output%out_dir, s%physics%profile_data_prefix, iprof, &
            output%pulse_format, s%control%pulse_gyre_interval > 0)
-      n = s%stitched%n_ext
+      call add_centre_points(s%stitched%pulse(:,1:s%stitched%n_ext), exp(ln10*cgl), points)
+      n = size(points, 2)
 ! (output_open has rejected any other format)
       select case (output%pulse_format)
       case (pulse_fgong)
-         call write_fgong_pulse(s, n, s%stitched%pulse(:,1:n), mstar_g, rstar_cm, &
+         call write_fgong_pulse(s, n, points, mstar_g, rstar_cm, &
               lstar_cgs, path, ierr)
       case (pulse_gsm)
-         call write_gsm_pulse(n, s%stitched%pulse(:,1:n), mstar_g, rstar_cm, &
+         call write_gsm_pulse(n, points, mstar_g, rstar_cm, &
               lstar_cgs, path, ierr)
       case default
-         call write_gyre_pulse(n, s%stitched%pulse(:,1:n), mstar_g, rstar_cm, &
+         call write_gyre_pulse(n, points, mstar_g, rstar_cm, &
               lstar_cgs, path, ierr)
       end select
 end subroutine write_pulse

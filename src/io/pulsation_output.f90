@@ -11,7 +11,8 @@
 ! write_gyre_pulse writes the GYRE text file, both the one that goes
 ! with each profile (the extended point set) and the interior-only one
 ! every pulse_gyre_interval models (the point set's first nz points;
-! yrec_output passes them). GSM output needs HDF5 (make USE_HDF5=1);
+! yrec_output passes them). yrec_output passes each set after the points
+! stitched_model's add_centre_points puts inside its innermost point. GSM output needs HDF5 (make USE_HDF5=1);
 ! without it, write_gsm_pulse is a stub and gsm_supported is .false.
 !
 ! Newton's G: FGONG carries it (global 15). The GYRE text and GSM

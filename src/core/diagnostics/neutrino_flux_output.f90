@@ -20,7 +20,9 @@ contains
 ! An optional diagnostic (compute_neutrino_fluxes, default .false.),
 ! called by run_yrec once per kind card right after
 ! read_starting_model, so the table describes each card's starting
-! model. It writes to the run log, each line through core_messages'
+! model. Its fluxes and X(Be7) come from compute_zone_energy, which
+! fills them only with calc_neutrinos; the controls read refuses
+! compute_neutrino_fluxes without it (docs/bug_sweep.md M139). It writes to the run log, each line through core_messages'
 ! core_log:
 !  1. for each shell from the center out, as long as log T >= 6 and
 !     log T is above the nuclear cutoff: the shell index, the shell

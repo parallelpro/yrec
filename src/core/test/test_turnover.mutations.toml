@@ -41,19 +41,19 @@ file = 'core/diagnostics/turnover_walk.f90'
 old = 'height_above_base = exp(ln10*log10_radius(k)) - base_radius'
 new = 'height_above_base = exp(ln10*log10_radius(k)) + base_radius'
 
-# The fix of bug_sweep M324 (the innermost-point branch keeps its H_P/v_c):
-# the check holds today's value, the bottom cell's, and fails with the fix.
+# bug_sweep M324: the innermost-point branch keeps its H_P/v_c; without
+# timed set, the bottom cell's crossing time replaces it.
 [[mutation]]
 id = 'turnover_walk-06'
-check = "innermost point above H_P: the bottom cell's crossing time (M324)"
+check = "innermost point above H_P: H_P/v_c at that point (M324)"
 file = 'core/diagnostics/turnover_walk.f90'
 old = '''
               convective_velocity, base_index, turnover_time)
+         timed = .true.
          return
 '''
 new = '''
               convective_velocity, base_index, turnover_time)
-         timed = .true.
          return
 '''
 

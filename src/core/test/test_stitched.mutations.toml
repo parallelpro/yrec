@@ -28,17 +28,16 @@ new = 'if (atmosphere_height(i) < 0.0d0) cycle'
 id = 'stitched_kernels-03'
 check = "index map: an envelope point below the interior's top is skipped"
 file = 'core/diagnostics/stitched_kernels.f90'
-old = 'if (envelope_log_radius(i) <= interior_top_log_radius) cycle'
-new = 'if (envelope_log_radius(i) == interior_top_log_radius) cycle'
+old = 'envelope_log_radius(i) <= interior_top_log_radius) cycle'
+new = 'envelope_log_radius(i) == interior_top_log_radius) cycle'
 
-# The fix of bug_sweep M359 (the envelope's first point skipped by its
-# index): the check holds today's map and fails with the fix.
+# bug_sweep M359: the envelope's first point is skipped by its index.
 [[mutation]]
 id = 'stitched_kernels-04'
-check = "index map: an envelope first point above the interior's top is kept (M359)"
+check = "index map: an envelope first point above the interior's top is skipped (M359)"
 file = 'core/diagnostics/stitched_kernels.f90'
-old = 'if (envelope_log_radius(i) <= interior_top_log_radius) cycle'
-new = 'if (i == 1 .or. envelope_log_radius(i) <= interior_top_log_radius) cycle'
+old = 'if (i == 1 .or. envelope_log_radius(i) <= interior_top_log_radius) cycle'
+new = 'if (envelope_log_radius(i) <= interior_top_log_radius) cycle'
 
 [[mutation]]
 id = 'stitched_kernels-05'
@@ -71,28 +70,27 @@ new = '(log(pressure(j+1)) - log(pressure(j-1)))*gamma1(j) - &'
 id = 'stitched_kernels-08'
 check = 'N^2: a negative thermal value is kept'
 file = 'core/diagnostics/stitched_kernels.f90'
-old = 'if (brunt_n2(j) >= 0.0d0 .and. radius(j) > 0.0d0 .and. &'
-new = 'if (brunt_n2(j) >= -2.0d0 .and. radius(j) > 0.0d0 .and. &'
+old = 'if (brunt_n2(j) > 0.0d0 .and. radius(j) > 0.0d0 .and. &'
+new = 'if (brunt_n2(j) > -2.0d0 .and. radius(j) > 0.0d0 .and. &'
 
-# The fix of bug_sweep M361 (the difference only where the thermal form
-# is positive): the check holds today's rule and fails with the fix.
+# bug_sweep M361: the difference only where the thermal form is positive.
 [[mutation]]
 id = 'stitched_kernels-09'
-check = 'N^2: a thermal value of exactly zero takes the difference (M361)'
+check = 'N^2: a thermal value of exactly zero is kept (M361)'
 file = 'core/diagnostics/stitched_kernels.f90'
-old = 'if (brunt_n2(j) >= 0.0d0 .and. radius(j) > 0.0d0 .and. &'
-new = 'if (brunt_n2(j) > 0.0d0 .and. radius(j) > 0.0d0 .and. &'
+old = 'if (brunt_n2(j) > 0.0d0 .and. radius(j) > 0.0d0 .and. &'
+new = 'if (brunt_n2(j) >= 0.0d0 .and. radius(j) > 0.0d0 .and. &'
 
 [[mutation]]
 id = 'stitched_kernels-10'
-check = 'N^2: the end points copy their neighbours (M363)'
+check = 'N^2: the innermost point as r^2 from its neighbour, the outermost copied (M363)'
 file = 'core/diagnostics/stitched_kernels.f90'
-old = 'brunt_n2(1) = brunt_n2(2)'
-new = 'brunt_n2(1) = 0.0d0'
+old = 'brunt_n2(1) = brunt_n2(2)*(radius(1)/radius(2))**2'
+new = 'brunt_n2(1) = brunt_n2(2)'
 
 [[mutation]]
 id = 'stitched_kernels-11'
-check = 'acoustic radius of a constant sound speed: (r_n - r_1)/c (M362)'
+check = 'acoustic radius of a constant sound speed: r_n/c, from the centre (M362)'
 file = 'core/diagnostics/stitched_kernels.f90'
 old = 'acoustic_radius = acoustic_radius + dr*0.5d0 &'
 new = 'acoustic_radius = acoustic_radius + dr*0.25d0 &'
@@ -106,10 +104,24 @@ new = 'if (sound_speed(k) <= 0.0d0) cycle'
 
 [[mutation]]
 id = 'stitched_kernels-13'
-check = 'buoyancy radius of N = a r: a times the span the sum covers (M362)'
+check = 'buoyancy radius of N = a r: a times the span from the centre (M362)'
 file = 'core/diagnostics/stitched_kernels.f90'
 old = '+ sqrt(brunt_n2(k))/r_here*0.5d0*(r_outer - r_inner)'
 new = '+ sqrt(brunt_n2(k))/r_here*0.5d0*(r_outer - r_here)'
+
+[[mutation]]
+id = 'stitched_kernels-15'
+check = 'acoustic radius of a constant sound speed: r_n/c, from the centre (M362)'
+file = 'core/diagnostics/stitched_kernels.f90'
+old = 'if (sound_speed(1) > 0.0d0) acoustic_radius = exp10(log_radius(1))/sound_speed(1)'
+new = 'if (sound_speed(1) > 0.0d0) acoustic_radius = 0.0d0'
+
+[[mutation]]
+id = 'stitched_kernels-16'
+check = 'buoyancy radius of N = a r: a times the span from the centre (M362)'
+file = 'core/diagnostics/stitched_kernels.f90'
+old = '*0.5d0*(exp10(log_radius(1)) + exp10(log_radius(2)))'
+new = '*0.5d0*(exp10(log_radius(2)) + exp10(log_radius(2)))'
 
 [[mutation]]
 id = 'stitched_kernels-14'
@@ -123,6 +135,28 @@ new = '''
          else if (entered_g_mode_cavity) then
             cycle
 '''
+
+# bug_sweep M363: the points add_centre_points puts inside the first.
+[[mutation]]
+id = 'stitched_model-09'
+check = 'centre points: r = k r_1/31 inside the first point, which follows unchanged'
+file = 'core/diagnostics/stitched_model.f90'
+old = 'extended(ipul_r,k) = x*r1'
+new = 'extended(ipul_r,k) = x*x*r1'
+
+[[mutation]]
+id = 'stitched_model-10'
+check = "centre points: m and L as r^3, N^2 as r^2, the other columns the first point's"
+file = 'core/diagnostics/stitched_model.f90'
+old = 'extended(ipul_m,k) = points(ipul_m,1)*x**3'
+new = 'extended(ipul_m,k) = points(ipul_m,1)*x**2'
+
+[[mutation]]
+id = 'stitched_model-11'
+check = 'centre points: P = P_1 + (2 pi/3) G rho_1^2 (r_1^2 - r^2)'
+file = 'core/diagnostics/stitched_model.f90'
+old = 'centre_pressure = points(ipul_P,1) + pressure_curvature*r1*r1'
+new = 'centre_pressure = points(ipul_P,1) - pressure_curvature*r1*r1'
 
 [[mutation]]
 id = 'stitched_model-01'
@@ -157,6 +191,19 @@ new = '''
          s%stitched%seismic(ip_brunt_N2-ip_seismic_first+1, j) = &
               2.0d0*s%stitched%pulse(ipul_N2, j)
 '''
+
+# bug_sweep M396: a model read sets the fitting point's mass fraction;
+# without it the starting model's stitched model has no envelope.
+[[mutation]]
+id = 'stitched_model-08'
+check = 'stitched model: interior, envelope and atmosphere, in order'
+file = 'core/model/starting_model.f90'
+old = '''
+! before every solve (M396).
+      s%log_fit_point_mass_fraction = s%log_mass(s%nz) - s%log_total_mass'''
+new = '''
+! before every solve (M396).
+      s%log_fit_point_mass_fraction = 0.0d0'''
 
 [[mutation]]
 id = 'stitched_model-05'

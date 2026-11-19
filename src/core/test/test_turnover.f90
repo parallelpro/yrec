@@ -58,9 +58,9 @@ program test_turnover
 
 ! The innermost-point branch: H = 2e7 cm, less than the 2.5e7 cm of the
 ! zone's first point above its base; the zone is points 21 to 30. The
-! walk returns the bottom cell's crossing time (bug_sweep M324: it
-! replaces H_P/v_c at the first point; that fix changes this check's
-! expected value to scale_height_time).
+! walk times the zone at that point, tau = H_P/v_c there, and not by the
+! bottom cell's crossing time, which differs from it by more than 10%
+! (bug_sweep M324).
       h0 = 2.0e7_dp
       h1 = 0.0_dp
       call set_profile()
@@ -70,9 +70,9 @@ program test_turnover
       top_radius = zone_top_radius(30)
       cell_time = cell_tau(base_radius, top_radius)
       scale_height_time = h0/velocity(21)
-      call turnover_check('innermost point above H_P: the bottom cell''s crossing time (M324)', &
-           ierr == 0 .and. turnover%timing == timing_bottom_cell .and. &
-           abs(turnover%turnover_time/cell_time - 1.0_dp) < tol .and. &
+      call turnover_check('innermost point above H_P: H_P/v_c at that point (M324)', &
+           ierr == 0 .and. turnover%timing == timing_scale_height .and. &
+           abs(turnover%turnover_time/scale_height_time - 1.0_dp) < tol .and. &
            abs(cell_time/scale_height_time - 1.0_dp) > 0.1_dp)
 
 ! Two cells, points 11 to 15 and 26 to 40. With envelope points in the
