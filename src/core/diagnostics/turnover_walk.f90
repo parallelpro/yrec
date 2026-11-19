@@ -383,11 +383,11 @@ end function stencil_start
 ! ---------------------------------------------------------------
 ! The turnover time one pressure scale height above the base,
 ! tau = H_P/v_c, with H_P and v_c splined through four points to the
-! place where r - r_base = H_P. timed is set when it is found: it is not
-! when no point lies more than its own H_P above the base, and not when
-! the base point itself does. That innermost-point case sets
-! tau = H_P/v_c at the base point and leaves timed false, so that
-! time_bottom_cell_crossing replaces the value (bug_sweep M324).
+! place where r - r_base = H_P. timed is set when it is found, and when
+! the base point itself already lies more than its H_P above the base:
+! that innermost-point case is timed at the base point, tau = H_P/v_c
+! there (as the F77 did; bug_sweep M324). It is not set when no point
+! lies more than its own H_P above the base.
 subroutine time_scale_height_above_base(log10_radius, log10_pressure, log10_density, &
      local_gravity, convective_velocity, num_points, base_index, base_radius, &
      turnover_time, timed, failed_spline, ierr)
@@ -410,6 +410,7 @@ subroutine time_scale_height_above_base(log10_radius, log10_pressure, log10_dens
            scale_height_at(log10_pressure, log10_density, local_gravity, base_index) > 0.0d0) then
          call time_innermost_point(log10_pressure, log10_density, local_gravity, &
               convective_velocity, base_index, turnover_time)
+         timed = .true.
          return
       end if
       do k = base_index+1, num_points-1
