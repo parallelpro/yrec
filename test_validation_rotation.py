@@ -350,7 +350,7 @@ def test_published_solar_calibration(run):
     assert abs(record("(Z/X)/0.02292 - 1", row["surface_z_div_x"] / 0.02292 - 1.0)) <= TOL["Z_over_X"]
 
 
-@pytest.mark.xfail(strict=True, reason="V13 (docs/PHYSICS_VALIDATION.md; not yet in docs/bug_sweep.md): the "
+@pytest.mark.xfail(strict=True, reason="V13 (docs/PHYSICS_VALIDATION.md; docs/bug_sweep.md M399, open): the "
                    "release paper prints Lsun = 3.827e33 erg/s and Rsun = 6.958e10 cm, the testsuite's decks set "
                    "the IAU nominal 3.828e33 and 6.957e10; against the printed values the model's L is +3.3e-4 "
                    "and its R -1.1e-4, outside the paper's 1e-4")
