@@ -136,7 +136,9 @@ not produce. Each check was seen to fail under a change of what it
 tests (`test_checks_can_fail`).
 
 **A published number.** The release paper (section 3.1) says of its
-solar models: L and R within 1e-4 at 4.568 Gyr, the surface Z/X within
+solar models: L and R within 1e-4 at 4.568 Gyr (it prints Lsun = 3.827e33 erg/s and
+Rsun = 6.958e10 cm; the decks set 3.828e33 and 6.957e10, the IAU 2015 nominal values: V13 in
+docs/PHYSICS_VALIDATION.md, docs/bug_sweep.md M399), the surface Z/X within
 1% of 0.02292, and for the rotating ones the solar equatorial rotation
 period, 25.4 d, and a surface Li7 2.3 dex below the meteoritic value,
 both within 1%. The deck's parameters are that calibration's, so the
@@ -145,7 +147,8 @@ repository holds everything needed.
 | | Paper | This run | |
 |---|---|---|---|
 | Rotation period at 4.568 Gyr | 25.4 d, 1% | 25.412 d (+0.05%) | reproduced |
-| L/Lsun - 1, R/Rsun - 1 | 1e-4 | +7.0e-5, +3.8e-5 | reproduced |
+| L/Lsun - 1, R/Rsun - 1 | 1e-4 | +7.0e-5, +3.8e-5 | reproduced, in the deck's units |
+| The same against the paper's printed Lsun and Rsun | 1e-4 | +3.3e-4, -1.1e-4 | **not reproduced** (V13: the paper's text or the decks' units) |
 | Surface Z/X | 0.02292, 1% | 0.022917 (-0.01%) | reproduced |
 | Li7 depletion (initial over final surface Li7/H) | 2.3 dex, 1% | 2.086 dex (-0.21 dex) | **not reproduced** |
 
@@ -164,10 +167,10 @@ masses, metallicities and initial conditions), only its wind law.
 **The angular momentum budget.** The history gives J and, at every
 model, what the published law needs: omega, M, R, L, the photospheric
 pressure and the convective turnover time. The torque is re-derived in
-the test from the law as published (van Saders & Pinsonneault 2013:
+the test from the law as published (van Saders & Pinsonneault 2013, ApJ 776, 67, equations 1 and 2:
 dJ/dt = f_K K_M omega (min(omega tau_cz/tau_sun, omega_sat)/omega_sun)^2,
 K_M ~ R^3.1 M^-0.22 L^0.56 P_phot^0.44, with Matt et al. 2012's
-centrifugal term), with the deck's constants, and integrated by the
+centrifugal term (ApJ 754, L26; the 2013 paper itself sets that term to 1)), with the deck's constants, and integrated by the
 trapezoidal rule over the models. From the end of disk locking
 (J_0 = 4.028e49 at 1.2 Myr) to the solar age the star loses 94.8% of
 J_0, and
@@ -205,6 +208,7 @@ own, and this deck turns a 1e-9 change into 1e-6 to 1e-4 by its end).
 The core rotates 2.4 times faster than the surface at 0.1 Gyr, 1.26
 times at 1 Gyr and 1.06 times at 4 Gyr. At the last profile before the
 solar age the radiative interior is 4 to 6% faster than the surface;
-the Sun's is about 6% slower than its equator (Howe 2009: about 430 nHz
-against 456 nHz). The test holds the ratio within 0.85 to 1.15.
+the Sun's is about 4% slower than its equator (Howe 2009, Living Rev. Solar Phys. 6, 1:
+the l = 1 splittings of its section 5.5 end at 433 to 436 nHz, the surface plasma at the
+equator is at 452 nHz, its section 8). The test holds the ratio within 0.85 to 1.15.
 

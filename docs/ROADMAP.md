@@ -5092,3 +5092,225 @@ yrec-next with merge commits, in this order: the validation tier
   solar decks by at most 4e-7 in log L, inside every band.
 - **The push**: yrec-next is pushed through 1179afbf; the eighth
   evaluation's merge and these three wait for the owner's word.
+
+### Round 3: the packages under 8 (yrec-next, 2026-11-18)
+
+The eighth evaluation left kap (7.9) and core (7.7: step 7.7, model 7.6,
+diagnostics 7.6, envelope 7.4, run 8.0) under 8; its summary's section
+"What is left under 8" was this round's work list, per package
+(`audit/module-evaluation-8-2026-11-17/SUMMARY.md`). As in rounds 1 and
+2 every commit had to be byte-identical on the 56 decks, the 35 pins and
+the unit tests' pins; a defect fix that moved anything was measured,
+reverted and put on its agent's B list, for a measured round that
+follows.
+
+**How it was done.**
+- **Five agents in parallel**, each in its own worktree from yrec-next
+  2ff65f9d with its own measuring area (a copy of the main tree's
+  baseline and pins after the convergence round), under one rule file
+  (the work directory's `notes/COMMON3.md`, which keeps COMMON2's Kind
+  A, verification, standard, commit and limit sections): kap (src/kap/),
+  core1 (core/step/ and core/run/), core2 (core/envelope/), core3
+  (core/model/ and core/diagnostics/), and tests (the test harness, the
+  validation tier's sources, output descriptions). Shared files were
+  add-only (check_boundaries, the Makefile, ci.yml, deps.mk);
+  core/README.md, docs/ and audit/ were the closing agent's, from exact
+  text in each hand-back. New defects were reported, not numbered.
+- **The machine.** Five agents shared it at a load average near 300, so
+  a full compare took one to two and a half hours; the agents compared
+  groups of commits together and, where they could not afford a compare
+  per commit, checked a commit with unit tests, subset compares,
+  binary-against-binary runs or (kap) a 330,000-lookup hex dump. **All
+  five first agents stopped when their API credits ran out, at about
+  01:30 (HST)**, before their hand-backs; each was resumed by a second
+  agent from its progress note (`notes/R3_<TAG>_PROGRESS.md`) and the
+  worktree, which re-ran the head's verification and wrote the
+  hand-back. Nothing was lost: core1's, core3's and kap's work was all
+  committed; core2's series sat in a scratch repository and was moved
+  onto the branch with `git am` (tree identical); the tests agent's
+  uncommitted edits were set aside as patches, checked and committed.
+  From 2026-11-18 the Xcode license is not accepted on the machine, so
+  git and make need `DEVELOPER_DIR=/Library/Developer/CommandLineTools`.
+- **The merge** (2026-11-18, by the integrator): tests, kap, core1,
+  core3, core2, in that order (ae99c0fc, 7385f1c3, a341dd11, 182e7887,
+  2e21ef11), then 7ea92ace (devel_tests runs round 3's five new
+  programs; the style ratchet lowered). The conflicts: a union in
+  ci.yml, the Makefile and check_boundaries.py; deps.mk and
+  state/README.md regenerated; run_driver.f90 took core1's indentation
+  with core3's `initialize_turnover_timescale` call; core2's new
+  `atm_get` argument list (no `log_total_mass`, print and save-boundary
+  flags; the pressure limit after the composition) applied to core3's
+  rewritten calls in stitched_model.f90 and starting_model.f90, and
+  their dead flag locals dropped; four test binaries the first core3
+  merge had picked up taken out and listed in .gitignore.
+- **The closing agent** (r3-docs, from 7ea92ace): bug_sweep,
+  core/README.md and io/README.md, this section, and the owner's
+  decision list for the measured round (the work directory's
+  `notes/R3_B_LIST.md`).
+
+**What was done.**
+- **kap** (r3-kap, 28 commits): M340 (no conduction without free
+  electrons, d7bcc742), M338 (the envelope Z follows the model,
+  `kap_set_envelope_metal_fraction`, 4486bdfb), M339 (one X-table rule
+  for OPAL 1995's surface table and stencils, dc2f0912), M343 (the
+  readers refuse a table at another Z, a non-positive LAOL tolerance, a
+  Kurucz file without rows, 493ebf1b), M298 (the high-R shift reads the
+  point's own X tables, 3e332488) and M112's kap part (e1d4bcf1), all
+  byte-identical; M342 decided by a count (only the 0.03 Msun chain goes
+  off a table, above Alexander 2006's top log R: the README states the
+  extrapolation, ea8c054a). Readability: compute_opal95_opacity,
+  compute_kurucz_opacity and compute_conductive_opacity as named steps;
+  the readers' table procedures; today's names for the F77 locals; pure
+  on 83 of the 134 procedures; the Alexander interpolation written once
+  (`alex_table_at_point`). test_kap from 37 to 86 checks and from 42 to
+  93 mutations, all caught; coverage 79.4% -> 92.4% of 2061 lines, every
+  lookup at 86.8% or more.
+- **core1** (r3-core1, 18 commits): `evolve_step`'s stages as module
+  procedures over a step record (`step_state`, e4fcec1a);
+  `apply_mass_change`'s and `advance_composition`'s steps with
+  arguments, their arithmetic as kernels (`mass_change_kernel`'s limits,
+  `composition_kernels`; b46af438, 19e1ca2a); the Li/Be burn as a
+  star-blind kernel with its test (`li_be_burn`, `test_li_be_burn`,
+  444cefb6, a18608d5); the thresholds named and the 17 unused names
+  gone; M319 (bb90b076), M320 (94497de3), M328 (30e79cdc), M331
+  (8bbe4ce7) and M312 (a725a682) fixed; checks of the shell branch's
+  dX/dt limit, the solar calibration's Newton step and the abundance
+  stops; `burn_network_region` through core_messages; the Monte-Carlo
+  files' handling moved to `io/monte_carlo_files` (a2eef385); M333's
+  stale comments; three recipes traced.
+- **core2** (r3-core2, 13 commits): the envelope kernel's 870-line host
+  became module procedures on one `integration_state`, with one point
+  store, one Gamma1 and one Bulirsch-Stoer step for both integrations
+  (a6ad2d7f); `atm_get` takes the vertex as one record and its inputs
+  `intent(in)` (24 arguments to 16, 15e136ff); the refit's and the
+  rebuild's arithmetic became the star-blind `envelope_refit_kernel`
+  with test_envelope_refit (28 checks); test_envelope_integration from
+  35 to 46 checks (the depth steps, a tabulated surface on a synthetic
+  Allard-layout file, the fallback to gray, the driver); the
+  atmosphere's start retries capped at 12 with an event and an error
+  (289ce1fb). M322 (d2ad07ac) and M310 (998ecd59) fixed, M367's envelope
+  comment written; two latent F77 defects of GETNEWENV found and fixed
+  (M388, M389). The kernel's timing on the standard solar deck: +0.3% of
+  user CPU on the means, equal minima.
+- **core3** (r3-core3, 13 commits): diagnostics/: the turnover walk is
+  `turnover_walk.f90`'s `time_surface_convection_zone`, star-blind, with
+  a result record; the stitched model's index map, heights, N^2 and
+  seismic integrals are `stitched_kernels.f90`; `build_stitched_model`
+  and `build_pulse_points` as named steps; observables' values and
+  capture tables named and sourced; test_turnover (12 checks, 16
+  mutations) and test_stitched (21, 21). model/: `rescale_model` a
+  driver over steps with a `rescale_state` and `rescaling_kernels.f90`;
+  the rezone's mesh arithmetic `mesh_spacing.f90`; the core extension
+  `core_extension.f90`; starting_model.f90 and rezoning.f90 re-indented
+  with today's names; model/ imports nothing of diagnostics/
+  (`initialize_turnover_timescale` is `begin_kind_card`'s call,
+  5cf0a168); test_model_kernels 52 checks, 53 mutations. M329 (1a231147)
+  and M330 (dfe22f68) fixed, M326's and M327's A parts (adf2900e,
+  0f352187). A deck that rescales a horizontal-branch model,
+  `hb_rescale.inlist` (d2d0c83d), in no set yet.
+- **tests** (r3-tests, 5 commits): M374 (a test run reads its own tree's
+  tables unless `YREC_TEST_EXTERNAL_ROOTS=1`, and pytest's header says
+  whose they are; `test_harness.py`, 8d55689f), M373 (test_controls
+  reads the decks in stand-ins and writes nothing in the tree; CI's step
+  that made the directory gone, 202a0bd9), M367's io part (`delta_nu`'s
+  5%, the pulse files' G, 05d5bf20), M372's comment (ee572e13); every
+  published value the validation tier uses read in its source, and the
+  two solar files' sources corrected (aded7ea2). One new authors'
+  question, V13 (M399).
+
+**Verified.**
+- Each agent, on its final tree in its worktree: `compare_decks --set
+  all` RESULT ALL IDENTICAL with `pins: 35 OK` (kap at 7df328b6, core1
+  at a18608d5, core2 at cc38f62e, core3 at dfe22f68, tests at ee572e13),
+  and the same on its untouched tree first; `make check`; CI's pytest
+  list in both modes (kap 133 passed, 4 skipped, 6 xfailed; core1 143
+  tolerant, and plain 142 with one transient test_element_diffusion
+  failure under the load that did not repeat; core2 140; core3 142;
+  tests 149 in a fresh sparse clone); mutate.py on its programs (kap 93
+  of 93; core1 240 of 240; core2 220 of 220; core3 its three programs'
+  90), all caught; devel_tests.py 0 failed. Deviations, said in the
+  hand-backs: kap compared its six defect commits through the later
+  heads' compares, not one by one; core3 compared some commits as
+  groups.
+- **The integration check** of 7ea92ace in the main tree (the work
+  directory's `notes/r3_verify.log`, as it stood when this was written):
+  the builds rc 0; `make check` rc 0 (247 star contracts, 330 style
+  counts at or below the table); `compare_decks --set all` RESULT ALL
+  IDENTICAL, `pins: 35 OK, 0 DIFF`; CI's pytest list (41 files) running.
+- The closing agent found by reading that devel_tests.py's new row for
+  test_stitched passes no deck, so that case will stop with status 2
+  under `make devel_tests` and CI's devel job (M403; the row core3 gave
+  is the fix).
+
+**What the check changed.**
+- bug_sweep now holds 472 items, 317 fixed and 155 open (443, 296 and
+  147 before): seventeen entries fixed or decided in round 3 (M298,
+  M310, M312, M319, M320, M322, M328-M331, M338-M340, M342, M343, M373,
+  M374), six fixed in part (M112, M326, M327, M333, M344, M367), and
+  section 22, M375-M403, the round's 29 new items (four fixed in it:
+  M388, M389, M392's dead line removed, M400).
+- Claims corrected after reading the code: M322's "the first depth step
+  builds the stitched atmosphere's radii" (the heights sum the steps
+  from the second on); M324's and M202's Kind B (no deck takes M324's
+  branch; M202's reset moves no deck); M339's "never built" (the files
+  hold an X = 0.95 table at Z = 0.04, unused: M378); M343's "three lines
+  in check_kap_settings" (the loads refuse the tolerance, and the Z test
+  needs 1e-4 because the files state Z rounded); the eighth evaluation's
+  and the brief's `atm_get` "in atm" and "atm's test entry" (`atm_get`
+  is core/envelope's driver, atm has no test entry: the tabulated checks
+  read a synthetic file through `atm_init`); kap.md's finding 7e (no
+  table kap_init accepts can make a refresh fail: M377); core3's account
+  of M396 (the read does set the member when the card moves its fitting
+  point). The integrator's compare_decks finding is M301, open since
+  round 1B; coverage.py's test programs (kap, core2, the integrator) are
+  one entry, M382.
+- ZAHB_m1p0feh+0p0_TAHB looks bistable (M402): O1's L partial and the
+  renormalization's move, two changes that share nothing, both end it at
+  model 1429 instead of 1726, 7.68% younger, so its 15% and 6% stop
+  rules may measure the deck rather than a change.
+
+**What is left, per package, and why.**
+- **kap:** M299 with M341 (B, measured: the solar GS98 decks by 1e-5
+  dex); the two new result defects M375 (the Alexander derivatives above
+  the top log R, which the 0.03 Msun decks reach) and M376 (OPAL 1995's
+  handover jump); the conductive reader on `open_table` (a pinned
+  message); io's second molecular precedence and a warning for two
+  selected families (M344's structural half). A family owning its
+  table-set type and settings (TARGET_ARCHITECTURE's three files per
+  family) is a structural round of its own. Latent and Kind A: M377,
+  M378 (an unused table), M379, M380, M381.
+- **core/step and core/run:** M323's retirement (measured: nothing moves
+  on the quick set), M325 (B, measured), M89 and M146's rest
+  (decisions), M332's texts; `homogenize_region` reused and one
+  atomic-weight table (byte-identical patches that need convection's and
+  state's files); run/'s coverage figure (36%) cannot show
+  test_run_contracts' work until coverage.py takes programs with
+  arguments (M382). New: M383 (B), M384, M385, M386, M387.
+- **core/envelope:** M321 (atm_lib and structure/ files), M309 (patch),
+  M360 (a decision), M332's texts, the Gamma1 copy in shell_equations
+  (structure/ had no owner); new: M390, M391, M393 (patch).
+- **core/model and core/diagnostics:** M326's density shift (B,
+  measured: 29 decks), M202 and M396 (patches; nothing moves), M327's B
+  part (a decision), M324 (Kind A, decided), M359, M361-M363 (each line
+  now in a kernel with a check that holds today's value), M139; the
+  renormalization's move (B: one deck, M402 first); the walk's move into
+  step/ (byte-identical, another agent's directory); hb_rescale's pin;
+  M316, M317 and O6's and M176's parts B (not on this round's list).
+  New: M394, M395, M397 (a decision), M398.
+- **Tests and tools:** M382, M386, M387, M401, M403; V13 (M399) is the
+  authors'.
+
+**The measured round's list** (`notes/R3_B_LIST.md` in the work
+directory, one table of 34 rows for the owner): (a) 15 fixes of wrong
+results (M325, M324, M359, M361, M362, M363, M299 with M341, M375, M376,
+M326's density shift, M202, M396, M321, M393, M383); (b) 9 changes of
+round-off, message text or other owners' files (M309, M332, M139, M323,
+the conductive reader's open, the precedence in kap alone, the spelling
+of 10^x, `homogenize_region` and one atomic-weight table); (c) 10
+decisions (M299's stop, M89, the renormalization's move, M327's B part,
+the atomic weights that differ, M360, M392's line, M399, M397, M146's
+rest). M402 first, since it decides how the horizontal-branch deck's
+stop rules are read.
+
+**The push**: nothing of round 3 is pushed; yrec-next is pushed through
+2ff65f9d.
