@@ -26,6 +26,7 @@ li/be mixed: the mixing conserves each species                       1.7E-16  ok
 li/be mixed: nothing changes when its base is too cool               0.0E+00  ok
 -- accretion
 li/be accretion: the zone gains the accreted share, x_acc M_acc      1.2E-16  ok
+li/be accretion: too cool to burn, the zone gains it (M383)          1.2E-16  ok
 li/be accretion: the accreted gas burns from its arrival on          1.7E-08  ok
 li/be accretion: none without inflow                                 0.0E+00  ok
 -- a base that moves

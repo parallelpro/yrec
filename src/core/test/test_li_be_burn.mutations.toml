@@ -10,15 +10,25 @@ timeout = 60
 id = 'li_be-01'
 check = 'average: the mass-weighted mean abundance'
 file = 'core/step/li_be_burn.f90'
-old = 'x_mean = x_mean/region_mass'
-new = 'x_mean = x_mean/shell_mass(base_zone)'
+old = '''
+      x_mean = x_mean/region_mass
+      log_rate_mean'''
+new = '''
+      x_mean = x_mean/shell_mass(base_zone)
+      log_rate_mean'''
 
 [[mutation]]
 id = 'li_be-02'
 check = "average: the region's mass with the base zone's edge"
 file = 'core/step/li_be_burn.f90'
-old = 'mass = mass + base_frac* &'
-new = 'mass = mass - base_frac* &'
+old = '''
+            mass = mass + base_frac* &
+                 (mass_coordinate(base_zone)-mass_coordinate(base_zone-1))
+            zone_rate'''
+new = '''
+            mass = mass - base_frac* &
+                 (mass_coordinate(base_zone)-mass_coordinate(base_zone-1))
+            zone_rate'''
 
 [[mutation]]
 id = 'li_be-03'
@@ -88,15 +98,23 @@ new = 'if(all(composition(li_be_species,zone_idx) < 0.0d0))cycle'
 id = 'li_be-11'
 check = 'li/be mixed: uniform at the mean times exp(-Lambda)'
 file = 'core/step/li_be_burn.f90'
-old = 'do zone_idx = max_zone,num_zones'
-new = 'do zone_idx = max_zone+1,num_zones'
+old = '''
+      do zone_idx = max_zone,num_zones
+         composition(li_be_species,zone_idx) = x_cz_end'''
+new = '''
+      do zone_idx = max_zone+1,num_zones
+         composition(li_be_species,zone_idx) = x_cz_end'''
 
 [[mutation]]
 id = 'li_be-12'
 check = 'li/be mixed: the mixing conserves each species'
 file = 'core/step/li_be_burn.f90'
-old = 'x_mean = x_mean + composition(li_be_species,zone_idx)*mass'
-new = 'x_mean = x_mean + composition(li_be_species,zone_idx)*shell_mass(base_zone)'
+old = '''
+         x_mean = x_mean + composition(li_be_species,zone_idx)*mass
+         rate_sum = rate_sum + zone_rate*mass'''
+new = '''
+         x_mean = x_mean + composition(li_be_species,zone_idx)*shell_mass(base_zone)
+         rate_sum = rate_sum + zone_rate*mass'''
 
 [[mutation]]
 id = 'li_be-13'
@@ -210,3 +228,15 @@ check = 'base, overshoot: fully convective at the start, zone 1'
 file = 'core/step/convection_geometry.f90'
 old = '                  cz_base_zone_old = 1'
 new = '                  cz_base_zone_old = 2'
+
+# bug_sweep M383: the cool region's accretion.
+[[mutation]]
+id = 'li_be-29'
+check = 'li/be accretion: too cool to burn, the zone gains it (M383)'
+file = 'core/step/li_be_burn.f90'
+old = '''
+         if (accretion%inflow) then
+            call mixed_region_mean('''
+new = '''
+         if (.false.) then
+            call mixed_region_mean('''

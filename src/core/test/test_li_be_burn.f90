@@ -318,6 +318,18 @@ subroutine check_accretion()
       end do
       call report('li/be accretion: the zone gains the accreted share, x_acc M_acc', err, &
            err <= 1.0e-14_dp)
+! bug_sweep M383: a region too cool to burn (rates at zero) gains it too.
+      call reset_model()
+      rate0 = 0.0_dp
+      rate1 = 0.0_dp
+      call burn_li_be_zones(dt, xa, m, dm, logt, rate0, rate1, base, accretion, n)
+      err = 0.0_dp
+      do isp = 1, num_li_be
+         want = species_mass(x0, isp, 9) + accretion%abundance(isp)*accretion%mass
+         err = max(err, relerr(xa(li_be_species(isp),n)*(cz_mass + accretion%mass), want))
+      end do
+      call report('li/be accretion: too cool to burn, the zone gains it (M383)', err, &
+           err <= 1.0e-14_dp)
 ! a constant rate with lambda dt = 2: the gas that arrives uniformly
 ! over the step keeps (1 - exp(-2))/2 of its Li6 on average
       call reset_model()
