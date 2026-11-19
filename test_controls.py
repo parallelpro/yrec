@@ -56,6 +56,13 @@ def decks():
     return out
 
 
+def final_models_under_start(all_decks):
+    """The paths, relative to {YREC_START}, of the final models that decks
+    write there (their last_model_file)."""
+    pattern = re.compile(r"""^\s*last_model_file\s*=\s*["']\{YREC_START\}/([^"']+)["']""", re.M | re.I)
+    return sorted({m for _, files in all_decks for f in files for m in pattern.findall(f.read_text())})
+
+
 def representative(name):
     return name.startswith("examples/run_config_matrix/") or name.endswith("+nml2")
 
@@ -126,6 +133,11 @@ def test_controls_every_deck():
     with tempfile.TemporaryDirectory() as scratch:
         scratch = pathlib.Path(scratch)
         start = harness.stand_in_tree(os.environ["YREC_START"], scratch / "startmodels")
+        # a used tree holds those final models from earlier runs (git-ignored):
+        # the stand-in must not link them, or the read would open the tree's
+        # file through the link and the check below could not tell
+        for written_model in final_models_under_start(all_decks):
+            (start / written_model).unlink(missing_ok=True)
         directories = sorted({files[0].parent for _, files in all_decks})
         stand_in = {d: harness.stand_in_directory(d, scratch / str(k)) for k, d in enumerate(directories)}
         with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
