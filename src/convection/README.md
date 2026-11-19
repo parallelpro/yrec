@@ -14,7 +14,7 @@ Code outside convection/ uses it only through `convection_lib` (`tools/check_bou
 
 | Module (file) | What it holds |
 |---|---|
-| `convection_lib` | **The public interface.** It re-exports `compute_temperature_gradients`, `find_convection_zones`, `homogenize_convection_zones`, `extend_by_semiconvection`, `pressure_scale_height`, `envelope_overshoot_depth`, the settings type and the two error codes; `set_convection_settings` installs the settings, and `set_convection_envelope_metals` passes the starting model's envelope metal fraction outside C, N and O. |
+| `convection_lib` | **The public interface.** It re-exports `compute_temperature_gradients`, `find_convection_zones`, `homogenize_convection_zones`, `homogenize_region` (the mean of one region, for core's composition step), `extend_by_semiconvection`, `pressure_scale_height`, `envelope_overshoot_depth`, the settings type and the two error codes; `set_convection_settings` installs the settings, and `set_convection_envelope_metals` passes the starting model's envelope metal fraction outside C, N and O. |
 | `convection_configuration` | The settings record `convection_settings_t` and the installed copy `convection_settings`; the error codes `convection_unstable_radicand` and `convection_too_many_zones`. |
 | `temperature_gradients` | `compute_temperature_gradients` (formerly TPGRAD), as named steps: the radiative gradient (`radiative_gradient_of`), the adiabatic shortcut above `log10_t_cut` (`take_adiabatic`), the starspot correction (`spot_factor`, Somers 2014), the mixing-length coefficients and cubic (`mixing_length_coefficients`, `solve_mlt_cubic`), the convective velocity, and the gradient's log derivatives for the Henyey Jacobian (`mlt_derivatives`). The module header writes the equations, the derivatives included. |
 | `convection_zones` | `find_convection_zones` (formerly CONVEC): the convection zones from the flags (`next_convective_run`, `list_convection_zones`), extended by overshoot and merged (`merge_overlapping_zones`), and the radiative regions between them (`list_radiative_regions`). `homogenize_convection_zones` (formerly MIXCZ) mixes each zone (`homogenize_region`) and floors the composition (`apply_composition_floors`). |
@@ -22,7 +22,7 @@ Code outside convection/ uses it only through `convection_lib` (`tools/check_bou
 | `semiconvection` | `extend_by_semiconvection` (formerly SCONVEC): semiconvection at the upper edge of the convective core (Castellani et al. 1971), the edge in `extend_core_edge`, each shell's ∇_rad in `radiative_gradient_at`. |
 | `convection_messages` | Every message of the directory, with its text and destination (§3). |
 
-The settings builder is `setup/convection_settings_builder.f90` (`convection_settings_from_star`). core keeps the geometry of the zones' edges (`core/step/convection_geometry.f90`) and, in `composition_step`, its own homogenization of the mixed regions with overshoot (`homogenize_mixed_regions`, a byte-identical copy of `homogenize_region`, which `convection_lib` can export for core's round).
+The settings builder is `setup/convection_settings_builder.f90` (`convection_settings_from_star`). core keeps the geometry of the zones' edges (`core/step/convection_geometry.f90`) and, in `composition_step`, the loop over the mixed regions with overshoot (`composition_kernels`' `homogenize_regions`), which mixes each with `homogenize_region`.
 
 ## 2. The flow
 

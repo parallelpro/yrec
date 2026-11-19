@@ -463,13 +463,13 @@ core/run/stop_conditions.o: calibration.mod core_messages.mod math_lib.mod run_c
 core/run/yrec_capi.o: core_messages.mod run_driver.mod star_info_lib.mod yrec_reset.mod
 core/run/yrec_reset.o: run_files.mod run_messages.mod star_info_lib.mod
 core/step/burn_step.o: convection_geometry.mod core_messages.mod li_be_burn.mod math_lib.mod net_lib.mod physical_constants.mod star_info_lib.mod
-core/step/composition_kernels.o: composition_layout.mod
+core/step/composition_kernels.o: composition_layout.mod convection_lib.mod
 core/step/composition_step.o: burn_step.mod composition_kernels.mod convection_lib.mod core_messages.mod element_diffusion_lib.mod math_lib.mod net_lib.mod physical_constants.mod run_messages.mod star_info_lib.mod
 core/step/convection_geometry.o: math_lib.mod physical_constants.mod star_info_lib.mod
 core/step/li_be_burn.o: composition_layout.mod math_lib.mod net_lib.mod
-core/step/mass_change.o: atm_lib.mod core_messages.mod envelope_integration.mod eos_lib.mod mass_change_kernel.mod math_lib.mod physical_constants.mod run_messages.mod star_info_lib.mod
+core/step/mass_change.o: core_messages.mod mass_change_kernel.mod math_lib.mod physical_constants.mod run_messages.mod star_info_lib.mod
 core/step/mass_change_kernel.o: composition_layout.mod math_lib.mod physical_constants.mod
-core/step/shell_physics.o: convection_lib.mod eos_lib.mod kap_lib.mod math_lib.mod star_info_lib.mod viscosity.mod
+core/step/shell_physics.o: composition_layout.mod convection_lib.mod eos_lib.mod kap_lib.mod math_lib.mod star_info_lib.mod viscosity.mod
 core/step/step_driver.o: burn_step.mod composition_step.mod convection_lib.mod core_messages.mod envelope_rebuild.mod evolve_rotation.mod henyey_iteration.mod mass_change.mod observables.mod physical_constants.mod rezoning.mod rotating_shape.mod run_cards.mod shell_boundaries.mod star_info_lib.mod starting_model.mod stitched_model.mod stop_conditions.mod timestep_control.mod turnover_timescale.mod yrec_output.mod
 core/step/timestep_control.o: burn_step.mod core_messages.mod net_lib.mod physical_constants.mod star_info_lib.mod timestep_limits.mod
 core/step/timestep_limits.o: composition_layout.mod control_slots.mod math_lib.mod net_lib.mod physical_constants.mod
@@ -609,7 +609,7 @@ rotation/seculr/region_transport.o: am_grid.mod am_transport_coefficients.mod co
 rotation/seculr/rotational_mixing.o: equal_grid.mod math_lib.mod numerics_lib.mod physical_constants.mod rotation_messages.mod rotation_scratch_lib.mod star_info_lib.mod transport_regions.mod
 rotation/seculr/secular_transport.o: am_grid.mod circulation.mod convection_lib.mod magnetic_braking.mod math_lib.mod omega_profile.mod physical_constants.mod region_transport.mod rotation_configuration.mod rotation_messages.mod rotation_scratch_lib.mod rotational_mixing.mod stability_coefficients.mod star_info_lib.mod transport_checks.mod transport_regions.mod
 rotation/seculr/stability_coefficients.o: math_lib.mod numerics_lib.mod physical_constants.mod rotation_configuration.mod rotation_scratch_lib.mod star_info_lib.mod
-rotation/seculr/transport_checks.o: omega_profile.mod rotation_configuration.mod rotation_messages.mod rotation_scratch_lib.mod star_info_lib.mod
+rotation/seculr/transport_checks.o: composition_layout.mod omega_profile.mod rotation_configuration.mod rotation_messages.mod rotation_scratch_lib.mod star_info_lib.mod
 rotation/seculr/transport_mechanisms.o: composition_layout.mod instability_velocities.mod rotation_configuration.mod rotation_messages.mod rotation_scratch_lib.mod transport_mechanism_layout.mod
 rotation/shape/moments_of_inertia.o: composition_layout.mod math_lib.mod physical_constants.mod rotation_configuration.mod
 rotation/shape/rotating_shape.o: composition_layout.mod math_lib.mod numerics_lib.mod physical_constants.mod rotation_configuration.mod rotation_messages.mod rotation_scratch_lib.mod shell_quadrature.mod

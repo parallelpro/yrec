@@ -11,7 +11,8 @@ module convection_lib
       use convection_configuration, only: convection_settings_t, convection_settings, &
            convection_unstable_radicand, convection_too_many_zones
       use temperature_gradients, only: compute_temperature_gradients
-      use convection_zones, only: find_convection_zones, homogenize_convection_zones
+      use convection_zones, only: find_convection_zones, homogenize_convection_zones, &
+           homogenize_region
       use semiconvection, only: extend_by_semiconvection
       use overshoot, only: pressure_scale_height, envelope_overshoot_depth
       implicit none
@@ -19,7 +20,7 @@ module convection_lib
       public :: convection_settings_t, set_convection_settings, set_convection_envelope_metals
       public :: convection_unstable_radicand, convection_too_many_zones
       public :: compute_temperature_gradients, find_convection_zones, &
-           homogenize_convection_zones, extend_by_semiconvection
+           homogenize_convection_zones, homogenize_region, extend_by_semiconvection
       public :: pressure_scale_height, envelope_overshoot_depth
 
 contains

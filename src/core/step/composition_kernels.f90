@@ -15,6 +15,7 @@
 module composition_kernels
       use, intrinsic :: iso_fortran_env, only: dp => real64
       use composition_layout, only: i_h1, i_he3, i_he4, i_metals
+      use convection_lib, only: homogenize_region
       implicit none
       private
       public :: deep_mixing_flags, homogenize_regions, &
@@ -55,34 +56,20 @@ end subroutine deep_mixing_flags
 ! applied throughout each of the num_regions mixed regions
 ! (region_bounds(r,1) and (r,2): the region's first and last shell), so
 ! that each species' mass in a region is kept. A one-shell region is
-! skipped unless it starts at the centre. (The same mean as convection's
-! homogenize_region, which convection_lib does not export.)
+! skipped unless it starts at the centre. The mean of one region is
+! convection's homogenize_region, the one convection zones are mixed with.
 pure subroutine homogenize_regions(composition, shell_mass, region_bounds, &
      num_regions, num_species)
       real(dp), intent(inout) :: composition(:,:)
       real(dp), intent(in) :: shell_mass(:)
       integer, intent(in) :: region_bounds(:,:), num_regions, num_species
-      real(dp) :: species_sum(num_species), weight_sum
-      integer :: region, first, last, k, i
+      integer :: region, first, last
 
       do region = 1, num_regions
          first = region_bounds(region,1)
          last = region_bounds(region,2)
          if (first /= 1 .and. first >= last) cycle
-         weight_sum = 0.0d0
-         species_sum = 0.0d0
-         do k = first, last
-            weight_sum = weight_sum + shell_mass(k)
-            do i = 1, num_species
-               species_sum(i) = species_sum(i) + composition(i,k)*shell_mass(k)
-            end do
-         end do
-         do i = 1, num_species
-            species_sum(i) = species_sum(i)/weight_sum
-         end do
-         do k = first, last
-            composition(1:num_species,k) = species_sum
-         end do
+         call homogenize_region(composition, shell_mass, first, last, num_species)
       end do
 end subroutine homogenize_regions
 

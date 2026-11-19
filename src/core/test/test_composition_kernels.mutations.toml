@@ -23,32 +23,32 @@ new = 'if (enclosed_mass(k) >= max_mixed_mass) then'
 [[mutation]]
 id = 'composition-03'
 check = 'homogenize: each species keeps its mass in a region'
-file = 'core/step/composition_kernels.f90'
-old = 'species_sum(i) = species_sum(i)/weight_sum'
-new = 'species_sum(i) = species_sum(i)/shell_mass(first)'
+file = 'convection/convection_zones.f90'
+old = 'species_sum = species_sum/weight_sum'
+new = 'species_sum = species_sum/shell_mass(first)'
 
 [[mutation]]
 id = 'composition-04'
 check = 'homogenize: the region is uniform'
-file = 'core/step/composition_kernels.f90'
+file = 'convection/convection_zones.f90'
 old = '''
-         do k = first, last
-            composition(1:num_species,k) = species_sum'''
+      do k = first, last
+         composition(1:num_species,k) = species_sum'''
 new = '''
-         do k = first, last-1
-            composition(1:num_species,k) = species_sum'''
+      do k = first, last-1
+         composition(1:num_species,k) = species_sum'''
 
 [[mutation]]
 id = 'composition-05'
 check = 'homogenize: the shells and slots outside are untouched'
-file = 'core/step/composition_kernels.f90'
+file = 'convection/convection_zones.f90'
 old = '''
-         do k = first, last
-            weight_sum = weight_sum + shell_mass(k)'''
+      do k = first, last
+         weight_sum = weight_sum + shell_mass(k)'''
 new = '''
-         do k = first, last
-            composition(:,last+1) = 0.0d0
-            weight_sum = weight_sum + shell_mass(k)'''
+      do k = first, last
+         composition(:,last+1) = 0.0d0
+         weight_sum = weight_sum + shell_mass(k)'''
 
 [[mutation]]
 id = 'composition-06'
