@@ -90,7 +90,7 @@ new = 'brunt_n2(1) = 0.0d0'
 
 [[mutation]]
 id = 'stitched_kernels-11'
-check = 'acoustic radius of a constant sound speed: (r_n - r_1)/c (M362)'
+check = 'acoustic radius of a constant sound speed: r_n/c, from the centre (M362)'
 file = 'core/diagnostics/stitched_kernels.f90'
 old = 'acoustic_radius = acoustic_radius + dr*0.5d0 &'
 new = 'acoustic_radius = acoustic_radius + dr*0.25d0 &'
@@ -104,10 +104,24 @@ new = 'if (sound_speed(k) <= 0.0d0) cycle'
 
 [[mutation]]
 id = 'stitched_kernels-13'
-check = 'buoyancy radius of N = a r: a times the span the sum covers (M362)'
+check = 'buoyancy radius of N = a r: a times the span from the centre (M362)'
 file = 'core/diagnostics/stitched_kernels.f90'
 old = '+ sqrt(brunt_n2(k))/r_here*0.5d0*(r_outer - r_inner)'
 new = '+ sqrt(brunt_n2(k))/r_here*0.5d0*(r_outer - r_here)'
+
+[[mutation]]
+id = 'stitched_kernels-15'
+check = 'acoustic radius of a constant sound speed: r_n/c, from the centre (M362)'
+file = 'core/diagnostics/stitched_kernels.f90'
+old = 'if (sound_speed(1) > 0.0d0) acoustic_radius = exp10(log_radius(1))/sound_speed(1)'
+new = 'if (sound_speed(1) > 0.0d0) acoustic_radius = 0.0d0'
+
+[[mutation]]
+id = 'stitched_kernels-16'
+check = 'buoyancy radius of N = a r: a times the span from the centre (M362)'
+file = 'core/diagnostics/stitched_kernels.f90'
+old = '*0.5d0*(exp10(log_radius(1)) + exp10(log_radius(2)))'
+new = '*0.5d0*(exp10(log_radius(2)) + exp10(log_radius(2)))'
 
 [[mutation]]
 id = 'stitched_kernels-14'

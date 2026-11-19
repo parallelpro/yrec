@@ -30,11 +30,11 @@
 !     - when the envelope integration fails (an atmosphere step size that
 !       needs more steps than the integration allows), the grid is the
 !       interior alone, and the failure is returned (bug_sweep M327).
-! Three of the kernels' checks hold values that an open defect's fix will
-! change, and say so: bug_sweep M363 (the innermost point's N^2) and M362
-! (the two integrals' inner ends). The checks named M359 and M361 hold
-! those fixes (the envelope's first point skipped by its index; a zero
-! thermal N^2 kept).
+! One of the kernels' checks holds a value that an open defect's fix will
+! change, and says so: bug_sweep M363 (the innermost point's N^2). The
+! checks named M359, M361 and M362 hold those fixes (the envelope's first
+! point skipped by its index; a zero thermal N^2 kept; the two integrals
+! from the centre).
 !
 ! Usage: test_stitched DECK.inlist (test_stitched.py passes
 ! core/test/test_structure_tams.inlist), run from a directory with an
@@ -171,31 +171,32 @@ subroutine kernel_checks()
            brunt_n2(1) == brunt_n2(2) .and. brunt_n2(n) == brunt_n2(n-1))
 
 ! The acoustic radius of a constant sound speed: the trapezoid is exact,
-! and starts at the first point. (bug_sweep M362: that fix adds
-! r_1/c_1, and the expected value becomes r_n/c.)
+! and with the part inside the first point, r_1/c (bug_sweep M362), the
+! integral runs from the centre.
       log_radius = log10(radius)
       sound_speed = sound_speed_value
-      call stitched_check('acoustic radius of a constant sound speed: (r_n - r_1)/c (M362)', &
+      call stitched_check('acoustic radius of a constant sound speed: r_n/c, from the centre (M362)', &
            abs(acoustic_radius(log_radius, sound_speed)/ &
-           ((radius(n) - radius(1))/sound_speed_value) - 1.0_dp) < tol)
+           (radius(n)/sound_speed_value) - 1.0_dp) < tol)
       sound_speed(4) = 0.0_dp
       call stitched_check('acoustic radius: an interval without a sound speed is left out', &
            abs(acoustic_radius(log_radius, sound_speed)/ &
-           ((radius(n) - radius(5) + radius(3) - radius(1))/sound_speed_value) - 1.0_dp) < tol)
+           ((radius(n) - radius(5) + radius(3))/sound_speed_value) - 1.0_dp) < tol)
 
 ! The buoyancy radius of N = n_over_r r: every point of the cavity adds
 ! n_over_r times half the span to its neighbours, from point 2 to point
-! n - 1. (bug_sweep M362: that fix adds the part inside (r_1 + r_2)/2,
-! and the expected span starts at 0.)
+! n - 1, and the part inside (r_1 + r_2)/2 is n_over_r times that
+! (bug_sweep M362): the integral from the centre to (r_(n-1) + r_n)/2.
       brunt_n2 = (n_over_r*radius)**2
-      call stitched_check('buoyancy radius of N = a r: a times the span the sum covers (M362)', &
+      call stitched_check('buoyancy radius of N = a r: a times the span from the centre (M362)', &
            abs(buoyancy_radius(log_radius, brunt_n2)/ &
-           (n_over_r*0.5_dp*(radius(n) + radius(n-1) - radius(2) - radius(1))) - 1.0_dp) < tol)
-! A convection zone at points 6 and 7 ends the cavity: points 2 to 5 count.
+           (n_over_r*0.5_dp*(radius(n) + radius(n-1))) - 1.0_dp) < tol)
+! A convection zone at points 6 and 7 ends the cavity: the centre to
+! (r_5 + r_6)/2 counts.
       brunt_n2(6:7) = -1.0e-8_dp
       call stitched_check('buoyancy radius: the innermost cavity only', &
            abs(buoyancy_radius(log_radius, brunt_n2)/ &
-           (n_over_r*0.5_dp*(radius(6) + radius(5) - radius(2) - radius(1))) - 1.0_dp) < tol)
+           (n_over_r*0.5_dp*(radius(6) + radius(5))) - 1.0_dp) < tol)
 end subroutine kernel_checks
 
 ! ---------------------------------------------------------------

@@ -155,8 +155,12 @@ def centre_extended(cols, points=30):
 def yrec_delta_pg_rule(cols, n_ie):
     """delta_Pg as observables.f90 documents it: sqrt(2) pi^2 over the sum
     of N/r times half the span to the neighbours, from the second point
-    outward while N^2 > 0, to the first point where it is not."""
+    outward while N^2 > 0, to the first point where it is not, with the
+    centre's part, N/r at the second point times (r_1 + r_2)/2, when the
+    second point is in the cavity (M362)."""
     total, inside = 0.0, False
+    if cols["N2"][1] > 0.0:
+        total = math.sqrt(cols["N2"][1]) / cols["r"][1] * 0.5 * (cols["r"][0] + cols["r"][1])
     for k in range(1, n_ie - 1):
         n2 = cols["N2"][k]
         if n2 > 0.0:
@@ -269,9 +273,9 @@ def test_buoyancy_integral_against_gyre(sun):
                       integral / spacing - 1.0)) <= TOL["asymptotic_period_spacing"]
 
 
-@pytest.mark.xfail(strict=True, reason="V5, M362 (docs/PHYSICS_VALIDATION.md, docs/bug_sweep.md): delta_Pg's sum starts at "
-                   "the second mesh point and leaves out the centre's part, 6% of the integral")
 def test_delta_pg_against_gyre(sun):
+    """delta_Pg, with the centre's part (V5, M362, fixed in round 3B),
+    is GYRE's l = 1 period spacing on the centre-extended file."""
     spacing, _ = vm.mean_period_spacing(vm.mode_table(sun["g_extended"], 1), 120, 200)
     assert abs(record("V5: delta_Pg / GYRE(centre-extended) - 1",
                       sun["hist"]["delta_Pg"] / spacing - 1.0)) <= TOL["delta_pg_vs_gyre"]

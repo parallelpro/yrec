@@ -301,10 +301,10 @@ subroutine compute_seismic_observables(s)
 
 ! The asymptotic p-mode large separation from the sound travel time,
 !   delta_nu = [2 int dr/c]^(-1),
-! over the stitched model's points 1..n_ie (the innermost point to the
-! photosphere; the atmosphere above R is excluded, as in MESA's acoustic
-! radius; stitched_kernels' acoustic_radius). In uHz (the integral is in
-! seconds).
+! from the centre to the photosphere: the stitched model's points 1..n_ie
+! and the part inside the innermost point (the atmosphere above R is
+! excluded, as in MESA's acoustic radius; stitched_kernels'
+! acoustic_radius). In uHz (the integral is in seconds).
       n_ie = s%stitched%n_ie
       sound_travel_time = acoustic_radius(s%stitched%prof(ip_logR,1:n_ie), &
            s%stitched%prof(ip_csound,1:n_ie))
@@ -317,9 +317,9 @@ subroutine compute_seismic_observables(s)
 ! The asymptotic l = 1 g-mode period spacing from the Brunt-Vaisala
 ! frequency,
 !   delta_Pg = 2 pi^2/sqrt(l(l+1)) / int N/r dr = sqrt(2) pi^2 / int N/r dr,
-! over the innermost g-mode cavity only (stitched_kernels'
-! buoyancy_radius). Zero when there is no cavity (a fully convective
-! interior). In seconds.
+! over the innermost g-mode cavity only, from the centre when the cavity
+! reaches it (stitched_kernels' buoyancy_radius). Zero when there is no
+! cavity (a fully convective interior). In seconds.
       buoyancy_integral = buoyancy_radius(s%stitched%prof(ip_logR,1:n_ie), &
            s%stitched%prof(ip_brunt_N2,1:n_ie))
       if (buoyancy_integral > 0.0d0) then

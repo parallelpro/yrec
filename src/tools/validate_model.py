@@ -479,9 +479,10 @@ def brunt_n2_thermal(model, g_newton=YREC_G):
 
 def acoustic_delta_nu(model, r_outer):
     """[2 int_0^R dr/c]^-1 in uHz, trapezoidal over the points at or
-    below r_outer (the photosphere)."""
+    below r_outer (the photosphere), with the part inside the first
+    point, r_1/c_1 (YREC's rule since round 3B, M362)."""
     c = sound_speed(model)
-    total = 0.0
+    total = model["r"][0] / c[0] if c[0] > 0.0 else 0.0
     for i in range(1, len(c)):
         if model["r"][i] > r_outer * (1.0 + 1.0e-12):
             break
