@@ -48,6 +48,32 @@ import harness  # noqa: E402
 YREC_G = 10.0 ** -7.17571
 FOUR_PI = 4.0 * math.pi
 
+# The points YREC's pulse files hold inside the mesh's innermost point
+# (core/diagnostics/stitched_model.f90, add_centre_points; M363): r =
+# k r_1/(CENTRE_POINTS + 1), k = 1..CENTRE_POINTS.
+CENTRE_POINTS = 30
+
+
+def centre_points(model):
+    """How many of the model's first points are YREC's added centre
+    points (CENTRE_POINTS when their radii are k r_1/(CENTRE_POINTS + 1)
+    of the point after them, else 0: a MESA file, or YREC's before
+    round 3B)."""
+    r = model["r"]
+    n = CENTRE_POINTS
+    if len(r) <= n or not r[n] > 0.0:
+        return 0
+    if all(abs(r[k] / (r[n] * (k + 1) / (n + 1)) - 1.0) < 1.0e-12 for k in range(n)):
+        return n
+    return 0
+
+
+def mesh_part(model):
+    """The model without YREC's added centre points (centre_points)."""
+    nc = centre_points(model)
+    return {k: v[nc:] for k, v in model.items()}
+
+
 GYRE_COLUMNS = ["r", "M_r", "L_r", "P", "T", "rho", "nabla", "N2", "Gamma_1",
                 "nabla_ad", "delta", "kap", "kap_kap_T", "kap_kap_rho", "eps",
                 "eps_eps_T", "eps_eps_rho", "Omega_rot"]
@@ -435,7 +461,8 @@ def photosphere_index(model, r_star):
 def brunt_n2_file_rule(model, g_newton=YREC_G):
     """N^2 by the rule YREC documents for its files: the thermal form
     where that is not positive (convective), else the centred density
-    form; each end copies its neighbour."""
+    form; the innermost point takes its neighbour's as r^2 (M363), the
+    outermost copies its neighbour's."""
     thermal = brunt_n2_thermal(model, g_newton)
     density = brunt_n2_density(model, g_newton)
     n = len(thermal)
@@ -444,7 +471,9 @@ def brunt_n2_file_rule(model, g_newton=YREC_G):
         if thermal[j] > 0.0 and density[j] is not None and model["r"][j] > 0.0:
             out[j] = density[j]
     if n >= 2:
-        out[0], out[-1] = out[1], out[-2]
+        r = model["r"]
+        out[0] = out[1] * (r[0] / r[1]) ** 2 if r[1] > 0.0 else out[1]
+        out[-1] = out[-2]
     return out
 
 

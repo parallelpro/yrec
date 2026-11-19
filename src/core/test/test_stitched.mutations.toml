@@ -83,10 +83,10 @@ new = 'if (brunt_n2(j) >= 0.0d0 .and. radius(j) > 0.0d0 .and. &'
 
 [[mutation]]
 id = 'stitched_kernels-10'
-check = 'N^2: the end points copy their neighbours (M363)'
+check = 'N^2: the innermost point as r^2 from its neighbour, the outermost copied (M363)'
 file = 'core/diagnostics/stitched_kernels.f90'
-old = 'brunt_n2(1) = brunt_n2(2)'
-new = 'brunt_n2(1) = 0.0d0'
+old = 'brunt_n2(1) = brunt_n2(2)*(radius(1)/radius(2))**2'
+new = 'brunt_n2(1) = brunt_n2(2)'
 
 [[mutation]]
 id = 'stitched_kernels-11'
@@ -135,6 +135,28 @@ new = '''
          else if (entered_g_mode_cavity) then
             cycle
 '''
+
+# bug_sweep M363: the points add_centre_points puts inside the first.
+[[mutation]]
+id = 'stitched_model-09'
+check = 'centre points: r = k r_1/31 inside the first point, which follows unchanged'
+file = 'core/diagnostics/stitched_model.f90'
+old = 'extended(ipul_r,k) = x*r1'
+new = 'extended(ipul_r,k) = x*x*r1'
+
+[[mutation]]
+id = 'stitched_model-10'
+check = "centre points: m and L as r^3, N^2 as r^2, the other columns the first point's"
+file = 'core/diagnostics/stitched_model.f90'
+old = 'extended(ipul_m,k) = points(ipul_m,1)*x**3'
+new = 'extended(ipul_m,k) = points(ipul_m,1)*x**2'
+
+[[mutation]]
+id = 'stitched_model-11'
+check = 'centre points: P = P_1 + (2 pi/3) G rho_1^2 (r_1^2 - r^2)'
+file = 'core/diagnostics/stitched_model.f90'
+old = 'centre_pressure = points(ipul_P,1) + pressure_curvature*r1*r1'
+new = 'centre_pressure = points(ipul_P,1) - pressure_curvature*r1*r1'
 
 [[mutation]]
 id = 'stitched_model-01'

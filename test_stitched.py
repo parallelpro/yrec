@@ -22,7 +22,7 @@ import conftest  # noqa: F401  (sets YREC_INPUT and YREC_START)
 REPO = pathlib.Path(__file__).parent
 BINARY = REPO / "src" / "test_stitched"
 DECK = REPO / "src" / "core" / "test" / "test_structure_tams.inlist"
-NUM_CHECKS = 21
+NUM_CHECKS = 24
 
 
 def test_stitched(tmp_path):

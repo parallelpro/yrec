@@ -132,8 +132,10 @@ end function thermal_brunt_n2
 ! convection zone, keeps its thermal 0 for the same reason (the test is
 ! "> 0"; bug_sweep M361). The positive N^2 the difference gives at the base of
 ! a convection zone (the buoyancy of the mu discontinuity) lies on the
-! radiative side and is kept. The two end points copy their neighbours
-! (bug_sweep M363 for the innermost). The arrays hold the points from
+! radiative side and is kept. The innermost point takes its neighbour's
+! N^2 scaled as r^2, N^2(2) (r_1/r_2)^2 (N^2 is proportional to r^2 about
+! the centre; bug_sweep M363), and the outermost copies its neighbour's.
+! The arrays hold the points from
 ! the centre outward: r [cm], m [g], P, rho, Gamma_1; newton_g is G.
 pure subroutine difference_brunt_n2(radius, mass, pressure, density, gamma1, &
      newton_g, brunt_n2)
@@ -155,7 +157,11 @@ pure subroutine difference_brunt_n2(radius, mass, pressure, density, gamma1, &
          end if
       end do
       if (num_points >= 2) then
-         brunt_n2(1) = brunt_n2(2)
+         if (radius(2) > 0.0d0) then
+            brunt_n2(1) = brunt_n2(2)*(radius(1)/radius(2))**2
+         else
+            brunt_n2(1) = brunt_n2(2)
+         end if
          brunt_n2(num_points) = brunt_n2(num_points-1)
       end if
 end subroutine difference_brunt_n2

@@ -204,14 +204,18 @@ def runs(tmp_path_factory):
 
 
 class Model:
-    """One model of the gyre run: its GYRE file (header, cols), its
-    profile (prof_header, prof), its history row, the run's constants,
-    and the indices of the fitting point (nz - 1, the last interior
-    point) and of the photosphere (iph)."""
+    """One model of the gyre run: its GYRE file (header; full_cols, every
+    point; cols, the mesh's points, without the nc points the file adds
+    inside the innermost one, M363), its profile (prof_header, prof), its
+    history row, the run's constants, and the indices, in cols, of the
+    fitting point (nz - 1, the last interior point) and of the photosphere
+    (iph)."""
 
     def __init__(self, outdir, number, inlist_text):
         self.number = number
-        self.header, self.cols = vm.read_gyre_text(outdir / f"profile{number}.data.GYRE")
+        self.header, self.full_cols = vm.read_gyre_text(outdir / f"profile{number}.data.GYRE")
+        self.nc = vm.centre_points(self.full_cols)
+        self.cols = vm.mesh_part(self.full_cols)
         self.prof_header, self.prof = vm.read_profile(outdir / f"profile{number}.data")
         self.hist_header, hist = vm.read_mesa_table(outdir / "history.data")
         row = hist["model_number"].index(self.prof_header["model_number"])
@@ -242,7 +246,8 @@ def check_header(b):
     one star, in cgs, tied by L = 4 pi R^2 sigma Teff^4 and g = G M/R^2."""
     h, ph, row = b.header, b.prof_header, b.hist
     assert h["version"] == 101, h["version"]
-    assert h["n"] == h["rows"] == ph["num_zones"] == len(b.prof["zone"]) == b.n
+    assert b.nc == vm.CENTRE_POINTS, b.nc
+    assert h["n"] == h["rows"] == b.n + b.nc and ph["num_zones"] == len(b.prof["zone"]) == b.n
     assert b.prof["zone"][-1] == 1 and b.prof["zone"][0] == b.n   # zone 1 is the surface
     assert ph["model_number"] == row["model_number"]
     tol = TOL["header"]
@@ -655,8 +660,8 @@ def test_atmosphere_gradient_everywhere(models):
 # ---------------------------------------------------------------------
 def test_interior_gyre_file(runs, models):
     """The interior-only GYRE file (pulse_gyre_interval) is the first nz
-    points of the model's full file, with the fitting point's m, r and L
-    as M_star, R_star and L_star."""
+    points of the model's full file, after the same centre points, with
+    the fitting point's m, r and L as M_star, R_star and L_star."""
     found = 0
     for b in models:
         path = runs["gyre"] / f"profile{b.prof_header['model_number']:05d}.data.GYRE"
@@ -664,9 +669,9 @@ def test_interior_gyre_file(runs, models):
             continue
         found += 1
         header, cols = vm.read_gyre_text(path)
-        assert header["version"] == 101 and header["n"] == header["rows"] == b.nz
+        assert header["version"] == 101 and header["n"] == header["rows"] == b.nc + b.nz
         for name in vm.GYRE_COLUMNS:
-            assert cols[name] == b.cols[name][:b.nz], (b.label, name)
+            assert cols[name] == b.full_cols[name][:b.nc + b.nz], (b.label, name)
         k = b.nz - 1
         assert (header["M_star"], header["R_star"], header["L_star"]) == \
             (b.cols["M_r"][k], b.cols["r"][k], b.cols["L_r"][k])
@@ -685,13 +690,13 @@ def test_fgong_file(runs, models):
     for b in models[:2]:
         header, var = vm.read_fgong(runs["fgong"] / f"profile{b.number}.data.FGONG")
         assert (header["iconst"], header["ivar"], header["ivers"]) == (15, 40, 1300)
-        assert header["nn"] == b.n and header["n_values"] == 15 + 40 * b.n
+        assert header["nn"] == b.n + b.nc and header["n_values"] == 15 + 40 * (b.n + b.nc)
         glob = header["glob"]
         assert glob[:3] == [b.header["M_star"], b.header["R_star"], b.header["L_star"]]
         assert glob[12] == pytest.approx(b.hist["star_age"], rel=1e-15)
         assert glob[13] == pytest.approx(10.0 ** b.hist["log_Teff"], rel=1e-14)
         assert glob[14] == pytest.approx(vm.YREC_G, rel=1e-15)
-        f = vm.fgong_model(header, var)
+        f = vm.mesh_part(vm.fgong_model(header, var))
         tol = TOL["profile_vs_pulse"]
         for name in FGONG_TO_GYRE:
             assert f[name] == pytest.approx(b.cols[name], rel=1e-15, abs=1e-300), (b.label, name)
@@ -717,12 +722,12 @@ def test_gsm_file(runs, models):
         pytest.skip("reading GSM needs h5py or the h5dump program")
     for b in models[:2]:
         header, cols = vm.read_gsm(runs["gsm"] / f"profile{b.number}.data.GSM")
-        assert header["version"] == 110 and header["n"] == b.n
+        assert header["version"] == 110 and header["n"] == b.n + b.nc
         assert (header["M_star"], header["R_star"], header["L_star"]) == \
             (b.header["M_star"], b.header["R_star"], b.header["L_star"])
         assert sorted(cols) == sorted(vm.GYRE_COLUMNS)
         for name in vm.GYRE_COLUMNS:
-            assert cols[name] == pytest.approx(b.cols[name], rel=1e-15, abs=1e-300), (b.label, name)
+            assert cols[name] == pytest.approx(b.full_cols[name], rel=1e-15, abs=1e-300), (b.label, name)
 
 
 # ---------------------------------------------------------------------

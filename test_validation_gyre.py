@@ -103,7 +103,11 @@ def sun(tmp_path_factory):
     formats = ["GYRE", "FGONG"] + (["GSM"] if os.environ.get("YREC_TEST_HDF5") == "1" else [])
     out = vm.run_with_final_profile(YREC, tmp / "yrec", inlist.read_text(), pulse_formats=formats)
     _, hist = vm.read_mesa_table(out["history"] / "history.data")
-    header, cols = vm.read_gyre_text(out["GYRE"] / "profile1.data.GYRE")
+    header, as_written = vm.read_gyre_text(out["GYRE"] / "profile1.data.GYRE")
+    # the mesh's points: the file without the points YREC adds inside the
+    # innermost one (M363), which the history's integrals do not walk
+    assert vm.centre_points(as_written) == vm.CENTRE_POINTS
+    cols = vm.mesh_part(as_written)
     result = {"tmp": tmp, "out": out, "formats": formats, "header": header, "cols": cols,
               "inlist": inlist.read_text(),
               "hist": {k: v[-1] for k, v in hist.items()}}
@@ -281,9 +285,10 @@ def test_delta_pg_against_gyre(sun):
                       sun["hist"]["delta_Pg"] / spacing - 1.0)) <= TOL["delta_pg_vs_gyre"]
 
 
-@pytest.mark.xfail(strict=True, reason="V6, M363 (docs/PHYSICS_VALIDATION.md, docs/bug_sweep.md): the pulse files' innermost "
-                   "point is at r = 0.01 R; GYRE's g-mode periods depend on how it fills the centre")
 def test_g_modes_do_not_depend_on_the_centre_fill(sun):
+    """GYRE's g modes on the file as written are those of the mesh with
+    the centre filled by the expansions about it: the file holds those
+    points (V6, M363, fixed in round 3B)."""
     as_written, _ = vm.mean_period_spacing(vm.mode_table(sun["g"], 1), 120, 200)
     extended, _ = vm.mean_period_spacing(vm.mode_table(sun["g_extended"], 1), 120, 200)
     record("GYRE period spacing, l = 1, n_g = 120..200, file as written (s)", as_written)

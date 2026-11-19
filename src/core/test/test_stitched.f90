@@ -30,11 +30,10 @@
 !     - when the envelope integration fails (an atmosphere step size that
 !       needs more steps than the integration allows), the grid is the
 !       interior alone, and the failure is returned (bug_sweep M327).
-! One of the kernels' checks holds a value that an open defect's fix will
-! change, and says so: bug_sweep M363 (the innermost point's N^2). The
-! checks named M359, M361 and M362 hold those fixes (the envelope's first
-! point skipped by its index; a zero thermal N^2 kept; the two integrals
-! from the centre).
+! The checks named M359, M361, M362 and M363 hold those fixes (the
+! envelope's first point skipped by its index; a zero thermal N^2 kept;
+! the two integrals from the centre; the innermost N^2 as r^2, and the
+! pulse files' points inside the innermost point, add_centre_points).
 !
 ! Usage: test_stitched DECK.inlist (test_stitched.py passes
 ! core/test/test_structure_tams.inlist), run from a directory with an
@@ -46,7 +45,8 @@ program test_stitched
            thermal_brunt_n2, difference_brunt_n2, acoustic_radius, buoyancy_radius, &
            region_interior, region_envelope, region_atmosphere
       use stitched_model, only: build_stitched_model, fill_stitched_arrays, ip_logR, &
-           ip_brunt_N2, ipul_N2
+           ip_brunt_N2, ipul_N2, add_centre_points, num_centre_points, n_pulse_cols, &
+           ipul_r, ipul_m, ipul_L, ipul_P, ipul_rho, ipul_T
       use controls_reader, only: read_controls
       use run_files, only: open_run_files
       use run_setup, only: set_up_constants_and_tables
@@ -165,10 +165,11 @@ subroutine kernel_checks()
 ! nabla_ad in an efficient convection zone) keeps it.
       call stitched_check('N^2: a thermal value of exactly zero is kept (M361)', &
            brunt_n2(8) == 0.0_dp)
-! bug_sweep M363: the innermost point's N^2 is its neighbour's today;
-! that fix changes the expected value to N^2(2) (r_1/r_2)^2.
-      call stitched_check('N^2: the end points copy their neighbours (M363)', &
-           brunt_n2(1) == brunt_n2(2) .and. brunt_n2(n) == brunt_n2(n-1))
+! bug_sweep M363: the innermost point's N^2 is its neighbour's scaled as
+! r^2, the outermost point's its neighbour's.
+      call stitched_check('N^2: the innermost point as r^2 from its neighbour, the outermost copied (M363)', &
+           brunt_n2(1) == brunt_n2(2)*(radius(1)/radius(2))**2 .and. &
+           brunt_n2(n) == brunt_n2(n-1))
 
 ! The acoustic radius of a constant sound speed: the trapezoid is exact,
 ! and with the part inside the first point, r_1/c (bug_sweep M362), the
@@ -197,7 +198,56 @@ subroutine kernel_checks()
       call stitched_check('buoyancy radius: the innermost cavity only', &
            abs(buoyancy_radius(log_radius, brunt_n2)/ &
            (n_over_r*0.5_dp*(radius(6) + radius(5))) - 1.0_dp) < tol)
+
+      call centre_point_checks()
 end subroutine kernel_checks
+
+! ---------------------------------------------------------------
+! add_centre_points on three synthetic pulse points (bug_sweep M363).
+subroutine centre_point_checks()
+      real(dp), parameter :: newton_g = 6.67e-8_dp, tol = 1.0e-12_dp
+      real(dp) :: points(n_pulse_cols, 3), x, r1
+      real(dp), allocatable :: extended(:,:)
+      logical :: holds
+      integer :: k
+
+      do k = 1, 3
+         points(:,k) = 0.5_dp + real(k, dp)
+         points(ipul_r,k) = 1.0e9_dp*k
+         points(ipul_m,k) = 4.0e30_dp*k**3
+         points(ipul_L,k) = 2.0e30_dp*k**3
+         points(ipul_P,k) = 1.0e17_dp/k
+         points(ipul_rho,k) = 100.0_dp/k
+         points(ipul_N2,k) = 1.0e-8_dp*k**2
+      end do
+      r1 = points(ipul_r,1)
+      call add_centre_points(points, newton_g, extended)
+      holds = size(extended, 2) == 3 + num_centre_points .and. &
+           all(extended(:,num_centre_points+1:) == points)
+      do k = 1, num_centre_points
+         x = real(k, dp)/real(num_centre_points + 1, dp)
+         holds = holds .and. abs(extended(ipul_r,k)/(x*r1) - 1.0_dp) < tol
+      end do
+      call stitched_check('centre points: r = k r_1/31 inside the first point, which follows unchanged', &
+           holds .and. num_centre_points == 30)
+      holds = .true.
+      do k = 1, num_centre_points
+         x = extended(ipul_r,k)/r1
+         holds = holds .and. abs(extended(ipul_m,k)/(points(ipul_m,1)*x**3) - 1.0_dp) < tol &
+              .and. abs(extended(ipul_L,k)/(points(ipul_L,1)*x**3) - 1.0_dp) < tol &
+              .and. abs(extended(ipul_N2,k)/(points(ipul_N2,1)*x**2) - 1.0_dp) < tol &
+              .and. extended(ipul_rho,k) == points(ipul_rho,1) &
+              .and. extended(ipul_T,k) == points(ipul_T,1)
+      end do
+      call stitched_check('centre points: m and L as r^3, N^2 as r^2, the other columns the first point''s', &
+           holds)
+      holds = .true.
+      do k = 1, num_centre_points
+         holds = holds .and. abs(extended(ipul_P,k)/(points(ipul_P,1) + (2.0_dp*acos(-1.0_dp)/3.0_dp) &
+              *newton_g*points(ipul_rho,1)**2*(r1**2 - extended(ipul_r,k)**2)) - 1.0_dp) < 1.0e-9_dp
+      end do
+      call stitched_check('centre points: P = P_1 + (2 pi/3) G rho_1^2 (r_1^2 - r^2)', holds)
+end subroutine centre_point_checks
 
 ! ---------------------------------------------------------------
 ! The stitched model of the deck's starting model.
