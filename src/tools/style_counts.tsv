@@ -208,7 +208,7 @@ kap/conductive	commented_code	0
 kap/conductive	module_no_private	0
 kap/conductive	use_no_only	0
 kap/conductive	explicit_shape_dummy	0
-kap/conductive	io_statement	5
+kap/conductive	io_statement	4
 kap/kurucz90	double_precision	0
 kap/kurucz90	old_relational	0
 kap/kurucz90	endif_enddo	0
@@ -289,7 +289,7 @@ rotation	module_no_private	1
 rotation	use_no_only	7
 rotation	explicit_shape_dummy	63
 rotation	io_statement	2
-rotation/seculr	double_precision	190
+rotation/seculr	double_precision	189
 rotation/seculr	old_relational	63
 rotation/seculr	endif_enddo	19
 rotation/seculr	specific_intrinsic	2
