@@ -41,6 +41,7 @@ subroutine compute_shell_physics(s, ierr)
       use convection_lib, only: compute_temperature_gradients
 
       use star_info_lib, only: i_h1, i_he4, i_metals, i_he3
+      use composition_layout, only: atomic_weight => basic_atomic_weight
       use eos_lib, only: eos_get, eos_result
       use kap_lib, only: i_kap, kap_get, num_kap_results
       use math_lib
@@ -48,10 +49,6 @@ subroutine compute_shell_physics(s, ierr)
       type(star_info), intent(inout) :: s
       integer, intent(out) :: ierr
 
-! The atomic masses (amu) of H1, He4, the metals (as C12) and He3,
-! indexed by their composition slots (i_h1 = 1, i_he4 = 2, i_metals = 3,
-! i_he3 = 4), as rotation's transport_checks has them.
-      real(dp), parameter :: atomic_weight(4) = [1.007825d0, 4.002603d0, 12.0d0, 3.01603d0]
 ! --- locals ---
       logical :: want_derivatives, in_atmosphere
       integer :: im

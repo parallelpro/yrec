@@ -23,6 +23,13 @@ module composition_layout
            i_li6 = 13, i_li7 = 14, i_be9 = 15
       integer, parameter, public :: &
            n_species_basic = 11, n_species_extended = 15
+! The atomic masses (amu) of the first four slots, H1, He4, the metals
+! taken as C12, and He3, for a fully ionized gas's mean molecular weight
+! (shell_physics, rotation's transport_checks): the F77's values, whose
+! source is not recorded (the 2020 atomic mass evaluation gives
+! 1.00782503, 4.00260325 and 3.01602932).
+      real(kind(1.0d0)), parameter, public :: &
+           basic_atomic_weight(4) = [1.007825d0, 4.002603d0, 12.0d0, 3.01603d0]
 ! The most mesh points a model may have (the size of every per-zone
 ! array; star_info_lib re-exports it).
       integer, parameter, public :: json = 5000

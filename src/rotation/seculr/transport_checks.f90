@@ -285,6 +285,7 @@ subroutine check_composition(s, sub_physics, composition, iteration_number, num_
      dt, cut_count, converged_flag, redo_flag, ierr)
       use rotation_scratch_lib, only: substep_physics_state
       use star_info_lib, only: star_info, json, i_h1, i_he4, i_metals, i_he3, n_species_basic
+      use composition_layout, only: atomic_weight => basic_atomic_weight
       implicit none
       type(star_info), intent(in) :: s
       type(substep_physics_state), intent(inout) :: sub_physics
@@ -298,9 +299,6 @@ subroutine check_composition(s, sub_physics, composition, iteration_number, num_
       logical, intent(out) :: redo_flag
       integer, intent(out) :: ierr
 
-! The atomic weights of H1, He4, the metals (as C12) and He3.
-      double precision :: atomic_weight(4)
-      data atomic_weight/1.007825d0,4.002603d0,12.0d0,3.01603d0/
 ! locals
       integer :: num_diffused_species, zone_index
       double precision :: delta_hydrogen, delta_helium, delta_metal, &
