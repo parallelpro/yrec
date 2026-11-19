@@ -876,9 +876,10 @@ module star_info_lib
 ! (docs/bug_sweep.md M190).
             real(dp) :: disk_gate_age_gyr
 ! convective turnover time one pressure scale height above the base of
-! the surface convection zone [s]; turnover_timescale, run_driver,
-! mass_change. From the stitched model, every converged model; zero at a
-! card start and without a surface convection zone.
+! the surface convection zone [s]; turnover_timescale, mass_change.
+! From the stitched model, every converged model and the starting model
+! of each card (which the card's first step keeps: bug_sweep M325); zero
+! without a surface convection zone.
             real(dp) :: convective_turnover_timescale
 ! log10 photospheric pressure of the last atmosphere integration that
 ! reached the photosphere [log10 dyn/cm^2]; envelope_integration. Set
