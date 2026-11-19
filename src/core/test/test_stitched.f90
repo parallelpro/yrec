@@ -30,10 +30,11 @@
 !     - when the envelope integration fails (an atmosphere step size that
 !       needs more steps than the integration allows), the grid is the
 !       interior alone, and the failure is returned (bug_sweep M327).
-! Four of the kernels' checks hold values that an open defect's fix will
-! change, and say so: bug_sweep M359 (the envelope point above the
-! interior's top), M361 (the zero thermal value), M363 (the innermost
-! point's N^2) and M362 (the two integrals' inner ends).
+! Three of the kernels' checks hold values that an open defect's fix will
+! change, and say so: bug_sweep M361 (the zero thermal value), M363 (the
+! innermost point's N^2) and M362 (the two integrals' inner ends). The
+! check named M359 holds that fix (the envelope's first point skipped by
+! its index).
 !
 ! Usage: test_stitched DECK.inlist (test_stitched.py passes
 ! core/test/test_structure_tams.inlist), run from a directory with an
@@ -113,17 +114,16 @@ subroutine kernel_checks()
            all(region(1:10) == [(region_interior, j = 1, 5), (region_envelope, j = 1, 2), &
            (region_atmosphere, j = 1, 3)]) .and. &
            all(index(1:10) == [1, 2, 3, 4, 5, 2, 3, 3, 2, 1]))
-      call map_extended_grid(5, 10.0_dp, [10.0_dp - 1.0e-9_dp, 10.01_dp, 10.02_dp], &
+      call map_extended_grid(5, 10.0_dp, [10.0_dp, 10.0_dp - 1.0e-9_dp, 10.02_dp], &
            heights, region, index, n_ie, n_ext)
       call stitched_check('index map: an envelope point below the interior''s top is skipped', &
-           n_ie == 7 .and. n_ext == 10 .and. index(6) == 2)
-! bug_sweep M359: the envelope's first point is the fitting point again
-! whatever its radius; today it is kept when its radius is above the
-! interior's. That fix changes the expected n_ie to 7 and index(6) to 2.
+           n_ie == 6 .and. n_ext == 9 .and. index(6) == 3)
+! bug_sweep M359: the envelope's first point is the fitting point again,
+! skipped whatever its radius, also when it lands above the interior's.
       call map_extended_grid(5, 10.0_dp, [10.0_dp + 1.0e-6_dp, 10.01_dp, 10.02_dp], &
            heights, region, index, n_ie, n_ext)
-      call stitched_check('index map: an envelope first point above the interior''s top is kept (M359)', &
-           n_ie == 8 .and. n_ext == 11 .and. index(6) == 1 .and. &
+      call stitched_check('index map: an envelope first point above the interior''s top is skipped (M359)', &
+           n_ie == 7 .and. n_ext == 10 .and. index(6) == 2 .and. &
            region(6) == region_envelope)
       small_region = 0
       small_index = 0

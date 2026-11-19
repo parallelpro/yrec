@@ -59,9 +59,10 @@ end subroutine accumulate_atmosphere_heights
 ! is point index(j) of region(j). First the num_interior interior points.
 ! Then the envelope's, which run from the fitting point to the
 ! photosphere: every one whose log r is above the interior's outermost,
-! interior_top_log_radius; the envelope's first point repeats the fitting
-! point and is skipped by that test when its radius is not above the
-! interior's (bug_sweep M359 is the case where it is). Then the
+! interior_top_log_radius, but the first, which repeats the fitting point
+! (to the integration's round-off, so its radius may land just above the
+! interior's, with a density that rises outward: bug_sweep M359) and is
+! skipped by its index. Then the
 ! atmosphere's, which run from the outside in and are taken in reverse:
 ! every one with a positive height above the photosphere, which skips the
 ! deepest (the envelope's last point again). num_interior_envelope is the
@@ -85,7 +86,7 @@ pure subroutine map_extended_grid(num_interior, interior_top_log_radius, &
       end do
       do i = 1, size(envelope_log_radius)
          if (num_points >= size(region)) exit
-         if (envelope_log_radius(i) <= interior_top_log_radius) cycle
+         if (i == 1 .or. envelope_log_radius(i) <= interior_top_log_radius) cycle
          num_points = num_points + 1
          region(num_points) = region_envelope
          index(num_points) = i

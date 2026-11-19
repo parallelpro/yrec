@@ -628,9 +628,10 @@ def test_luminosity_equation_is_converged(models):
             check_luminosity_equation_converged(b)
 
 
-@pytest.mark.xfail(strict=True, reason="V2, M359 (docs/PHYSICS_VALIDATION.md, docs/bug_sweep.md): a near-duplicate point with "
-                   "a density inversion at the fitting point")
 def test_no_density_inversion_at_the_fit(models):
+    """No near-duplicate point with a density inversion at the fitting
+    point: the envelope's repeat of it is skipped (V2, M359, fixed in
+    round 3B)."""
     for b in models:
         check_fit_join_density(b)
 

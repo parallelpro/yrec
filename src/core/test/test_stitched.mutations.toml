@@ -28,17 +28,16 @@ new = 'if (atmosphere_height(i) < 0.0d0) cycle'
 id = 'stitched_kernels-03'
 check = "index map: an envelope point below the interior's top is skipped"
 file = 'core/diagnostics/stitched_kernels.f90'
-old = 'if (envelope_log_radius(i) <= interior_top_log_radius) cycle'
-new = 'if (envelope_log_radius(i) == interior_top_log_radius) cycle'
+old = 'envelope_log_radius(i) <= interior_top_log_radius) cycle'
+new = 'envelope_log_radius(i) == interior_top_log_radius) cycle'
 
-# The fix of bug_sweep M359 (the envelope's first point skipped by its
-# index): the check holds today's map and fails with the fix.
+# bug_sweep M359: the envelope's first point is skipped by its index.
 [[mutation]]
 id = 'stitched_kernels-04'
-check = "index map: an envelope first point above the interior's top is kept (M359)"
+check = "index map: an envelope first point above the interior's top is skipped (M359)"
 file = 'core/diagnostics/stitched_kernels.f90'
-old = 'if (envelope_log_radius(i) <= interior_top_log_radius) cycle'
-new = 'if (i == 1 .or. envelope_log_radius(i) <= interior_top_log_radius) cycle'
+old = 'if (i == 1 .or. envelope_log_radius(i) <= interior_top_log_radius) cycle'
+new = 'if (envelope_log_radius(i) <= interior_top_log_radius) cycle'
 
 [[mutation]]
 id = 'stitched_kernels-05'

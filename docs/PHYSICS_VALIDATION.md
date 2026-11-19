@@ -233,9 +233,11 @@ has the account. On the testsuite's rotating solar deck:
 
 ## 6. Defects and surprises the tier found
 
-None is fixed here (this round changes no result; M367's descriptions
-were written in round 3: the column list's `delta_nu`, the pulse
-writers' and `pulse_format`'s note on G). V-numbers are this
+The tier changed no result; M367's descriptions were written in round
+3 (the column list's `delta_nu`, the pulse writers' and `pulse_format`'s
+note on G), and round 3B (2026-11-18) fixed the defects its row says,
+removing their expected failures; the measured numbers above are the
+tier's, from before those fixes. V-numbers are this
 document's; M317 is docs/bug_sweep.md's, and so is the number in
 parentheses after each V: its entry in that file's section 21, which
 has the origin, the proposed fix and what the fix would move.
@@ -244,7 +246,7 @@ has the origin, the proposed fix and what the fix would move.
 |---|---|---|---|---|
 | M317 (known, open) | The star's mass in grams is not star_mass times solar_mass_cgs; the profile's mass column jumps at the photosphere | the solar starting models; `stitched_model.f90` `atmosphere_value` | 5.03e-5 | contract: two expected failures |
 | V1 (M358) | The standard solar deck's solver tolerances (3e-7 to 9e-7) leave the luminosity equation open, in proportion to the time step | `examples/run_standard_solar_model/Test_solar_noGS_norot` (HTOLER 6e-7; the other three solar examples and the testsuite have 6e-9) | 4.6e-4 of L at 3.4 Gyr; log L at 4.568 Gyr moves by +1.4e-4 dex with tolerances 1000 times tighter (the solar calibration's own tolerance is 3e-5); 8.9e-7 on `Test_solarGS98_dif`, whose tolerances are 100 times tighter | contract: `test_luminosity_equation_is_converged` |
-| V2 (M359) | The stitched model keeps the envelope's repeat of the fitting point when its radius lands above the interior's: two points 1e-6 R apart whose density rises outward | `stitched_model.f90` `build_stitched_model` (the `<=` test on log R) | ln rho +1.1e-4 to +3.3e-4 over dr/r = 1e-6 to 5e-6, in 5 of 6 models; harmless here (the layer is convective, so N^2 is the thermal form); where the fitting point is radiative the centred N^2 is differenced across the pair (not measured) | contract: `test_no_density_inversion_at_the_fit` |
+| V2 (M359; fixed in round 3B, 2026-11-18: the envelope's first point is skipped by its index) | The stitched model kept the envelope's repeat of the fitting point when its radius landed above the interior's: two points 1e-6 R apart whose density rises outward | `stitched_kernels.f90` `map_extended_grid` (the `<=` test on log R) | ln rho +1.1e-4 to +3.3e-4 over dr/r = 1e-6 to 5e-6, in 5 of 6 models; harmless here (the layer is convective, so N^2 is the thermal form); where the fitting point is radiative the centred N^2 is differenced across the pair (not measured) | contract: `test_no_density_inversion_at_the_fit` (passes since the fix) |
 | V3 (M360) | In atmosphere layers that are convectively unstable the files' nabla is grad_ad, while the temperature follows the T(tau) relation | `envelope_integration_kernel.f90` (the atmosphere's `pulse_gradient`) | 15% in nabla just above the photosphere of the 2 Myr model (Teff = 4436 K); none in the solar-age model | contract: `test_atmosphere_gradient_everywhere` |
 | V4 (M361) | Where YREC sets nabla = nabla_ad exactly (a convective core), the thermal N^2 is exactly 0, the rule's `>= 0` test takes the centred density difference, and N^2 is that difference's error: positive through the outer half of the core | `stitched_model.f90` `difference_brunt_n2` | 80 points of the 32 Myr model's convective core, up to 6e-5 of g^2 rho/P (N^2 = +5e-11 s^-2) | contract: `test_brunt_is_not_positive_in_convection` |
 | V5 (M362) | `delta_Pg` leaves out the part of the buoyancy integral inside the innermost mesh point (N(r_1), since N ~ r there) | `observables.f90` `compute_seismic_observables` (the sum starts at point 2) | +6.1% on the standard solar model (1641.5 s for 1547 s); +2.7% on `Test_solarGS98_dif`, whose `extend_core_inward` puts the innermost point at 0.0043 R (1568.5 s for 1527 s) | gyre: `test_delta_pg_against_gyre` |
