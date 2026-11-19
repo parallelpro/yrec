@@ -87,7 +87,7 @@ OPAL95 high-R shift: independent of the previous lookup's X                0.00E
 OPAL95 high-R shift: no empty cell of the stencil's X tables read          2.10E-04  ok
 OPAL95 high-R shift (rows end at different log R): derivatives             1.16E-07  ok
 OPAL95 high-R shift: log kappa within 0.05 of its neighbours'              2.06E-02  ok
-OPAL95 past a row's last log R (extrapolated): derivatives                 4.26E-08  ok
+OPAL95 past a row's last log R (extrapolated): derivatives                 4.32E-08  ok
 precedence: OPAL95 with OPAL92 also selected is OPAL95 alone               0.00E+00  ok
 precedence: Alexander 2006 with 1994 also selected is 2006's               0.00E+00  ok
 no molecular family: OPAL95 exact at a node below log T 4.1                6.66E-16  ok
@@ -107,6 +107,7 @@ Alexander 1994 above its top log R: linear from the last two               0.00E
 Alexander 1994 above its top log R: slope the secant (M375)                0.00E+00  ok
 Alexander 2006 above its top log R: linear from the last two               0.00E+00  ok
 Alexander 2006 above its top log R: slope the secant (M375)                0.00E+00  ok
+OPAL 1995 past a row's last column: one rule, continuous (M376)            2.89E-09  ok
 kap_get: the Kurucz 1990 table has no value at log rho =-25.0000, log T =  3.6000
 Kurucz 1990: a density no row has returns ierr                             0.00E+00  ok
 OPAL92 between two X tables: derivatives against differences               8.02E-08  ok

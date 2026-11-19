@@ -647,6 +647,14 @@ file = 'kap/opacity_tables.f90'
 old = '''            dlnkap_dlnr_row(i) = (opacity_tr(t_row,n_logr)-opacity_tr(t_row,n_logr-1))/ &'''
 new = '''            dlnkap_dlnr_row(i) = dlnkap_dlnr_row(i) + 0.0d0*(opacity_tr(t_row,n_logr)-opacity_tr(t_row,n_logr-1))/ &'''
 
+# bug_sweep M376: one rule past a row's last filled column.
+[[mutation]]
+id = 'opal95-one-rule'
+check = "OPAL 1995 past a row's last column: one rule, continuous (M376)"
+file = 'kap/opal95/opal95_opacity.f90'
+old = '''            if (st%logr > interp_nodes(4)) then'''
+new = '''            if (.false.) then'''
+
 [[mutation]]
 id = 'kurucz-no-value'
 check = 'Kurucz 1990: a density no row has returns ierr'

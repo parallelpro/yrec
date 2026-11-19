@@ -460,9 +460,12 @@ end subroutine shift_rows_off_empty_corner
 ! Without a shift every row has the first row's columns, and below the
 ! table's first column the weights are taken at that column
 ! (st%logr_lo_edge). With a shift each row has its own columns, and a
-! row marked for extrapolation takes its weights at its last column
-! (st%logr_hi_edge(row)). extrapolate_in_logr carries each such row from
-! its edge to the point.
+! row whose point lies beyond its last filled column, by any amount,
+! takes its weights at that column (st%logr_hi_edge(row)) and is marked
+! for extrapolation: one rule from the column on (the row's cubic up to
+! a column beyond, as the F77 had it, gave a log kappa that jumped by up
+! to 0.017 dex where the linear rule took over; bug_sweep M376).
+! extrapolate_in_logr carries each such row from its edge to the point.
 pure subroutine opal95_logr_weights(tbl, rows_shifted, st)
       type(opal95_table_set), intent(inout) :: tbl
       logical, intent(in) :: rows_shifted
@@ -486,6 +489,10 @@ pure subroutine opal95_logr_weights(tbl, rows_shifted, st)
       else
          do j = 1,4
             interp_nodes = tbl%grid_logr(tbl%index_rho(j):tbl%index_rho(j)+3)
+            if (st%logr > interp_nodes(4)) then
+               st%extrap_hi = .true.
+               st%extrap_hi_row(j) = .true.
+            end if
             if (.not.st%extrap_hi_row(j)) then
                call interp(interp_nodes, weight, dweight, st%logr)
             else
