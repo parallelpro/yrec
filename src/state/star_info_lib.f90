@@ -892,6 +892,7 @@ module star_info_lib
 ! secular_transport, evolve_rotation. evolve_rotation copies it into
 ! omega at the end of the step; it outlives the step: the next step's
 ! first solid-body sub-step starts its Newton iteration from its mean.
+! 0 after a model read (M202).
             real(dp) :: omega_substep(json)
 ! Li6 proton-capture rate rho X lambda at the end of the step, on the
 ! converged model [1/s]; burn_step. With physics%use_extended_composition.
