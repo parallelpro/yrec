@@ -83,8 +83,7 @@ kap calls numerics_lib (`interp`, `lagrange4`, the splines, `locate`, `findex`, 
   - OPAL 1995's low-X, low-T corner (X < 0.2, the T stencil's first row at or below the fifth) is not checked against the empty part of the tables (the F77 code's postponed check);
   - OPAL 1995's X = 0.95 table at Z = 0.04 is in the files and not used: the stencils treat Z ≥ 0.04 as without it;
   - a family selected but not first in its role is neither loaded nor used (io warns for two molecular families and switches the others off; nothing warns for two interior families: M344);
-  - below log ρ = −6 the conductive opacity is extrapolated in log ρ with the H table's slope at −6, not the mixture's, its dln κ/dln T is H's at −6, and it stops where log R crosses 0 (M299; the F77 code's);
-  - where a species' own density is clamped at the conductive table's edge (log ρ from −6 up to −6 − log Y_e for hydrogen), the returned dln κ_c/dln ρ still takes the table's slope at the clamp (M341; conduction is negligible there);
+  - below log ρ = −6 the conductive opacity is extrapolated in log ρ with the mixture's slope at −6, its dln κ/dln T the mixture's there (round 3B; the H table's alone before, the F77 code's: M299), and it stops where log R crosses 0 (M299's second half, the authors' decision);
   - the conductive mixture's atomic weights are the F77 code's (1.008, 4.004, 16);
   - the conductive reader opens its table itself, without the compiler's reason in its message, where the other readers open through `open_table`.
 
