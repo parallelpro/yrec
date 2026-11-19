@@ -434,14 +434,14 @@ def photosphere_index(model, r_star):
 
 def brunt_n2_file_rule(model, g_newton=YREC_G):
     """N^2 by the rule YREC documents for its files: the thermal form
-    where that is negative (convective), else the centred density form;
-    each end copies its neighbour."""
+    where that is not positive (convective), else the centred density
+    form; each end copies its neighbour."""
     thermal = brunt_n2_thermal(model, g_newton)
     density = brunt_n2_density(model, g_newton)
     n = len(thermal)
     out = list(thermal)
     for j in range(1, n - 1):
-        if thermal[j] >= 0.0 and density[j] is not None and model["r"][j] > 0.0:
+        if thermal[j] > 0.0 and density[j] is not None and model["r"][j] > 0.0:
             out[j] = density[j]
     if n >= 2:
         out[0], out[-1] = out[1], out[-2]
@@ -766,7 +766,7 @@ def main(argv):
             rule = brunt_n2_file_rule(model, g_newton)
             scale = [g * g * rho / pr for g, rho, pr in zip(gravity(model, g_newton), model["rho"], model["P"])]
             v, i = worst([(a - b) / s for a, b, s in zip(rule, model["N2"], scale)])
-            print(f"  N2 against its rule (thermal form where negative, else the density form), "
+            print(f"  N2 against its rule (thermal form where not positive, else the density form), "
                   f"in g^2 rho/P: worst {v:.1e}")
         print(f"  [2 int dr/c]^-1 to R_star: {acoustic_delta_nu(model, r_star):.4f} uHz; "
               f"to the top: {acoustic_delta_nu(model, model['r'][-1]):.4f} uHz")

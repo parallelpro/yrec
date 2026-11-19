@@ -70,17 +70,16 @@ new = '(log(pressure(j+1)) - log(pressure(j-1)))*gamma1(j) - &'
 id = 'stitched_kernels-08'
 check = 'N^2: a negative thermal value is kept'
 file = 'core/diagnostics/stitched_kernels.f90'
-old = 'if (brunt_n2(j) >= 0.0d0 .and. radius(j) > 0.0d0 .and. &'
-new = 'if (brunt_n2(j) >= -2.0d0 .and. radius(j) > 0.0d0 .and. &'
+old = 'if (brunt_n2(j) > 0.0d0 .and. radius(j) > 0.0d0 .and. &'
+new = 'if (brunt_n2(j) > -2.0d0 .and. radius(j) > 0.0d0 .and. &'
 
-# The fix of bug_sweep M361 (the difference only where the thermal form
-# is positive): the check holds today's rule and fails with the fix.
+# bug_sweep M361: the difference only where the thermal form is positive.
 [[mutation]]
 id = 'stitched_kernels-09'
-check = 'N^2: a thermal value of exactly zero takes the difference (M361)'
+check = 'N^2: a thermal value of exactly zero is kept (M361)'
 file = 'core/diagnostics/stitched_kernels.f90'
-old = 'if (brunt_n2(j) >= 0.0d0 .and. radius(j) > 0.0d0 .and. &'
-new = 'if (brunt_n2(j) > 0.0d0 .and. radius(j) > 0.0d0 .and. &'
+old = 'if (brunt_n2(j) > 0.0d0 .and. radius(j) > 0.0d0 .and. &'
+new = 'if (brunt_n2(j) >= 0.0d0 .and. radius(j) > 0.0d0 .and. &'
 
 [[mutation]]
 id = 'stitched_kernels-10'

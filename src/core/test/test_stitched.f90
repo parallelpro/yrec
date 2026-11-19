@@ -31,10 +31,10 @@
 !       needs more steps than the integration allows), the grid is the
 !       interior alone, and the failure is returned (bug_sweep M327).
 ! Three of the kernels' checks hold values that an open defect's fix will
-! change, and say so: bug_sweep M361 (the zero thermal value), M363 (the
-! innermost point's N^2) and M362 (the two integrals' inner ends). The
-! check named M359 holds that fix (the envelope's first point skipped by
-! its index).
+! change, and say so: bug_sweep M363 (the innermost point's N^2) and M362
+! (the two integrals' inner ends). The checks named M359 and M361 hold
+! those fixes (the envelope's first point skipped by its index; a zero
+! thermal N^2 kept).
 !
 ! Usage: test_stitched DECK.inlist (test_stitched.py passes
 ! core/test/test_structure_tams.inlist), run from a directory with an
@@ -162,10 +162,9 @@ subroutine kernel_checks()
       call stitched_check('N^2: a negative thermal value is kept', &
            all(brunt_n2(5:6) == -1.0_dp))
 ! bug_sweep M361: a point whose thermal N^2 is exactly zero (nabla =
-! nabla_ad in an efficient convection zone) takes the difference today;
-! that fix changes the expected value to 0.
-      call stitched_check('N^2: a thermal value of exactly zero takes the difference (M361)', &
-           abs(brunt_n2(8)/expected_n2(8) - 1.0_dp) < 1.0e-9_dp)
+! nabla_ad in an efficient convection zone) keeps it.
+      call stitched_check('N^2: a thermal value of exactly zero is kept (M361)', &
+           brunt_n2(8) == 0.0_dp)
 ! bug_sweep M363: the innermost point's N^2 is its neighbour's today;
 ! that fix changes the expected value to N^2(2) (r_1/r_2)^2.
       call stitched_check('N^2: the end points copy their neighbours (M363)', &

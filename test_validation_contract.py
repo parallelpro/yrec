@@ -440,11 +440,11 @@ def check_brunt(b):
 
 
 def check_brunt_sign_in_convection(b):
-    """N^2 is not positive in a convective layer (defect V4: where YREC
-    sets nabla = nabla_ad exactly, as in a convective core, the thermal
-    form is exactly zero, the rule's test `>= 0` takes the centred
-    density difference, and N^2 is that difference's error, of either
-    sign)."""
+    """N^2 is not positive in a convective layer (defect V4, fixed in
+    round 3B: where YREC sets nabla = nabla_ad exactly, as in a
+    convective core, the thermal form is exactly zero, and the rule's
+    test `>= 0` took the centred density difference, whose error is of
+    either sign; the test is `> 0` since)."""
     c = b.cols
     mixing = b.prof["mixing_type"]
     scale = [g * g * rho / p for g, rho, p in zip(vm.gravity(c), c["rho"], c["P"])]
@@ -636,9 +636,9 @@ def test_no_density_inversion_at_the_fit(models):
         check_fit_join_density(b)
 
 
-@pytest.mark.xfail(strict=True, reason="V4, M361 (docs/PHYSICS_VALIDATION.md, docs/bug_sweep.md): N^2 is the centred "
-                   "difference's error, of either sign, where nabla = nabla_ad exactly")
 def test_brunt_is_not_positive_in_convection(models):
+    """N^2 is not positive where nabla = nabla_ad exactly: the thermal 0 is
+    kept there (V4, M361, fixed in round 3B)."""
     for b in models:
         check_brunt_sign_in_convection(b)
 

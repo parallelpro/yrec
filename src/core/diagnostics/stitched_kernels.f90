@@ -117,7 +117,7 @@ end function thermal_brunt_n2
 
 ! ---------------------------------------------------------------
 ! The second pass over N^2 (brunt_n2, on entry the thermal form at every
-! point): where it is not negative, the gradient form by centred
+! point): where it is positive, the gradient form by centred
 ! differences in r,
 !   N^2 = g [ (1/Gamma_1) dln P/dr - dln rho/dr ],  g = G m/r^2,
 ! which carries the mu-gradient term the thermal form leaves out: in the
@@ -128,9 +128,9 @@ end function thermal_brunt_n2
 ! whose thermal N^2 is negative (Schwarzschild-unstable) keeps it: the
 ! mixture there is homogeneous, so the thermal form is exact, while the
 ! centred difference of a near-adiabatic stratification is cancellation
-! noise. The test is ">= 0", so a point where nabla equals nabla_ad
-! exactly, as in an efficient convection zone, takes the difference
-! (bug_sweep M361). The positive N^2 the difference gives at the base of
+! noise. A point where nabla equals nabla_ad exactly, as in an efficient
+! convection zone, keeps its thermal 0 for the same reason (the test is
+! "> 0"; bug_sweep M361). The positive N^2 the difference gives at the base of
 ! a convection zone (the buoyancy of the mu discontinuity) lies on the
 ! radiative side and is kept. The two end points copy their neighbours
 ! (bug_sweep M363 for the innermost). The arrays hold the points from
@@ -145,7 +145,7 @@ pure subroutine difference_brunt_n2(radius, mass, pressure, density, gamma1, &
 
       num_points = size(radius)
       do j = 2, num_points - 1
-         if (brunt_n2(j) >= 0.0d0 .and. radius(j) > 0.0d0 .and. &
+         if (brunt_n2(j) > 0.0d0 .and. radius(j) > 0.0d0 .and. &
               radius(j+1) > radius(j-1) .and. gamma1(j) > 0.0d0) then
             gravity = newton_g*mass(j)/(radius(j)*radius(j))
             brunt_n2(j) = gravity*( &
