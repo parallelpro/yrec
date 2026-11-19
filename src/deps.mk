@@ -556,7 +556,7 @@ kap/alex06/alex06_reader.o: kap_messages.mod opacity_table_files.mod opacity_tab
 kap/alex94/alex94_opacity.o: alex94_reader.mod math_lib.mod numerics_lib.mod opacity_source.mod opacity_tables.mod physical_constants.mod
 kap/alex94/alex94_reader.o: kap_messages.mod opacity_table_files.mod opacity_tables.mod
 kap/conductive/conductive_opacity.o: conductive_reader.mod math_lib.mod numerics_lib.mod opacity_source.mod opacity_tables.mod physical_constants.mod
-kap/conductive/conductive_reader.o: kap_messages.mod math_lib.mod opacity_table_files.mod opacity_tables.mod
+kap/conductive/conductive_reader.o: math_lib.mod opacity_table_files.mod opacity_tables.mod
 kap/kap_lib.o: kap_messages.mod opacity_blending.mod opacity_families.mod opacity_source.mod opacity_tables.mod
 kap/kap_messages.o: run_messages.mod
 kap/kurucz90/kurucz_opacity.o: kurucz_reader.mod math_lib.mod numerics_lib.mod opacity_blending.mod opacity_source.mod opacity_tables.mod

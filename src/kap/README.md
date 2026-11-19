@@ -85,7 +85,6 @@ kap calls numerics_lib (`interp`, `lagrange4`, the splines, `locate`, `findex`, 
   - a family selected but not first in its role is neither loaded nor used (io warns for two molecular families and switches the others off; nothing warns for two interior families: M344);
   - below log ρ = −6 the conductive opacity is extrapolated in log ρ with the mixture's slope at −6, its dln κ/dln T the mixture's there (round 3B; the H table's alone before, the F77 code's: M299), and it stops where log R crosses 0 (M299's second half, the authors' decision);
   - the conductive mixture's atomic weights are the F77 code's (1.008, 4.004, 16);
-  - the conductive reader opens its table itself, without the compiler's reason in its message, where the other readers open through `open_table`.
 
 ## 4. Tests
 

@@ -129,7 +129,7 @@ kap_init: two OPAL 1992 tables (use_z_ramp or use_diffusion_z) need two Zs; opal
 kap_init refuses two OPAL92 tables at one Z                                0.00E+00  ok
 kap_init: molecular_opacity_logt_min ( 4.10000E+00) must be below molecular_opacity_logt_max ( 4.10000E+00)
 kap_init refuses molecular_opacity_logt_min >= _max                        0.00E+00  ok
-kap_init: cannot open the conductive table no_such_table.cond
+kap_init: cannot open the conductive table no_such_table.cond: Cannot open file 'no_such_table.cond': No such file or directory
 kap_init: a missing table returns ierr (and is not created)                0.00E+00  ok
 kap_init: cannot open the OPAL 1992 table no_such_table.opal92: Cannot open file 'no_such_table.opal92': No such file or directory
 kap_init: a missing OPAL92 table returns ierr (open_table)                 0.00E+00  ok
