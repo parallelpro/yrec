@@ -365,3 +365,17 @@ old = """         env_points%env_electron_mean_weight_inverse(1:n) = &
 """
 new = """         continue
 """
+
+# bug_sweep M309: no envelope event when no envelope is integrated.
+[[mutation]]
+id = 'envelope-thin-event'
+check = "thin: no envelope event (the atmosphere's is the last)"
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = """            vertex%log10_temperature = st%eqs%atm_point%log10_temperature
+         end if
+      else"""
+new = """            vertex%log10_temperature = st%eqs%atm_point%log10_temperature
+         end if
+         call add_envint_event(events, envint_envelope_done, counts=[0, 0], &
+              values=[0.0d0, 0.0d0, 0.0d0, 0.0d0, 0.0d0])
+      else"""

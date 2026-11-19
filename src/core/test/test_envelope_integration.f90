@@ -597,6 +597,9 @@ subroutine check_thin_envelope()
       call integrate(cfg)
       call report('thin: ierr = 0, no envelope points', real(ierr, dp), &
            ierr == 0 .and. env_points%num_env_points == 0)
+      call report('thin: no envelope event (the atmosphere''s is the last)', &
+           real(events%num_events, dp), events%num_events == 1 .and. &
+           event_kind(1) == envint_atmosphere_done)
       call report('thin: vertex = the surface point', &
            abs(vertex%log10_pressure - atm_point%log10_pressure), &
            vertex%log10_pressure == atm_point%log10_pressure .and. &

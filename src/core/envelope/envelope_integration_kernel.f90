@@ -708,9 +708,9 @@ end subroutine store_atmosphere_point
 ! the fitting mass cfg%log_fit_point_mass_fraction, storing env_points,
 ! which is then reversed to run from the centre outward. When the
 ! fitting mass lies above max_log_fit_point_mass_fraction there is no
-! envelope to integrate, and the vertex is the surface point itself.
-! Either way an envint_envelope_done event closes it. ierr after
-! max_steps steps.
+! envelope to integrate, and the vertex is the surface point itself: no
+! event (M309). An envint_envelope_done event closes an integration.
+! ierr after max_steps steps.
 subroutine integrate_envelope(st, cfg, log10_radius, log10_pressure_limit, &
      env_points, events, ierr, vertex)
       type(integration_state), intent(inout) :: st
@@ -739,10 +739,10 @@ subroutine integrate_envelope(st, cfg, log10_radius, log10_pressure_limit, &
               events, ierr, vertex)
          if (ierr /= 0) return
          call reverse_envelope_points(env_points)
+         call add_envint_event(events, envint_envelope_done, &
+              counts=[st%num_ok, st%num_bad], &
+              values=[st%mass_left, st%y(1), st%err_sum(1), st%err_sum(2), st%err_sum(3)])
       end if
-      call add_envint_event(events, envint_envelope_done, &
-           counts=[st%num_ok, st%num_bad], &
-           values=[st%mass_left, st%y(1), st%err_sum(1), st%err_sum(2), st%err_sum(3)])
 end subroutine integrate_envelope
 
 ! ---------------------------------------------------------------
