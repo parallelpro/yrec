@@ -916,6 +916,7 @@ subroutine append_envelope_point(eqs, env_points)
       env_points%env_dlnkap_dlnt(k) = pt%dlnkap_dlnt
       env_points%env_luminosity(k) = eqs%luminosity_linear
       env_points%env_dlnrho_dlnt(k) = pt%dlnrho_dlnt
+      env_points%env_electron_mean_weight_inverse(k) = pt%electron_mean_weight_inverse
       end associate
 end subroutine append_envelope_point
 
@@ -966,6 +967,8 @@ subroutine reverse_envelope_points(env_points)
          env_points%env_gamma1(1:n) = env_points%env_gamma1(n:1:-1)
          env_points%env_specific_heat_cp(1:n) = env_points%env_specific_heat_cp(n:1:-1)
          env_points%env_ion_fraction(:,1:n) = env_points%env_ion_fraction(:,n:1:-1)
+         env_points%env_electron_mean_weight_inverse(1:n) = &
+              env_points%env_electron_mean_weight_inverse(n:1:-1)
       end associate
 end subroutine reverse_envelope_points
 

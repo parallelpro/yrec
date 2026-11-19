@@ -12,6 +12,7 @@ photosphere at tau = 2/3                                     5.6E-11  ok
 T = Teff at the photosphere                                  1.6E-11  ok
 photospheric P = the last atmosphere point's                 0.0E+00  ok
 envelope ends at the fitting mass                            1.0E-14  ok
+the points record 1/mu_e (largest at the fitting point)      8.0E-01  ok
 the vertex event holds the vertex                            0.0E+00  ok
 -- depths
 depth: the first step is measured from tau = 0               2.0E-10  ok

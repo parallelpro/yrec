@@ -354,3 +354,14 @@ check = 'gray photosphere: T = Teff'
 file = 'core/envelope/envelope_integration.f90'
 old = 'log10_temperature = atm_point%log10_temperature'
 new = 'log10_temperature = atm_point%log10_pressure'
+
+# bug_sweep M393: the envelope points keep 1/mu_e for the profile.
+[[mutation]]
+id = 'envelope-mue-01'
+check = 'the points record 1/mu_e (largest at the fitting point)'
+file = 'core/envelope/envelope_integration_kernel.f90'
+old = """         env_points%env_electron_mean_weight_inverse(1:n) = &
+              env_points%env_electron_mean_weight_inverse(n:1:-1)
+"""
+new = """         continue
+"""

@@ -587,7 +587,7 @@ Answered by the owner on 2026-11-11 (round 1B's B lists, approved with their rec
 | M390 | A thin envelope leaves the previous integration's envelope points in place | Yes | Open |
 | M391 | An envelope point exactly at the requested fitting mass makes two zones at one mass | Yes | Open |
 | M392 | The fitted vertex's diagnostics line could not be written | No (2026) | Removed in round 3 (2026-11-18), [15e136ff](https://github.com/parallelpro/yrec/commit/15e136ff) |
-| M393 | The profile's mu_e_inv is 0 at the envelope and atmosphere points | No (2026) | Open |
+| M393 | The profile's mu_e_inv is 0 at the envelope and atmosphere points | No (2026) | Partly fixed in round 3B (2026-11-18): the envelope points; open: the atmosphere's |
 | M394 | The turnover walk never ends for a fully convective model on a walk with envelope points (latent) | Yes | Open |
 | M395 | The turnover walk's spline ignores the spline's failure | Yes (in shape; the status: 2026) | Open |
 | M396 | A model read leaves the fitting point's mass fraction unset: the starting model's stitched model has no envelope | Yes (in shape) | Fixed in round 3B (2026-11-18) |
@@ -7219,12 +7219,13 @@ Round 3 took the packages the eighth evaluation left under 8, kap and core, to i
 
 ### M393. The profile's mu_e_inv is 0 at the envelope and atmosphere points
 
-- **Status:** open. Found by the core2 agent (hand-back §6, item 6) while tracing the README's recipe "record a quantity at each envelope point". The integrands have 1/μ_e from the EOS and drop it (the old `qemu`, which nothing read). Kind B (the profile files' envelope rows; no .log, no pin); size S.
+- **Status:** partly fixed (round 3B, 2026-11-18): the envelope points; open: the atmosphere points. At the registration: open. Found by the core2 agent (hand-back §6, item 6) while tracing the README's recipe "record a quantity at each envelope point". The integrands have 1/μ_e from the EOS and drop it (the old `qemu`, which nothing read). Kind B (the profile files' envelope rows; no .log, no pin); size S.
 - **In the original F77?** No: the column is 2026's.
 - **Now:** the envelope's and the atmosphere's lists of columns without a value, [stitched_model.f90:639-646](https://github.com/parallelpro/yrec/blob/7ea92ace/src/core/diagnostics/stitched_model.f90#L639-L646), [:696-703](https://github.com/parallelpro/yrec/blob/7ea92ace/src/core/diagnostics/stitched_model.f90#L696-L703).
 - **What is wrong:** a profile's `mu_e_inv` column falls to 0 outside the interior, where the EOS has the value.
 - **Expected behaviour, and why:** a column has its value wherever the code computes it, or the column's description says where it has none.
 - **What we did:** recorded, not fixed. Patch ready (`scratch_r3_core2/patches/trace_recipe_mu_e_inv.patch`: a `point_physics` field, an `envelope_structure_state` member, a line in `append_envelope_point` and in `reverse_envelope_points`, a `case (ip_mu_e_inv)` in `envelope_value`); cm_base's log and model file unchanged with it.
+- **Round 3B (2026-11-18):** the envelope half fixed (the core2 agent's patch, its mutation re-applied by hand): `point_physics` keeps the EOS's 1/mu_e (`electron_mean_weight_inverse`), the envelope points store it (`env_electron_mean_weight_inverse`, appended and reversed with the others), and `envelope_value` gives the profile's `mu_e_inv` from it. test_envelope_integration gains "the points record 1/mu_e (largest at the fitting point)" (expected output re-pinned: that line), mutation envelope-mue-01 caught. Measured: `--set all` from 8e386b8d: RESULT ALL IDENTICAL, pins 35 OK (no compared file holds the column). Open: the atmosphere points. The same storage for them (from `compute_atmosphere_derivs`' EOS call, through `store_atmosphere_point`) was tried and left out: the stored value is 0 at the deepest atmosphere point of test_envelope_integration's model (the point's `pt` record is the Bulirsch-Stoer step's last evaluation, whose 1/mu_e was not traced), so the atmosphere rows keep 0 until that is understood.
 
 ### M394. The turnover walk never ends for a fully convective model on a walk with envelope points
 

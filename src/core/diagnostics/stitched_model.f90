@@ -613,6 +613,7 @@ subroutine envelope_value(s, icol, i, value, found)
       case (ip_logR);         value = s%env_points%env_log10_radius(i)
       case (ip_logT);         value = s%env_points%env_log10_temperature(i)
       case (ip_logRho);       value = s%env_points%env_log10_density(i)
+      case (ip_mu_e_inv);     value = s%env_points%env_electron_mean_weight_inverse(i)
       case (ip_logP);         value = s%env_points%env_log10_pressure(i)
       case (ip_luminosity);   value = s%env_points%env_luminosity(i)
       case (ip_mixing_type);  value = convective_indicator(s%env_points%env_convective_flag(i))
@@ -645,7 +646,7 @@ subroutine envelope_value(s, icol, i, value, found)
            ip_h2, ip_he3, ip_he4, ip_li6, ip_li7, ip_be9, ip_c12, ip_c13, &
            ip_n14, ip_n15, ip_o16, ip_o17, ip_o18, &
            ip_j_rot, ip_i_rot, ip_fp_rot, ip_ft_rot, ip_v_es, ip_v_gsf, &
-           ip_v_ss, ip_v_sh, ip_mu_e_inv, ip_D_omega, ip_D_mix_rot)
+           ip_v_ss, ip_v_sh, ip_D_omega, ip_D_mix_rot)
          value = 0.0d0
       case default
          value = 0.0d0
