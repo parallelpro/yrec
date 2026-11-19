@@ -5318,5 +5318,56 @@ the atomic weights that differ, M360, M392's line, M399, M397, M146's
 rest). M402 first, since it decides how the horizontal-branch deck's
 stop rules are read.
 
-**The push**: nothing of round 3 is pushed; yrec-next is pushed through
-2ff65f9d.
+**The push**: round 3 was pushed on 2026-11-18 (c0ac6b21, after the M404
+fix and this section); CI passed on all three jobs.
+
+### Round 3B (2026-11-18): round 3's measured fixes
+
+The owner approved round 3's B list on 2026-11-18 (the work directory's `notes/R3_B_LIST.md`): M402 first, then
+the groups (a) and (b) as their finders recommended, one measured commit each; group (c) stays with the owner. One
+agent, branch r3b from c0ac6b21, each commit run on the 56-deck set against the previous commit's reseeded baseline
+and the 35 pins (byte-identical commits in one group run).
+
+- **M402 answered:** `ZAHB_m1p0feh+0p0_TAHB` is bistable. One timestep of its third card lengthened by 1 part in
+  1e9 at model 100 ends it at model 1429, 0.224451 Gyr, where two unrelated changes had (1726, 0.243117 Gyr
+  otherwise; the first visible change at model 450 either way). The deck is judged by its first visible change,
+  as the path-sensitive decks are.
+- **Byte-identical (one group run):** M324 (the turnover walk's innermost-point branch keeps H_P/v_c), M202 (a model
+  read clears the solid-body iteration's first guess), M396 (a model read sets the fitting point's mass fraction:
+  the starting model's stitched model has its envelope), M323 (the dead accretion-entropy path retired to
+  `core/step/retired/accretion_entropy.f90.txt`, with the two star members and the argument chain it needed),
+  convection's `homogenize_region` reused by the composition step, one table of the four basic atomic weights in
+  `state/composition_layout`, M139 (the controls read refuses `compute_neutrino_fluxes` without `calc_neutrinos`).
+- **Measured:** M325 (each card's first step keeps the starting model's turnover time: 8 rotating decks, 5 pins);
+  the validation tier's four, each removing its strict expected failure: M359 (the envelope's repeat of the
+  fitting point skipped by index; one rotating deck moves through the turnover walk), M361 (N^2 keeps the thermal 0
+  where nabla = nabla_ad), M362 (delta_nu and delta_Pg from the centre: delta_Pg within 1.1e-4 of GYRE, was
+  +6.1%), M363 (the pulse files hold 30 points inside the innermost one: GYRE's l = 1 period spacing no longer
+  depends on the centre fill, was -2.4%); M393's envelope half (the profile's mu_e_inv above the fitting point);
+  M383 (a mixed region too cool to burn still takes in the accreted Li and Be); M299's first half with M341 (the
+  conductive opacity's derivatives below log rho = -6 and at a clamped species density: every deck moves, at
+  round-off outside the path-sensitive ones, 24 pins); M375 (the Alexander tables' derivative above the top log
+  R is the extrapolation's secant: the 0.03 Msun ZAMS deck at round-off); M376 (OPAL 1995 takes one rule past a
+  row's last filled column: its 0.017 dex jump gone; no deck reaches it); M309 (no envelope event without an
+  envelope); the conductive reader on `open_table` (test_kap's one message).
+- **Stopped:** M326's density shift moves the standard solar deck `Test_solar_GS_norot_gray_OPALSCV_SF2_GS98_OP_CF10`
+  by 3.8e-5 dex in log L at the solar age, over the round's 3e-5 rule; measured, not committed, back to the owner.
+- **Not done (time):** M332's message texts, M344's structural half, M321 (whose proposed error for the kernel's
+  Allard fallback needs a re-entry test at the model-point callers first: round 3B's hand-back).
+- **Kept by decision (row 26):** kap's three spellings of 10^x and the conductive mixture's atomic weights.
+- bug_sweep: 475 items, 335 fixed and 140 open (M299 and M393 partly fixed, counted open), with the round's two new
+  defects registered at the merge: M405 (the atmosphere points' stored values may be the Bulirsch-Stoer step's last
+  trial evaluation's; M393's atmosphere half waits on it) and M406 (gray_photosphere and atm_table_is_loaded have no
+  run caller since M323).
+
+**The integration** (merge 6f6b4018; the work directory's `notes/r3b_verify.log`): the agent's base and pins
+reproduced in the main tree (RESULT ALL IDENTICAL, 35 pins OK), the old ones backed up (`backups/pre_r3b`) and the
+new installed (all 35 pin files and the 56 decks' base changed); builds rc 0; `make check` rc 0 (246 star
+contracts; the style table lowered by 2 counts after); `compare_decks --set all` ALL IDENTICAL, 35 pins OK; CI's
+pytest list (41 files), exact and tolerant, 157 passed, 2 skipped, 4 xfailed; mutate kap, convection, atm and core,
+0 survived; the devel build and `devel_tests.py`, 0 failed; the release rebuild; the MESA baselines reseeded and
+checked (2 passed, identical to the agent's); the validation tier with GYRE, 68 passed, 1 skipped, 6 xfailed.
+
+**Back with the owner** (2026-11-18): M326's density shift (3.8e-5 dex on a standard solar deck; proposed: with
+M358's recalibration), M321's model-point callers, M393's atmosphere half (M405 first), M362's tier tolerance,
+M406's retirement, and group (c) of the B list (rows 8, 20, 22, 23, 29-34).
