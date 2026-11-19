@@ -426,7 +426,7 @@ inlist, in the legacy CONTROL/PHYSICS decks and in the code
 | `pulse_format` | `-` | `pulse_format` | physics | - | - | run | string | `'GYRE'` | live | The pulsation files' format (GYRE text, FGONG, or GSM = GYRE HDF5 [needs make USE_HDF5=1]), written beside each profile as profile{N}.data.{format}. The GYRE and GSM formats carry no Newton's G (FGONG does): give the pulsation code the run's, 6.6725218e-8 unless G_cgs sets another (GYRE's own default is 2.7e-4 higher) |
 | `write_profile_flag` | `-` | `write_profile_flag` | physics | - | - | run | logical | `.false.` | live | Write the profile{N}.data files (every profile_interval models) |
 | `write_pulse_flag` | `-` | `write_pulse_flag` | physics | - | - | run | logical | `.false.` | live | Write a pulsation file (pulse_format) with each profile |
-| `compute_neutrino_fluxes` | `-` | `compute_neutrino_fluxes` | physics | - | - | run | logical | `.false.` | live | Diagnostic: write the per-zone solar neutrino production table (fluxes per shell, normalized profiles, Bahcall-Pinsonneault layout) to the run log at the start of each run |
+| `compute_neutrino_fluxes` | `-` | `compute_neutrino_fluxes` | physics | - | - | run | logical | `.false.` | live | Diagnostic: write the per-zone solar neutrino production table (fluxes per shell, normalized profiles, Bahcall-Pinsonneault layout) to the run log for each kind card's starting model; needs calc_neutrinos, which computes the fluxes (the controls read refuses it without) |
 
 ## Members no deck sets
 

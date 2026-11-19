@@ -988,7 +988,7 @@
       ! Write a pulsation file (pulse_format) with each profile
       write_pulse_flag = .false.
 
-      ! Diagnostic: write the per-zone solar neutrino production table (fluxes per shell, normalized profiles, Bahcall-Pinsonneault layout) to the run log at the start of each run
+      ! Diagnostic: write the per-zone solar neutrino production table (fluxes per shell, normalized profiles, Bahcall-Pinsonneault layout) to the run log for each kind card's starting model; needs calc_neutrinos, which computes the fluxes (the controls read refuses it without)
       compute_neutrino_fluxes = .false.
 
 /

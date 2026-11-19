@@ -505,6 +505,37 @@ def test_a_card_kind_outside_1_to_3_is_an_error(tmp_path):
                 f"evolve); card 2 has {kind}") in stdout
 
 
+def test_neutrino_flux_table_needs_calc_neutrinos(tmp_path):
+    """compute_neutrino_fluxes writes a table of the fluxes that only
+    calc_neutrinos (legacy LSNU) computes: on without it, the read stops
+    with ierr = 1 and a message naming both (M139); with it, the read
+    passes."""
+    if not BINARY.exists():
+        pytest.skip("src/test_controls not built (run `make tests` in src/)")
+    deck = REPO / "examples" / "run_config_matrix" / "cm_base.inlist"
+    text = deck.read_text()
+    on = " calc_neutrinos = .TRUE. ! Compute solar neutrino fluxes\n"
+    assert on in text and "compute_neutrino_fluxes" not in text
+    table = on + " compute_neutrino_fluxes = .TRUE.\n"
+    cases = {"without": text.replace(on, table.replace("calc_neutrinos = .TRUE.",
+                                                         "calc_neutrinos = .FALSE.")),
+             "with": text.replace(on, table)}
+    for name, body in cases.items():
+        d = tmp_path / f"{name}.inlist"
+        d.write_text(body)
+        out = tmp_path / name
+        out.mkdir()
+        r = subprocess.run([str(BINARY), str(d)], cwd=deck.parent, capture_output=True,
+                           env=dict(os.environ, YREC_OUTPUT=str(out)))
+        stdout = r.stdout.decode("latin-1")
+        if name == "with":
+            assert "ierr = 0" in stdout.splitlines(), stdout[-300:]
+            continue
+        assert "ierr = 1" in stdout.splitlines(), stdout[-300:]
+        assert (" ERROR: compute_neutrino_fluxes needs calc_neutrinos (LSNU), which computes"
+                " the fluxes its table holds") in stdout
+
+
 def test_a_monte_carlo_run_range_outside_1_to_max_is_an_error(tmp_path):
     """With Monte Carlo on, the run range must satisfy 1 <= mc_run_start <=
     mc_run_end <= max_mc_runs (1000, the sample arrays' size): a start of 0
