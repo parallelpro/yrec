@@ -158,6 +158,19 @@ new = '''
               2.0d0*s%stitched%pulse(ipul_N2, j)
 '''
 
+# bug_sweep M396: a model read sets the fitting point's mass fraction;
+# without it the starting model's stitched model has no envelope.
+[[mutation]]
+id = 'stitched_model-08'
+check = 'stitched model: interior, envelope and atmosphere, in order'
+file = 'core/model/starting_model.f90'
+old = '''
+! before every solve (M396).
+      s%log_fit_point_mass_fraction = s%log_mass(s%nz) - s%log_total_mass'''
+new = '''
+! before every solve (M396).
+      s%log_fit_point_mass_fraction = 0.0d0'''
+
 [[mutation]]
 id = 'stitched_model-05'
 check = 'a profile column without a value in a region: ierr = 1'

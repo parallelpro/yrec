@@ -205,11 +205,10 @@ subroutine star_checks()
       integer :: ierr, j, n_ext, n_ie, nz
       logical :: regions_in_order, radius_increases, points_match
 
+! The read sets the fitting point's mass fraction, which the envelope is
+! integrated down to (bug_sweep M396), so the stitched model has an
+! envelope.
       call load_deck_model(deck)
-! The fitting point's mass fraction, which the envelope is integrated
-! down to: the step sets it before every solve (refresh_surface_bc), and
-! a model just read has none.
-      star%log_fit_point_mass_fraction = star%log_mass(star%nz) - star%log_total_mass
       call build_stitched_model(star, ierr)
       if (ierr /= 0) call die('build_stitched_model')
       n_ext = star%stitched%n_ext
