@@ -497,21 +497,21 @@ Resolved from the git rename history of `src/`. Routines merged into a module ar
 | `envint` | `core/envelope/envelope_integration.f90`, `core/envelope/envelope_integration_kernel.f90` |
 | `qatm`, `qenv` | `core/envelope/envelope_integrands.f90`, `core/envelope/envelope_integrands.f90` |
 | `physic` | `core/step/shell_physics.f90` |
-| `gettau` | `core/diagnostics/turnover_timescale.f90` |
+| `gettau` | `core/diagnostics/turnover_timescale.f90`, its kernel `core/diagnostics/turnover_walk.f90` (`time_surface_convection_zone`; TAUINTNEW's walk) |
 | `chkcal`, `setcal` | `core/run/calibration.f90`, `core/run/calibration.f90` |
 | `chkscal`, `setscal` | `core/run/calibration.f90`, `core/run/calibration.f90` |
 | `engeb` | `net/nuclear_energy.f90` (`nuclear_energy`), adapter `compute_zone_energy` in `core/step/burn_step.f90` |
 | `deutrate`, `dburn`, `dburnm` | `net/light_elements.f90` (`deuterium_rate`, `burn_deuterium_region`) |
-| `liburn`, `lirate88` | `core/step/burn_step.f90` (`burn_li_be`, `store_start_li_be_rates`/`store_end_li_be_rates`) |
+| `liburn`, `lirate88` | `core/step/burn_step.f90` (`burn_li_be`, `store_start_li_be_rates`/`store_end_li_be_rates`), its kernel `core/step/li_be_burn.f90` (`burn_li_be_zones`) |
 | `nrate` (rates) | `net/net_lib.f90` (`compute_network_rates`, `compute_reaction_rates`) |
-| `mix` | `core/step/composition_step.f90` (`advance_composition`) |
+| `mix` | `core/step/composition_step.f90` (`advance_composition`), its kernels `core/step/composition_kernels.f90` |
 | `convec`, `mixcz` | `convection/convection_zones.f90` (`find_convection_zones`, `homogenize_convection_zones`) |
 | `oversh`, `hsubp` | `convection/overshoot.f90` (`extend_by_overshoot`; `edge_scale_height`, `pressure_scale_height`) |
 | `sconvec` | `convection/semiconvection.f90` (`extend_by_semiconvection`) |
 | `kemcom` | `net/network.f90` (`burn_implicitly`) |
 | `tpgrad` | `convection/temperature_gradients.f90` (`compute_temperature_gradients`) |
 | `rotmix`, `bursmix`, `bsrotmix` | `rotation/mid_timestep_model.f90` (`burn_and_settle`), `rotation/burn_settle_mix.f90`, `rotation/burn_mix_extrapolated.f90` (the last two commented out) |
-| `hpoint` | `core/model/rezoning.f90` |
+| `hpoint` | `core/model/rezoning.f90`, its kernels `core/model/mesh_spacing.f90` |
 | `findsh` | `core/model/shell_boundaries.f90` |
 | `set_up_constants_and_tables` | `core/run/run_setup.f90` |
 | `htimer` | `core/step/timestep_control.f90` (`compute_timestep`), its limits `core/step/timestep_limits.f90` |
@@ -529,7 +529,7 @@ Resolved from the git rename history of `src/`. Routines merged into a module ar
 | `dcoeft`, `dadcoeft` | `rotation/seculr/am_transport_coefficients.f90` |
 | `checkj`, `checkc` | `rotation/seculr/transport_checks.f90` |
 | `mwind`, `wind`, `mcowind`, `cowind`, `amcalc` | `rotation/magnetic_braking.f90` (`brake_convection_zone` for mwind/wind, `compute_solid_body_braking` for mcowind/cowind) |
-| `massloss`, `mdot` | `core/step/mass_change.f90` (`change_mass`, `apply_mass_change`) |
+| `massloss`, `mdot` | `core/step/mass_change.f90` (`change_mass`, `apply_mass_change`), its kernels `core/step/mass_change_kernel.f90` |
 | `eqstat`, `eqstat2` | `eos/blended_eos.f90` (`compute_blended_eos`, `blend_eos`) |
 | `meqos`, `mhdtbl` | `eos/mhd/mhd_eos.f90` (`compute_mhd_eos`), `eos/mhd/mhd_table_reader.f90` (`read_mhd_tables`) |
 | `oeqos`, `oeqos01`, `oeqos06`; `eqbound`, `eqbound01`, `eqbound06` | `eos/opal/opal_eos.f90` (`compute_opal_eos` for all three vintages; `find_opal_edge_ramp` over `find_table_edge_ramp` (1995, 2001) and `find_ragged_edge_ramp` (2006)) |
